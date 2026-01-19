@@ -1,23 +1,32 @@
 /**
  * Combat System Utilities for Shadows of the 1920s
- * Based on Game Design Bible - Skill Check System
+ * HERO QUEST STYLE - Simplified combat system
  *
- * Combat uses: 2d6 + attribute bonus dice
- * Each die >= DC counts as a success
- * Need at least 1 success to hit
+ * ATTACK:
+ * 1. Roll [Weapon Dice] (weapon determines dice, not attribute + bonus)
+ * 2. Count skulls (4, 5, 6 on d6) = Damage dealt
+ *
+ * DEFEND:
+ * 1. Roll [Base Defense + Armor Dice]
+ * 2. Count shields (4, 5, 6 on d6) = Damage blocked
+ *
+ * RESULT:
+ * Final Damage = Skulls - Shields (minimum 0)
  */
 
-import { Player, Enemy, Item, SkillType, SkillCheckResult, getAllItems } from '../types';
-import { BESTIARY } from '../constants';
+import { Player, Enemy, Item, SkillType, SkillCheckResult, getAllItems, OccultistSpell } from '../types';
+import { BESTIARY, CHARACTERS } from '../constants';
 
 // Combat result interface
 export interface CombatResult {
   hit: boolean;
   damage: number;
-  rolls: number[];
-  successes: number;
-  criticalHit: boolean;  // All dice succeeded
-  criticalMiss: boolean; // All dice failed
+  attackRolls: number[];
+  attackSuccesses: number;     // "Skulls" - successful attack dice
+  defenseRolls: number[];
+  defenseSuccesses: number;    // "Shields" - successful defense dice
+  criticalHit: boolean;        // All attack dice succeeded
+  criticalMiss: boolean;       // All attack dice failed
   horrorTriggered: boolean;
   sanityLoss: number;
   message: string;
@@ -32,19 +41,32 @@ export interface HorrorCheckResult {
   message: string;
 }
 
+// Spell cast result
+export interface SpellCastResult {
+  success: boolean;
+  damage: number;
+  rolls: number[];
+  successes: number;
+  spellUsed: OccultistSpell;
+  message: string;
+}
+
+// DC for combat - roll this or higher to score a hit/block
+const COMBAT_DC = 4; // 4, 5, 6 on d6 = success (50% chance per die)
+
 // Dice rolling utility
 export function rollDice(count: number): number[] {
   return Array.from({ length: count }, () => Math.floor(Math.random() * 6) + 1);
 }
 
-// Count successes against DC
-export function countSuccesses(rolls: number[], dc: number): number {
+// Count successes against DC (skulls/shields)
+export function countSuccesses(rolls: number[], dc: number = COMBAT_DC): number {
   return rolls.filter(roll => roll >= dc).length;
 }
 
 /**
- * Perform a skill check
- * Base: 2d6 + attribute value dice
+ * Perform a skill check (non-combat)
+ * Still uses: Base 2d6 + attribute value dice
  * Each die >= DC is a success, need 1+ to pass
  */
 export function performSkillCheck(
@@ -70,86 +92,135 @@ export function performSkillCheck(
 }
 
 /**
- * Calculate weapon damage bonus
+ * Get the equipped weapon's attack dice
+ * Hero Quest style: weapon DETERMINES total dice (not bonus)
  */
-export function getWeaponBonus(player: Player): { combatDice: number; damage: number } {
-  let combatDice = 0;
-  let damage = 1; // Base unarmed damage
-
-  // Use getAllItems to get items from slot-based inventory
+export function getWeaponAttackDice(player: Player): { attackDice: number; weaponName: string; isRanged: boolean; range: number } {
   const items = getAllItems(player.inventory);
+
+  // Find best weapon in hand slots
+  let bestWeapon: Item | null = null;
+
   for (const item of items) {
-    if (item.type === 'weapon' && item.bonus) {
-      combatDice += item.bonus;
-      // Weapon damage scales with bonus
-      damage = Math.max(damage, item.bonus);
+    if (item.type === 'weapon' && item.attackDice) {
+      if (!bestWeapon || (item.attackDice > (bestWeapon.attackDice || 0))) {
+        bestWeapon = item;
+      }
     }
   }
 
-  return { combatDice, damage };
+  if (bestWeapon && bestWeapon.attackDice) {
+    return {
+      attackDice: bestWeapon.attackDice,
+      weaponName: bestWeapon.name,
+      isRanged: bestWeapon.weaponType === 'ranged',
+      range: bestWeapon.range || 1
+    };
+  }
+
+  // No weapon = use base attack dice (unarmed)
+  const baseAttack = player.baseAttackDice || 1;
+  return {
+    attackDice: baseAttack,
+    weaponName: 'Unarmed',
+    isRanged: false,
+    range: 1
+  };
 }
 
 /**
- * Perform combat attack
- * Uses STR attribute + weapon bonuses
- * DC 4 for standard enemies
+ * Get total defense dice (base + armor)
+ * Hero Quest style: base defense + armor defense dice
+ */
+export function getDefenseDice(player: Player): { defenseDice: number; armorName: string } {
+  // Base defense from character class
+  const baseDefense = player.baseDefenseDice || 2;
+
+  // Get armor defense dice
+  const items = getAllItems(player.inventory);
+  let armorDefense = 0;
+  let armorName = 'No Armor';
+
+  for (const item of items) {
+    if (item.type === 'armor' && item.defenseDice) {
+      armorDefense = Math.max(armorDefense, item.defenseDice);
+      armorName = item.name;
+    }
+  }
+
+  return {
+    defenseDice: baseDefense + armorDefense,
+    armorName
+  };
+}
+
+/**
+ * Perform HERO QUEST STYLE attack
+ *
+ * ATTACK FLOW:
+ * 1. Roll weapon dice (determined by weapon, not attribute)
+ * 2. Veteran gets +1 die with melee weapons
+ * 3. Count "skulls" (4, 5, 6)
+ *
+ * Enemy defense (if any) is handled separately
  */
 export function performAttack(
   player: Player,
   enemy: Enemy,
   isRanged: boolean = false
 ): CombatResult {
-  const dc = 4; // Standard combat DC
-  const baseDice = 2;
+  // Get weapon attack dice
+  const weaponInfo = getWeaponAttackDice(player);
+  let attackDice = weaponInfo.attackDice;
 
-  // Get attribute bonus (STR for melee, AGI for ranged)
-  const attribute = isRanged ? player.attributes.agility : player.attributes.strength;
+  // Auto-determine if ranged based on weapon
+  const actuallyRanged = weaponInfo.isRanged;
 
-  // Weapon and class bonuses
-  const weaponBonus = getWeaponBonus(player);
-  const classBonusDice = player.specialAbility === 'combat_bonus' ? 1 : 0;
-
-  const totalDice = baseDice + attribute + weaponBonus.combatDice + classBonusDice;
-  const rolls = rollDice(totalDice);
-  const successes = countSuccesses(rolls, dc);
-
-  const criticalHit = successes === totalDice;
-  const criticalMiss = successes === 0;
-
-  // Calculate damage
-  let damage = 0;
-  if (successes > 0) {
-    // Base damage is number of successes, minimum 1
-    damage = Math.max(1, successes);
-    // Add weapon damage bonus
-    damage += weaponBonus.damage - 1; // -1 because base is already counted
-    // Critical hit doubles damage
-    if (criticalHit) {
-      damage *= 2;
-    }
+  // Veteran gets +1 attack die with melee weapons
+  if (player.specialAbility === 'combat_bonus' && !actuallyRanged) {
+    attackDice += 1;
   }
 
-  // Check if enemy has damage reduction traits
+  // Roll attack dice
+  const attackRolls = rollDice(attackDice);
+  const attackSuccesses = countSuccesses(attackRolls, COMBAT_DC);
+
+  // Critical checks
+  const criticalHit = attackSuccesses === attackDice && attackDice > 0;
+  const criticalMiss = attackSuccesses === 0;
+
+  // Calculate raw damage (skulls)
+  let damage = attackSuccesses;
+
+  // Critical hit doubles damage
+  if (criticalHit) {
+    damage *= 2;
+  }
+
+  // Enemy takes damage reduction from "massive" trait
   if (enemy.traits?.includes('massive') && damage > 0) {
-    damage = Math.max(1, damage - 1); // Massive enemies take 1 less damage
+    damage = Math.max(1, damage - 1);
   }
 
+  // Build message
   let message = '';
   if (criticalHit) {
-    message = `KRITISK TREFF! ${player.name} knuser ${enemy.name}!`;
+    message = `KRITISK TREFF! ${player.name} knuser ${enemy.name} med ${weaponInfo.weaponName}! (${damage} skade)`;
   } else if (criticalMiss) {
-    message = `KRITISK BOMMERT! Angrepet feiler totalt!`;
-  } else if (successes > 0) {
-    message = `TREFF! ${player.name} gjor ${damage} skade mot ${enemy.name}.`;
+    message = `BOMMERT! ${player.name} treffer ikke ${enemy.name}.`;
+  } else if (attackSuccesses > 0) {
+    message = `TREFF! ${player.name} gjør ${damage} skade mot ${enemy.name} med ${weaponInfo.weaponName}.`;
   } else {
     message = `BOMMERT! ${player.name} treffer ikke ${enemy.name}.`;
   }
 
   return {
-    hit: successes > 0,
+    hit: attackSuccesses > 0,
     damage,
-    rolls,
-    successes,
+    attackRolls,
+    attackSuccesses,
+    defenseRolls: [],
+    defenseSuccesses: 0,
     criticalHit,
     criticalMiss,
     horrorTriggered: false,
@@ -159,9 +230,44 @@ export function performAttack(
 }
 
 /**
+ * Perform player defense roll
+ * Hero Quest style: Roll defense dice, each 4+ blocks 1 damage
+ */
+export function performDefense(player: Player, incomingDamage: number): {
+  damageBlocked: number;
+  finalDamage: number;
+  defenseRolls: number[];
+  defenseSuccesses: number;
+  message: string;
+} {
+  const defenseInfo = getDefenseDice(player);
+  const defenseRolls = rollDice(defenseInfo.defenseDice);
+  const defenseSuccesses = countSuccesses(defenseRolls, COMBAT_DC);
+
+  const damageBlocked = Math.min(defenseSuccesses, incomingDamage);
+  const finalDamage = Math.max(0, incomingDamage - defenseSuccesses);
+
+  let message = '';
+  if (finalDamage === 0 && incomingDamage > 0) {
+    message = `${player.name} blokkerer all skade! (${defenseSuccesses} shields)`;
+  } else if (damageBlocked > 0) {
+    message = `${player.name} blokkerer ${damageBlocked} skade. Tar ${finalDamage} skade.`;
+  } else {
+    message = `${player.name} tar ${finalDamage} skade!`;
+  }
+
+  return {
+    damageBlocked,
+    finalDamage,
+    defenseRolls,
+    defenseSuccesses,
+    message
+  };
+}
+
+/**
  * Perform horror check when first seeing an enemy
- * Uses WIL attribute
- * DC varies by enemy horror rating
+ * Uses WIL attribute (still uses old skill check system for horror)
  */
 export function performHorrorCheck(
   player: Player,
@@ -179,12 +285,21 @@ export function performHorrorCheck(
     };
   }
 
-  // Professor is immune to horror from reading occult texts, but not from seeing monsters
-  // However, they get a bonus
+  // Veteran is immune to first horror check (Fearless ability)
+  if (player.specialAbility === 'combat_bonus' && !player.madness.includes('first_horror_check')) {
+    return {
+      resisted: true,
+      sanityLoss: 0,
+      rolls: [],
+      successes: 0,
+      message: `${player.name} holder fatningen (Fearless).`
+    };
+  }
+
+  // Professor gets +1 die on horror checks
   const classBonusDice = player.specialAbility === 'occult_immunity' ? 1 : 0;
 
-  // DC is based on enemy horror level
-  // Minor (1 horror) = DC 3, Moderate (2) = DC 4, Major (3+) = DC 5
+  // DC based on enemy horror level
   const dc = enemy.horror <= 1 ? 3 : enemy.horror <= 2 ? 4 : 5;
 
   const baseDice = 2;
@@ -195,7 +310,6 @@ export function performHorrorCheck(
   const successes = countSuccesses(rolls, dc);
   const resisted = successes >= 1;
 
-  // Sanity loss based on enemy horror rating
   const sanityLoss = resisted ? 0 : enemy.horror;
 
   let message = '';
@@ -215,7 +329,113 @@ export function performHorrorCheck(
 }
 
 /**
+ * Cast an Occultist spell (Hero Quest Elf-style magic)
+ */
+export function castSpell(
+  player: Player,
+  spell: OccultistSpell,
+  target?: Enemy
+): SpellCastResult {
+  // Check if player can cast spells
+  if (!player.canCastSpells) {
+    return {
+      success: false,
+      damage: 0,
+      rolls: [],
+      successes: 0,
+      spellUsed: spell,
+      message: `${player.name} kan ikke kaste trylleformler!`
+    };
+  }
+
+  // Check spell uses
+  if (spell.usesPerScenario !== -1 && (spell.currentUses || 0) >= spell.usesPerScenario) {
+    return {
+      success: false,
+      damage: 0,
+      rolls: [],
+      successes: 0,
+      spellUsed: spell,
+      message: `${spell.name} er brukt opp for dette scenariet!`
+    };
+  }
+
+  let rolls: number[] = [];
+  let successes = 0;
+  let damage = 0;
+
+  // Handle different spell effects
+  switch (spell.effect) {
+    case 'attack':
+    case 'attack_horror':
+      // Attack spells: roll attackDice, count successes as damage
+      rolls = rollDice(spell.attackDice);
+      successes = countSuccesses(rolls, COMBAT_DC);
+      damage = successes;
+
+      // Add horror damage for attack_horror spells
+      if (spell.effect === 'attack_horror' && spell.horrorDamage && target) {
+        // This would reduce enemy morale/cause them to flee in future implementation
+      }
+      break;
+
+    case 'banish':
+      // Banish: Uses WIL check vs DC 5
+      const wilDice = 2 + player.attributes.willpower;
+      rolls = rollDice(wilDice);
+      successes = countSuccesses(rolls, 5);
+      // Banish instantly destroys weak enemies (HP <= 3)
+      if (successes > 0 && target && target.hp <= 3) {
+        damage = target.hp; // Instant kill
+      }
+      break;
+
+    case 'defense':
+      // Defense boost is handled separately in combat
+      successes = 1; // Auto-success
+      break;
+
+    case 'utility':
+      // Utility spells always succeed
+      successes = 1;
+      break;
+  }
+
+  const success = successes > 0 || spell.effect === 'defense' || spell.effect === 'utility';
+
+  let message = '';
+  if (success) {
+    if (spell.effect === 'attack' || spell.effect === 'attack_horror') {
+      message = `${player.name} kaster ${spell.name}! ${damage} skade${target ? ` mot ${target.name}` : ''}.`;
+    } else if (spell.effect === 'banish') {
+      if (damage > 0) {
+        message = `${player.name} kaster ${spell.name}! ${target?.name} forsvinner i tomhet!`;
+      } else {
+        message = `${player.name} kaster ${spell.name}, men ${target?.name} motstår!`;
+      }
+    } else if (spell.effect === 'defense') {
+      message = `${player.name} aktiverer ${spell.name}! +${spell.defenseBonus} forsvarsterninger denne runden.`;
+    } else {
+      message = `${player.name} kaster ${spell.name}!`;
+    }
+  } else {
+    message = `${player.name} mislykkes med å kaste ${spell.name}!`;
+  }
+
+  return {
+    success,
+    damage,
+    rolls,
+    successes,
+    spellUsed: spell,
+    message
+  };
+}
+
+/**
  * Calculate enemy attack damage
+ * Enemy attacks are simplified - they just deal their damage value
+ * Player can defend with defense rolls
  */
 export function calculateEnemyDamage(enemy: Enemy, player: Player): {
   hpDamage: number;
@@ -227,58 +447,50 @@ export function calculateEnemyDamage(enemy: Enemy, player: Player): {
 
   // Check enemy attack type
   if (enemy.attackType === 'sanity') {
-    // Sanity attackers deal sanity damage instead of HP
     sanityDamage = enemy.damage;
     hpDamage = 0;
   } else if (enemy.attackType === 'doom') {
-    // Doom attackers also cause sanity damage
     sanityDamage = Math.ceil(enemy.damage / 2);
   }
 
-  // Check player armor (using slot-based inventory)
-  const items = getAllItems(player.inventory);
-  for (const item of items) {
-    if (item.type === 'armor' && item.bonus) {
-      hpDamage = Math.max(0, hpDamage - item.bonus);
-    }
-  }
-
-  // Fast enemies get bonus damage on first hit
+  // Fast enemies get bonus damage
   if (enemy.traits?.includes('fast')) {
     hpDamage += 1;
   }
 
-  const message = `${enemy.name} angriper ${player.name}! -${hpDamage} HP${sanityDamage > 0 ? `, -${sanityDamage} Sanity` : ''}`;
+  const message = `${enemy.name} angriper ${player.name}! ${hpDamage} potensiell skade${sanityDamage > 0 ? `, ${sanityDamage} Sanity tap` : ''}.`;
 
   return { hpDamage, sanityDamage, message };
 }
 
 /**
- * Check if player can attack enemy
+ * Check if player can attack enemy (range check)
  */
-export function canAttackEnemy(player: Player, enemy: Enemy, hasRangedWeapon: boolean): {
+export function canAttackEnemy(player: Player, enemy: Enemy): {
   canAttack: boolean;
   reason: string;
 } {
   const distance = Math.abs(player.position.q - enemy.position.q) +
                    Math.abs(player.position.r - enemy.position.r);
 
-  // Melee range is 1
+  const weaponInfo = getWeaponAttackDice(player);
+
+  // Melee range check
   if (distance <= 1) {
     return { canAttack: true, reason: '' };
   }
 
-  // Check for ranged weapon
-  if (hasRangedWeapon && distance <= 3) {
+  // Ranged weapon check
+  if (weaponInfo.isRanged && distance <= weaponInfo.range) {
     return { canAttack: true, reason: '' };
   }
 
-  if (distance > 1 && !hasRangedWeapon) {
-    return { canAttack: false, reason: 'For langt unna for naerkamp. Trenger skytevapen.' };
+  if (distance > 1 && !weaponInfo.isRanged) {
+    return { canAttack: false, reason: 'For langt unna for nærkamp. Trenger skytevåpen.' };
   }
 
-  if (distance > 3) {
-    return { canAttack: false, reason: 'For langt unna selv med skytevapen.' };
+  if (distance > weaponInfo.range) {
+    return { canAttack: false, reason: `For langt unna. ${weaponInfo.weaponName} har rekkevidde ${weaponInfo.range}.` };
   }
 
   return { canAttack: false, reason: 'Kan ikke angripe fienden.' };
@@ -288,44 +500,61 @@ export function canAttackEnemy(player: Player, enemy: Enemy, hasRangedWeapon: bo
  * Check if player has a ranged weapon
  */
 export function hasRangedWeapon(player: Player): boolean {
-  const items = getAllItems(player.inventory);
-  return items.some(item =>
-    item.type === 'weapon' &&
-    (item.name.toLowerCase().includes('pistol') ||
-     item.name.toLowerCase().includes('revolver') ||
-     item.name.toLowerCase().includes('shotgun') ||
-     item.name.toLowerCase().includes('rifle') ||
-     item.name.toLowerCase().includes('tommy'))
-  );
+  const weaponInfo = getWeaponAttackDice(player);
+  return weaponInfo.isRanged;
 }
 
 /**
  * Get combat dice preview for UI
+ * Hero Quest style: shows weapon dice and defense dice
  */
-export function getCombatPreview(player: Player, isRanged: boolean = false): {
-  totalDice: number;
+export function getCombatPreview(player: Player): {
+  attackDice: number;
+  defenseDice: number;
+  weaponName: string;
+  armorName: string;
   breakdown: string[];
 } {
-  const baseDice = 2;
-  const attribute = isRanged ? player.attributes.agility : player.attributes.strength;
-  const weaponBonus = getWeaponBonus(player);
-  const classBonusDice = player.specialAbility === 'combat_bonus' ? 1 : 0;
+  const weaponInfo = getWeaponAttackDice(player);
+  const defenseInfo = getDefenseDice(player);
 
-  const breakdown: string[] = [
-    `Base: 2d6`,
-    `${isRanged ? 'AGI' : 'STR'}: +${attribute}d6`
-  ];
+  let attackDice = weaponInfo.attackDice;
 
-  if (weaponBonus.combatDice > 0) {
-    breakdown.push(`Vapen: +${weaponBonus.combatDice}d6`);
+  // Veteran melee bonus
+  if (player.specialAbility === 'combat_bonus' && !weaponInfo.isRanged) {
+    attackDice += 1;
   }
 
-  if (classBonusDice > 0) {
-    breakdown.push(`Veteran bonus: +1d6`);
+  const breakdown: string[] = [
+    `Attack: ${attackDice}d6 (${weaponInfo.weaponName})`,
+    `Defense: ${defenseInfo.defenseDice}d6 (Base ${player.baseDefenseDice || 2} + ${defenseInfo.armorName})`
+  ];
+
+  if (player.specialAbility === 'combat_bonus' && !weaponInfo.isRanged) {
+    breakdown.push('Veteran bonus: +1 melee attack die');
   }
 
   return {
-    totalDice: baseDice + attribute + weaponBonus.combatDice + classBonusDice,
+    attackDice,
+    defenseDice: defenseInfo.defenseDice,
+    weaponName: weaponInfo.weaponName,
+    armorName: defenseInfo.armorName,
     breakdown
+  };
+}
+
+// ============================================================================
+// LEGACY COMPATIBILITY - Keep old function signatures working
+// ============================================================================
+
+/**
+ * Legacy: Get weapon bonus (for old code that expects bonus system)
+ * Returns attackDice as combatDice for backward compatibility
+ */
+export function getWeaponBonus(player: Player): { combatDice: number; damage: number } {
+  const weaponInfo = getWeaponAttackDice(player);
+  return {
+    combatDice: weaponInfo.attackDice,
+    damage: weaponInfo.attackDice // In Hero Quest style, more dice = more potential damage
   };
 }
