@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package } from 'lucide-react';
-import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName } from './types';
+import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent } from './types';
 import ContextActionBar from './components/ContextActionBar';
 import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
 import { performSkillCheck } from './utils/combatUtils';
-import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES, validateTileConnection, selectRandomConnectableCategory, isDoorRequired, CATEGORY_ZONE_LEVELS, LOCATION_DESCRIPTIONS, getWeatherForDoom, getWeatherEffect, calculateWeatherAgilityPenalty, rollWeatherHorror, WEATHER_EFFECTS } from './constants';
+import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES, validateTileConnection, selectRandomConnectableCategory, isDoorRequired, CATEGORY_ZONE_LEVELS, LOCATION_DESCRIPTIONS, getWeatherForDoom, getWeatherEffect, calculateWeatherAgilityPenalty, rollWeatherHorror, WEATHER_EFFECTS, getDarkRoomItem, DARK_ROOM_LOOT_TABLES } from './constants';
 import { hexDistance, findPath } from './hexUtils';
 import GameBoard from './components/GameBoard';
 import CharacterPanel from './components/CharacterPanel';
@@ -1725,21 +1725,132 @@ const ShadowsGame: React.FC = () => {
           triggerScreenShake();
         }
 
-        setState(prev => ({
-          ...prev,
-          players: prev.players.map((p, i) => {
-            if (i !== prev.activePlayerIndex) return p;
-            const newHp = Math.max(0, p.hp - hazardDamage);
-            return {
-              ...p,
-              position: { q, r },
-              actions: p.actions - 1,
-              hp: newHp,
-              isDead: newHp <= 0
-            };
-          }),
-          exploredTiles: Array.from(newExplored)
-        }));
+        // Dark Room Discovery - check if player is entering a dark room with a light source
+        let darkRoomEffects = { sanityChange: 0, insightGain: 0, trapDamage: 0, itemFound: null as Item | null, enemySpawn: null as { type: EnemyType, count: number } | null };
+        let boardUpdates: ((board: Tile[]) => Tile[])[] = [];
+
+        const enteredTile = state.board.find(t => t.q === q && t.r === r);
+        if (enteredTile?.isDarkRoom && !enteredTile.darkRoomIlluminated && hasLightSource(activePlayer.inventory)) {
+          // Illuminate the dark room!
+          addToLog(`${activePlayer.name} shines light into the darkness...`);
+          addFloatingText(q, r, "ILLUMINATED", "text-amber-400");
+
+          const content = enteredTile.darkRoomContent;
+          if (content) {
+            // Show discovery description
+            addToLog(`📖 ${content.description}`);
+
+            // Apply effects based on discovery type
+            switch (content.discoveryType) {
+              case 'treasure':
+              case 'cache':
+              case 'corpse':
+              case 'ancient_secret':
+                // Items require searching after illumination
+                addToLog(`Something glitters in the light. Search to investigate.`);
+                break;
+
+              case 'clue':
+                darkRoomEffects.insightGain = content.insightGain || 1;
+                addToLog(`+${darkRoomEffects.insightGain} Insight from the discovery.`);
+                addFloatingText(q, r, `+${darkRoomEffects.insightGain} INSIGHT`, "text-purple-400");
+                break;
+
+              case 'survivor':
+                darkRoomEffects.sanityChange = content.sanityEffect || 1;
+                darkRoomEffects.insightGain = content.insightGain || 2;
+                addToLog(`A survivor! They share what they know before fleeing.`);
+                addFloatingText(q, r, `+${darkRoomEffects.insightGain} INSIGHT`, "text-purple-400");
+                break;
+
+              case 'nothing':
+                addToLog(`Just shadows. The darkness held nothing but your own fear.`);
+                break;
+
+              case 'ambush':
+              case 'nest':
+                const enemyType = content.enemyTypes?.[0] || 'ghoul';
+                const enemyCount = content.enemyCount || 1;
+                darkRoomEffects.enemySpawn = { type: enemyType, count: enemyCount };
+                addToLog(`⚠️ AMBUSH! ${enemyCount} ${enemyType}(s) attack from the shadows!`);
+                addFloatingText(q, r, "AMBUSH!", "text-red-500");
+                triggerScreenShake();
+                break;
+
+              case 'horror':
+                darkRoomEffects.sanityChange = content.sanityEffect || -2;
+                addToLog(`Your light reveals something that should not exist. -${Math.abs(darkRoomEffects.sanityChange)} Sanity`);
+                addFloatingText(q, r, `${darkRoomEffects.sanityChange} SAN`, "text-sanity");
+                triggerScreenShake();
+                break;
+
+              case 'trap':
+                darkRoomEffects.trapDamage = content.trapDamage || 2;
+                addToLog(`CLICK! A trap triggers! -${darkRoomEffects.trapDamage} HP`);
+                addFloatingText(q, r, `-${darkRoomEffects.trapDamage} HP`, "text-health");
+                triggerScreenShake();
+                break;
+
+              case 'cultist_shrine':
+                darkRoomEffects.sanityChange = content.sanityEffect || -1;
+                darkRoomEffects.insightGain = content.insightGain || 3;
+                addToLog(`A cultist shrine. The knowledge costs you, but enlightens. -1 Sanity, +${darkRoomEffects.insightGain} Insight`);
+                addFloatingText(q, r, `+${darkRoomEffects.insightGain} INSIGHT`, "text-purple-400");
+                break;
+            }
+
+            // Mark tile as illuminated
+            boardUpdates.push((board) => board.map(t =>
+              t.q === q && t.r === r
+                ? { ...t, darkRoomIlluminated: true, darkRoomContent: { ...content, isRevealed: true } }
+                : t
+            ));
+          }
+        }
+
+        // Spawn enemies from dark room ambush
+        if (darkRoomEffects.enemySpawn) {
+          const { type, count } = darkRoomEffects.enemySpawn;
+          for (let i = 0; i < count; i++) {
+            const newEnemy = createEnemy(type, q, r, `dark_ambush_${Date.now()}_${i}`);
+            setState(prev => ({
+              ...prev,
+              enemies: [...prev.enemies, newEnemy]
+            }));
+          }
+        }
+
+        // Calculate total damage from hazards and dark room traps
+        const totalDamage = hazardDamage + darkRoomEffects.trapDamage;
+
+        setState(prev => {
+          // Apply board updates
+          let updatedBoard = prev.board;
+          for (const update of boardUpdates) {
+            updatedBoard = update(updatedBoard);
+          }
+
+          return {
+            ...prev,
+            board: updatedBoard,
+            players: prev.players.map((p, i) => {
+              if (i !== prev.activePlayerIndex) return p;
+              const newHp = Math.max(0, p.hp - totalDamage);
+              const newSanity = Math.max(0, Math.min(p.maxSanity, p.sanity + darkRoomEffects.sanityChange));
+              const newInsight = p.insight + darkRoomEffects.insightGain;
+              return {
+                ...p,
+                position: { q, r },
+                actions: p.actions - 1,
+                hp: newHp,
+                sanity: newSanity,
+                insight: newInsight,
+                isDead: newHp <= 0
+              };
+            }),
+            exploredTiles: Array.from(newExplored)
+          };
+        });
         break;
 
       case 'rest':
@@ -1891,7 +2002,45 @@ const ShadowsGame: React.FC = () => {
     } else {
       // Investigation roll
       if (successes > 0) {
-        const randomItem = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+        // Check if player is on an illuminated dark room with items to find
+        const currentTile = state.board.find(t =>
+          t.q === activePlayer.position.q && t.r === activePlayer.position.r
+        );
+        const darkRoomContent = currentTile?.darkRoomIlluminated && currentTile?.darkRoomContent;
+        const hasDarkRoomLoot = darkRoomContent &&
+          darkRoomContent.requiresSearch &&
+          darkRoomContent.items &&
+          darkRoomContent.items.length > 0;
+
+        let itemToFind: Item | null = null;
+
+        if (hasDarkRoomLoot && darkRoomContent) {
+          // Find item from dark room loot table
+          const itemId = darkRoomContent.items[0];
+          // Look up item in loot tables
+          for (const [tableKey, items] of Object.entries(DARK_ROOM_LOOT_TABLES)) {
+            const found = items.find(item => item.id === itemId);
+            if (found) {
+              itemToFind = found as Item;
+              break;
+            }
+          }
+          // If not in loot tables, check regular items
+          if (!itemToFind) {
+            itemToFind = ITEMS.find(item => item.id === itemId) || null;
+          }
+          // Fall back to random loot table item
+          if (!itemToFind && itemId.startsWith('random_')) {
+            const tableKey = itemId as keyof typeof DARK_ROOM_LOOT_TABLES;
+            const tableItems = DARK_ROOM_LOOT_TABLES[tableKey];
+            if (tableItems) {
+              itemToFind = tableItems[Math.floor(Math.random() * tableItems.length)] as Item;
+            }
+          }
+        }
+
+        // Use dark room item or random item
+        const randomItem = itemToFind || ITEMS[Math.floor(Math.random() * ITEMS.length)];
 
         // Use new inventory slot system
         if (isInventoryFull(activePlayer.inventory)) {
@@ -1904,10 +2053,23 @@ const ShadowsGame: React.FC = () => {
           }));
         } else {
           const equipResult = equipItem(activePlayer.inventory, randomItem);
-          addToLog(`FUNNET: ${randomItem.name}!`);
+          const darkRoomMessage = hasDarkRoomLoot ? " fra skjulestedet i mørket" : "";
+          addToLog(`FUNNET: ${randomItem.name}${darkRoomMessage}!`);
           addFloatingText(activePlayer.position.q, activePlayer.position.r, "GJENSTAND FUNNET", "text-accent");
+
+          // If found from dark room, mark the content as collected
+          let boardUpdate = (board: Tile[]) => board;
+          if (hasDarkRoomLoot && currentTile) {
+            boardUpdate = (board: Tile[]) => board.map(t =>
+              t.q === currentTile.q && t.r === currentTile.r && t.darkRoomContent
+                ? { ...t, darkRoomContent: { ...t.darkRoomContent, items: [], requiresSearch: false } }
+                : t
+            );
+          }
+
           setState(prev => ({
             ...prev,
+            board: boardUpdate(prev.board),
             players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
               ...p,
               inventory: equipResult.newInventory,

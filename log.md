@@ -1,5 +1,154 @@
 # Development Log
 
+## 2026-01-19: Dark Room System - "What Lurks in the Shadows"
+
+### Oppgave
+Implementere et system for mørke rom som krever lommelykt eller lykt for å se hva som er der. Mørke rom kan inneholde spesielle overraskelser - både gode (skatter, ledetråder) og dårlige (bakholdsangrep, feller, horror).
+
+### Implementasjon
+
+#### 1. Nye TypeScript Interfaces (`types.ts`)
+
+**DarkRoomDiscoveryType** - Typer av oppdagelser i mørke rom:
+- `treasure` - Verdifulle gjenstander
+- `cache` - Skjulte forsyninger
+- `clue` - Etterforskning ledetråd (+Insight)
+- `corpse` - Dødt lik med items og horror check
+- `survivor` - Sjelden NPC som gir hint
+- `nothing` - Bare mørke
+- `ambush` - Skjult fiende angriper!
+- `nest` - Flere svake fiender
+- `horror` - Noe som forårsaker sanity damage
+- `trap` - En felle aktiveres
+- `cultist_shrine` - Okkult alter (sanity kostnad, men insight gevinst)
+- `ancient_secret` - Sjelden kraftig oppdagelse
+
+**DarkRoomContent Interface:**
+```typescript
+interface DarkRoomContent {
+  discoveryType: DarkRoomDiscoveryType;
+  description: string;
+  items?: string[];
+  enemyTypes?: EnemyType[];
+  enemyCount?: number;
+  sanityEffect?: number;
+  insightGain?: number;
+  trapDamage?: number;
+  isRevealed: boolean;
+  requiresSearch?: boolean;
+}
+```
+
+**Tile Interface utvidet:**
+- `isDarkRoom?: boolean` - Er dette et mørkt rom?
+- `darkRoomContent?: DarkRoomContent` - Skjult innhold
+- `darkRoomIlluminated?: boolean` - Er rommet belyst?
+
+#### 2. Konstantfiler (`constants.ts`)
+
+**Vektet oppdagelsestabell:**
+| Type | Sannsynlighet |
+|------|---------------|
+| nothing | 25% |
+| ambush | 15% |
+| horror | 12% |
+| cache | 10% |
+| corpse | 10% |
+| clue | 8% |
+| treasure | 6% |
+| trap | 5% |
+| nest | 4% |
+| cultist_shrine | 3% |
+| survivor | 1% |
+| ancient_secret | 1% |
+
+**DARK_ROOM_CANDIDATE_TILES** - Tiles som alltid er mørke:
+- Kjellere: Dark Cellar, Wine Cellar, Cold Storage, etc.
+- Krypter: Ancient Tomb, Ritual Chamber, Bone Pit, etc.
+- Mørke ganger: Darkened Hallway, Servants Passage, etc.
+
+**DARK_ROOM_ZONE_CHANCE** - Sone-basert sjanse:
+- Level 2 (Upper floors): 10%
+- Level 1 (Ground floor): 15%
+- Level 0 (Exterior): 5%
+- Level -1 (Basement): 40%
+- Level -2 (Deep underground): 60%
+
+**DARK_ROOM_LOOT_TABLES** - Item-tabeller for oppdagelser:
+- `random_valuable`: Gold Coins, Silver Pendant, Antique Watch
+- `random_supplies`: Bandage, Flashlight, Matches, First Aid Kit
+- `random_from_corpse`: Rusty Key, Journal Page, Derringer, Knife
+- `rare_relic`: Elder Sign, Protective Ward, Ancient Tome
+
+**Utility-funksjoner:**
+- `rollDarkRoomDiscovery()` - Vektet tilfeldig valg
+- `generateDarkRoomContent()` - Genererer komplett innhold
+- `shouldBeDarkRoom()` - Sjekker om tile skal være mørk
+- `canSeeDarkRoomContents()` - Sjekker om spiller har lyskilde
+- `getDarkRoomDisplayState()` - Returnerer visuell tilstand
+
+#### 3. Visuell Implementasjon
+
+**GameBoard.tsx oppdatert:**
+- Dark room overlay vises på synlige tiles som ikke er belyst
+- Visuell effekt: Pulserende mørke med virvlende tendriler
+- Flashlight-ikon og "Darkness" tekst indikerer at lyskilde trengs
+
+**Nye CSS-animasjoner (`index.css`):**
+- `@keyframes darkness-pulse` - Pulserende mørke effekt
+- `@keyframes darkness-swirl` - Virvlende mørke tendriler
+- `@keyframes flashlight-reveal` - Animasjon når rom belyses
+- `@keyframes discovery-shimmer` - Glitrende effekt ved funn
+
+#### 4. Gameplay Integrasjon (`ShadowsGame.tsx`)
+
+**Bevegelse inn i mørke rom:**
+Når spiller med lyskilde går inn i et mørkt rom:
+1. Rommet belyses automatisk
+2. Beskrivelse av oppdagelsen vises i loggen
+3. Effekter utløses basert på discoveryType:
+   - **ambush/nest**: Fiender spawnes på samme tile
+   - **horror**: Sanity tap utløses
+   - **trap**: HP skade utløses
+   - **clue/survivor/cultist_shrine**: Insight og/eller sanity effekter
+   - **treasure/cache/corpse/ancient_secret**: Markeres for søk
+
+**Søk i belyste mørke rom:**
+Investigate action sjekker først om spilleren er på et belyst mørkt rom med items. Hvis ja, finner spilleren item fra dark room loot table i stedet for tilfeldig item.
+
+#### 5. Tile-generering (`tileConnectionSystem.ts`)
+
+**createTileFromTemplate() oppdatert:**
+- Sjekker om tile navn er i DARK_ROOM_CANDIDATE_TILES
+- Kjører shouldBeDarkRoom() for zone-basert sjanse
+- Genererer darkRoomContent med generateDarkRoomContent()
+
+### Filer Endret
+- `src/game/types.ts` - Nye interfaces og types
+- `src/game/constants.ts` - Oppdagelses-tabeller og utility-funksjoner
+- `src/game/components/GameBoard.tsx` - Visuell dark room overlay
+- `src/game/ShadowsGame.tsx` - Gameplay integrasjon
+- `src/game/tileConnectionSystem.ts` - Tile-generering
+- `src/index.css` - Nye CSS-animasjoner
+
+### Gameplay Eksempel
+
+1. Spiller utforsker en kjeller og finner "Dark Cellar"
+2. Tile vises med mørk overlay og flashlight-ikon
+3. Hvis spiller IKKE har lyskilde: Kan bevege seg inn, men ser ikke innhold
+4. Hvis spiller HAR lyskilde (Flashlight eller Oil Lantern i hand slot):
+   - Går inn i rommet
+   - Logger: "Emily shines light into the darkness..."
+   - 15% sjanse: "AMBUSH! 1 ghoul(s) attack from the shadows!"
+   - 10% sjanse: "Emergency supplies, hidden from looters. Still intact." (Må søke)
+   - 25% sjanse: "Just shadows. The darkness held nothing but your own fear."
+   - etc.
+
+### Status
+Fullført. Dark room systemet gir en ny dimensjon av utforskning der lyskilder blir verdifulle verktøy, og mørke områder kan skjule både farer og skatter.
+
+---
+
 ## 2026-01-19: Dynamic Weather Effects System
 
 ### Oppgave
