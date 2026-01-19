@@ -410,6 +410,29 @@ const ShadowsGame: React.FC = () => {
     return false;
   }, [state.activeScenario, state.enemies, state.board, state.round, state.questItemsCollected]);
 
+  // Check victory conditions whenever scenario objectives are updated
+  useEffect(() => {
+    // Skip if no scenario, game is over, or still in setup
+    if (!state.activeScenario || state.phase === GamePhase.GAME_OVER || state.phase === GamePhase.SETUP) {
+      return;
+    }
+
+    const victoryResult = checkVictoryConditions(state.activeScenario, {
+      players: state.players,
+      enemies: state.enemies,
+      board: state.board,
+      round: state.round,
+      doom: state.doom,
+      questItemsCollected: state.questItemsCollected
+    });
+
+    if (victoryResult.isVictory) {
+      addToLog(victoryResult.message);
+      setGameOverType('victory');
+      setState(prev => ({ ...prev, phase: GamePhase.GAME_OVER }));
+    }
+  }, [state.activeScenario, state.players, state.enemies, state.board, state.round, state.doom, state.questItemsCollected, state.phase]);
+
   // ============================================================================
   // LEGACY SYSTEM HANDLERS
   // ============================================================================
@@ -1991,6 +2014,53 @@ const ShadowsGame: React.FC = () => {
         isTransitioning: true,
         transitionProgress: 0
       };
+    }
+
+    // Check for victory conditions with the NEW values before transitioning
+    if (updatedScenario) {
+      const victoryResult = checkVictoryConditions(updatedScenario, {
+        players: state.players,
+        enemies: state.enemies,
+        board: state.board,
+        round: newRound,
+        doom: newDoom,
+        questItemsCollected: state.questItemsCollected
+      });
+
+      if (victoryResult.isVictory) {
+        addToLog(victoryResult.message);
+        setGameOverType('victory');
+        setState(prev => ({
+          ...prev,
+          phase: GamePhase.GAME_OVER,
+          doom: newDoom,
+          round: newRound,
+          activeScenario: updatedScenario,
+          weatherState: newWeatherState
+        }));
+        return;
+      }
+
+      // Check for defeat (doom reaching 0)
+      const defeatResult = checkDefeatConditions(updatedScenario, {
+        players: state.players,
+        doom: newDoom,
+        round: newRound
+      });
+
+      if (defeatResult.isDefeat) {
+        addToLog(defeatResult.message);
+        setGameOverType(defeatResult.condition?.type === 'doom_zero' ? 'defeat_doom' : 'defeat_death');
+        setState(prev => ({
+          ...prev,
+          phase: GamePhase.GAME_OVER,
+          doom: newDoom,
+          round: newRound,
+          activeScenario: updatedScenario,
+          weatherState: newWeatherState
+        }));
+        return;
+      }
     }
 
     setState(prev => ({
