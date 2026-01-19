@@ -324,7 +324,7 @@ export const HeroArchivePanel: React.FC<HeroArchivePanelProps> = ({
       <div>
         <label className="block text-sm text-stone-400 mb-2">Character Class</label>
         <div className="grid grid-cols-2 gap-2">
-          {CHARACTERS.map(char => (
+          {Object.values(CHARACTERS).map(char => (
             <button
               key={char.id}
               className={`p-3 rounded-lg border-2 text-left transition-all ${
