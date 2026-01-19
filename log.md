@@ -1,5 +1,79 @@
 # Development Log
 
+## 2026-01-19: Priority 1 - Core Mechanics Implementation
+
+### Tasks Completed
+
+#### 1.1 Forbindelsesmatrise (Tile Connections)
+- [x] Define CATEGORY_CONNECTIONS map
+- [x] Define DOOR_REQUIRED_TRANSITIONS
+- [x] Create validateTileConnection() function
+- [x] Create helper functions (canCategoriesConnect, isDoorRequired, getValidNeighborCategories)
+- [x] Create selectRandomConnectableCategory() for smart tile generation
+- [x] Integrate validation in spawnRoom() function
+
+#### 1.2 Inventory Slots System
+- [x] Define InventorySlots interface (leftHand, rightHand, body, bag[4])
+- [x] Define ItemSlotType and InventorySlotName types
+- [x] Update Player interface to use InventorySlots
+- [x] Create equipItem() / unequipItem() functions
+- [x] Create isSlotCompatible(item, slot) validation
+- [x] Create helper functions (createEmptyInventory, countInventoryItems, findAvailableSlot, hasKey, hasLightSource, getAllItems)
+- [x] Update CharacterPanel UI to show equipment slots visually
+- [x] Update combatUtils to work with new inventory system
+
+#### 1.3 Kontekstuelle Handlinger (Context Actions)
+- [x] Expand ContextAction interface with skillCheck, itemRequired, consequences
+- [x] Create ContextActionTarget interface
+- [x] Create getContextActions() for all obstacles and doors
+- [x] Create getDoorActions() for all door states (open, closed, locked, barricaded, sealed, puzzle)
+- [x] Create getObstacleActions() for all obstacle types
+- [x] Create getTileObjectActions() for interactive objects
+- [x] Create ContextActionBar component with visual styling
+- [x] Integrate context actions in ShadowsGame state
+- [x] Add handleContextAction() for executing actions
+- [x] Add handleContextConsequence() for damage/sanity effects
+- [x] Add handleContextActionEffect() for door/obstacle state changes
+
+### Files Modified
+- `src/game/types.ts` - Added InventorySlots, ContextAction interfaces and helper functions
+- `src/game/constants.ts` - Added CATEGORY_CONNECTIONS, DOOR_REQUIRED_TRANSITIONS, validation functions
+- `src/game/ShadowsGame.tsx` - Integrated new systems, added context action handlers
+- `src/game/utils/combatUtils.ts` - Updated to use new inventory system
+- `src/game/components/CharacterPanel.tsx` - Updated UI for slot-based inventory
+
+### Files Created
+- `src/game/utils/contextActions.ts` - Context action logic for obstacles, doors, objects
+- `src/game/components/ContextActionBar.tsx` - UI component for showing available actions
+
+### Features Implemented
+
+#### Tile Connection System
+The game now validates tile connections based on category:
+- Nature tiles connect to street/urban
+- Facade tiles require doors to connect to foyer
+- Interior tiles have proper hierarchy (foyer -> corridor -> room)
+- Basements and crypts are properly isolated
+
+#### Inventory Slots
+Players now have specific equipment slots:
+- Left/Right Hand: Weapons, tools, light sources
+- Body: Armor, cloaks
+- Bag (4 slots): Keys, consumables, relics
+- Max 7 items total
+- Visual UI showing all slots
+
+#### Context Actions
+When clicking on obstacles or doors, players see specific actions:
+- Locked doors: Use Key, Lockpick (Agi check), Force (Str check)
+- Barricaded doors: Break Barricade (Str check)
+- Sealed doors: Use Elder Sign, Break Seal (Wil check), Read Glyphs
+- Fire: Extinguish (with item), Jump Through (Agi check)
+- Darkness: Use Light Source, Dispel (Wil check)
+- And many more obstacle types...
+
+---
+
 ## 2026-01-19: Player Death Mechanic & Game Over States
 
 ### Tasks
