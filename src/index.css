@@ -673,4 +673,259 @@
   .weather-clear {
     /* No visual effect for clear weather */
   }
+
+  /* ==========================================================================
+     AMBIENT DARK CLOUDS - "The Ever-Present Dread"
+     Always visible, creating an unsettling atmosphere
+     ========================================================================== */
+
+  /* Dark cloud drift - slow, ominous movement */
+  @keyframes dark-cloud-drift {
+    0% {
+      transform: translateX(-100%) translateY(0) scale(1.2);
+      opacity: 0;
+    }
+    5% {
+      opacity: 0.15;
+    }
+    50% {
+      transform: translateX(0%) translateY(-10px) scale(1.3);
+      opacity: 0.2;
+    }
+    95% {
+      opacity: 0.15;
+    }
+    100% {
+      transform: translateX(100%) translateY(0) scale(1.2);
+      opacity: 0;
+    }
+  }
+
+  /* Secondary cloud layer - different speed for parallax */
+  @keyframes dark-cloud-drift-slow {
+    0% {
+      transform: translateX(-80%) translateY(5px) scale(1.5);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.1;
+    }
+    50% {
+      transform: translateX(10%) translateY(-5px) scale(1.6);
+      opacity: 0.15;
+    }
+    90% {
+      opacity: 0.1;
+    }
+    100% {
+      transform: translateX(120%) translateY(5px) scale(1.5);
+      opacity: 0;
+    }
+  }
+
+  /* Subtle pulsing darkness for extra unease */
+  @keyframes ambient-dread {
+    0%, 100% {
+      opacity: 0.02;
+    }
+    50% {
+      opacity: 0.06;
+    }
+  }
+
+  /* Cloud shadow passing effect */
+  @keyframes cloud-shadow-pass {
+    0%, 100% {
+      opacity: 0;
+      transform: translateX(-200%) skewX(-15deg);
+    }
+    40%, 60% {
+      opacity: 0.08;
+      transform: translateX(0%) skewX(-15deg);
+    }
+  }
+
+  .animate-dark-cloud-drift {
+    animation: dark-cloud-drift 45s linear infinite;
+  }
+
+  .animate-dark-cloud-drift-slow {
+    animation: dark-cloud-drift-slow 60s linear infinite;
+  }
+
+  .animate-ambient-dread {
+    animation: ambient-dread 8s ease-in-out infinite;
+  }
+
+  .animate-cloud-shadow {
+    animation: cloud-shadow-pass 25s ease-in-out infinite;
+  }
+
+  /* Ambient clouds container */
+  .ambient-clouds {
+    background: linear-gradient(
+      180deg,
+      rgba(20, 20, 30, 0.1) 0%,
+      transparent 30%,
+      transparent 70%,
+      rgba(20, 20, 30, 0.05) 100%
+    );
+  }
+
+  /* ==========================================================================
+     UNNATURAL GLOW - "The Light That Should Not Be"
+     Eldritch phosphorescence that reveals too much
+     ========================================================================== */
+
+  @keyframes unnatural-pulse {
+    0%, 100% {
+      opacity: 0.3;
+      filter: hue-rotate(0deg) brightness(1);
+    }
+    25% {
+      opacity: 0.5;
+      filter: hue-rotate(30deg) brightness(1.2);
+    }
+    50% {
+      opacity: 0.4;
+      filter: hue-rotate(-20deg) brightness(1.1);
+    }
+    75% {
+      opacity: 0.6;
+      filter: hue-rotate(15deg) brightness(1.3);
+    }
+  }
+
+  @keyframes glow-flicker {
+    0%, 100% {
+      opacity: 0.6;
+      transform: scale(1);
+    }
+    10% {
+      opacity: 0.8;
+      transform: scale(1.1);
+    }
+    20% {
+      opacity: 0.4;
+      transform: scale(0.95);
+    }
+    30% {
+      opacity: 0.7;
+      transform: scale(1.05);
+    }
+    50% {
+      opacity: 0.5;
+      transform: scale(1);
+    }
+    70% {
+      opacity: 0.9;
+      transform: scale(1.15);
+    }
+    85% {
+      opacity: 0.3;
+      transform: scale(0.9);
+    }
+  }
+
+  @keyframes color-shift {
+    0%, 100% {
+      background: radial-gradient(circle at 30% 30%, rgba(0, 255, 100, 0.1), transparent 60%);
+    }
+    33% {
+      background: radial-gradient(circle at 70% 50%, rgba(100, 255, 200, 0.15), transparent 60%);
+    }
+    66% {
+      background: radial-gradient(circle at 50% 70%, rgba(150, 255, 100, 0.1), transparent 60%);
+    }
+  }
+
+  .animate-unnatural-pulse {
+    animation: unnatural-pulse 6s ease-in-out infinite;
+  }
+
+  .animate-glow-flicker {
+    animation: glow-flicker 4s ease-in-out infinite;
+  }
+
+  .animate-color-shift {
+    animation: color-shift 10s ease-in-out infinite;
+  }
+
+  .weather-unnatural-glow {
+    background: radial-gradient(
+      ellipse at center,
+      rgba(100, 255, 150, 0.08) 0%,
+      rgba(150, 255, 100, 0.05) 30%,
+      rgba(50, 200, 100, 0.03) 60%,
+      transparent 100%
+    );
+  }
+
+  /* ==========================================================================
+     CONSUMING DARKNESS - "The Void That Hungers"
+     Oppressive, light-eating darkness
+     ========================================================================== */
+
+  @keyframes darkness-creep {
+    0%, 100% {
+      opacity: 0.8;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.9;
+      transform: scale(1.02);
+    }
+  }
+
+  @keyframes darkness-tendril {
+    0% {
+      transform: translateY(100%) scaleY(0.5);
+      opacity: 0;
+    }
+    20% {
+      opacity: 0.6;
+    }
+    50% {
+      transform: translateY(0%) scaleY(1);
+      opacity: 0.4;
+    }
+    80% {
+      opacity: 0.5;
+    }
+    100% {
+      transform: translateY(-100%) scaleY(0.5);
+      opacity: 0;
+    }
+  }
+
+  @keyframes void-flicker {
+    0%, 95%, 100% {
+      opacity: 0;
+    }
+    96%, 98% {
+      opacity: 0.15;
+    }
+  }
+
+  .animate-darkness-creep {
+    animation: darkness-creep 8s ease-in-out infinite;
+  }
+
+  .animate-darkness-tendril {
+    animation: darkness-tendril 12s ease-in-out infinite;
+  }
+
+  .animate-void-flicker {
+    animation: void-flicker 5s ease-in-out infinite;
+  }
+
+  .weather-darkness {
+    background: radial-gradient(
+      circle at center,
+      rgba(0, 0, 0, 0.3) 0%,
+      rgba(0, 0, 0, 0.5) 40%,
+      rgba(0, 0, 0, 0.7) 70%,
+      rgba(0, 0, 0, 0.85) 100%
+    );
+  }
 }

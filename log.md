@@ -1,5 +1,124 @@
 # Development Log
 
+## 2026-01-19: Dynamic Weather Effects System
+
+### Oppgave
+Implementere dynamiske væreffekter på spillbrettet. Dette inkluderer effekter som regn, tåke, eller unaturlig glød som påvirker gameplay (reduserer sikt eller endrer fiendeoppførsel). Legge til en 'weather' property på Tile og visuelt representere været. Mørke skyer skal alltid bevege seg over skjermen for å skape en uggen følelse.
+
+### Implementasjon
+
+#### 1. Permanente Mørke Skyer (AmbientDarkClouds)
+Lagt til en permanent ambient effekt som alltid vises uavhengig av værforhold:
+- **Foreground clouds**: 8 skyer med 40-60s animasjonssyklus
+- **Background clouds**: 6 skyer med parallax-effekt (55-80s syklus)
+- **Cloud shadows**: 3 skygger som passerer over terrenget
+- **Subtle vignette**: For ekstra dybde og uhygge
+
+**Nye CSS-animasjoner i `index.css`:**
+- `@keyframes dark-cloud-drift` - Hovedsky-bevegelse
+- `@keyframes dark-cloud-drift-slow` - Bakgrunnsskyer (parallax)
+- `@keyframes ambient-dread` - Subtil pulserende mørke
+- `@keyframes cloud-shadow-pass` - Skygger som passerer
+
+#### 2. Nye Værtyper
+Lagt til to nye værtyper i tillegg til eksisterende (fog, rain, miasma, cosmic_static):
+
+**`unnatural_glow` - Eldritch Phosphorescence:**
+- Øker sikt (visionReduction: -1)
+- 20% horror chance
+- Fiender blir MER synlige og aggressive
+- Visuell effekt: Pulserende grønn/cyan glød med flikkerende lyskilder
+
+**`darkness` - Consuming Darkness:**
+- Kraftig redusert sikt (visionReduction: 2)
+- Fiender skjules til de er tilstøtende
+- Blokkerer ranged attacks
+- Visuell effekt: Mørke tendriler, voidflicker, heavy vignette
+
+**Nye CSS-animasjoner:**
+- `@keyframes unnatural-pulse` - Pulserende glød
+- `@keyframes glow-flicker` - Flikkerende lyskilder
+- `@keyframes color-shift` - Fargeskift
+- `@keyframes darkness-creep` - Krypende mørke
+- `@keyframes darkness-tendril` - Mørke tendriler
+- `@keyframes void-flicker` - Void-glimt
+
+#### 3. Weather Property på Tile
+Utvidet `Tile` interface med `localWeather` property:
+```typescript
+localWeather?: {
+  type: WeatherType;
+  intensity: WeatherIntensity;
+  duration: number;
+  source?: 'ritual' | 'event' | 'tile_feature';
+};
+```
+
+#### 4. Weather Effects på Visibility (allerede implementert)
+Følgende funksjoner i `constants.ts` håndterer visibility:
+- `calculateWeatherVision()` - Beregner effektiv siktrekkevidde
+- `weatherHidesEnemy()` - Sjekker om fiender skjules
+- `weatherBlocksRanged()` - Sjekker om ranged attacks blokkeres
+
+Disse er integrert i `GameBoard.tsx` for å beregne synlige tiles.
+
+#### 5. Weather Effects på Enemy Behavior (`monsterAI.ts`)
+Nytt system for værbasert monster-AI:
+
+**Nye funksjoner:**
+- `getWeatherMonsterModifiers()` - Returnerer modifikatorer for monster-oppførsel
+- `monsterBenefitsFromWeather()` - Sjekker om en monstertype drar nytte av været
+- `applyWeatherToVision()` - Beregner monsters effektive sikt
+
+**Værmodifikatorer:**
+| Vær | Vision | Aggression | Speed | Stealth | Horror |
+|-----|--------|------------|-------|---------|--------|
+| Fog | 0.6x | 1.2x | 1x | Ja | +1 |
+| Rain | 0.8x | 0.9x | 0.9x | Nei | 0 |
+| Miasma | 0.5x | 1.5x | 1.1x | Ja | +2 |
+| Cosmic Static | 0.7x | 1.3x | 0.8x | Nei | +2 |
+| Unnatural Glow | 1.3x | 1.4x | 1x | Nei | +1 |
+| Darkness | 0.3x | 1.6x | 1.2x | Ja | +3 |
+
+**Monster-vær-preferanser:**
+- Darkness dwellers (ghoul, nightgaunt, hound, etc.): Forsterkes i mørke
+- Light seekers (mi-go, star_spawn, byakhee): Forsterkes i unnatural_glow
+- Aquatic (deepone): Forsterkes i regn
+
+**Oppdaterte funksjoner:**
+- `canSeePlayer()` - Tar nå hensyn til vær og monstertype
+- `findSmartTarget()` - Værbasert prioritetsberegning
+- `getMonsterDecision()` - Tar weather parameter
+- `processEnemyTurn()` - Returnerer nå weatherEffects i tillegg til andre data
+
+#### 6. Weather Change Triggers (allerede implementert)
+Været endres automatisk basert på doom-nivå:
+```typescript
+WEATHER_DOOM_EVENTS = {
+  10: 'fog',           // Doom 10 - tåke
+  8: 'rain',           // Doom 8 - regn
+  6: 'darkness',       // Doom 6 - mørke
+  4: 'miasma',         // Doom 4 - miasma
+  3: 'unnatural_glow', // Doom 3 - eldritch lys
+  2: 'cosmic_static'   // Doom 2 - realitetsforvrengning
+};
+```
+
+### Filer Endret
+- `src/index.css` - Nye CSS-animasjoner for skyer og væreffekter
+- `src/game/components/WeatherOverlay.tsx` - AmbientDarkClouds, UnnaturalGlowEffect, DarknessEffect
+- `src/game/types.ts` - Utvidet WeatherType og Tile.localWeather
+- `src/game/constants.ts` - Nye væreffekter og oppdatert WEATHER_DOOM_EVENTS
+- `src/game/utils/monsterAI.ts` - Værbasert monster AI-system
+
+### Visuell Effekt
+Spillet har nå en konstant uhyggelig atmosfære med mørke skyer som driver over skjermen. Når doom synker, legges flere væreffekter på toppen av dette for å skape en eskalerende følelse av dread.
+
+### Status
+Fullført. Alle væreffekter fungerer visuelt og påvirker både visibility og fiendeoppførsel som spesifisert.
+
+---
+
 ## 2026-01-19: Fix Scenario Victory Condition Checking
 
 ### Oppgave

@@ -2542,6 +2542,42 @@ export const WEATHER_EFFECTS: Record<WeatherType, WeatherEffect> = {
     opacity: 0.35,
     particleCount: 80,
     animationSpeed: 'medium'
+  },
+
+  // Unnatural Glow - eldritch illumination that affects enemy behavior
+  unnatural_glow: {
+    type: 'unnatural_glow',
+    name: 'Unnatural Glow',
+    description: 'A sickly phosphorescence emanates from unseen sources. Colors shift wrong. Shadows move against the light.',
+    visualClass: 'weather-unnatural-glow',
+    visionReduction: -1,      // Actually increases vision (things glow)
+    agilityPenalty: 0,
+    movementCost: 0,
+    horrorChance: 20,         // 20% horror chance - the light reveals too much
+    sanityDrain: 0,
+    hidesEnemies: false,      // Enemies are MORE visible
+    blocksRanged: false,
+    opacity: 0.4,
+    particleCount: 40,
+    animationSpeed: 'slow'
+  },
+
+  // Darkness - oppressive, unnatural darkness
+  darkness: {
+    type: 'darkness',
+    name: 'Consuming Darkness',
+    description: 'A darkness that devours light itself. Your lantern flickers weakly, revealing only shadows within shadows.',
+    visualClass: 'weather-darkness',
+    visionReduction: 2,       // Severely reduced vision
+    agilityPenalty: 1,        // Hard to move in darkness
+    movementCost: 0,
+    horrorChance: 15,
+    sanityDrain: 0,
+    hidesEnemies: true,       // Enemies hidden until adjacent
+    blocksRanged: true,       // Cannot see targets at range
+    opacity: 0.7,
+    particleCount: 20,
+    animationSpeed: 'slow'
   }
 };
 
@@ -2628,12 +2664,15 @@ export function rollWeatherHorror(weather: WeatherCondition | null): boolean {
 
 /**
  * Weather doom events - weather can change based on doom
+ * As doom decreases (situation worsens), weather becomes more supernatural
  */
 export const WEATHER_DOOM_EVENTS: Record<number, WeatherType> = {
-  10: 'fog',           // At doom 10, fog may roll in
-  7: 'rain',           // At doom 7, cold rain begins
-  4: 'miasma',         // At doom 4, miasma seeps through
-  2: 'cosmic_static'   // At doom 2, reality begins to tear
+  10: 'fog',             // At doom 10, fog may roll in
+  8: 'rain',             // At doom 8, cold rain begins
+  6: 'darkness',         // At doom 6, unnatural darkness spreads
+  4: 'miasma',           // At doom 4, miasma seeps through
+  3: 'unnatural_glow',   // At doom 3, eldritch light appears
+  2: 'cosmic_static'     // At doom 2, reality begins to tear
 };
 
 /**

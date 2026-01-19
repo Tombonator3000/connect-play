@@ -1,7 +1,99 @@
 import React, { useMemo } from 'react';
-import { Cloud, CloudRain, Skull, Sparkles } from 'lucide-react';
+import { Cloud, CloudRain, Skull, Sparkles, CloudFog, Lightbulb, Moon, Eye } from 'lucide-react';
 import { WeatherCondition, WeatherType } from '../types';
 import { getWeatherEffect, getIntensityModifier } from '../constants';
+
+/**
+ * AmbientDarkClouds - Permanent ominous clouds drifting across the screen
+ * Creates an ever-present feeling of dread regardless of weather conditions
+ *
+ * "Mørke skyer skal alltid bevege seg over hele skjermen vagt for å skape en litt uggen følelse"
+ */
+const AmbientDarkClouds: React.FC<{ intensity?: number }> = ({ intensity = 1 }) => {
+  const clouds = useMemo(() => {
+    // Layer 1: Fast-moving foreground clouds
+    const foregroundClouds = Array.from({ length: 8 }, (_, i) => ({
+      id: `fg-${i}`,
+      size: 120 + Math.random() * 180,
+      delay: i * 5 + Math.random() * 10,
+      duration: 40 + Math.random() * 20,
+      startY: -10 + Math.random() * 40,
+      opacity: (0.08 + Math.random() * 0.12) * intensity,
+      layer: 'foreground' as const
+    }));
+
+    // Layer 2: Slow-moving background clouds (parallax effect)
+    const backgroundClouds = Array.from({ length: 6 }, (_, i) => ({
+      id: `bg-${i}`,
+      size: 200 + Math.random() * 250,
+      delay: i * 8 + Math.random() * 15,
+      duration: 55 + Math.random() * 25,
+      startY: 5 + Math.random() * 35,
+      opacity: (0.05 + Math.random() * 0.08) * intensity,
+      layer: 'background' as const
+    }));
+
+    return [...backgroundClouds, ...foregroundClouds];
+  }, [intensity]);
+
+  return (
+    <div className="ambient-dark-clouds absolute inset-0 overflow-hidden pointer-events-none z-10">
+      {/* Subtle darkening gradient at top */}
+      <div
+        className="absolute inset-0 animate-ambient-dread"
+        style={{
+          background: 'linear-gradient(180deg, rgba(10, 10, 20, 0.15) 0%, transparent 25%, transparent 80%, rgba(10, 10, 20, 0.08) 100%)'
+        }}
+      />
+
+      {/* Passing cloud shadows on the ground */}
+      <div className="absolute inset-0">
+        {Array.from({ length: 3 }, (_, i) => (
+          <div
+            key={`shadow-${i}`}
+            className="absolute w-[150%] h-[40%] animate-cloud-shadow"
+            style={{
+              top: `${20 + i * 25}%`,
+              background: 'linear-gradient(90deg, transparent, rgba(0,0,0,0.08), transparent)',
+              animationDelay: `${i * 8}s`,
+              animationDuration: `${22 + i * 4}s`
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Drifting dark clouds */}
+      {clouds.map(cloud => (
+        <div
+          key={cloud.id}
+          className={`absolute ${cloud.layer === 'foreground' ? 'animate-dark-cloud-drift' : 'animate-dark-cloud-drift-slow'}`}
+          style={{
+            top: `${cloud.startY}%`,
+            left: '-20%',
+            animationDelay: `${cloud.delay}s`,
+            animationDuration: `${cloud.duration}s`,
+            opacity: cloud.opacity,
+            filter: cloud.layer === 'background' ? 'blur(4px)' : 'blur(2px)'
+          }}
+        >
+          <CloudFog
+            size={cloud.size}
+            className="text-slate-900/80"
+            strokeWidth={0.5}
+          />
+        </div>
+      ))}
+
+      {/* Very subtle vignette for depth */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.08) 100%)'
+        }}
+      />
+    </div>
+  );
+};
 
 interface WeatherOverlayProps {
   weather: WeatherCondition | null;
@@ -279,6 +371,175 @@ const CosmicStaticEffect: React.FC<{ count: number; intensity: number }> = ({ co
 };
 
 /**
+ * Generates unnatural glow effect - eldritch phosphorescence
+ */
+const UnnaturalGlowEffect: React.FC<{ count: number; intensity: number }> = ({ count, intensity }) => {
+  const glowSources = useMemo(() => {
+    return Array.from({ length: count }, (_, i) => {
+      const size = 60 + Math.random() * 120;
+      const delay = Math.random() * 6;
+      const duration = 4 + Math.random() * 4;
+      const startY = Math.random() * 100;
+      const startX = Math.random() * 100;
+      const hue = 100 + Math.random() * 60; // Green to cyan range
+
+      return {
+        id: i,
+        size,
+        delay,
+        duration,
+        startY,
+        startX,
+        hue
+      };
+    });
+  }, [count]);
+
+  return (
+    <div className="weather-unnatural-glow absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Shifting color background */}
+      <div
+        className="absolute inset-0 animate-color-shift"
+        style={{ opacity: intensity * 0.4 }}
+      />
+
+      {/* Pulsing glow overlay */}
+      <div
+        className="absolute inset-0 animate-unnatural-pulse"
+        style={{
+          background: 'radial-gradient(ellipse at 40% 60%, rgba(100, 255, 150, 0.15), transparent 70%)',
+          opacity: intensity * 0.6
+        }}
+      />
+
+      {/* Flickering glow sources */}
+      {glowSources.map(g => (
+        <div
+          key={g.id}
+          className="absolute animate-glow-flicker"
+          style={{
+            top: `${g.startY}%`,
+            left: `${g.startX}%`,
+            animationDelay: `${g.delay}s`,
+            animationDuration: `${g.duration}s`
+          }}
+        >
+          <div
+            className="rounded-full blur-xl"
+            style={{
+              width: g.size,
+              height: g.size,
+              background: `radial-gradient(circle, hsla(${g.hue}, 80%, 60%, 0.3), transparent 70%)`,
+              opacity: intensity * 0.5
+            }}
+          />
+        </div>
+      ))}
+
+      {/* Occasional eye glimpses in the glow */}
+      <div className="absolute inset-0">
+        {Array.from({ length: 4 }, (_, i) => (
+          <div
+            key={`eye-${i}`}
+            className="absolute animate-glow-flicker"
+            style={{
+              top: `${15 + i * 20}%`,
+              left: `${20 + (i % 2) * 50}%`,
+              animationDelay: `${i * 2}s`,
+              animationDuration: `${5 + Math.random() * 3}s`
+            }}
+          >
+            <Eye
+              size={12}
+              className="text-green-400/20"
+              strokeWidth={1}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+/**
+ * Generates darkness effect - oppressive, light-eating void
+ */
+const DarknessEffect: React.FC<{ count: number; intensity: number }> = ({ count, intensity }) => {
+  const tendrils = useMemo(() => {
+    return Array.from({ length: count }, (_, i) => {
+      const width = 30 + Math.random() * 70;
+      const delay = Math.random() * 12;
+      const duration = 10 + Math.random() * 8;
+      const startX = Math.random() * 100;
+
+      return {
+        id: i,
+        width,
+        delay,
+        duration,
+        startX
+      };
+    });
+  }, [count]);
+
+  return (
+    <div className="weather-darkness absolute inset-0 overflow-hidden pointer-events-none">
+      {/* Deep darkness vignette */}
+      <div
+        className="absolute inset-0 animate-darkness-creep"
+        style={{
+          background: `radial-gradient(circle at center,
+            rgba(0,0,0,${0.2 * intensity}) 0%,
+            rgba(0,0,0,${0.5 * intensity}) 50%,
+            rgba(0,0,0,${0.8 * intensity}) 100%)`
+        }}
+      />
+
+      {/* Rising tendrils of darkness */}
+      {tendrils.map(t => (
+        <div
+          key={t.id}
+          className="absolute bottom-0 animate-darkness-tendril"
+          style={{
+            left: `${t.startX}%`,
+            width: `${t.width}px`,
+            height: '40%',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.6), transparent)',
+            animationDelay: `${t.delay}s`,
+            animationDuration: `${t.duration}s`,
+            opacity: intensity * 0.6
+          }}
+        />
+      ))}
+
+      {/* Occasional void flickers - glimpses of absolute nothing */}
+      {Array.from({ length: 5 }, (_, i) => (
+        <div
+          key={`void-${i}`}
+          className="absolute animate-void-flicker"
+          style={{
+            top: `${10 + i * 18}%`,
+            left: `${5 + i * 22}%`,
+            width: '150px',
+            height: '100px',
+            background: 'radial-gradient(ellipse, rgba(0,0,0,0.9), transparent 70%)',
+            animationDelay: `${i * 1.5}s`
+          }}
+        />
+      ))}
+
+      {/* Edge darkness creeping in */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          boxShadow: `inset 0 0 ${100 * intensity}px ${50 * intensity}px rgba(0,0,0,0.6)`
+        }}
+      />
+    </div>
+  );
+};
+
+/**
  * Weather indicator showing current weather condition
  */
 const WeatherIndicator: React.FC<{ weather: WeatherCondition }> = ({ weather }) => {
@@ -290,6 +551,8 @@ const WeatherIndicator: React.FC<{ weather: WeatherCondition }> = ({ weather }) 
       case 'rain': return <CloudRain size={16} className="text-blue-300" />;
       case 'miasma': return <Skull size={16} className="text-purple-400" />;
       case 'cosmic_static': return <Sparkles size={16} className="text-cyan-300" />;
+      case 'unnatural_glow': return <Lightbulb size={16} className="text-green-400" />;
+      case 'darkness': return <Moon size={16} className="text-gray-600" />;
       default: return null;
     }
   };
@@ -320,48 +583,68 @@ const WeatherIndicator: React.FC<{ weather: WeatherCondition }> = ({ weather }) 
  * - Rain: Diagonal rain streaks
  * - Miasma: Purple/green supernatural particles
  * - Cosmic Static: Reality distortion with noise and glitches
+ * - ALWAYS: Ambient dark clouds for persistent dread atmosphere
  */
 const WeatherOverlay: React.FC<WeatherOverlayProps> = ({ weather, className = '' }) => {
-  if (!weather || weather.type === 'clear') return null;
-
-  const effect = getWeatherEffect(weather.type);
-  const intensity = getIntensityModifier(weather.intensity);
-  const particleCount = Math.floor(effect.particleCount * intensity);
+  // Always render ambient dark clouds for the eerie atmosphere
+  // Weather effects layer on top of this base dread
+  const hasActiveWeather = weather && weather.type !== 'clear';
+  const effect = hasActiveWeather ? getWeatherEffect(weather.type) : null;
+  const intensity = hasActiveWeather ? getIntensityModifier(weather.intensity) : 1;
+  const particleCount = effect ? Math.floor(effect.particleCount * intensity) : 0;
 
   return (
-    <div
-      className={`weather-overlay absolute inset-0 pointer-events-none z-30 ${effect.visualClass} ${className}`}
-      style={{ opacity: effect.opacity * intensity }}
-    >
-      {/* Weather indicator */}
-      <WeatherIndicator weather={weather} />
+    <div className={`weather-system absolute inset-0 pointer-events-none z-30 ${className}`}>
+      {/* ALWAYS VISIBLE: Ambient dark clouds - "The Ever-Present Dread" */}
+      <AmbientDarkClouds intensity={1} />
 
-      {/* Weather-specific effects */}
-      {weather.type === 'fog' && (
-        <FogParticles count={particleCount} intensity={intensity} />
+      {/* Active weather effects (if any) */}
+      {hasActiveWeather && effect && (
+        <div
+          className={`weather-overlay absolute inset-0 pointer-events-none ${effect.visualClass}`}
+          style={{ opacity: effect.opacity * intensity }}
+        >
+          {/* Weather indicator */}
+          <WeatherIndicator weather={weather} />
+
+          {/* Weather-specific effects */}
+          {weather.type === 'fog' && (
+            <FogParticles count={particleCount} intensity={intensity} />
+          )}
+
+          {weather.type === 'rain' && (
+            <RainEffect count={particleCount} intensity={intensity} />
+          )}
+
+          {weather.type === 'miasma' && (
+            <MiasmaEffect count={particleCount} intensity={intensity} />
+          )}
+
+          {weather.type === 'cosmic_static' && (
+            <CosmicStaticEffect count={particleCount} intensity={intensity} />
+          )}
+
+          {weather.type === 'unnatural_glow' && (
+            <UnnaturalGlowEffect count={particleCount} intensity={intensity} />
+          )}
+
+          {weather.type === 'darkness' && (
+            <DarknessEffect count={particleCount} intensity={intensity} />
+          )}
+
+          {/* Vignette overlay for active weather */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background: 'radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.3) 100%)'
+            }}
+          />
+        </div>
       )}
-
-      {weather.type === 'rain' && (
-        <RainEffect count={particleCount} intensity={intensity} />
-      )}
-
-      {weather.type === 'miasma' && (
-        <MiasmaEffect count={particleCount} intensity={intensity} />
-      )}
-
-      {weather.type === 'cosmic_static' && (
-        <CosmicStaticEffect count={particleCount} intensity={intensity} />
-      )}
-
-      {/* Vignette overlay for all weather */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background: 'radial-gradient(circle at center, transparent 40%, rgba(0,0,0,0.3) 100%)'
-        }}
-      />
     </div>
   );
 };
 
+// Export AmbientDarkClouds separately for use without full weather system
+export { AmbientDarkClouds };
 export default WeatherOverlay;
