@@ -2,9 +2,59 @@ import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { Tile, Player, Enemy, FloatingText, EnemyType, ScenarioModifier } from '../types';
 import {
   User, Skull, DoorOpen, Lock, Flame, Hammer, Brain,
-  BookOpen, Anchor, Church, MapPin, Building, ShoppingBag, Fish, PawPrint, Biohazard, Ghost, Bug, Search
+  BookOpen, Anchor, Church, MapPin, Building, ShoppingBag, Fish, PawPrint, Biohazard, Ghost, Bug, Search,
+  Trees
 } from 'lucide-react';
 import { EnemyTooltip } from './ItemTooltip';
+
+// Import AI-generated tile images
+import tileLibrary from '@/assets/tiles/tile-library.png';
+import tileChurch from '@/assets/tiles/tile-church.png';
+import tileDock from '@/assets/tiles/tile-dock.png';
+import tileSquare from '@/assets/tiles/tile-square.png';
+import tileGraveyard from '@/assets/tiles/tile-graveyard.png';
+import tileHallway from '@/assets/tiles/tile-hallway.png';
+import tileAlley from '@/assets/tiles/tile-alley.png';
+import tileCrypt from '@/assets/tiles/tile-crypt.png';
+
+// Map tile names to generated images
+const TILE_IMAGES: Record<string, string> = {
+  library: tileLibrary,
+  study: tileLibrary,
+  manor: tileLibrary,
+  church: tileChurch,
+  ritual: tileChurch,
+  dock: tileDock,
+  pier: tileDock,
+  harbor: tileDock,
+  lighthouse: tileDock,
+  square: tileSquare,
+  market: tileSquare,
+  graveyard: tileGraveyard,
+  cemetery: tileGraveyard,
+  forest: tileGraveyard,
+  swamp: tileGraveyard,
+  hallway: tileHallway,
+  corridor: tileHallway,
+  passage: tileHallway,
+  stair: tileHallway,
+  alley: tileAlley,
+  street: tileAlley,
+  crypt: tileCrypt,
+  vault: tileCrypt,
+  cellar: tileCrypt
+};
+
+// Get tile image based on name
+const getTileImage = (tileName: string): string | null => {
+  const nameLower = tileName.toLowerCase();
+  for (const [key, image] of Object.entries(TILE_IMAGES)) {
+    if (nameLower.includes(key)) {
+      return image;
+    }
+  }
+  return null;
+};
 
 interface GameBoardProps {
   tiles: Tile[];
@@ -49,85 +99,116 @@ const getMonsterIcon = (type: EnemyType) => {
   }
 };
 
+// Board Game Aesthetic - Tile Visual System with oil painting style
 const getTileVisuals = (name: string, type: 'building' | 'room' | 'street') => {
   const n = name.toLowerCase();
 
-  if (n.includes('hallway') || n.includes('corridor') || n.includes('passage')) {
+  // Connectors - Narrow passages
+  if (n.includes('hallway') || n.includes('corridor') || n.includes('passage') || n.includes('stair')) {
     return {
-      bg: 'bg-card',
-      style: { backgroundImage: 'repeating-linear-gradient(90deg, hsl(var(--muted)) 0, hsl(var(--muted)) 1px, transparent 1px, transparent 10px)' },
-      strokeColor: 'hsl(var(--border))',
+      floorClass: 'tile-darkwood',
+      glowClass: '',
+      strokeColor: 'hsl(25 30% 25%)',
       Icon: DoorOpen,
-      iconColor: 'text-muted-foreground'
+      iconColor: 'text-amber-700'
     };
   }
 
+  // Outdoor - Town squares and markets
   if (n.includes('square') || n.includes('market')) {
     return {
-      bg: 'bg-slate-800',
-      style: { backgroundImage: 'radial-gradient(circle at center, rgba(255,255,255,0.05) 0, transparent 80%)' },
-      strokeColor: 'hsl(var(--border))',
+      floorClass: 'tile-cobblestone',
+      glowClass: 'animate-gaslight',
+      strokeColor: 'hsl(45 40% 30%)',
       Icon: ShoppingBag,
-      iconColor: 'text-slate-400'
+      iconColor: 'text-amber-600'
     };
   }
 
+  // Indoor - Libraries and studies
   if (n.includes('library') || n.includes('study') || n.includes('manor')) {
     return {
-      bg: 'bg-amber-950',
-      style: { backgroundImage: 'repeating-linear-gradient(45deg, rgba(255,255,255,0.05) 0, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 10px)' },
-      strokeColor: 'hsl(var(--accent))',
+      floorClass: 'tile-carpet',
+      glowClass: 'gaslight-glow',
+      strokeColor: 'hsl(35 50% 35%)',
       Icon: BookOpen,
-      iconColor: 'text-accent'
+      iconColor: 'text-amber-500'
     };
   }
 
+  // Supernatural - Churches, crypts, ritual chambers
   if (n.includes('church') || n.includes('crypt') || n.includes('ritual')) {
     return {
-      bg: 'bg-red-950',
-      style: { backgroundImage: 'radial-gradient(circle at center, hsl(0 50% 25%) 0%, transparent 80%)' },
-      strokeColor: 'hsl(var(--primary))',
+      floorClass: 'tile-stone',
+      glowClass: 'ritual-glow',
+      strokeColor: 'hsl(348 50% 40%)',
       Icon: Church,
-      iconColor: 'text-primary'
+      iconColor: 'text-red-600'
     };
   }
 
-  if (n.includes('dock') || n.includes('river') || n.includes('pier') || n.includes('harbor')) {
+  // Water locations - Docks, rivers, harbors
+  if (n.includes('dock') || n.includes('river') || n.includes('pier') || n.includes('harbor') || n.includes('lighthouse')) {
     return {
-      bg: 'bg-blue-950',
-      style: { backgroundImage: 'repeating-radial-gradient(circle at 50% 100%, rgba(255,255,255,0.05) 0, transparent 5px)' },
-      strokeColor: 'hsl(var(--insight))',
+      floorClass: 'tile-water',
+      glowClass: '',
+      strokeColor: 'hsl(200 50% 35%)',
       Icon: Anchor,
       iconColor: 'text-blue-400'
     };
   }
 
-  if (type === 'street' || n.includes('alley')) {
+  // Supernatural outdoor - Graveyard, swamp, forest
+  if (n.includes('graveyard') || n.includes('cemetery') || n.includes('swamp') || n.includes('forest')) {
     return {
-      bg: 'bg-slate-900',
-      style: { backgroundImage: 'linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px)' },
-      strokeColor: 'hsl(var(--border))',
-      Icon: MapPin,
-      iconColor: 'text-slate-400'
+      floorClass: 'tile-stone',
+      glowClass: 'eldritch-glow',
+      strokeColor: 'hsl(120 40% 25%)',
+      Icon: n.includes('graveyard') || n.includes('cemetery') ? Skull : Trees,
+      iconColor: 'text-green-600'
     };
   }
 
-  return { bg: 'bg-card', style: {}, strokeColor: 'hsl(var(--border))', Icon: Building, iconColor: 'text-muted-foreground' };
-};
-
-const getDoomLighting = (doom: number) => {
-  const danger = Math.max(0, 1 - (doom / 12));
-  let overlayColor = 'rgba(10, 20, 40, 0.4)';
-  let vignetteStrength = Math.min(100, 40 + (danger * 60)) + '%';
-  let animation = 'none';
-
-  if (doom <= 3) {
-    overlayColor = 'rgba(80, 0, 0, 0.3)';
-    animation = 'doom-flicker 4s infinite';
+  // Streets and alleys
+  if (type === 'street' || n.includes('alley') || n.includes('street')) {
+    return {
+      floorClass: 'tile-cobblestone',
+      glowClass: '',
+      strokeColor: 'hsl(230 20% 25%)',
+      Icon: MapPin,
+      iconColor: 'text-slate-500'
+    };
   }
 
-  const gradient = `radial-gradient(circle, transparent 20%, ${overlayColor} ${vignetteStrength}, #000 100%)`;
-  return { gradient, animation };
+  // Default indoor
+  return { 
+    floorClass: 'tile-stone', 
+    glowClass: '', 
+    strokeColor: 'hsl(230 20% 25%)', 
+    Icon: Building, 
+    iconColor: 'text-muted-foreground'
+  };
+};
+
+// Doom-based atmospheric lighting - Chiaroscuro effect
+const getDoomLighting = (doom: number) => {
+  const danger = Math.max(0, 1 - (doom / 12));
+  let overlayColor = 'hsla(210, 50%, 10%, 0.4)';
+  let vignetteStrength = Math.min(100, 40 + (danger * 60)) + '%';
+  let animation = 'none';
+  let additionalGlow = 'none';
+
+  if (doom <= 3) {
+    overlayColor = 'hsla(0, 60%, 20%, 0.35)';
+    animation = 'doom-flicker 4s infinite';
+    additionalGlow = 'inset 0 0 100px hsla(348, 60%, 40%, 0.15)';
+  } else if (doom <= 6) {
+    overlayColor = 'hsla(280, 40%, 15%, 0.3)';
+    additionalGlow = 'inset 0 0 80px hsla(280, 50%, 30%, 0.1)';
+  }
+
+  const gradient = `radial-gradient(circle, transparent 20%, ${overlayColor} ${vignetteStrength}, hsl(230, 25%, 3%) 100%)`;
+  return { gradient, animation, additionalGlow };
 };
 
 const GameBoard: React.FC<GameBoardProps> = ({
@@ -224,9 +305,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
       onMouseLeave={() => setIsDragging(false)}
       onWheel={(e) => setScale(prev => Math.min(Math.max(prev + (e.deltaY > 0 ? -0.1 : 0.1), 0.3), 1.5))}
     >
+      {/* Doom-based chiaroscuro lighting overlay */}
       <div
         className="absolute inset-0 pointer-events-none z-20 transition-all duration-1000"
-        style={{ background: lighting.gradient, animation: lighting.animation, mixBlendMode: 'overlay' }}
+        style={{ 
+          background: lighting.gradient, 
+          animation: lighting.animation, 
+          mixBlendMode: 'overlay',
+          boxShadow: lighting.additionalGlow
+        }}
       />
 
       <div
@@ -249,6 +336,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
             fogOpacity = 0.2 + (distance - 1) * 0.15; // Gradient fog at edges
           }
 
+          const tileImage = getTileImage(tile.name);
+
           return (
             <div
               key={tile.id}
@@ -256,12 +345,28 @@ const GameBoard: React.FC<GameBoardProps> = ({
               style={{ width: `${HEX_SIZE * 2}px`, height: `${HEX_SIZE * 1.732}px`, left: `${x - HEX_SIZE}px`, top: `${y - HEX_SIZE * 0.866}px` }}
               onClick={() => { if (!hasDragged.current) onTileClick(tile.q, tile.r); }}
             >
-              <div className={`absolute inset-0 hex-clip transition-all duration-500 ${visual.bg} relative overflow-hidden group`}>
-                <div className="absolute inset-0 opacity-10" style={visual.style} />
+              {/* Board game tile with AI-generated oil painting texture */}
+              <div className={`absolute inset-0 hex-clip transition-all duration-500 ${visual.floorClass} ${visual.glowClass} relative overflow-hidden group`}>
+                {/* AI-generated tile image */}
+                {tileImage && (
+                  <div 
+                    className="absolute inset-0 bg-cover bg-center opacity-90"
+                    style={{ backgroundImage: `url(${tileImage})` }}
+                  />
+                )}
                 
-                <div className={`relative z-10 flex flex-col items-center pointer-events-none transition-opacity ${isVisible ? 'opacity-30 group-hover:opacity-50' : 'opacity-10'}`}>
-                  <visual.Icon size={32} className={visual.iconColor} />
-                </div>
+                {/* Chiaroscuro lighting overlay */}
+                <div className="absolute inset-0 chiaroscuro-overlay pointer-events-none" />
+                
+                {/* Oil painting texture */}
+                <div className="absolute inset-0 oil-texture pointer-events-none" />
+                
+                {/* Tile icon - only show if no image */}
+                {!tileImage && (
+                  <div className={`relative z-10 flex flex-col items-center justify-center h-full pointer-events-none transition-opacity ${isVisible ? 'opacity-30 group-hover:opacity-50' : 'opacity-10'}`}>
+                    <visual.Icon size={32} className={visual.iconColor} />
+                  </div>
+                )}
 
                 {tile.object && isVisible && (
                   <div className="absolute inset-0 flex items-center justify-center z-20 animate-in zoom-in duration-300">
