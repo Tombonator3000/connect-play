@@ -599,6 +599,13 @@ export interface Tile {
   isGate?: boolean;
   watermarkIcon?: string;
   isDeadEnd?: boolean; // Marks tiles with only one exit
+  // Local weather effect on this specific tile
+  localWeather?: {
+    type: WeatherType;
+    intensity: WeatherIntensity;
+    duration: number; // Rounds remaining (-1 = permanent)
+    source?: 'ritual' | 'event' | 'tile_feature'; // What caused this weather
+  };
 }
 
 export type VictoryType = 'escape' | 'assassination' | 'collection' | 'survival' | 'ritual' | 'investigation';
@@ -794,7 +801,14 @@ export interface ActivePuzzle {
  * Weather types that can affect the game board
  * Each weather has visual and gameplay effects
  */
-export type WeatherType = 'clear' | 'fog' | 'rain' | 'miasma' | 'cosmic_static';
+export type WeatherType =
+  | 'clear'          // No weather effect
+  | 'fog'            // Reduces visibility, hides enemies
+  | 'rain'           // Reduces agility, affects ranged combat
+  | 'miasma'         // Supernatural fog, sanity drain
+  | 'cosmic_static'  // Reality distortion, movement penalty
+  | 'unnatural_glow' // Eldritch light, affects enemy behavior, horror checks
+  | 'darkness';      // Oppressive darkness, severe vision reduction
 
 /**
  * Intensity levels for weather effects

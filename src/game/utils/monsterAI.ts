@@ -1,12 +1,179 @@
 /**
  * Monster AI System for Shadows of the 1920s
  * Enhanced AI with pathfinding, target prioritization, and special abilities
- * Version 2.0 - January 2026
+ * Version 2.1 - January 2026
+ * Added: Weather effects on monster behavior
  */
 
-import { Enemy, EnemyType, Player, Tile, TileCategory, TileObjectType } from '../types';
-import { BESTIARY } from '../constants';
+import { Enemy, EnemyType, Player, Tile, TileCategory, TileObjectType, WeatherState, WeatherCondition } from '../types';
+import { BESTIARY, getWeatherEffect, getIntensityModifier, weatherHidesEnemy } from '../constants';
 import { hexDistance, findPath, getHexNeighbors, hasLineOfSight } from '../hexUtils';
+
+// ============================================================================
+// WEATHER EFFECTS ON MONSTER BEHAVIOR
+// ============================================================================
+
+/**
+ * Weather modifiers for monster AI behavior
+ * Different weather types affect monster aggression, vision, and tactics
+ */
+export interface WeatherMonsterModifiers {
+  visionModifier: number;        // Multiplier for vision range (0.5 = half)
+  aggressionModifier: number;    // Multiplier for aggression (1.5 = more aggressive)
+  speedModifier: number;         // Multiplier for movement speed
+  stealthBonus: boolean;         // Monsters get ambush advantage
+  prefersDarkness: boolean;      // Certain monsters become more active
+  prefersLight: boolean;         // Certain monsters become less active
+  horrorBonus: number;           // Extra horror dice in this weather
+}
+
+/**
+ * Get weather modifiers for monster behavior
+ */
+export function getWeatherMonsterModifiers(weather: WeatherCondition | null): WeatherMonsterModifiers {
+  if (!weather || weather.type === 'clear') {
+    return {
+      visionModifier: 1,
+      aggressionModifier: 1,
+      speedModifier: 1,
+      stealthBonus: false,
+      prefersDarkness: false,
+      prefersLight: false,
+      horrorBonus: 0
+    };
+  }
+
+  const effect = getWeatherEffect(weather.type);
+  const intensity = getIntensityModifier(weather.intensity);
+
+  switch (weather.type) {
+    case 'fog':
+      return {
+        visionModifier: 0.6,                    // Reduced vision for monsters too
+        aggressionModifier: 1.2 * intensity,    // More aggressive (hunting by scent/sound)
+        speedModifier: 1,
+        stealthBonus: true,                     // Monsters can ambush
+        prefersDarkness: false,
+        prefersLight: false,
+        horrorBonus: 1                          // Fog is scary
+      };
+
+    case 'rain':
+      return {
+        visionModifier: 0.8,
+        aggressionModifier: 0.9,                // Slightly less active in rain
+        speedModifier: 0.9,                     // Slower in rain
+        stealthBonus: false,
+        prefersDarkness: false,
+        prefersLight: false,
+        horrorBonus: 0
+      };
+
+    case 'miasma':
+      return {
+        visionModifier: 0.5,                    // Heavily reduced vision
+        aggressionModifier: 1.5 * intensity,    // Much more aggressive
+        speedModifier: 1.1,                     // Faster in supernatural fog
+        stealthBonus: true,
+        prefersDarkness: true,                  // Creatures of darkness thrive
+        prefersLight: false,
+        horrorBonus: 2                          // Very scary
+      };
+
+    case 'cosmic_static':
+      return {
+        visionModifier: 0.7,
+        aggressionModifier: 1.3 * intensity,
+        speedModifier: 0.8,                     // Reality distortion slows them too
+        stealthBonus: false,
+        prefersDarkness: true,
+        prefersLight: false,
+        horrorBonus: 2
+      };
+
+    case 'unnatural_glow':
+      return {
+        visionModifier: 1.3,                    // Better vision in the glow
+        aggressionModifier: 1.4 * intensity,    // Very aggressive
+        speedModifier: 1,
+        stealthBonus: false,                    // Can't hide in the light
+        prefersDarkness: false,
+        prefersLight: true,                     // Light-seekers become active
+        horrorBonus: 1
+      };
+
+    case 'darkness':
+      return {
+        visionModifier: 0.3,                    // Severely reduced vision
+        aggressionModifier: 1.6 * intensity,    // Very aggressive
+        speedModifier: 1.2,                     // Faster in darkness
+        stealthBonus: true,
+        prefersDarkness: true,                  // Darkness dwellers love this
+        prefersLight: false,
+        horrorBonus: 3                          // Terrifying
+      };
+
+    default:
+      return {
+        visionModifier: 1,
+        aggressionModifier: 1,
+        speedModifier: 1,
+        stealthBonus: false,
+        prefersDarkness: false,
+        prefersLight: false,
+        horrorBonus: 0
+      };
+  }
+}
+
+/**
+ * Check if a monster type benefits from current weather
+ */
+export function monsterBenefitsFromWeather(type: EnemyType, weather: WeatherCondition | null): boolean {
+  if (!weather || weather.type === 'clear') return false;
+
+  const modifiers = getWeatherMonsterModifiers(weather);
+
+  // Darkness-dwelling creatures
+  const darknessDwellers: EnemyType[] = ['ghoul', 'nightgaunt', 'hound', 'formless_spawn', 'hunting_horror'];
+  if (modifiers.prefersDarkness && darknessDwellers.includes(type)) {
+    return true;
+  }
+
+  // Light-attracted creatures (supernatural entities drawn to eldritch glow)
+  const lightSeekers: EnemyType[] = ['mi-go', 'star_spawn', 'byakhee'];
+  if (modifiers.prefersLight && lightSeekers.includes(type)) {
+    return true;
+  }
+
+  // Aquatic creatures in rain
+  if (weather.type === 'rain' && type === 'deepone') {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Apply weather modifiers to monster vision range
+ */
+export function applyWeatherToVision(baseVision: number, weather: WeatherCondition | null, type: EnemyType): number {
+  const modifiers = getWeatherMonsterModifiers(weather);
+  let effectiveVision = Math.floor(baseVision * modifiers.visionModifier);
+
+  // Some creatures see better in their preferred conditions
+  if (monsterBenefitsFromWeather(type, weather)) {
+    effectiveVision = Math.max(effectiveVision, baseVision); // At least normal vision
+  }
+
+  // Flying creatures less affected by ground-level fog
+  const bestiary = BESTIARY[type];
+  if (bestiary?.traits?.includes('flying') && weather?.type === 'fog') {
+    effectiveVision = Math.max(effectiveVision, baseVision - 1);
+  }
+
+  return Math.max(1, effectiveVision);
+}
 
 // ============================================================================
 // OBSTACLE HANDLING SYSTEM
@@ -859,15 +1026,31 @@ function getMonsterAttackType(type: EnemyType): 'melee' | 'ranged' | 'sanity' | 
 
 /**
  * Determine if monster can see player
+ * Now includes weather effects on monster vision
  */
 export function canSeePlayer(
   enemy: Enemy,
   player: Player,
-  tiles: Tile[]
+  tiles: Tile[],
+  weather?: WeatherCondition | null
 ): boolean {
   const distance = hexDistance(enemy.position, player.position);
 
-  if (distance > enemy.visionRange) return false;
+  // Apply weather modifiers to vision range
+  const effectiveVision = weather
+    ? applyWeatherToVision(enemy.visionRange, weather, enemy.type)
+    : enemy.visionRange;
+
+  if (distance > effectiveVision) return false;
+
+  // In certain weather, even visible players may be "hidden"
+  if (weather && weatherHidesEnemy(weather, distance)) {
+    // Monsters have similar issues seeing players in bad weather
+    // But darkness-dwellers can still see
+    if (!monsterBenefitsFromWeather(enemy.type, weather)) {
+      return false;
+    }
+  }
 
   // TODO: Add line of sight checking through walls
   // For now, simple distance check
@@ -904,23 +1087,40 @@ export function findNearestPlayer(
 /**
  * Find best target using advanced priority system
  * This replaces findNearestPlayer for smarter AI decisions
+ * Now includes weather effects on target selection
  */
 export function findSmartTarget(
   enemy: Enemy,
   players: Player[],
-  tiles: Tile[]
+  tiles: Tile[],
+  weather?: WeatherCondition | null
 ): { target: Player | null; priority: TargetPriority | null } {
   const alivePlayers = players.filter(p => !p.isDead);
   if (alivePlayers.length === 0) return { target: null, priority: null };
 
-  // Filter to visible players
-  const visiblePlayers = alivePlayers.filter(p => canSeePlayer(enemy, p, tiles));
+  // Filter to visible players (with weather consideration)
+  const visiblePlayers = alivePlayers.filter(p => canSeePlayer(enemy, p, tiles, weather));
   if (visiblePlayers.length === 0) return { target: null, priority: null };
 
   // Calculate priority for each player
   const priorities = visiblePlayers.map(p =>
     calculateTargetPriority(enemy, p, alivePlayers, tiles)
   );
+
+  // Weather can affect aggression and targeting
+  if (weather) {
+    const modifiers = getWeatherMonsterModifiers(weather);
+
+    // Boost priority scores based on weather aggression
+    for (const priority of priorities) {
+      priority.score = Math.floor(priority.score * modifiers.aggressionModifier);
+
+      // Monsters benefiting from weather are more likely to attack
+      if (monsterBenefitsFromWeather(enemy.type, weather)) {
+        priority.score += 15;
+      }
+    }
+  }
 
   // Sort by score (highest first)
   priorities.sort((a, b) => b.score - a.score);
@@ -1008,18 +1208,21 @@ function getPatrolDestination(
 
 /**
  * Main AI decision function for a monster
- * Enhanced with smart targeting, special abilities, and ranged attack logic
+ * Enhanced with smart targeting, special abilities, ranged attack logic,
+ * and weather-based behavior modifications
  */
 export function getMonsterDecision(
   enemy: Enemy,
   players: Player[],
   enemies: Enemy[],
-  tiles: Tile[]
+  tiles: Tile[],
+  weather?: WeatherCondition | null
 ): AIDecision {
   const behavior = getMonsterBehavior(enemy.type);
+  const weatherMods = getWeatherMonsterModifiers(weather || null);
 
-  // Use smart targeting to find best target
-  const { target: targetPlayer, priority } = findSmartTarget(enemy, players, tiles);
+  // Use smart targeting to find best target (with weather consideration)
+  const { target: targetPlayer, priority } = findSmartTarget(enemy, players, tiles, weather);
 
   // No visible players - patrol or wait
   if (!targetPlayer) {
@@ -1275,7 +1478,8 @@ function findRetreatPosition(
 export function processEnemyTurn(
   enemies: Enemy[],
   players: Player[],
-  tiles: Tile[]
+  tiles: Tile[],
+  weather?: WeatherCondition | null
 ): {
   updatedEnemies: Enemy[];
   attacks: Array<{
@@ -1283,6 +1487,7 @@ export function processEnemyTurn(
     targetPlayer: Player;
     isRanged?: boolean;
     coverPenalty?: number;
+    weatherHorrorBonus?: number;
   }>;
   messages: string[];
   specialEvents: Array<{
@@ -1290,13 +1495,20 @@ export function processEnemyTurn(
     enemy: Enemy;
     description: string;
   }>;
+  weatherEffects: {
+    monstersEmpowered: boolean;
+    horrorBonus: number;
+    stealthAdvantage: boolean;
+  };
 } {
+  const weatherMods = getWeatherMonsterModifiers(weather || null);
   const updatedEnemies: Enemy[] = [...enemies];
   const attacks: Array<{
     enemy: Enemy;
     targetPlayer: Player;
     isRanged?: boolean;
     coverPenalty?: number;
+    weatherHorrorBonus?: number;
   }> = [];
   const messages: string[] = [];
   const specialEvents: Array<{
@@ -1305,6 +1517,20 @@ export function processEnemyTurn(
     description: string;
   }> = [];
 
+  // Add weather-specific messages
+  if (weather && weatherMods.aggressionModifier > 1.2) {
+    const weatherDescriptions: Record<string, string> = {
+      fog: 'Monstre rører seg i tåken...',
+      miasma: 'Vesener næres av den mørke miasmaen!',
+      darkness: 'Mørket vekker ting som burde sove...',
+      unnatural_glow: 'Det unaturlige lyset tiltrekker seg ondsinnede øyne!',
+      cosmic_static: 'Virkelighetsforvrengningen styrker vesenene!'
+    };
+    if (weatherDescriptions[weather.type]) {
+      messages.push(weatherDescriptions[weather.type]);
+    }
+  }
+
   // Process enemies in order (faster enemies might act first in future enhancement)
   for (let i = 0; i < updatedEnemies.length; i++) {
     const enemy = updatedEnemies[i];
@@ -1312,13 +1538,22 @@ export function processEnemyTurn(
     // Skip dead enemies
     if (enemy.hp <= 0) continue;
 
-    // Slow enemies only move every other turn
-    if (enemy.traits?.includes('slow') && Math.random() < 0.5) {
+    // Weather affects enemy speed
+    const effectiveSpeed = Math.max(0, Math.floor(enemy.speed * weatherMods.speedModifier));
+
+    // Slow enemies only move every other turn (modified by weather)
+    if (enemy.traits?.includes('slow') && Math.random() < 0.5 / weatherMods.speedModifier) {
       messages.push(`${enemy.name} beveger seg sakte...`);
       continue;
     }
 
-    const decision = getMonsterDecision(enemy, players, updatedEnemies, tiles);
+    // Monsters that benefit from current weather may get extra actions
+    const isEmpowered = monsterBenefitsFromWeather(enemy.type, weather);
+    if (isEmpowered && Math.random() < 0.1) {
+      messages.push(`${enemy.name} styrkes av været!`);
+    }
+
+    const decision = getMonsterDecision(enemy, players, updatedEnemies, tiles, weather);
 
     switch (decision.action) {
       case 'move':
@@ -1344,10 +1579,15 @@ export function processEnemyTurn(
               enemy,
               targetPlayer,
               isRanged: true,
-              coverPenalty: rangedCheck.coverPenalty
+              coverPenalty: rangedCheck.coverPenalty,
+              weatherHorrorBonus: weatherMods.horrorBonus
             });
           } else {
-            attacks.push({ enemy, targetPlayer });
+            attacks.push({
+              enemy,
+              targetPlayer,
+              weatherHorrorBonus: weatherMods.horrorBonus
+            });
           }
         }
         break;
@@ -1355,7 +1595,6 @@ export function processEnemyTurn(
       case 'special':
         // Handle special movement abilities
         if (decision.targetPosition) {
-          const oldPos = { ...enemy.position };
           updatedEnemies[i] = {
             ...enemy,
             position: decision.targetPosition
@@ -1380,7 +1619,17 @@ export function processEnemyTurn(
     }
   }
 
-  return { updatedEnemies, attacks, messages, specialEvents };
+  return {
+    updatedEnemies,
+    attacks,
+    messages,
+    specialEvents,
+    weatherEffects: {
+      monstersEmpowered: weatherMods.aggressionModifier > 1.2,
+      horrorBonus: weatherMods.horrorBonus,
+      stealthAdvantage: weatherMods.stealthBonus
+    }
+  };
 }
 
 /**
