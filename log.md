@@ -1,5 +1,55 @@
 # Development Log
 
+## 2026-01-19: Hex Tile Dead-End Edge Visualization
+
+### Oppgave
+Oppdatere hex tile rendering for å visuelt indikere "dead ends". Når en tile har en kant som er en dead end (f.eks. en vegg innendørs eller en blokkert kant), skal det vises en visuell markør for å hjelpe spillere å forstå kartlayoutet og planlegge bevegelse mer effektivt.
+
+### Løsning
+Implementert SVG-basert kantvisualisering i GameBoard.tsx som tegner distinkte markører på hver hex-kant basert på kanttypen.
+
+### Endringer
+
+#### 1. GameBoard.tsx
+
+**Nye konstanter og hjelpefunksjoner:**
+- `HEX_EDGE_POINTS`: Array med koordinater for hver av de 6 hex-kantene (N, NE, SE, S, SW, NW)
+- `isDeadEndEdge()`: Funksjon som sjekker om en kanttype er impasserbar (wall eller blocked)
+- `isWindowEdge()`: Funksjon som sjekker om en kant er et vindu (delvis blokkert)
+
+**Visuell rendering av kanter:**
+- **Vegger (wall/blocked)**: Vises med tykk mørk linje (strokeWidth 4) med en lysere indre linje for dybde, pluss et lite kryss-symbol på midtpunktet for å tydelig indikere blokkering
+- **Vinduer (window)**: Vises med stiplede linjer i blåaktig farge for å indikere at man kan se gjennom men vanskelig å passere
+
+**Importert EdgeData type** for å sikre typesikkerhet i kantbehandlingen.
+
+### Teknisk implementasjon
+
+```typescript
+// Hex edge endpoints for flat-top hexagon (0-100 scale)
+const HEX_EDGE_POINTS = [
+  { x1: 25, y1: 0, x2: 75, y2: 0 },      // 0: North
+  { x1: 75, y1: 0, x2: 100, y2: 50 },    // 1: North-East
+  { x1: 100, y1: 50, x2: 75, y2: 100 },  // 2: South-East
+  { x1: 75, y1: 100, x2: 25, y2: 100 },  // 3: South
+  { x1: 25, y1: 100, x2: 0, y2: 50 },    // 4: South-West
+  { x1: 0, y1: 50, x2: 25, y2: 0 },      // 5: North-West
+];
+```
+
+For hver synlig tile itereres det over alle 6 kanter. Hvis en kant er en vegg eller vindu, tegnes passende SVG-elementer direkte på den spesifikke kanten.
+
+### Visuelt resultat
+- Vegger vises som tykke mørke linjer med et lite X-symbol
+- Vinduer vises som stiplede blåaktige linjer
+- Åpne kanter (open, door, stairs) har ingen spesiell markering
+- Markørene vises kun på synlige tiles
+
+### Status
+Fullført. Hex tiles viser nå tydelig hvilke kanter som er blokkert (vegger) eller delvis blokkert (vinduer).
+
+---
+
 ## 2026-01-19: Enable New Game with Selected Hero
 
 ### Oppgave
