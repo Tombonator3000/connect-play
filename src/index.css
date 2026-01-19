@@ -133,6 +133,118 @@
   .font-display {
     font-family: 'Cinzel Decorative', serif;
   }
+
+  /* ==========================================================================
+     BOARD GAME AESTHETIC - Oil Painting Tile System
+     ========================================================================== */
+
+  /* Chiaroscuro lighting overlay - dramatic shadow effect */
+  .chiaroscuro-overlay {
+    background: radial-gradient(
+      ellipse at 30% 30%,
+      transparent 0%,
+      rgba(0, 0, 0, 0.2) 50%,
+      rgba(0, 0, 0, 0.5) 100%
+    );
+    mix-blend-mode: multiply;
+  }
+
+  /* Oil painting texture - subtle canvas effect */
+  .oil-texture {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.08'/%3E%3C/svg%3E");
+    mix-blend-mode: overlay;
+  }
+
+  /* ==========================================================================
+     TILE FLOOR TEXTURES - Fallback backgrounds when no image
+     ========================================================================== */
+
+  /* Dark wood flooring - manor, library, study */
+  .tile-darkwood {
+    background: linear-gradient(
+      135deg,
+      hsl(25 30% 12%) 0%,
+      hsl(25 25% 8%) 50%,
+      hsl(25 35% 10%) 100%
+    );
+  }
+
+  /* Cobblestone - streets, squares, markets */
+  .tile-cobblestone {
+    background: 
+      radial-gradient(ellipse at 20% 30%, hsl(230 15% 18%) 0%, transparent 40%),
+      radial-gradient(ellipse at 80% 70%, hsl(230 15% 15%) 0%, transparent 40%),
+      linear-gradient(180deg, hsl(230 20% 12%) 0%, hsl(230 15% 8%) 100%);
+  }
+
+  /* Stone flooring - church, crypt, basement */
+  .tile-stone {
+    background: linear-gradient(
+      145deg,
+      hsl(230 15% 15%) 0%,
+      hsl(230 10% 10%) 50%,
+      hsl(230 20% 12%) 100%
+    );
+  }
+
+  /* Carpet/rug - library, manor rooms */
+  .tile-carpet {
+    background: linear-gradient(
+      135deg,
+      hsl(348 40% 15%) 0%,
+      hsl(348 35% 12%) 50%,
+      hsl(348 30% 10%) 100%
+    );
+  }
+
+  /* Marble flooring - museum, grand halls */
+  .tile-marble {
+    background: linear-gradient(
+      160deg,
+      hsl(210 10% 20%) 0%,
+      hsl(210 5% 15%) 50%,
+      hsl(210 10% 18%) 100%
+    );
+  }
+
+  /* Water/dock areas */
+  .tile-water {
+    background: linear-gradient(
+      180deg,
+      hsl(200 40% 12%) 0%,
+      hsl(200 50% 8%) 50%,
+      hsl(200 35% 15%) 100%
+    );
+  }
+
+  /* ==========================================================================
+     GLOW EFFECTS - Atmospheric lighting
+     ========================================================================== */
+
+  /* Gaslight warm glow */
+  .gaslight-glow {
+    box-shadow: inset 0 0 30px hsla(35, 80%, 45%, 0.15);
+  }
+
+  /* Ritual eldritch glow */
+  .ritual-glow {
+    box-shadow: inset 0 0 40px hsla(280, 60%, 40%, 0.2);
+  }
+
+  /* Supernatural green glow */
+  .eldritch-glow {
+    box-shadow: inset 0 0 35px hsla(120, 40%, 30%, 0.15);
+  }
+
+  /* Gaslight animation */
+  .animate-gaslight {
+    animation: gaslight-pulse 4s ease-in-out infinite;
+  }
+
+  @keyframes gaslight-pulse {
+    0%, 100% { box-shadow: inset 0 0 30px hsla(35, 80%, 45%, 0.15); }
+    50% { box-shadow: inset 0 0 40px hsla(35, 80%, 50%, 0.25); }
+  }
 }
 
 @layer utilities {

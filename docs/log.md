@@ -2,6 +2,21 @@
 
 ## 2026-01-19
 
+### Session 9 - Fix Tile Image Display
+- **Fixed missing CSS classes** that prevented tile images from showing:
+  - Added `.chiaroscuro-overlay` class for dramatic shadow effects
+  - Added `.oil-texture` class for canvas painting effect
+  - Added tile floor texture classes: `.tile-darkwood`, `.tile-cobblestone`, `.tile-stone`, `.tile-carpet`, `.tile-marble`, `.tile-water`
+  - Added glow effect classes: `.gaslight-glow`, `.ritual-glow`, `.eldritch-glow`
+  - Added `.animate-gaslight` keyframe animation
+- **Root cause**: GameBoard.tsx referenced CSS classes that were never added to index.css
+- All 32 tile images are now visible on the game board
+
+### Files Modified This Session
+- `src/index.css` - Added ~100 lines of board game aesthetic CSS classes
+
+---
+
 ### Session 8 - Complete Tile Image Generation
 - **Generated 24 new AI tile images** for all major location types:
   - **Urban**: Train Station, Police Precinct, Museum, Hospital, Asylum, Street, Campus, Market
