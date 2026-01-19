@@ -1949,3 +1949,130 @@ Fiender er nå mye smartere:
 - ✅ Hound of Tindalos kan teleportere
 - ✅ Kontekstuelle angrepsmeldinger
 - ✅ Build vellykket
+
+---
+
+## 2026-01-19: Game Startup - Lovable & GitHub Compatibility
+
+### Oppgave
+Gjøre så spillet starter korrekt fra både Lovable-platformen og GitHub (inkludert GitHub Pages).
+
+### Problemer Identifisert
+
+1. **index.html** hadde feil tittel og metadata
+   - Tittel: "Lovable App" → Skulle være spillets navn
+   - Meta-beskrivelser refererte til "Lovable Generated Project"
+   - Ingen favicon-referanse
+
+2. **package.json** hadde generisk prosjektnavn
+   - Navn: "vite_react_shadcn_ts" → Skulle være "shadows-of-the-1920s"
+   - Versjon: 0.0.0 → Skulle være 1.0.0
+
+3. **vite.config.ts** manglet GitHub Pages støtte
+   - Ingen `base` konfigurasjon for subpath-deployment
+   - Ingen build-optimalisering
+
+4. **CSS @import ordre**
+   - @import kom etter @tailwind → forårsaket build-advarsel
+
+5. **Ingen CI/CD pipeline**
+   - Manuell deployment til GitHub Pages
+
+### Løsninger Implementert
+
+#### 1. index.html - Oppdatert metadata
+```html
+<title>Shadows of the 1920s - A Lovecraftian Horror Game</title>
+<meta name="description" content="A Hero Quest meets Mansions of Madness inspired horror game..." />
+<meta name="author" content="Tombonator3000" />
+<meta name="keywords" content="lovecraft, horror game, hero quest, mansions of madness, 1920s, cthulhu, roguelite" />
+
+<meta property="og:title" content="Shadows of the 1920s" />
+<meta property="og:description" content="A Lovecraftian horror game - Hero Quest meets Mansions of Madness" />
+
+<meta name="twitter:title" content="Shadows of the 1920s" />
+<meta name="twitter:description" content="A Lovecraftian horror game - Hero Quest meets Mansions of Madness" />
+
+<link rel="icon" type="image/x-icon" href="/favicon.ico" />
+```
+
+#### 2. package.json - Prosjektinfo
+```json
+{
+  "name": "shadows-of-the-1920s",
+  "version": "1.0.0",
+  "description": "A Lovecraftian horror game - Hero Quest meets Mansions of Madness",
+  "author": "Tombonator3000"
+}
+```
+
+#### 3. vite.config.ts - Fleksibel base path
+```typescript
+export default defineConfig(({ mode }) => {
+  // For GitHub Pages: VITE_BASE_PATH=/connect-play/
+  // For Lovable/root: leave empty or /
+  const basePath = process.env.VITE_BASE_PATH || '/';
+
+  return {
+    base: basePath,
+    // ... rest of config
+    build: {
+      outDir: 'dist',
+      sourcemap: mode === 'development',
+    },
+  };
+});
+```
+
+#### 4. CSS - Riktig @import rekkefølge
+```css
+/* @import FØRST */
+@import url('https://fonts.googleapis.com/...');
+
+/* Deretter tailwind */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+```
+
+#### 5. GitHub Actions Workflow
+Opprettet `.github/workflows/deploy.yml`:
+- Trigger: push til main branch
+- Node.js 20
+- npm ci + npm run build
+- Deploy til GitHub Pages med riktig base path
+
+### Deployment Guide
+
+**Lovable:**
+1. Klikk "Share → Publish"
+2. Ingen ekstra konfigurasjon nødvendig
+
+**GitHub Pages:**
+1. Aktiver GitHub Pages i repository settings
+2. Velg "GitHub Actions" som kilde
+3. Push til main branch → automatisk deployment
+4. URL: https://tombonator3000.github.io/connect-play/
+
+**Lokal utvikling:**
+```bash
+npm install
+npm run dev
+```
+
+### Filer Opprettet
+- `.github/workflows/deploy.yml` (NY) - GitHub Actions deployment
+
+### Filer Modifisert
+- `index.html` - Oppdatert tittel og metadata
+- `package.json` - Oppdatert prosjektinfo og versjon
+- `vite.config.ts` - Lagt til fleksibel base path
+- `src/index.css` - Fikset @import rekkefølge
+
+### Resultat
+- ✅ Spillet starter fra Lovable (root path /)
+- ✅ Spillet kan deployes til GitHub Pages (subpath /connect-play/)
+- ✅ Automatisk deployment via GitHub Actions
+- ✅ Riktig spilltittel og metadata for SEO/deling
+- ✅ Build vellykket uten advarsler
+- ✅ Favicon fungerer
