@@ -1,6 +1,7 @@
 import React from 'react';
 import { Player, Item } from '../types';
 import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User } from 'lucide-react';
+import { ItemTooltip } from './ItemTooltip';
 
 interface CharacterPanelProps {
   player: Player | null;
@@ -91,10 +92,17 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ player }) => {
           <div className="grid grid-cols-3 gap-2">
             {Array.from({ length: 6 }).map((_, index) => {
               const item = player.inventory[index];
-              return (
-                <div key={index} className={`aspect-square border-2 rounded-lg flex items-center justify-center transition-all ${item ? 'bg-leather border-parchment text-parchment' : 'bg-background/40 border-border opacity-30'}`}>
+              const slotContent = (
+                <div className={`aspect-square border-2 rounded-lg flex items-center justify-center transition-all cursor-default ${item ? 'bg-leather border-parchment text-parchment hover:border-accent hover:shadow-[var(--shadow-glow)]' : 'bg-background/40 border-border opacity-30'}`}>
                   {item && getItemIcon(item.type)}
                 </div>
+              );
+              return item ? (
+                <ItemTooltip key={index} item={item}>
+                  {slotContent}
+                </ItemTooltip>
+              ) : (
+                <div key={index}>{slotContent}</div>
               );
             })}
           </div>
