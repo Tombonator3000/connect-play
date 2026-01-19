@@ -4,6 +4,7 @@ export enum GamePhase {
   MYTHOS = 'mythos',
   COMBAT = 'combat',
   GAME_OVER = 'gameOver',
+  MERCHANT = 'merchant',
   VICTORY = 'victory'
 }
 
@@ -270,6 +271,30 @@ export interface EventCard {
   value: number;
 }
 
+export interface GameSettings {
+  audio: {
+    masterVolume: number;
+    musicVolume: number;
+    sfxVolume: number;
+    muted: boolean;
+  };
+  graphics: {
+    highContrast: boolean;
+    reduceMotion: boolean;
+    particles: boolean;
+  };
+  gameplay: {
+    showGrid: boolean;
+    fastMode: boolean;
+  };
+}
+
+export interface ActivePuzzle {
+  type: 'sequence';
+  difficulty: number;
+  targetTileId: string;
+}
+
 export interface GameState {
   phase: GamePhase;
   doom: number;
@@ -284,6 +309,7 @@ export interface GameState {
   lastDiceRoll: number[] | null;
   activeEvent: EventCard | null;
   activeCombat: { enemyId: string; playerId: string } | null;
+  activePuzzle: ActivePuzzle | null;
   selectedEnemyId: string | null;
   selectedTileId: string | null;
   activeScenario: Scenario | null;

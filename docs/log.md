@@ -2,6 +2,42 @@
 
 ## 2026-01-19
 
+### Session 5 - External Repo Sync & Documentation
+- Synced missing components from external repo (https://github.com/Tombonator3000/https-github.com-Tombonator3000)
+- **New Components Added:**
+  - `EventModal.tsx` - Event card display modal
+  - `JournalModal.tsx` - Field Guide / Bestiary modal
+  - `MerchantShop.tsx` - Buy/sell items interface
+  - `PuzzleModal.tsx` - Memory sequence puzzle (Elder Sign)
+  - `TurnNotification.tsx` - Phase/turn announcements
+- **New Utilities Added:**
+  - `utils/AssetLibrary.ts` - Asset management & caching system
+  - `utils/Settings.ts` - Settings persistence helpers
+- **Types Updated:**
+  - Added `GamePhase.MERCHANT` enum value
+  - Added `GameSettings` interface for settings persistence
+  - Added `ActivePuzzle` interface for puzzle state
+  - Added `activePuzzle` to `GameState`
+- **Documentation Overhaul:**
+  - Rewrote `agents.md` with full Development Protocols & Agent Roster
+  - Added Component Inventory, Implemented Systems, Design System sections
+  - Updated Key Files Reference
+
+### Files Created This Session
+- `src/game/components/EventModal.tsx`
+- `src/game/components/JournalModal.tsx`
+- `src/game/components/MerchantShop.tsx`
+- `src/game/components/PuzzleModal.tsx`
+- `src/game/components/TurnNotification.tsx`
+- `src/game/utils/AssetLibrary.ts`
+- `src/game/utils/Settings.ts`
+
+### Files Modified This Session
+- `src/game/types.ts` - Added GameSettings, ActivePuzzle, MERCHANT phase
+- `docs/agents.md` - Complete rewrite with agent roster template
+
+---
+
 ### Session 1 - Initial Import
 - Imported game from GitHub repo
 - Implemented Lovecraft design system (colors, fonts, animations)
