@@ -513,7 +513,9 @@ export interface BestiaryEntry {
   description: string;
   lore: string;
   hp: number;
-  damage: number;
+  damage: number;           // Legacy: base damage (kept for backwards compatibility)
+  attackDice: number;       // Hero Quest style: number of dice monster rolls to attack
+  defenseDice: number;      // Hero Quest style: number of dice monster rolls to defend
   horror: number;
   traits?: string[];
   defeatFlavor?: string;

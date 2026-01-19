@@ -92,6 +92,18 @@ export function performSkillCheck(
 }
 
 /**
+ * Get attack dice count based on weapon (Hero Quest style)
+ * Weapon DETERMINES dice count directly, not adds bonus
+ * Unarmed: 1 die
+ * Knife/Club: 2 dice
+ * Revolver: 2 dice
+ * Shotgun: 3 dice
+ * Tommy Gun: 4 dice
+ */
+export function getAttackDice(player: Player): { attackDice: number; weaponName: string } {
+  let attackDice = 1; // Unarmed
+  let weaponName = 'Unarmed';
+
  * Get the equipped weapon's attack dice
  * Hero Quest style: weapon DETERMINES total dice (not bonus)
  */
@@ -142,6 +154,33 @@ export function getDefenseDice(player: Player): { defenseDice: number; armorName
   let armorName = 'No Armor';
 
   for (const item of items) {
+    if (item.type === 'weapon' && item.bonus) {
+      // Weapon bonus directly determines dice count
+      // bonus 1 = 2 dice, bonus 2 = 3 dice, bonus 3 = 4 dice
+      const weaponDice = 1 + item.bonus;
+      if (weaponDice > attackDice) {
+        attackDice = weaponDice;
+        weaponName = item.name;
+      }
+    }
+  }
+
+  return { attackDice, weaponName };
+}
+
+/**
+ * Legacy function for backwards compatibility
+ */
+export function getWeaponBonus(player: Player): { combatDice: number; damage: number } {
+  const { attackDice } = getAttackDice(player);
+  return { combatDice: attackDice - 1, damage: attackDice };
+}
+
+/**
+ * Perform combat attack using Hero Quest dice system
+ * Weapon DETERMINES attack dice count directly
+ * Enemy rolls defense dice to block
+ * Net damage = attack successes - defense successes
     if (item.type === 'armor' && item.defenseDice) {
       armorDefense = Math.max(armorDefense, item.defenseDice);
       armorName = item.name;
@@ -169,58 +208,61 @@ export function performAttack(
   enemy: Enemy,
   isRanged: boolean = false
 ): CombatResult {
-  // Get weapon attack dice
-  const weaponInfo = getWeaponAttackDice(player);
-  let attackDice = weaponInfo.attackDice;
+  const dc = 4; // Standard Hero Quest DC (skulls)
 
-  // Auto-determine if ranged based on weapon
-  const actuallyRanged = weaponInfo.isRanged;
+  // Get attack dice from weapon (Hero Quest style - weapon determines dice count)
+  const { attackDice, weaponName } = getAttackDice(player);
 
-  // Veteran gets +1 attack die with melee weapons
-  if (player.specialAbility === 'combat_bonus' && !actuallyRanged) {
-    attackDice += 1;
-  }
+  // Veteran class bonus: +1 attack die
+  const classBonusDice = player.specialAbility === 'combat_bonus' ? 1 : 0;
+  const totalAttackDice = attackDice + classBonusDice;
 
-  // Roll attack dice
-  const attackRolls = rollDice(attackDice);
-  const attackSuccesses = countSuccesses(attackRolls, COMBAT_DC);
+  // Roll player's attack dice
+  const attackRolls = rollDice(totalAttackDice);
+  const attackSuccesses = countSuccesses(attackRolls, dc);
 
-  // Critical checks
-  const criticalHit = attackSuccesses === attackDice && attackDice > 0;
+  // Get enemy defense dice from bestiary
+  const bestiaryEntry = BESTIARY[enemy.type];
+  const defenseDice = bestiaryEntry?.defenseDice || 1;
+
+  // Roll enemy's defense dice
+  const defenseRolls = rollDice(defenseDice);
+  const defenseSuccesses = countSuccesses(defenseRolls, dc);
+
+  // Calculate net damage
+  let damage = Math.max(0, attackSuccesses - defenseSuccesses);
+
+  // Critical hit: all attack dice succeeded AND more than defense
+  const criticalHit = attackSuccesses === totalAttackDice && attackSuccesses > defenseSuccesses;
   const criticalMiss = attackSuccesses === 0;
 
-  // Calculate raw damage (skulls)
-  let damage = attackSuccesses;
-
-  // Critical hit doubles damage
-  if (criticalHit) {
-    damage *= 2;
+  // Critical hit bonus: +1 extra damage
+  if (criticalHit && damage > 0) {
+    damage += 1;
   }
 
-  // Enemy takes damage reduction from "massive" trait
-  if (enemy.traits?.includes('massive') && damage > 0) {
-    damage = Math.max(1, damage - 1);
-  }
+  // Build message with dice results
+  const attackDiceStr = attackRolls.map(r => r >= dc ? `[${r}]` : `${r}`).join(' ');
+  const defenseDiceStr = defenseRolls.map(r => r >= dc ? `[${r}]` : `${r}`).join(' ');
 
-  // Build message
   let message = '';
   if (criticalHit) {
-    message = `KRITISK TREFF! ${player.name} knuser ${enemy.name} med ${weaponInfo.weaponName}! (${damage} skade)`;
+    message = `KRITISK TREFF! ${player.name} (${weaponName}) knuser ${enemy.name}! ${damage} skade! (Angrep: ${attackDiceStr} = ${attackSuccesses} | Forsvar: ${defenseDiceStr} = ${defenseSuccesses})`;
   } else if (criticalMiss) {
-    message = `BOMMERT! ${player.name} treffer ikke ${enemy.name}.`;
+    message = `BOMMERT! ${player.name} (${weaponName}) treffer ikke! (${attackDiceStr})`;
+  } else if (damage > 0) {
+    message = `TREFF! ${player.name} (${weaponName}) gjor ${damage} skade mot ${enemy.name}. (Angrep: ${attackDiceStr} = ${attackSuccesses} | Forsvar: ${defenseDiceStr} = ${defenseSuccesses})`;
   } else if (attackSuccesses > 0) {
-    message = `TREFF! ${player.name} gjør ${damage} skade mot ${enemy.name} med ${weaponInfo.weaponName}.`;
+    message = `${enemy.name} blokkerer angrepet! (Angrep: ${attackDiceStr} = ${attackSuccesses} | Forsvar: ${defenseDiceStr} = ${defenseSuccesses})`;
   } else {
-    message = `BOMMERT! ${player.name} treffer ikke ${enemy.name}.`;
+    message = `BOMMERT! ${player.name} (${weaponName}) treffer ikke ${enemy.name}. (${attackDiceStr})`;
   }
 
   return {
-    hit: attackSuccesses > 0,
+    hit: damage > 0,
     damage,
-    attackRolls,
-    attackSuccesses,
-    defenseRolls: [],
-    defenseSuccesses: 0,
+    rolls: attackRolls,
+    successes: attackSuccesses,
     criticalHit,
     criticalMiss,
     horrorTriggered: false,
@@ -329,138 +371,98 @@ export function performHorrorCheck(
 }
 
 /**
- * Cast an Occultist spell (Hero Quest Elf-style magic)
+ * Get player's defense dice count based on armor
+ * Hero Quest style: armor DETERMINES defense dice directly
  */
-export function castSpell(
-  player: Player,
-  spell: OccultistSpell,
-  target?: Enemy
-): SpellCastResult {
-  // Check if player can cast spells
-  if (!player.canCastSpells) {
-    return {
-      success: false,
-      damage: 0,
-      rolls: [],
-      successes: 0,
-      spellUsed: spell,
-      message: `${player.name} kan ikke kaste trylleformler!`
-    };
-  }
+export function getPlayerDefenseDice(player: Player): number {
+  let defenseDice = 1; // Base defense (dodging)
 
-  // Check spell uses
-  if (spell.usesPerScenario !== -1 && (spell.currentUses || 0) >= spell.usesPerScenario) {
-    return {
-      success: false,
-      damage: 0,
-      rolls: [],
-      successes: 0,
-      spellUsed: spell,
-      message: `${spell.name} er brukt opp for dette scenariet!`
-    };
-  }
-
-  let rolls: number[] = [];
-  let successes = 0;
-  let damage = 0;
-
-  // Handle different spell effects
-  switch (spell.effect) {
-    case 'attack':
-    case 'attack_horror':
-      // Attack spells: roll attackDice, count successes as damage
-      rolls = rollDice(spell.attackDice);
-      successes = countSuccesses(rolls, COMBAT_DC);
-      damage = successes;
-
-      // Add horror damage for attack_horror spells
-      if (spell.effect === 'attack_horror' && spell.horrorDamage && target) {
-        // This would reduce enemy morale/cause them to flee in future implementation
-      }
-      break;
-
-    case 'banish':
-      // Banish: Uses WIL check vs DC 5
-      const wilDice = 2 + player.attributes.willpower;
-      rolls = rollDice(wilDice);
-      successes = countSuccesses(rolls, 5);
-      // Banish instantly destroys weak enemies (HP <= 3)
-      if (successes > 0 && target && target.hp <= 3) {
-        damage = target.hp; // Instant kill
-      }
-      break;
-
-    case 'defense':
-      // Defense boost is handled separately in combat
-      successes = 1; // Auto-success
-      break;
-
-    case 'utility':
-      // Utility spells always succeed
-      successes = 1;
-      break;
-  }
-
-  const success = successes > 0 || spell.effect === 'defense' || spell.effect === 'utility';
-
-  let message = '';
-  if (success) {
-    if (spell.effect === 'attack' || spell.effect === 'attack_horror') {
-      message = `${player.name} kaster ${spell.name}! ${damage} skade${target ? ` mot ${target.name}` : ''}.`;
-    } else if (spell.effect === 'banish') {
-      if (damage > 0) {
-        message = `${player.name} kaster ${spell.name}! ${target?.name} forsvinner i tomhet!`;
-      } else {
-        message = `${player.name} kaster ${spell.name}, men ${target?.name} motstår!`;
-      }
-    } else if (spell.effect === 'defense') {
-      message = `${player.name} aktiverer ${spell.name}! +${spell.defenseBonus} forsvarsterninger denne runden.`;
-    } else {
-      message = `${player.name} kaster ${spell.name}!`;
+  const items = getAllItems(player.inventory);
+  for (const item of items) {
+    if (item.type === 'armor' && item.bonus) {
+      // Armor bonus directly sets defense dice (not adds)
+      // Leather Jacket (1) = 2 dice, Trench Coat (1) = 2 dice, Armored Vest (2) = 3 dice
+      defenseDice = Math.max(defenseDice, 1 + item.bonus);
     }
-  } else {
-    message = `${player.name} mislykkes med å kaste ${spell.name}!`;
   }
 
-  return {
-    success,
-    damage,
-    rolls,
-    successes,
-    spellUsed: spell,
-    message
-  };
+  return defenseDice;
 }
 
 /**
- * Calculate enemy attack damage
- * Enemy attacks are simplified - they just deal their damage value
- * Player can defend with defense rolls
+ * Calculate enemy attack damage using Hero Quest dice system
+ * Monster rolls attackDice, player rolls defenseDice
+ * Each die showing 4+ is a success (skull/shield)
+ * Net damage = attack successes - defense successes (minimum 0)
  */
 export function calculateEnemyDamage(enemy: Enemy, player: Player): {
   hpDamage: number;
   sanityDamage: number;
+  attackRolls: number[];
+  defenseRolls: number[];
+  attackSuccesses: number;
+  defenseSuccesses: number;
   message: string;
 } {
-  let hpDamage = enemy.damage;
+  const dc = 4; // Standard Hero Quest DC (skulls)
+
+  // Get attack dice from bestiary
+  const bestiaryEntry = BESTIARY[enemy.type];
+  const attackDice = bestiaryEntry?.attackDice || 1;
+
+  // Roll attack dice
+  const attackRolls = rollDice(attackDice);
+  let attackSuccesses = countSuccesses(attackRolls, dc);
+
+  // Fast enemies get +1 success on attack
+  if (enemy.traits?.includes('fast')) {
+    attackSuccesses += 1;
+  }
+
+  // Get player defense dice
+  const defenseDice = getPlayerDefenseDice(player);
+  const defenseRolls = rollDice(defenseDice);
+  const defenseSuccesses = countSuccesses(defenseRolls, dc);
+
+  // Calculate net damage
+  let hpDamage = Math.max(0, attackSuccesses - defenseSuccesses);
   let sanityDamage = 0;
 
   // Check enemy attack type
   if (enemy.attackType === 'sanity') {
-    sanityDamage = enemy.damage;
+    // Sanity attackers deal sanity damage instead of HP
+    sanityDamage = hpDamage;
     hpDamage = 0;
   } else if (enemy.attackType === 'doom') {
-    sanityDamage = Math.ceil(enemy.damage / 2);
+    // Doom attackers also cause sanity damage
+    sanityDamage = Math.ceil(hpDamage / 2);
   }
 
-  // Fast enemies get bonus damage
-  if (enemy.traits?.includes('fast')) {
-    hpDamage += 1;
+  // Build message with dice results
+  const attackDiceStr = attackRolls.map(r => r >= dc ? `[${r}]` : `${r}`).join(' ');
+  const defenseDiceStr = defenseRolls.map(r => r >= dc ? `[${r}]` : `${r}`).join(' ');
+
+  let message = '';
+  if (attackSuccesses === 0) {
+    message = `${enemy.name} angriper ${player.name} men bommer! (${attackDiceStr})`;
+  } else if (hpDamage === 0 && sanityDamage === 0) {
+    message = `${enemy.name} angriper! ${player.name} blokkerer alt! (Angrep: ${attackDiceStr} = ${attackSuccesses} | Forsvar: ${defenseDiceStr} = ${defenseSuccesses})`;
+  } else {
+    const damageStr = sanityDamage > 0
+      ? `-${hpDamage} HP, -${sanityDamage} Sanity`
+      : `-${hpDamage} HP`;
+    message = `${enemy.name} angriper ${player.name}! ${damageStr} (Angrep: ${attackDiceStr} = ${attackSuccesses} | Forsvar: ${defenseDiceStr} = ${defenseSuccesses})`;
   }
 
-  const message = `${enemy.name} angriper ${player.name}! ${hpDamage} potensiell skade${sanityDamage > 0 ? `, ${sanityDamage} Sanity tap` : ''}.`;
-
-  return { hpDamage, sanityDamage, message };
+  return {
+    hpDamage,
+    sanityDamage,
+    attackRolls,
+    defenseRolls,
+    attackSuccesses,
+    defenseSuccesses,
+    message
+  };
 }
 
 /**
@@ -505,8 +507,8 @@ export function hasRangedWeapon(player: Player): boolean {
 }
 
 /**
- * Get combat dice preview for UI
- * Hero Quest style: shows weapon dice and defense dice
+ * Get combat dice preview for UI (Hero Quest style)
+ * Shows attack dice based on weapon + any class bonus
  */
 export function getCombatPreview(player: Player): {
   attackDice: number;
@@ -515,30 +517,43 @@ export function getCombatPreview(player: Player): {
   armorName: string;
   breakdown: string[];
 } {
-  const weaponInfo = getWeaponAttackDice(player);
-  const defenseInfo = getDefenseDice(player);
-
-  let attackDice = weaponInfo.attackDice;
-
-  // Veteran melee bonus
-  if (player.specialAbility === 'combat_bonus' && !weaponInfo.isRanged) {
-    attackDice += 1;
-  }
+  const { attackDice, weaponName } = getAttackDice(player);
+  const classBonusDice = player.specialAbility === 'combat_bonus' ? 1 : 0;
 
   const breakdown: string[] = [
-    `Attack: ${attackDice}d6 (${weaponInfo.weaponName})`,
-    `Defense: ${defenseInfo.defenseDice}d6 (Base ${player.baseDefenseDice || 2} + ${defenseInfo.armorName})`
+    `${weaponName}: ${attackDice}d6`
   ];
 
-  if (player.specialAbility === 'combat_bonus' && !weaponInfo.isRanged) {
-    breakdown.push('Veteran bonus: +1 melee attack die');
+  if (classBonusDice > 0) {
+    breakdown.push(`Veteran bonus: +1d6`);
   }
 
   return {
-    attackDice,
-    defenseDice: defenseInfo.defenseDice,
-    weaponName: weaponInfo.weaponName,
-    armorName: defenseInfo.armorName,
+    totalDice: attackDice + classBonusDice,
+    breakdown
+  };
+}
+
+/**
+ * Get defense dice preview for UI (Hero Quest style)
+ */
+export function getDefensePreview(player: Player): {
+  totalDice: number;
+  breakdown: string[];
+} {
+  const defenseDice = getPlayerDefenseDice(player);
+  const items = getAllItems(player.inventory);
+  const armor = items.find(item => item.type === 'armor');
+
+  const breakdown: string[] = [];
+  if (armor) {
+    breakdown.push(`${armor.name}: ${defenseDice}d6`);
+  } else {
+    breakdown.push(`Unna: ${defenseDice}d6`);
+  }
+
+  return {
+    totalDice: defenseDice,
     breakdown
   };
 }
