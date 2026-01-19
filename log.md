@@ -1,5 +1,46 @@
 # Development Log
 
+## 2026-01-19: Bug Fix - Create Hero TypeError
+
+### Problem
+When clicking "Create Hero" in the Hero Archive panel, the game crashed with:
+```
+Uncaught TypeError: rn.find is not a function
+```
+
+This is a minified error message. The actual error was in `legacyManager.ts` where `CHARACTERS.find()` was being called.
+
+### Root Cause
+`CHARACTERS` is defined as a `Record<CharacterType, Character>` (an object), not an array. Objects don't have a `.find()` method.
+
+Four functions in `legacyManager.ts` were calling `CHARACTERS.find()`:
+- `getBaseAttributesForClass()` (line 111)
+- `getBaseHpForClass()` (line 123)
+- `getBaseSanityForClass()` (line 131)
+- `legacyHeroToPlayer()` (line 553)
+
+### Fix Applied
+Changed all four occurrences from:
+```typescript
+const character = CHARACTERS.find(c => c.id === characterClass);
+```
+
+To direct object access:
+```typescript
+const character = CHARACTERS[characterClass];
+```
+
+Since `CHARACTERS` is indexed by `CharacterType`, direct access works correctly.
+
+### Files Modified
+- `src/game/utils/legacyManager.ts` (4 fixes)
+
+### Result
+- TypeScript compiles without errors
+- Create Hero function now works correctly
+
+---
+
 ## 2026-01-19: REGELBOK.MD Opprettet & CombatUtils Bug Fix
 
 ### Oppgave
