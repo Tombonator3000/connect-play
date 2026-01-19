@@ -542,3 +542,91 @@ The Legacy system is now fully implemented:
 - Store items in shared stash
 - Permadeath - dead heroes are gone forever
 - All data persisted in localStorage
+
+---
+
+## 2026-01-19: Random Scenario Selection System
+
+### Oppgave
+Implementer system der "New Case" starter et tilfeldig scenario basert på valgt vanskelighetsgrad, i stedet for manuelt scenario-valg.
+
+### Implementation
+
+#### 1. Expanded Scenario Pool (constants.ts)
+Added 12 new scenarios to the existing 3, for a total of **15 scenarios**:
+
+| ID | Navn | Type | Vanskelighet |
+|----|------|------|--------------|
+| s1 | Escape from Blackwood Manor | escape | Normal |
+| s2 | The High Priest Must Die | assassination | Hard |
+| s3 | The Siege of Arkham | survival | Nightmare |
+| s4 | Forbidden Knowledge | collection | Normal |
+| s5 | The Missing Professor | rescue | Normal |
+| s6 | Seal the Gate | seal_portal | Hard |
+| s7 | The Innsmouth Conspiracy | investigation | Normal |
+| s8 | Cleanse the Crypt | purge | Hard |
+| s9 | The Ritual of Binding | ritual | Nightmare |
+| s10 | Mansion of Madness | multi_objective | Hard |
+| s11 | The Deep One Raid | survival | Normal |
+| s12 | The Lost Artifact | collection | Normal |
+| s13 | Arkham Asylum Breakout | rescue | Hard |
+| s14 | The Witch's Curse | ritual | Normal |
+| s15 | The Final Gate | seal_portal | Nightmare |
+
+**Distribution by difficulty:**
+- Normal: 7 scenarios (s1, s4, s5, s7, s11, s12, s14)
+- Hard: 5 scenarios (s2, s6, s8, s10, s13)
+- Nightmare: 3 scenarios (s3, s9, s15)
+
+Each scenario includes:
+- Unique briefing narrative (Lovecraftian atmosphere)
+- Multiple objectives (primary and bonus)
+- Victory/defeat conditions
+- Doom events that trigger at specific thresholds
+- Estimated time and recommended players
+
+#### 2. Difficulty Selection UI (ShadowsGame.tsx)
+Replaced direct scenario selection with difficulty-based random selection:
+
+**New UI Flow:**
+1. Click "New Case" on Main Menu
+2. **Choose Difficulty** screen appears with 3 options:
+   - **Normal** (emerald green) - Standard difficulty, 7 scenarios
+   - **Hard** (amber) - Challenging, 5 scenarios
+   - **Nightmare** (red) - Brutal difficulty, 3 scenarios
+3. Random scenario selected from chosen difficulty pool
+4. Character selection screen shows selected scenario info
+5. Scenario briefing popup before game starts
+
+**New State & Functions:**
+```typescript
+// New state for tracking selected difficulty
+const [selectedDifficulty, setSelectedDifficulty] = useState<'Normal' | 'Hard' | 'Nightmare' | null>(null);
+
+// Function to get random scenario based on difficulty
+const getRandomScenario = useCallback((difficulty: 'Normal' | 'Hard' | 'Nightmare'): Scenario => {
+  const filteredScenarios = SCENARIOS.filter(s => s.difficulty === difficulty);
+  const randomIndex = Math.floor(Math.random() * filteredScenarios.length);
+  return filteredScenarios[randomIndex];
+}, []);
+```
+
+**UI Features:**
+- Star ratings to visually indicate difficulty
+- Color-coded buttons (emerald/amber/red)
+- Hover glow effects
+- Shows number of available scenarios per difficulty
+- Displays selected scenario info before starting
+
+### Files Modified
+- `src/game/constants.ts` - Added 12 new scenarios (s4-s15)
+- `src/game/ShadowsGame.tsx` - Replaced scenario grid with difficulty selection
+
+### Summary
+The "New Case" feature now works as follows:
+1. User selects a difficulty level (Normal/Hard/Nightmare)
+2. System randomly selects a scenario from that difficulty pool
+3. Selected scenario is shown with briefing popup
+4. Game begins with the randomly selected scenario
+
+This adds replayability and variety to the game, as players can experience different scenarios each time they play at the same difficulty level.
