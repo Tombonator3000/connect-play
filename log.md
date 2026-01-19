@@ -824,3 +824,112 @@ Terning-systemet fungerer som designet. 8 terninger er normalt for en Veteran. I
 1. Vurder å legge til attributt-cap (f.eks. max 7)
 2. Synkroniser våpen-bonuser mellom constants.ts og legacyManager.ts
 3. Vurder å legge til total terning-cap (f.eks. max 12)
+
+---
+
+## 2026-01-19: Hero Quest Dice System - Monster Combat Overhaul
+
+### Oppgave
+Fortsett konverteringen til Hero Quest-stil terningsystem for monstre. Forrige chat endret systemet for karakterer til at våpen BESTEMMER antall terninger direkte. Nå skal monstre også bruke dette systemet.
+
+### Endringer
+
+#### 1. BestiaryEntry Interface (types.ts)
+Utvidet med nye felter:
+```typescript
+interface BestiaryEntry {
+  // ... eksisterende felter ...
+  attackDice: number;   // Antall terninger monsteret ruller for angrep
+  defenseDice: number;  // Antall terninger monsteret ruller for forsvar
+}
+```
+
+#### 2. BESTIARY Oppdatert (constants.ts)
+Alle monstre har nå attackDice og defenseDice basert på trusselnivå:
+
+| Kategori | Monster | HP | AttackDice | DefenseDice |
+|----------|---------|-----|------------|-------------|
+| **MINIONS** | Cultist | 2 | 1 | 1 |
+| | Mi-Go | 3 | 1 | 2 |
+| | Nightgaunt | 3 | 1 | 2 |
+| | Moon-Beast | 4 | 1 | 2 |
+| **WARRIORS** | Ghoul | 3 | 2 | 2 |
+| | Deep One | 3 | 2 | 2 |
+| | Sniper | 2 | 2 | 1 |
+| | Byakhee | 3 | 2 | 2 |
+| | Formless Spawn | 5 | 2 | 3 |
+| | Hound of Tindalos | 4 | 2 | 2 |
+| **ELITES** | Dark Priest | 5 | 2 | 3 |
+| | Hunting Horror | 4 | 3 | 2 |
+| | Dark Young | 6 | 3 | 3 |
+| **BOSSES** | Shoggoth | 6 | 3 | 4 |
+| | Star Spawn | 8 | 4 | 4 |
+| | Ancient One | 10 | 4 | 5 |
+
+#### 3. Combat System (combatUtils.ts)
+
+**Nye funksjoner:**
+- `getAttackDice(player)`: Våpen bestemmer angrepsterninger direkte
+  - Unarmed: 1 terning
+  - Knife/Revolver (bonus 1): 2 terninger
+  - Shotgun (bonus 2): 3 terninger
+  - Tommy Gun (bonus 3): 4 terninger
+
+- `getPlayerDefenseDice(player)`: Rustning bestemmer forsvarsterninger
+  - Ingen rustning: 1 terning (dodge)
+  - Leather Jacket (bonus 1): 2 terninger
+  - Armored Vest (bonus 2): 3 terninger
+
+- `getDefensePreview(player)`: UI-visning for forsvarsterninger
+
+**Oppdaterte funksjoner:**
+
+`performAttack(player, enemy)` - Spiller angriper monster:
+1. Spilleren ruller angrepsterninger (basert på våpen)
+2. Monsteret ruller forsvarsterninger (fra BESTIARY)
+3. Skade = angrep-suksesser - forsvar-suksesser
+4. Kritisk treff: Alle angrepsterninger traff + mer enn forsvar = +1 bonus skade
+
+`calculateEnemyDamage(enemy, player)` - Monster angriper spiller:
+1. Monsteret ruller angrepsterninger (fra BESTIARY)
+2. Spilleren ruller forsvarsterninger (basert på rustning)
+3. Skade = angrep-suksesser - forsvar-suksesser
+4. Fast-trait gir +1 suksess
+
+### Eksempel på Kamp
+
+**Spiller (med Shotgun) vs Ghoul:**
+```
+Spiller ruller 3 angrepssterninger (Shotgun): [4] [2] [6] = 2 suksesser
+Ghoul ruller 2 forsvarsterninger: [3] [5] = 1 suksess
+Skade = 2 - 1 = 1 HP
+```
+
+**Ghoul vs Spiller (med Leather Jacket):**
+```
+Ghoul ruller 2 angrepsterninger: [5] [4] = 2 suksesser
+Spiller ruller 2 forsvarsterninger: [6] [2] = 1 suksess
+Skade = 2 - 1 = 1 HP
+```
+
+### Balansering
+
+Hero Quest-systemet er nå enklere og mer forutsigbart:
+- Våpen-valg er strategisk viktig (mer terninger = bedre sjanse)
+- Rustning gir reell beskyttelse (ikke bare damage reduction)
+- Sterke monstre er farligere (høyere attackDice)
+- Boss-monstre er tøffere å drepe (høyere defenseDice)
+
+### Filer Modifisert
+- `src/game/types.ts` - Utvidet BestiaryEntry interface
+- `src/game/constants.ts` - Oppdatert BESTIARY med attackDice/defenseDice
+- `src/game/utils/combatUtils.ts` - Fullstendig omskriving av kampsystemet
+
+### Tekniske Detaljer
+
+DC (Difficulty Class) = 4 for alle terningkast. En terning som viser 4, 5, eller 6 teller som en suksess (tilsvarer "skull" i Hero Quest).
+
+Meldinger viser nå terningkast visuelt:
+- Suksesser vises i klammer: `[4] [6]`
+- Misser vises uten: `2 3`
+- Eksempel: `"TREFF! Detective (Revolver) gjør 1 skade mot Ghoul. (Angrep: [4] 2 = 1 | Forsvar: 3 = 0)"`
