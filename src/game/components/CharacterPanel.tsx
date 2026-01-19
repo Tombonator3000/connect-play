@@ -1,18 +1,79 @@
-import React from 'react';
-import { Player, Item, countInventoryItems } from '../types';
-import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User, Hand, Shirt, Key } from 'lucide-react';
+import React, { useState } from 'react';
+import { Player, Item, countInventoryItems, InventorySlotName } from '../types';
+import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User, Hand, Shirt, Key, X, ArrowRight, Trash2, Pill } from 'lucide-react';
 import { ItemTooltip } from './ItemTooltip';
 
 interface CharacterPanelProps {
   player: Player | null;
+  onUseItem?: (item: Item, slotName: InventorySlotName) => void;
+  onUnequipItem?: (slotName: InventorySlotName) => void;
+  onEquipFromBag?: (bagIndex: number, targetSlot: 'leftHand' | 'rightHand') => void;
+  onDropItem?: (slotName: InventorySlotName) => void;
 }
 
-const CharacterPanel: React.FC<CharacterPanelProps> = ({ player }) => {
+const CharacterPanel: React.FC<CharacterPanelProps> = ({
+  player,
+  onUseItem,
+  onUnequipItem,
+  onEquipFromBag,
+  onDropItem
+}) => {
+  const [selectedSlot, setSelectedSlot] = useState<InventorySlotName | null>(null);
+  const [showSlotMenu, setShowSlotMenu] = useState(false);
+
   if (!player) return null;
 
   const hpPercent = (player.hp / player.maxHp) * 100;
   const sanPercent = (player.sanity / player.maxSanity) * 100;
   const inventoryCount = countInventoryItems(player.inventory);
+
+  // Get item from slot
+  const getItemFromSlot = (slotName: InventorySlotName): Item | null => {
+    switch (slotName) {
+      case 'leftHand': return player.inventory.leftHand;
+      case 'rightHand': return player.inventory.rightHand;
+      case 'body': return player.inventory.body;
+      case 'bag1': return player.inventory.bag[0];
+      case 'bag2': return player.inventory.bag[1];
+      case 'bag3': return player.inventory.bag[2];
+      case 'bag4': return player.inventory.bag[3];
+      default: return null;
+    }
+  };
+
+  // Handle slot click
+  const handleSlotClick = (slotName: InventorySlotName, item: Item | null) => {
+    if (!item) return; // Don't show menu for empty slots
+    setSelectedSlot(slotName);
+    setShowSlotMenu(true);
+  };
+
+  // Close the menu
+  const closeMenu = () => {
+    setSelectedSlot(null);
+    setShowSlotMenu(false);
+  };
+
+  // Check if item is usable (consumable with uses remaining)
+  const isItemUsable = (item: Item): boolean => {
+    return item.type === 'consumable' && (item.uses === undefined || item.uses > 0);
+  };
+
+  // Check if item can be unequipped (weapons/tools in hands, armor on body)
+  const canUnequip = (slotName: InventorySlotName, item: Item): boolean => {
+    if (slotName === 'leftHand' || slotName === 'rightHand') {
+      return item.type === 'weapon' || item.type === 'tool';
+    }
+    if (slotName === 'body') {
+      return item.type === 'armor';
+    }
+    return false;
+  };
+
+  // Check if bag item can be equipped to hands
+  const canEquipToHands = (item: Item): boolean => {
+    return item.type === 'weapon' || item.type === 'tool';
+  };
 
   const getItemIcon = (type: string) => {
     switch (type) {
@@ -26,11 +87,25 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ player }) => {
     }
   };
 
-  const renderSlot = (item: Item | null, label: string, slotIcon: React.ReactNode) => {
+  const renderSlot = (item: Item | null, label: string, slotIcon: React.ReactNode, slotName: InventorySlotName) => {
+    const isSelected = selectedSlot === slotName && showSlotMenu;
     const slotContent = (
-      <div className={`aspect-square border-2 rounded-lg flex flex-col items-center justify-center transition-all cursor-default relative ${item ? 'bg-leather border-parchment text-parchment hover:border-accent hover:shadow-[var(--shadow-glow)]' : 'bg-background/40 border-border opacity-50'}`}>
+      <div
+        onClick={() => item && handleSlotClick(slotName, item)}
+        className={`aspect-square border-2 rounded-lg flex flex-col items-center justify-center transition-all relative ${
+          item
+            ? `bg-leather border-parchment text-parchment hover:border-accent hover:shadow-[var(--shadow-glow)] cursor-pointer ${isSelected ? 'border-accent ring-2 ring-accent/50' : ''}`
+            : 'bg-background/40 border-border opacity-50 cursor-default'
+        }`}
+      >
         {item ? getItemIcon(item.type) : slotIcon}
         <span className="text-[8px] uppercase tracking-wider mt-1 opacity-60">{label}</span>
+        {/* Usage indicator for consumables */}
+        {item && item.type === 'consumable' && item.uses !== undefined && (
+          <span className="absolute top-0.5 right-0.5 text-[7px] bg-accent text-background px-1 rounded-full font-bold">
+            {item.uses}
+          </span>
+        )}
       </div>
     );
     return item ? (
@@ -109,9 +184,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ player }) => {
 
           {/* Hand and Body Slots */}
           <div className="grid grid-cols-3 gap-2 mb-3">
-            {renderSlot(player.inventory.leftHand, 'L.Hand', <Hand size={16} className="opacity-40" />)}
-            {renderSlot(player.inventory.body, 'Body', <Shirt size={16} className="opacity-40" />)}
-            {renderSlot(player.inventory.rightHand, 'R.Hand', <Hand size={16} className="opacity-40 scale-x-[-1]" />)}
+            {renderSlot(player.inventory.leftHand, 'L.Hand', <Hand size={16} className="opacity-40" />, 'leftHand')}
+            {renderSlot(player.inventory.body, 'Body', <Shirt size={16} className="opacity-40" />, 'body')}
+            {renderSlot(player.inventory.rightHand, 'R.Hand', <Hand size={16} className="opacity-40 scale-x-[-1]" />, 'rightHand')}
           </div>
 
           {/* Bag Slots */}
@@ -122,12 +197,126 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ player }) => {
             <div className="grid grid-cols-4 gap-2">
               {player.inventory.bag.map((item, index) => (
                 <div key={index}>
-                  {renderSlot(item, `${index + 1}`, <FileQuestion size={14} className="opacity-40" />)}
+                  {renderSlot(item, `${index + 1}`, <FileQuestion size={14} className="opacity-40" />, `bag${index + 1}` as InventorySlotName)}
                 </div>
               ))}
             </div>
           </div>
         </div>
+
+        {/* Item Action Menu */}
+        {showSlotMenu && selectedSlot && (
+          <div className="mt-4 p-3 bg-background/80 border-2 border-accent rounded-lg animate-fadeIn">
+            {(() => {
+              const item = getItemFromSlot(selectedSlot);
+              if (!item) return null;
+
+              const bagSlots: InventorySlotName[] = ['bag1', 'bag2', 'bag3', 'bag4'];
+              const isBagSlot = bagSlots.includes(selectedSlot);
+              const isHandSlot = selectedSlot === 'leftHand' || selectedSlot === 'rightHand';
+
+              return (
+                <>
+                  {/* Item header */}
+                  <div className="flex items-center justify-between mb-3 pb-2 border-b border-border">
+                    <div>
+                      <h4 className="text-sm font-bold text-parchment">{item.name}</h4>
+                      <p className="text-[10px] text-muted-foreground">{item.effect}</p>
+                    </div>
+                    <button
+                      onClick={closeMenu}
+                      className="p-1 text-muted-foreground hover:text-foreground"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="space-y-2">
+                    {/* USE - for consumables */}
+                    {isItemUsable(item) && onUseItem && (
+                      <button
+                        onClick={() => {
+                          onUseItem(item, selectedSlot);
+                          closeMenu();
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 bg-accent/20 hover:bg-accent/40 border border-accent rounded-lg text-accent text-sm font-medium transition-colors"
+                      >
+                        <Pill size={14} />
+                        Use {item.uses !== undefined ? `(${item.uses} left)` : ''}
+                      </button>
+                    )}
+
+                    {/* UNEQUIP - for weapons/armor in hand/body slots */}
+                    {canUnequip(selectedSlot, item) && onUnequipItem && (
+                      <button
+                        onClick={() => {
+                          onUnequipItem(selectedSlot);
+                          closeMenu();
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 bg-amber-500/20 hover:bg-amber-500/40 border border-amber-500 rounded-lg text-amber-400 text-sm font-medium transition-colors"
+                      >
+                        <ArrowRight size={14} />
+                        Unequip to Bag
+                      </button>
+                    )}
+
+                    {/* EQUIP TO HAND - for weapons/tools in bag */}
+                    {isBagSlot && canEquipToHands(item) && onEquipFromBag && (
+                      <>
+                        {!player.inventory.leftHand && (
+                          <button
+                            onClick={() => {
+                              const bagIndex = parseInt(selectedSlot.replace('bag', '')) - 1;
+                              onEquipFromBag(bagIndex, 'leftHand');
+                              closeMenu();
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500 rounded-lg text-emerald-400 text-sm font-medium transition-colors"
+                          >
+                            <Hand size={14} />
+                            Equip to Left Hand
+                          </button>
+                        )}
+                        {!player.inventory.rightHand && (
+                          <button
+                            onClick={() => {
+                              const bagIndex = parseInt(selectedSlot.replace('bag', '')) - 1;
+                              onEquipFromBag(bagIndex, 'rightHand');
+                              closeMenu();
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/40 border border-emerald-500 rounded-lg text-emerald-400 text-sm font-medium transition-colors"
+                          >
+                            <Hand size={14} className="scale-x-[-1]" />
+                            Equip to Right Hand
+                          </button>
+                        )}
+                        {player.inventory.leftHand && player.inventory.rightHand && (
+                          <p className="text-xs text-muted-foreground italic text-center py-2">
+                            Both hands are full. Unequip a weapon first.
+                          </p>
+                        )}
+                      </>
+                    )}
+
+                    {/* DROP - for any item */}
+                    {onDropItem && (
+                      <button
+                        onClick={() => {
+                          onDropItem(selectedSlot);
+                          closeMenu();
+                        }}
+                        className="w-full flex items-center gap-2 px-3 py-2 bg-red-500/20 hover:bg-red-500/40 border border-red-500 rounded-lg text-red-400 text-sm font-medium transition-colors"
+                      >
+                        <Trash2 size={14} />
+                        Drop Item
+                      </button>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        )}
       </div>
     </div>
   );
