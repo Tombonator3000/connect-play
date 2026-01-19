@@ -1,5 +1,145 @@
 # Development Log
 
+## 2026-01-19: Edge Blocking System - "No Passage Through"
+
+### Oppgave
+Fikse problemet der kanter som vises som dead ends (vegger, blokkerte passasjer) visuelt lot spillere gå rett gjennom. Implementere fullstendig blokkering og interaksjoner for blokkerte kanter.
+
+### Problemanalyse
+1. **Visuelt**: GameBoard viste allerede dead-end edges korrekt med tykke linjer og kryss-markører (`isDeadEndEdge()` funksjon)
+2. **Bevegelse**: ShadowsGame.tsx sin `handleAction('move')` sjekket bare for:
+   - Blokkerende objekter (`targetTile?.object?.blocking`)
+   - Blokkerende hindringer (`targetTile?.obstacle?.blocking`)
+   - Lukkede/låste dører
+3. **Mangler**: Ingen sjekk for `wall` eller `blocked` edge types mellom tiles
+
+### Implementasjon
+
+#### 1. Bevegelsesvalidering (`ShadowsGame.tsx`)
+
+**Ny logikk i `handleAction('move')`:**
+- Sjekker nå BEGGE tiles' kanter (source og target)
+- Blokkerer bevegelse gjennom `wall`, `blocked`, og `window` edges
+- Viser riktig context menu for interagerbare blokkeringer
+
+```typescript
+// Check source tile's edge (the side we're leaving from)
+if (sourceEdge.type === 'wall') {
+  addToLog(`BLOCKED: A solid wall prevents passage.`);
+  return;
+}
+if (sourceEdge.type === 'blocked') {
+  // Show context actions for removable blockings
+  showContextActions(sourceTile, edgeFromSource);
+  return;
+}
+if (sourceEdge.type === 'window') {
+  // Windows require Athletics check
+  showContextActions(sourceTile, edgeFromSource);
+  return;
+}
+```
+
+#### 2. Edge Blocking Types (`types.ts`)
+
+**Ny type `EdgeBlockingType`:**
+| Type | Beskrivelse | Fjerning |
+|------|-------------|----------|
+| `rubble` | Småstein og rusk | Str 4, 2 AP |
+| `heavy_rubble` | Tung rubble | Str 5, 3 AP |
+| `collapsed` | Fullstendig kollapset | Umulig |
+| `fire` | Flammer | Slukke (item) eller hopp (Agi 4, 1 skade) |
+| `barricade` | Barrikade | Str 4, 2 AP |
+| `locked_gate` | Låst port | Nøkkel, lockpick (Agi), eller force (Str) |
+| `spirit_barrier` | Åndelig barriere | Elder Sign eller Wil 5 |
+| `ward` | Magisk vern | Wil 5 eller krysse (-1 Sanity) |
+| `chasm` | Kløft | Tau/bro kreves |
+| `flooded` | Oversvømt | Wade through (+1 AP) |
+
+**Utvidet `EdgeData` interface:**
+```typescript
+interface EdgeData {
+  type: EdgeType;
+  doorState?: DoorState;
+  lockType?: LockType;
+  keyId?: string;
+  puzzleId?: string;
+  // New blocked edge properties
+  blockingType?: EdgeBlockingType;
+  blockingRemovable?: boolean;
+  blockingDC?: number;
+  blockingSkill?: SkillType;
+  blockingItemRequired?: string;
+}
+```
+
+#### 3. Context Actions (`utils/contextActions.ts`)
+
+**Nye funksjoner:**
+- `getBlockedEdgeActions()` - Returnerer tilgjengelige handlinger for blokkerte kanter
+- `getWindowEdgeActions()` - Returnerer handlinger for vinduer
+
+**Eksempel: Rubble-blokkert kant:**
+```
+[Clear Rubble (Str 4)]    - 2 AP, fjerner rubble
+[Search Rubble (Int 3)]   - 1 AP, søk etter skjulte items
+[Cancel]
+```
+
+**Eksempel: Ild-blokkert kant:**
+```
+[Extinguish]              - Krever fire extinguisher
+[Jump Through (Agi 4)]    - Tar 1 skade ved suksess, 2 ved feil
+[Cancel]
+```
+
+#### 4. Action Handling (`ShadowsGame.tsx`)
+
+**Nye case handlers i `handleContextActionEffect()`:**
+- `clear_edge_rubble`, `clear_edge_heavy_rubble` → Konverterer til 'open' edge
+- `break_edge_barricade`, `force_edge_gate` → Konverterer til 'open' edge
+- `extinguish_edge_fire` → Konverterer til 'open' edge
+- `dispel_edge_ward`, `banish_edge_spirits` → Konverterer til 'open' edge
+- `break_window` → Konverterer window til 'open' edge
+
+### Tekniske detaljer
+
+**Edge-indeks beregning:**
+```typescript
+// Edge mellom to tiles beregnes slik:
+const edgeFromSource = getEdgeIndexBetweenTiles(sourcePos, targetPos);
+const edgeFromTarget = (edgeFromSource + 3) % 6; // Motsatt retning
+```
+
+**Hex edge layout (flat-top):**
+```
+       0 (NORTH)
+        _____
+       /     \
+   5  /       \  1
+     |         |
+   4  \       /  2
+       \_____/
+     3 (SOUTH)
+```
+
+### Filer endret
+- `src/game/ShadowsGame.tsx` - Bevegelsesvalidering og action handling
+- `src/game/types.ts` - EdgeBlockingType og utvidet EdgeData
+- `src/game/utils/contextActions.ts` - Nye context action funksjoner
+
+### Spillmekanikk (fra game_design_bible.md)
+
+| Edge Type | Passable | Beskrivelse |
+|-----------|----------|-------------|
+| **OPEN** | Ja | Fri passasje |
+| **WALL** | Nei | Solid vegg - kan aldri passeres |
+| **DOOR** | Betinget | Standard dør - har egen state |
+| **WINDOW** | Betinget | Athletics DC 4 for å klatre gjennom |
+| **BLOCKED** | Nei* | Blokkert av hindring - kan kanskje fjernes |
+
+---
+
 ## 2026-01-19: Field Guide - "Notes on the Horrors I Have Witnessed"
 
 ### Oppgave

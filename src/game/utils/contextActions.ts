@@ -15,6 +15,7 @@ import {
   ContextActionTarget,
   DoorState,
   ObstacleType,
+  EdgeBlockingType,
   hasKey,
   hasLightSource
 } from '../types';
@@ -188,6 +189,377 @@ export function getDoorActions(
       // Already broken, no actions needed
       break;
   }
+
+  // Always add cancel
+  actions.push({
+    id: 'cancel',
+    label: 'Cancel',
+    icon: 'cancel',
+    apCost: 0,
+    enabled: true
+  });
+
+  return actions;
+}
+
+// ============================================================================
+// BLOCKED EDGE CONTEXT ACTIONS
+// ============================================================================
+
+/**
+ * Gets available actions for a blocked edge (rubble, fire, collapsed, etc.)
+ */
+export function getBlockedEdgeActions(
+  player: Player,
+  edge: EdgeData,
+  tile: Tile
+): ContextAction[] {
+  const actions: ContextAction[] = [];
+
+  if (edge.type !== 'blocked' || !edge.blockingType) {
+    // If no specific blocking type, just show a generic message
+    actions.push({
+      id: 'examine_blocked',
+      label: 'Examine',
+      icon: 'search',
+      apCost: 0,
+      enabled: true,
+      successMessage: 'The path is blocked. There is no way through.'
+    });
+    actions.push({
+      id: 'cancel',
+      label: 'Cancel',
+      icon: 'cancel',
+      apCost: 0,
+      enabled: true
+    });
+    return actions;
+  }
+
+  switch (edge.blockingType) {
+    case 'rubble':
+      actions.push({
+        id: 'clear_edge_rubble',
+        label: 'Clear Rubble (Str 4)',
+        icon: 'strength',
+        skillCheck: { skill: 'strength', dc: edge.blockingDC || 4 },
+        apCost: 2,
+        enabled: true,
+        successMessage: 'You clear the rubble from the passage!',
+        failureMessage: 'The rubble is too heavy to move.',
+        consequences: {
+          success: { type: 'clear_edge', message: 'The passage is now open.' }
+        }
+      });
+      actions.push({
+        id: 'search_edge_rubble',
+        label: 'Search Rubble (Int 3)',
+        icon: 'search',
+        skillCheck: { skill: 'intellect', dc: 3 },
+        apCost: 1,
+        enabled: true,
+        successMessage: 'You find something hidden in the debris!',
+        failureMessage: 'Just rocks and dust.'
+      });
+      break;
+
+    case 'heavy_rubble':
+      actions.push({
+        id: 'clear_edge_heavy_rubble',
+        label: 'Clear Heavy Rubble (Str 5)',
+        icon: 'strength',
+        skillCheck: { skill: 'strength', dc: edge.blockingDC || 5 },
+        apCost: 3,
+        enabled: true,
+        successMessage: 'With great effort, you clear the massive debris!',
+        failureMessage: 'The rubble barely budges.',
+        consequences: {
+          success: { type: 'clear_edge', message: 'The passage is now open.' }
+        }
+      });
+      break;
+
+    case 'collapsed':
+      actions.push({
+        id: 'examine_collapsed',
+        label: 'Examine Collapse',
+        icon: 'search',
+        apCost: 0,
+        enabled: true,
+        successMessage: 'The passage has completely collapsed. There is no way through.'
+      });
+      break;
+
+    case 'fire':
+      const hasExtinguisher = hasKey(player.inventory, 'extinguisher');
+      actions.push({
+        id: 'extinguish_edge_fire',
+        label: 'Extinguish',
+        icon: 'item',
+        itemRequired: 'extinguisher',
+        apCost: 1,
+        enabled: hasExtinguisher,
+        reason: hasExtinguisher ? undefined : 'You need a fire extinguisher',
+        successMessage: 'You put out the flames blocking the passage.',
+        consequences: {
+          success: { type: 'clear_edge' }
+        }
+      });
+      actions.push({
+        id: 'jump_through_edge_fire',
+        label: 'Jump Through Fire (Agi 4)',
+        icon: 'agility',
+        skillCheck: { skill: 'agility', dc: edge.blockingDC || 4 },
+        apCost: 1,
+        enabled: true,
+        successMessage: 'You leap through the flames!',
+        failureMessage: 'The flames catch you!',
+        consequences: {
+          success: { type: 'pass_through', damage: 1, message: 'You take minor burns.' },
+          failure: { type: 'take_damage', value: 2, message: 'The fire burns you badly!' }
+        }
+      });
+      break;
+
+    case 'barricade':
+      actions.push({
+        id: 'break_edge_barricade',
+        label: 'Break Barricade (Str 4)',
+        icon: 'strength',
+        skillCheck: { skill: 'strength', dc: edge.blockingDC || 4 },
+        apCost: 2,
+        enabled: true,
+        successMessage: 'You smash through the barricade!',
+        failureMessage: 'The barricade holds firm.',
+        consequences: {
+          success: { type: 'clear_edge', message: 'The barricade is destroyed.' },
+          failure: { type: 'trigger_alarm', message: 'The noise echoes...' }
+        }
+      });
+      actions.push({
+        id: 'examine_edge_barricade',
+        label: 'Examine Barricade',
+        icon: 'search',
+        apCost: 0,
+        enabled: true,
+        successMessage: 'Someone has hastily blocked this passage. From which side?'
+      });
+      break;
+
+    case 'locked_gate':
+      const hasGateKey = edge.blockingItemRequired
+        ? hasKey(player.inventory, edge.blockingItemRequired)
+        : false;
+      actions.push({
+        id: 'unlock_edge_gate',
+        label: 'Use Key',
+        icon: 'key',
+        apCost: 1,
+        enabled: hasGateKey,
+        reason: hasGateKey ? undefined : 'You need the correct key',
+        successMessage: 'The gate unlocks with a click.',
+        consequences: {
+          success: { type: 'clear_edge' }
+        }
+      });
+      actions.push({
+        id: 'lockpick_edge_gate',
+        label: `Lockpick (Agi ${edge.blockingDC || 4})`,
+        icon: 'lockpick',
+        skillCheck: { skill: 'agility', dc: edge.blockingDC || 4 },
+        apCost: 1,
+        enabled: true,
+        successMessage: 'You pick the lock on the gate.',
+        failureMessage: 'The lock resists your attempts.',
+        consequences: {
+          success: { type: 'clear_edge' }
+        }
+      });
+      actions.push({
+        id: 'force_edge_gate',
+        label: `Force Gate (Str ${(edge.blockingDC || 4) + 1})`,
+        icon: 'strength',
+        skillCheck: { skill: 'strength', dc: (edge.blockingDC || 4) + 1 },
+        apCost: 2,
+        enabled: true,
+        successMessage: 'You force the gate open!',
+        failureMessage: 'The gate is too sturdy.',
+        consequences: {
+          success: { type: 'clear_edge' },
+          failure: { type: 'trigger_alarm' }
+        }
+      });
+      break;
+
+    case 'spirit_barrier':
+      const hasElderSign = hasKey(player.inventory, 'elder_sign');
+      actions.push({
+        id: 'banish_edge_spirits',
+        label: 'Use Elder Sign',
+        icon: 'ritual',
+        itemRequired: 'elder_sign',
+        apCost: 2,
+        enabled: hasElderSign,
+        reason: hasElderSign ? undefined : 'You need an Elder Sign to banish the spirits',
+        successMessage: 'The spirits shriek and dissipate!',
+        consequences: {
+          success: { type: 'clear_edge' }
+        }
+      });
+      actions.push({
+        id: 'force_through_edge_spirits',
+        label: 'Force Through (Wil 5)',
+        icon: 'willpower',
+        skillCheck: { skill: 'willpower', dc: edge.blockingDC || 5 },
+        apCost: 1,
+        enabled: true,
+        successMessage: 'Your will overpowers the spirits!',
+        failureMessage: 'The spirits tear at your mind.',
+        consequences: {
+          success: { type: 'pass_through' },
+          failure: { type: 'lose_sanity', value: 2 }
+        }
+      });
+      break;
+
+    case 'ward':
+      actions.push({
+        id: 'dispel_edge_ward',
+        label: 'Dispel Ward (Wil 5)',
+        icon: 'willpower',
+        skillCheck: { skill: 'willpower', dc: edge.blockingDC || 5 },
+        apCost: 2,
+        enabled: true,
+        successMessage: 'The ward shatters!',
+        failureMessage: 'The ward burns your mind.',
+        consequences: {
+          success: { type: 'clear_edge' },
+          failure: { type: 'lose_sanity', value: 1 }
+        }
+      });
+      actions.push({
+        id: 'cross_edge_ward',
+        label: 'Cross Ward (Risk Sanity)',
+        icon: 'interact',
+        apCost: 1,
+        enabled: true,
+        successMessage: 'You force yourself through the ward.',
+        consequences: {
+          success: { type: 'pass_through', sanityCost: 1, message: 'The ward sears your mind as you pass. -1 Sanity' }
+        }
+      });
+      break;
+
+    case 'chasm':
+      actions.push({
+        id: 'examine_edge_chasm',
+        label: 'Examine Chasm',
+        icon: 'search',
+        apCost: 0,
+        enabled: true,
+        successMessage: 'A deep chasm blocks the way. You would need a rope or plank to cross.'
+      });
+      const hasRope = hasKey(player.inventory, 'rope');
+      actions.push({
+        id: 'use_rope_chasm',
+        label: 'Use Rope',
+        icon: 'item',
+        itemRequired: 'rope',
+        apCost: 2,
+        enabled: hasRope,
+        reason: hasRope ? undefined : 'You need a rope to cross',
+        successMessage: 'You secure the rope and cross carefully.',
+        consequences: {
+          success: { type: 'pass_through' }
+        }
+      });
+      break;
+
+    case 'flooded':
+      actions.push({
+        id: 'wade_through_edge',
+        label: 'Wade Through',
+        icon: 'interact',
+        apCost: 2,
+        enabled: true,
+        successMessage: 'You wade through the murky water.',
+        consequences: {
+          success: { type: 'pass_through' }
+        }
+      });
+      actions.push({
+        id: 'search_edge_water',
+        label: 'Search Water (Int 4)',
+        icon: 'search',
+        skillCheck: { skill: 'intellect', dc: 4 },
+        apCost: 1,
+        enabled: true,
+        successMessage: 'You find something beneath the surface!',
+        failureMessage: 'Only murky water.'
+      });
+      break;
+  }
+
+  // Always add cancel
+  actions.push({
+    id: 'cancel',
+    label: 'Cancel',
+    icon: 'cancel',
+    apCost: 0,
+    enabled: true
+  });
+
+  return actions;
+}
+
+/**
+ * Gets available actions for a window edge
+ */
+export function getWindowEdgeActions(
+  player: Player,
+  edge: EdgeData,
+  tile: Tile
+): ContextAction[] {
+  const actions: ContextAction[] = [];
+
+  actions.push({
+    id: 'climb_through_window',
+    label: 'Climb Through (Agi 4)',
+    icon: 'agility',
+    skillCheck: { skill: 'agility', dc: 4 },
+    apCost: 2,
+    enabled: true,
+    successMessage: 'You carefully climb through the window.',
+    failureMessage: 'You slip and cut yourself on the glass.',
+    consequences: {
+      success: { type: 'pass_through' },
+      failure: { type: 'take_damage', value: 1 }
+    }
+  });
+
+  actions.push({
+    id: 'break_window',
+    label: 'Break Window (Str 3)',
+    icon: 'strength',
+    skillCheck: { skill: 'strength', dc: 3 },
+    apCost: 1,
+    enabled: true,
+    successMessage: 'The window shatters! You can now pass freely.',
+    failureMessage: 'The window holds firm.',
+    consequences: {
+      success: { type: 'clear_edge', message: 'The window is now broken open.' },
+      failure: { type: 'trigger_alarm', message: 'The noise might attract attention.' }
+    }
+  });
+
+  actions.push({
+    id: 'peek_through_window',
+    label: 'Peek Through',
+    icon: 'search',
+    apCost: 0,
+    enabled: true,
+    successMessage: 'You peer through the dusty glass...'
+  });
 
   // Always add cancel
   actions.push({
@@ -779,6 +1151,14 @@ export function getContextActions(
   switch (target.type) {
     case 'edge':
       if (target.edge) {
+        // Route to appropriate edge action handler based on edge type
+        if (target.edge.type === 'blocked') {
+          return getBlockedEdgeActions(player, target.edge, tile);
+        }
+        if (target.edge.type === 'window') {
+          return getWindowEdgeActions(player, target.edge, tile);
+        }
+        // Default to door actions for door type edges
         return getDoorActions(player, target.edge, tile);
       }
       break;
