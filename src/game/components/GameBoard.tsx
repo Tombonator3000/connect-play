@@ -2,7 +2,7 @@ import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { Tile, Player, Enemy, FloatingText, EnemyType, ScenarioModifier } from '../types';
 import {
   User, Skull, DoorOpen, Lock, Flame, Hammer, Brain,
-  BookOpen, Anchor, Church, MapPin, Building, ShoppingBag, Fish, PawPrint, Biohazard, Ghost, Bug
+  BookOpen, Anchor, Church, MapPin, Building, ShoppingBag, Fish, PawPrint, Biohazard, Ghost, Bug, Search
 } from 'lucide-react';
 import { EnemyTooltip } from './ItemTooltip';
 
@@ -16,6 +16,7 @@ interface GameBoardProps {
   floatingTexts?: FloatingText[];
   doom: number;
   activeModifiers?: ScenarioModifier[];
+  exploredTiles?: Set<string>;
 }
 
 const HEX_SIZE = 95;
@@ -130,7 +131,7 @@ const getDoomLighting = (doom: number) => {
 };
 
 const GameBoard: React.FC<GameBoardProps> = ({
-  tiles, players, enemies, selectedEnemyId, onTileClick, onEnemyClick, floatingTexts = [], doom, activeModifiers = []
+  tiles, players, enemies, selectedEnemyId, onTileClick, onEnemyClick, floatingTexts = [], doom, activeModifiers = [], exploredTiles = new Set()
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const hasDragged = useRef(false);
@@ -167,20 +168,33 @@ const GameBoard: React.FC<GameBoardProps> = ({
     return { x, y };
   };
 
-  const visibleTiles = useMemo(() => {
+  const hexDistance = (q1: number, r1: number, q2: number, r2: number) => {
+    return (Math.abs(q1 - q2) + Math.abs(q1 + r1 - q2 - r2) + Math.abs(r1 - r2)) / 2;
+  };
+
+  const { visibleTiles, tileDistances } = useMemo(() => {
     const visible = new Set<string>();
+    const distances = new Map<string, number>();
     const range = activeModifiers.some(m => m.effect === 'reduced_vision') ? 1 : VISIBILITY_RANGE;
+    
     players.filter(p => !p.isDead).forEach(p => {
       tiles.forEach(t => {
-        const d = (Math.abs(p.position.q - t.q) + Math.abs(p.position.q + p.position.r - t.q - t.r) + Math.abs(p.position.r - t.r)) / 2;
-        if (d <= range) visible.add(`${t.q},${t.r}`);
+        const d = hexDistance(p.position.q, p.position.r, t.q, t.r);
+        const key = `${t.q},${t.r}`;
+        if (d <= range) {
+          visible.add(key);
+          const existing = distances.get(key);
+          if (existing === undefined || d < existing) {
+            distances.set(key, d);
+          }
+        }
       });
     });
-    return visible;
+    return { visibleTiles: visible, tileDistances: distances };
   }, [players, tiles, activeModifiers]);
 
   const possibleMoves = useMemo(() => {
-    const moves: { q: number, r: number }[] = [];
+    const moves: { q: number, r: number, isExplore: boolean }[] = [];
     tiles.forEach(tile => {
       if (visibleTiles.has(`${tile.q},${tile.r}`)) {
         const neighbors = [
@@ -188,12 +202,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
           { q: tile.q - 1, r: tile.r }, { q: tile.q - 1, r: tile.r + 1 }, { q: tile.q, r: tile.r + 1 }
         ];
         neighbors.forEach(n => {
-          if (!tiles.some(t => t.q === n.q && t.r === n.r) && !moves.some(m => m.q === n.q && m.r === n.r)) moves.push(n);
+          if (!tiles.some(t => t.q === n.q && t.r === n.r) && !moves.some(m => m.q === n.q && m.r === n.r)) {
+            const isExplore = !exploredTiles.has(`${n.q},${n.r}`);
+            moves.push({ ...n, isExplore });
+          }
         });
       }
     });
     return moves;
-  }, [tiles, visibleTiles]);
+  }, [tiles, visibleTiles, exploredTiles]);
 
   const lighting = getDoomLighting(doom);
 
@@ -218,8 +235,19 @@ const GameBoard: React.FC<GameBoardProps> = ({
       >
         {tiles.map(tile => {
           const { x, y } = hexToPixel(tile.q, tile.r);
-          const isVisible = visibleTiles.has(`${tile.q},${tile.r}`);
+          const tileKey = `${tile.q},${tile.r}`;
+          const isVisible = visibleTiles.has(tileKey);
+          const isExplored = exploredTiles.has(tileKey);
+          const distance = tileDistances.get(tileKey) ?? Infinity;
           const visual = getTileVisuals(tile.name, tile.type);
+
+          // Calculate fog opacity based on visibility and exploration
+          let fogOpacity = 0;
+          if (!isVisible) {
+            fogOpacity = isExplored ? 0.7 : 0.95; // Explored but not visible vs never seen
+          } else if (distance > 1) {
+            fogOpacity = 0.2 + (distance - 1) * 0.15; // Gradient fog at edges
+          }
 
           return (
             <div
@@ -231,11 +259,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
               <div className={`absolute inset-0 hex-clip transition-all duration-500 ${visual.bg} relative overflow-hidden group`}>
                 <div className="absolute inset-0 opacity-10" style={visual.style} />
                 
-                <div className="relative z-10 flex flex-col items-center opacity-30 pointer-events-none group-hover:opacity-50 transition-opacity">
+                <div className={`relative z-10 flex flex-col items-center pointer-events-none transition-opacity ${isVisible ? 'opacity-30 group-hover:opacity-50' : 'opacity-10'}`}>
                   <visual.Icon size={32} className={visual.iconColor} />
                 </div>
 
-                {tile.object && (
+                {tile.object && isVisible && (
                   <div className="absolute inset-0 flex items-center justify-center z-20 animate-in zoom-in duration-300">
                     {tile.object.type === 'fire' && <Flame className="text-orange-500 animate-pulse drop-shadow-[0_0_10px_rgba(249,115,22,0.8)]" size={40} />}
                     {tile.object.type === 'locked_door' && (
@@ -254,10 +282,37 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   </div>
                 )}
 
-                <div className={`absolute inset-0 transition-opacity duration-1000 bg-black z-30 pointer-events-none ${isVisible ? 'opacity-0' : 'opacity-85'}`} />
+                {/* Enhanced fog of war overlay */}
+                <div 
+                  className="absolute inset-0 z-30 pointer-events-none transition-all duration-700"
+                  style={{ 
+                    background: fogOpacity > 0.5 
+                      ? `radial-gradient(circle at center, rgba(0,0,0,${fogOpacity * 0.8}) 0%, rgba(0,0,0,${fogOpacity}) 100%)`
+                      : `radial-gradient(circle at center, transparent 30%, rgba(0,0,0,${fogOpacity}) 100%)`,
+                    opacity: fogOpacity > 0 ? 1 : 0
+                  }}
+                />
+                
+                {/* Unexplored overlay with mysterious effect */}
+                {!isExplored && !isVisible && (
+                  <div className="absolute inset-0 z-40 pointer-events-none">
+                    <div className="absolute inset-0 bg-gradient-to-b from-black/90 via-slate-900/95 to-black/90" />
+                    <div className="absolute inset-0 opacity-20" style={{
+                      backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\' opacity=\'0.4\'/%3E%3C/svg%3E")',
+                    }} />
+                  </div>
+                )}
               </div>
+              
+              {/* Hex border with visibility-based styling */}
               <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full pointer-events-none z-10">
-                <polygon points={HEX_POLY_POINTS} fill="none" stroke={visual.strokeColor} strokeWidth="1.5" className="opacity-40" />
+                <polygon 
+                  points={HEX_POLY_POINTS} 
+                  fill="none" 
+                  stroke={isVisible ? visual.strokeColor : 'rgba(100,100,100,0.2)'} 
+                  strokeWidth={isVisible ? "1.5" : "0.5"} 
+                  className={`transition-all duration-500 ${isVisible ? 'opacity-40' : 'opacity-20'}`}
+                />
               </svg>
             </div>
           );
@@ -265,19 +320,47 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
         {possibleMoves.map((move, i) => {
           const { x, y } = hexToPixel(move.q, move.r);
+          const isExploreAction = move.isExplore;
+          
           return (
             <div
               key={`move-${i}`}
-              className="absolute flex items-center justify-center cursor-pointer transition-opacity z-20 group"
+              className="absolute flex items-center justify-center cursor-pointer transition-all z-20 group"
               style={{ width: `${HEX_SIZE * 2}px`, height: `${HEX_SIZE * 1.732}px`, left: `${x - HEX_SIZE}px`, top: `${y - HEX_SIZE * 0.866}px` }}
               onClick={() => { if (!hasDragged.current) onTileClick(move.q, move.r); }}
             >
-              <div className="absolute inset-0 hex-clip bg-white/5 border border-white/10 flex items-center justify-center opacity-40 group-hover:opacity-80 transition-all">
-                <MapPin className="text-white/20" size={24} />
+              {/* Hex background */}
+              <div className={`absolute inset-0 hex-clip flex items-center justify-center transition-all duration-300 ${
+                isExploreAction 
+                  ? 'bg-primary/10 group-hover:bg-primary/25' 
+                  : 'bg-white/5 group-hover:bg-white/15'
+              }`}>
+                {isExploreAction ? (
+                  <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity">
+                    <Search size={24} className="text-primary mb-1" />
+                    <span className="text-[9px] font-bold text-primary uppercase tracking-[0.15em]">Utforsk</span>
+                  </div>
+                ) : (
+                  <MapPin className="text-white/30 group-hover:text-white/60 transition-colors" size={24} />
+                )}
               </div>
-              <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible">
-                <polygon points={HEX_POLY_POINTS} fill="none" stroke="rgba(233,69,96,0.3)" strokeWidth="1" strokeDasharray="4,4" className="group-hover:stroke-primary group-hover:stroke-[2px] transition-all" />
+              
+              {/* Hex border - dashed for unexplored, solid hover for explored */}
+              <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none">
+                <polygon 
+                  points={HEX_POLY_POINTS} 
+                  fill="none" 
+                  stroke={isExploreAction ? "hsl(var(--primary))" : "rgba(255,255,255,0.3)"} 
+                  strokeWidth={isExploreAction ? "2" : "1"} 
+                  strokeDasharray={isExploreAction ? "6,4" : "4,4"} 
+                  className={`transition-all duration-300 ${isExploreAction ? 'opacity-60 group-hover:opacity-100' : 'opacity-40 group-hover:opacity-80'}`}
+                />
               </svg>
+              
+              {/* Glow effect for explore tiles */}
+              {isExploreAction && (
+                <div className="absolute inset-4 hex-clip bg-primary/5 blur-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              )}
             </div>
           );
         })}
