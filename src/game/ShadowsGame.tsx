@@ -38,7 +38,7 @@ import {
   addGoldToHero,
   createDefaultLegacyData
 } from './utils/legacyManager';
-import { generateRandomScenario } from './utils/scenarioGenerator';
+import { generateValidatedScenario, getScenarioValidationInfo } from './utils/scenarioGenerator';
 
 const STORAGE_KEY = 'shadows_1920s_save';
 const SETTINGS_KEY = 'shadows_1920s_settings';
@@ -107,10 +107,21 @@ const ShadowsGame: React.FC = () => {
   // Difficulty selection for random scenario
   const [selectedDifficulty, setSelectedDifficulty] = useState<'Normal' | 'Hard' | 'Nightmare' | null>(null);
 
-  // Generate random scenario based on difficulty using dynamic generator
+  // Generate random scenario based on difficulty using validated dynamic generator
   const getRandomScenario = useCallback((difficulty: 'Normal' | 'Hard' | 'Nightmare'): Scenario => {
-    // Use the new dynamic scenario generator that combines elements from pools
-    return generateRandomScenario(difficulty);
+    // Use the validated scenario generator that ensures winnability
+    const result = generateValidatedScenario(difficulty);
+
+    // Log validation info for debugging
+    if (result.wasFixed) {
+      console.log(`[ScenarioValidator] Applied ${result.fixChanges.length} fixes:`, result.fixChanges);
+    }
+    if (result.validation.issues.length > 0) {
+      console.log(`[ScenarioValidator] Validation issues:`, result.validation.issues);
+    }
+    console.log(`[ScenarioValidator] Confidence: ${result.validation.confidence}% | Attempts: ${result.attempts}`);
+
+    return result.scenario;
   }, []);
 
   // Game settings with localStorage persistence
