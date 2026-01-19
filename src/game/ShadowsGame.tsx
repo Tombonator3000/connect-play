@@ -1247,6 +1247,65 @@ const ShadowsGame: React.FC = () => {
           )
         }));
         break;
+
+      // =====================================================================
+      // BLOCKED EDGE ACTIONS - Clear or open blocked passages
+      // =====================================================================
+
+      // Clear edge blocking (rubble, barricade, etc.) - converts to open edge
+      case 'clear_edge_rubble':
+      case 'clear_edge_heavy_rubble':
+      case 'break_edge_barricade':
+      case 'unlock_edge_gate':
+      case 'lockpick_edge_gate':
+      case 'force_edge_gate':
+      case 'extinguish_edge_fire':
+      case 'dispel_edge_ward':
+      case 'banish_edge_spirits':
+        if (activeContextTarget.edgeIndex !== undefined) {
+          setState(prev => ({
+            ...prev,
+            board: prev.board.map(t => {
+              if (t.id === tile.id) {
+                const newEdges = [...t.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+                newEdges[activeContextTarget.edgeIndex!] = {
+                  type: 'open' // Convert blocked edge to open
+                };
+                return { ...t, edges: newEdges };
+              }
+              return t;
+            })
+          }));
+          addToLog(`The passage is now clear.`);
+        }
+        break;
+
+      // Break window - converts window to open edge
+      case 'break_window':
+        if (activeContextTarget.edgeIndex !== undefined) {
+          setState(prev => ({
+            ...prev,
+            board: prev.board.map(t => {
+              if (t.id === tile.id) {
+                const newEdges = [...t.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+                newEdges[activeContextTarget.edgeIndex!] = {
+                  type: 'open' // Broken window is now an open passage
+                };
+                return { ...t, edges: newEdges };
+              }
+              return t;
+            })
+          }));
+          addToLog(`The window shatters! You can now pass through.`);
+        }
+        break;
+
+      // Search edge debris (for items, doesn't clear the edge)
+      case 'search_edge_rubble':
+      case 'search_edge_water':
+        // Could spawn random item here
+        addToLog(`You search carefully but find nothing of value.`);
+        break;
     }
   }, [activeContextTarget, state.board]);
 
@@ -1658,19 +1717,72 @@ const ShadowsGame: React.FC = () => {
           return;
         }
 
-        // Check for closed/locked doors on the edge we're crossing
-        if (targetTile) {
-          // Calculate which edge we're crossing to reach this tile
-          const sourcePos = activePlayer.position;
-          const edgeIndex = getEdgeIndexBetweenTiles(sourcePos, { q, r });
-          if (edgeIndex !== -1 && targetTile.edges[edgeIndex]) {
-            const edge = targetTile.edges[edgeIndex];
-            if (edge.type === 'door' && edge.doorState !== 'open' && edge.doorState !== 'broken') {
-              setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
-              showContextActions(targetTile, edgeIndex);
-              addToLog(`DOOR: ${edge.doorState || 'closed'}.`);
-              return;
-            }
+        // Check for blocked edges (walls, blocked, windows) between tiles
+        const sourcePos = activePlayer.position;
+        const sourceTile = state.board.find(t => t.q === sourcePos.q && t.r === sourcePos.r);
+        const edgeFromSource = getEdgeIndexBetweenTiles(sourcePos, { q, r });
+        const edgeFromTarget = edgeFromSource !== -1 ? (edgeFromSource + 3) % 6 : -1;
+
+        // Check source tile's edge (the side we're leaving from)
+        if (sourceTile && edgeFromSource !== -1 && sourceTile.edges?.[edgeFromSource]) {
+          const sourceEdge = sourceTile.edges[edgeFromSource];
+          // Block movement through walls
+          if (sourceEdge.type === 'wall') {
+            addToLog(`BLOCKED: A solid wall prevents passage.`);
+            return;
+          }
+          // Block movement through blocked edges (rubble, collapsed, etc)
+          if (sourceEdge.type === 'blocked') {
+            const blockingDesc = sourceEdge.blockingType
+              ? sourceEdge.blockingType.replace('_', ' ')
+              : 'debris';
+            addToLog(`BLOCKED: ${blockingDesc.charAt(0).toUpperCase() + blockingDesc.slice(1)} blocks the way.`);
+            // Show context actions on SOURCE tile since that's where the blocking is
+            setState(prev => ({ ...prev, selectedTileId: sourceTile.id }));
+            showContextActions(sourceTile, edgeFromSource);
+            return;
+          }
+          // Windows require Athletics check (handled as special case)
+          if (sourceEdge.type === 'window') {
+            addToLog(`WINDOW: Cannot pass through window (Athletics DC 4 required).`);
+            // Show context actions on SOURCE tile
+            setState(prev => ({ ...prev, selectedTileId: sourceTile.id }));
+            showContextActions(sourceTile, edgeFromSource);
+            return;
+          }
+        }
+
+        // Check target tile's edge (the side we're entering from)
+        if (targetTile && edgeFromTarget !== -1 && targetTile.edges?.[edgeFromTarget]) {
+          const targetEdge = targetTile.edges[edgeFromTarget];
+          // Block movement through walls
+          if (targetEdge.type === 'wall') {
+            addToLog(`BLOCKED: A solid wall prevents passage.`);
+            return;
+          }
+          // Block movement through blocked edges
+          if (targetEdge.type === 'blocked') {
+            const blockingDesc = targetEdge.blockingType
+              ? targetEdge.blockingType.replace('_', ' ')
+              : 'debris';
+            addToLog(`BLOCKED: ${blockingDesc.charAt(0).toUpperCase() + blockingDesc.slice(1)} blocks the way.`);
+            setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
+            showContextActions(targetTile, edgeFromTarget);
+            return;
+          }
+          // Windows require Athletics check
+          if (targetEdge.type === 'window') {
+            addToLog(`WINDOW: Cannot pass through window (Athletics DC 4 required).`);
+            setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
+            showContextActions(targetTile, edgeFromTarget);
+            return;
+          }
+          // Check for closed/locked doors
+          if (targetEdge.type === 'door' && targetEdge.doorState !== 'open' && targetEdge.doorState !== 'broken') {
+            setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
+            showContextActions(targetTile, edgeFromTarget);
+            addToLog(`DOOR: ${targetEdge.doorState || 'closed'}.`);
+            return;
           }
         }
 

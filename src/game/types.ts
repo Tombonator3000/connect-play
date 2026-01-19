@@ -534,10 +534,23 @@ export type DoorState = 'open' | 'closed' | 'locked' | 'barricaded' | 'broken' |
 
 export type LockType = 'simple' | 'quality' | 'complex' | 'occult';
 
-export type ObstacleType = 
-  | 'rubble_light' | 'rubble_heavy' | 'collapsed' | 'fire' 
+export type ObstacleType =
+  | 'rubble_light' | 'rubble_heavy' | 'collapsed' | 'fire'
   | 'water_shallow' | 'water_deep' | 'unstable_floor' | 'gas_poison'
   | 'darkness' | 'ward_circle' | 'spirit_barrier' | 'spatial_warp' | 'time_loop';
+
+// Edge blocking types - what is blocking passage through an edge
+export type EdgeBlockingType =
+  | 'rubble'           // Rubble/debris blocking the path - can be cleared (Str 4)
+  | 'heavy_rubble'     // Heavy rubble - harder to clear (Str 5)
+  | 'collapsed'        // Fully collapsed - cannot be cleared
+  | 'fire'             // Flames blocking the way - can be extinguished or jumped (Agi 4, takes 1 damage)
+  | 'barricade'        // Barricaded passage - can be broken (Str 4)
+  | 'locked_gate'      // Locked gate/bars - can be unlocked or forced
+  | 'spirit_barrier'   // Supernatural barrier - requires Elder Sign or Willpower
+  | 'ward'             // Magical ward - can be dispelled (Wil 5) or crossed (takes sanity damage)
+  | 'chasm'            // Deep gap - cannot be crossed without tools
+  | 'flooded';         // Flooded passage - can be waded through (extra AP)
 
 export interface EdgeData {
   type: EdgeType;
@@ -545,6 +558,12 @@ export interface EdgeData {
   lockType?: LockType;
   keyId?: string;
   puzzleId?: string;
+  // Blocked edge properties
+  blockingType?: EdgeBlockingType;
+  blockingRemovable?: boolean;
+  blockingDC?: number;          // Difficulty class to clear/pass
+  blockingSkill?: SkillType;    // Required skill to clear
+  blockingItemRequired?: string; // Item needed to clear (e.g., 'extinguisher', 'elder_sign')
 }
 
 export interface Obstacle {
