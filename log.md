@@ -1,5 +1,197 @@
 # Development Log
 
+## 2026-01-19: Logical Tile Connection System
+
+### Oppgave
+Implementere et logisk kant-forbindelsessystem for prosedural generering av tiles. Hver tile behandles som en puslespillbrikke med 6 kanter som må matche med naboer.
+
+### Konsept
+Inspirert av Wave Function Collapse algoritmen. Hver kant på en hex-tile kan være en av flere typer (WALL, DOOR, OPEN, etc.), og kanter må være kompatible med naboer for å koble sammen.
+
+### Implementerte Komponenter
+
+#### 1. Edge Type System (tileConnectionSystem.ts)
+Nye kant-typer med kompatibilitetsmatrise:
+
+```typescript
+type ConnectionEdgeType =
+  | 'WALL'        // Solid vegg - kan BARE kobles til WALL
+  | 'OPEN'        // Åpen passasje - kan kobles til OPEN eller DOOR
+  | 'DOOR'        // Dør - kan kobles til DOOR eller OPEN
+  | 'WINDOW'      // Vindu - kan kobles til WALL (se gjennom, ikke passere)
+  | 'STREET'      // Gate/vei - kan kobles til STREET, OPEN, FACADE
+  | 'NATURE'      // Natur-kant - kan kobles til NATURE, STREET, WATER
+  | 'WATER'       // Vannkant - kan kobles til WATER, NATURE
+  | 'FACADE'      // Bygningsfasade - kobler STREET til DOOR
+  | 'STAIRS_UP'   // Trapp opp
+  | 'STAIRS_DOWN'; // Trapp ned
+
+const EDGE_COMPATIBILITY: Record<ConnectionEdgeType, ConnectionEdgeType[]> = {
+  WALL: ['WALL', 'WINDOW'],
+  OPEN: ['OPEN', 'DOOR'],
+  DOOR: ['DOOR', 'OPEN', 'FACADE'],
+  WINDOW: ['WALL', 'WINDOW'],
+  STREET: ['STREET', 'OPEN', 'FACADE', 'NATURE'],
+  NATURE: ['NATURE', 'STREET', 'WATER', 'OPEN'],
+  WATER: ['WATER', 'NATURE'],
+  FACADE: ['STREET', 'DOOR', 'OPEN'],
+  STAIRS_UP: ['STAIRS_UP', 'OPEN'],
+  STAIRS_DOWN: ['STAIRS_DOWN', 'OPEN']
+};
+```
+
+#### 2. TileTemplate Interface
+Hver tile-type har predefinerte kanter:
+
+```typescript
+interface TileTemplate {
+  id: string;
+  name: string;
+  category: TileCategory;
+  subType: string;
+  edges: [ConnectionEdgeType, ConnectionEdgeType, ConnectionEdgeType,
+          ConnectionEdgeType, ConnectionEdgeType, ConnectionEdgeType]; // 6 kanter
+  floorType: FloorType;
+  zoneLevel: ZoneLevel;
+  watermarkIcon?: string;
+  spawnWeight: number;      // Høyere = mer vanlig
+  canRotate: boolean;       // Kan roteres for å passe?
+  description?: string;
+  enemySpawnChance?: number;
+  possibleEnemies?: string[];
+}
+```
+
+#### 3. 40+ Tile Templates
+Fullstendig bibliotek med templates for alle kategorier:
+
+**Innendørs:**
+- Foyer: `foyer_grand`, `foyer_small`, `foyer_church`
+- Korridor: `corridor_straight`, `corridor_t`, `corridor_corner`, `corridor_cross`, `corridor_wide`
+- Rom: `room_study`, `room_bedroom`, `room_kitchen`, `room_ritual`, `room_library`, `room_lab`, `room_dining`, `room_living`
+- Trapper: `stairs_down`, `stairs_up`, `stairs_spiral`
+- Kjeller: `basement_cellar`, `basement_wine`, `basement_tunnel`, `basement_sewer`
+- Krypt: `crypt_tomb`, `crypt_altar`, `crypt_tunnel`, `crypt_portal`
+
+**Utendørs:**
+- Fasade: `facade_manor`, `facade_shop`, `facade_church`, `facade_warehouse`
+- Gate: `street_main`, `street_alley`, `street_crossing`, `street_corner`
+- Urban: `urban_square`, `urban_harbor`, `urban_cemetery`
+- Natur: `nature_forest`, `nature_clearing`, `nature_path`, `nature_marsh`, `nature_stones`
+
+#### 4. Rotasjonssystem
+Templates kan roteres 0-5 (60-graders steg) for å matche constraints:
+
+```typescript
+function rotateEdges(edges, rotation): ConnectionEdgeType[] {
+  const normalizedRotation = ((rotation % 6) + 6) % 6;
+  const rotated: ConnectionEdgeType[] = [];
+  for (let i = 0; i < 6; i++) {
+    const sourceIndex = (i - normalizedRotation + 6) % 6;
+    rotated[i] = edges[sourceIndex];
+  }
+  return rotated;
+}
+```
+
+#### 5. Constraint Gathering
+Samler kant-krav fra alle naboer:
+
+```typescript
+function gatherConstraints(board, q, r): (EdgeConstraint | null)[] {
+  // For hver av 6 retninger:
+  // - Finn nabo-tile
+  // - Hent naboens kant som peker mot oss (oppositeDirection)
+  // - Returner constraint-objekt med påkrevd kanttype
+}
+```
+
+#### 6. Template Matching (WFC-inspirert)
+Finner alle templates som matcher constraints:
+
+```typescript
+function findValidTemplates(constraints, preferredCategory): TemplateMatch[] {
+  // For hver template:
+  //   For hver mulig rotasjon (0-5):
+  //     Sjekk om roterte kanter er kompatible med alle constraints
+  //     Hvis ja, legg til med vektet score
+  // Returner alle matchende templates med rotasjoner
+}
+```
+
+#### 7. Room Cluster System
+Genererer hele rom-strukturer (som en liten leilighet eller herregård):
+
+```typescript
+interface RoomCluster {
+  id: string;
+  name: string;
+  description: string;
+  tiles: { template: TileTemplate; localQ: number; localR: number; rotation: number; }[];
+  entryPoints: { direction: HexDirection; localQ: number; localR: number; }[];
+  category: 'apartment' | 'manor' | 'church' | 'warehouse' | 'cave';
+  spawnWeight: number;
+}
+```
+
+Pre-definerte clusters:
+- `CLUSTER_SMALL_APARTMENT` - 4 tiles
+- `CLUSTER_MANOR_GROUND` - 7 tiles
+- `CLUSTER_CHURCH` - 6 tiles
+- `CLUSTER_WAREHOUSE` - 5 tiles
+
+#### 8. Oppdatert spawnRoom (ShadowsGame.tsx)
+Integrert det nye systemet med eksisterende spillogikk:
+
+1. **Template-basert generering:** Bruker `gatherConstraints` og `findValidTemplates`
+2. **30% Room Cluster sjanse:** Når spiller går inn i bygning fra facade/street
+3. **Fallback til legacy:** Hvis ingen templates matcher
+4. **Template-basert enemy spawn:** Bruker `enemySpawnChance` og `possibleEnemies` fra template
+
+### Filer Opprettet
+- `src/game/tileConnectionSystem.ts` (NY - ~1100 linjer)
+
+### Filer Modifisert
+- `src/game/ShadowsGame.tsx` - Import og oppdatert spawnRoom (~200 linjer endret)
+
+### Teknisk Flyt
+
+```
+1. Spiller beveger seg til adjacent tile
+   ↓
+2. spawnRoom(q, r, tileSet) kalles
+   ↓
+3. gatherConstraints() - samler kant-krav fra naboer
+   ↓
+4. findValidTemplates() - finner matchende templates
+   ↓
+5. selectWeightedTemplate() - velger basert på spawnWeight
+   ↓
+6. [30% sjanse] Spawn room cluster i stedet for enkelttile
+   ↓
+7. createTileFromTemplate() - lager Tile fra valgt template
+   ↓
+8. Oppdater board state og logg
+```
+
+### Resultat
+- ✅ Fullstendig kant-kompatibilitetssystem
+- ✅ 40+ tile templates med predefinerte kanter
+- ✅ Rotasjon for å matche constraints
+- ✅ Room cluster generering (30% sjanse)
+- ✅ Fallback til legacy system
+- ✅ Template-basert enemy spawning
+- ✅ TypeScript kompilerer uten feil
+- ✅ Build vellykket
+
+### Neste Steg (Fremtidig)
+- Utvide template-biblioteket med flere varianter
+- Implementere zone-specific constraint prioritering
+- Legge til multi-level room clusters (flere etasjer)
+- Visuell preview av mulige tile-typer på adjacent tiles
+
+---
+
 ## 2026-01-19: Fix Hero Selection for Scenarios
 
 ### Oppgave
