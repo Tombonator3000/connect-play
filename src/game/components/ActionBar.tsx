@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Sword, Heart, Package, LockOpen, Hammer, Wind, Zap, X, Eye, User, BookOpen } from 'lucide-react';
 import { ContextAction, Spell } from '../types';
+import { SpellTooltip } from './ItemTooltip';
 
 interface ActionBarProps {
   onAction: (action: string, payload?: any) => void;
@@ -96,22 +97,23 @@ const ActionBar: React.FC<ActionBarProps> = ({
                     <div className="p-4 text-center text-muted-foreground italic text-xs">No spells memorized.</div>
                   ) : (
                     spells.map(spell => (
-                      <button
-                        key={spell.id}
-                        onClick={() => {
-                          onAction('cast', spell);
-                          setShowSpellMenu(false);
-                        }}
-                        className="text-left p-3 hover:bg-secondary/30 border-b border-secondary/20 group transition-colors"
-                      >
-                        <div className="flex justify-between items-center mb-1">
-                          <span className="text-secondary-foreground font-bold text-xs uppercase group-hover:text-foreground">{spell.name}</span>
-                          <span className="text-[10px] bg-background/40 px-2 py-0.5 rounded text-insight font-bold border border-insight/30 flex items-center gap-1">
-                            <Eye size={10} /> {spell.cost}
-                          </span>
-                        </div>
-                        <div className="text-[10px] text-muted-foreground italic">{spell.description}</div>
-                      </button>
+                      <SpellTooltip key={spell.id} spell={spell}>
+                        <button
+                          onClick={() => {
+                            onAction('cast', spell);
+                            setShowSpellMenu(false);
+                          }}
+                          className="text-left p-3 hover:bg-secondary/30 border-b border-secondary/20 group transition-colors w-full"
+                        >
+                          <div className="flex justify-between items-center mb-1">
+                            <span className="text-secondary-foreground font-bold text-xs uppercase group-hover:text-foreground">{spell.name}</span>
+                            <span className="text-[10px] bg-background/40 px-2 py-0.5 rounded text-insight font-bold border border-insight/30 flex items-center gap-1">
+                              <Eye size={10} /> {spell.cost}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-muted-foreground italic line-clamp-2">{spell.description}</div>
+                        </button>
+                      </SpellTooltip>
                     ))
                   )}
                 </div>
