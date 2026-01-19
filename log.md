@@ -239,9 +239,103 @@ Spillet er inspirert av:
 - Ingen persistens mellom scenarier (legacy)
 
 ### Status
-- [ ] Design scenario-system
+- [x] Design scenario-system
 - [ ] Design legacy-system
-- [ ] Implementer ScenarioBriefingPopup
-- [ ] Implementer victory condition checking
+- [x] Implementer ScenarioBriefingPopup
+- [x] Implementer victory condition checking
 - [ ] Implementer legacy character persistence
 - [ ] Implementer shop mellom oppdrag
+
+---
+
+## 2026-01-19: Scenario Briefing & Victory Conditions Implementation
+
+### Tasks Completed
+
+#### ScenarioBriefingPopup.tsx
+- [x] Created atmospheric briefing popup component
+- [x] Parchment-style design with wax seal decoration
+- [x] Shows scenario title, briefing text, objectives, victory conditions
+- [x] Displays doom prophecy and special conditions
+- [x] Team info and start location displayed
+- [x] "Begin Investigation" button to start game
+
+#### Extended Scenario Interface (types.ts)
+- [x] Added `ScenarioObjective` interface with full objective system
+- [x] New `ObjectiveType` for: find_item, find_tile, kill_enemy, kill_boss, survive, interact, escape, collect, explore, protect, ritual
+- [x] `VictoryCondition` interface for checking win states
+- [x] `DefeatCondition` interface for loss conditions
+- [x] Extended `Scenario` with: briefing, objectives, victoryConditions, defeatConditions, estimatedTime, recommendedPlayers
+
+#### Updated SCENARIOS (constants.ts)
+- [x] Added detailed briefing narratives for all 3 scenarios
+- [x] Expanded objectives with primary and bonus objectives
+- [x] Hidden objectives that reveal when prerequisites are met
+- [x] Victory conditions linked to required objectives
+- [x] Defeat conditions (all_dead, doom_zero)
+- [x] Added estimatedTime and recommendedPlayers
+
+#### Victory Condition Checking (scenarioUtils.ts)
+- [x] Created comprehensive scenario utilities module
+- [x] `checkVictoryConditions()` - checks all victory conditions
+- [x] `checkDefeatConditions()` - checks all defeat conditions
+- [x] `updateObjectiveProgress()` - tracks progress on objectives
+- [x] `completeObjective()` - marks objectives complete, reveals hidden ones
+- [x] `checkKillObjectives()` - updates kill-based objectives
+- [x] `checkExploreObjectives()` - updates exploration objectives
+- [x] `updateSurvivalObjectives()` - tracks survival round count
+- [x] Helper functions for objective display
+
+#### ShadowsGame.tsx Integration
+- [x] Added showBriefing state
+- [x] Briefing shows after character selection before game starts
+- [x] Victory/defeat checking integrated in checkGameOver()
+- [x] Kill objectives updated when enemies die
+- [x] Explore objectives updated when new tiles discovered
+- [x] Survival objectives updated on round change
+- [x] Objective completion notifications in game log
+
+### Files Created
+- `src/game/components/ScenarioBriefingPopup.tsx` (NEW)
+- `src/game/utils/scenarioUtils.ts` (NEW)
+
+### Files Modified
+- `src/game/types.ts` (MODIFIED - extended Scenario interface)
+- `src/game/constants.ts` (MODIFIED - expanded SCENARIOS)
+- `src/game/ShadowsGame.tsx` (MODIFIED - integrated briefing and victory checking)
+
+### Features Implemented
+
+#### Scenario Briefing System
+When players select a scenario and characters:
+1. "Assemble Team" button now shows briefing popup
+2. Briefing displays immersive narrative text
+3. Mission objectives listed with descriptions
+4. Victory conditions and doom events shown
+5. "Begin Investigation" starts the game
+
+#### Objective Tracking
+The game now tracks progress on scenario objectives:
+- **Primary objectives**: Must be completed for victory
+- **Bonus objectives**: Optional, give rewards
+- **Hidden objectives**: Revealed when prerequisites met
+- Progress tracked for: kills, exploration, survival rounds, item collection
+
+#### Victory Checking
+The game checks for victory after significant events:
+- Escape: Player reaches exit with required items
+- Assassination: Target boss killed
+- Survival: Required rounds survived
+- Collection: All required items found
+
+#### Defeat Conditions
+Game ends in defeat when:
+- All investigators die
+- Doom counter reaches zero
+- Specific objective fails (e.g., protection target dies)
+
+### Next Steps
+- [ ] Implement legacy character persistence between scenarios
+- [ ] Implement shop/merchant phase between missions
+- [ ] Add objective tracker UI during gameplay
+- [ ] Add more scenarios

@@ -15,8 +15,10 @@ import MainMenu from './components/MainMenu';
 import OptionsMenu, { GameSettings, DEFAULT_SETTINGS } from './components/OptionsMenu';
 import GameOverOverlay, { GameOverType } from './components/GameOverOverlay';
 import MythosPhaseOverlay from './components/MythosPhaseOverlay';
+import ScenarioBriefingPopup from './components/ScenarioBriefingPopup';
 import { performAttack, performHorrorCheck, calculateEnemyDamage, hasRangedWeapon, canAttackEnemy } from './utils/combatUtils';
 import { processEnemyTurn, selectRandomEnemy, createEnemy, shouldSpawnMonster } from './utils/monsterAI';
+import { checkVictoryConditions, checkDefeatConditions, updateObjectiveProgress, completeObjective, checkKillObjectives, checkExploreObjectives, updateSurvivalObjectives, getVisibleObjectives } from './utils/scenarioUtils';
 
 const STORAGE_KEY = 'shadows_1920s_save';
 const SETTINGS_KEY = 'shadows_1920s_settings';
@@ -62,6 +64,7 @@ const ShadowsGame: React.FC = () => {
   const [showLeftPanel, setShowLeftPanel] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(false);
   const [showMythosOverlay, setShowMythosOverlay] = useState(false);
+  const [showBriefing, setShowBriefing] = useState(false);
   const [gameOverType, setGameOverType] = useState<GameOverType | null>(null);
 
   // Context Action state
@@ -248,8 +251,42 @@ const ShadowsGame: React.FC = () => {
     return player;
   };
 
-  // Check for game over conditions
+  // Check for game over conditions (both victory and defeat)
   const checkGameOver = useCallback((players: Player[], doom: number) => {
+    // First check for victory conditions if scenario is active
+    if (state.activeScenario) {
+      const victoryResult = checkVictoryConditions(state.activeScenario, {
+        players,
+        enemies: state.enemies,
+        board: state.board,
+        round: state.round,
+        doom,
+        questItemsCollected: state.questItemsCollected
+      });
+
+      if (victoryResult.isVictory) {
+        addToLog(victoryResult.message);
+        setGameOverType('victory');
+        setState(prev => ({ ...prev, phase: GamePhase.GAME_OVER }));
+        return true;
+      }
+
+      // Check defeat conditions using new system
+      const defeatResult = checkDefeatConditions(state.activeScenario, {
+        players,
+        doom,
+        round: state.round
+      });
+
+      if (defeatResult.isDefeat) {
+        addToLog(defeatResult.message);
+        setGameOverType(defeatResult.condition?.type === 'doom_zero' ? 'defeat_doom' : 'defeat_death');
+        setState(prev => ({ ...prev, phase: GamePhase.GAME_OVER }));
+        return true;
+      }
+    }
+
+    // Fallback checks for when no scenario is active
     // Check if all players are dead
     const allPlayersDead = players.length > 0 && players.every(p => p.isDead);
     if (allPlayersDead) {
@@ -268,7 +305,7 @@ const ShadowsGame: React.FC = () => {
     }
 
     return false;
-  }, []);
+  }, [state.activeScenario, state.enemies, state.board, state.round, state.questItemsCollected]);
 
   // Handle showing context actions for a tile/obstacle
   const showContextActions = useCallback((tile: Tile, edgeIndex?: number) => {
@@ -706,6 +743,23 @@ const ShadowsGame: React.FC = () => {
         addToLog(locationDescription);
       }
 
+      // Check explore objectives
+      if (state.activeScenario) {
+        const tile = newTiles[0];
+        const exploreCheck = checkExploreObjectives(state.activeScenario, roomName, tile.id);
+        if (exploreCheck.objective) {
+          const updatedScenario = exploreCheck.shouldComplete
+            ? completeObjective(state.activeScenario, exploreCheck.objective.id)
+            : updateObjectiveProgress(state.activeScenario, exploreCheck.objective.id, 1);
+
+          setState(prev => ({ ...prev, activeScenario: updatedScenario }));
+
+          if (exploreCheck.shouldComplete) {
+            addToLog(`OBJECTIVE COMPLETE: ${exploreCheck.objective.shortDescription}`);
+          }
+        }
+      }
+
       // Use new spawn system
       const tile = newTiles[0];
       const isFirstVisit = true; // New tiles are always first visit
@@ -906,6 +960,23 @@ const ShadowsGame: React.FC = () => {
             const bestiary = BESTIARY[enemy.type];
             addToLog(bestiary.defeatFlavor || `${enemy.name} er beseiret!`);
             addFloatingText(enemy.position.q, enemy.position.r, "DREPT!", "text-accent");
+
+            // Update kill objectives
+            if (state.activeScenario) {
+              const killCheck = checkKillObjectives(state.activeScenario, enemy.type);
+              if (killCheck.objective) {
+                const updatedScenario = killCheck.shouldComplete
+                  ? completeObjective(state.activeScenario, killCheck.objective.id)
+                  : updateObjectiveProgress(state.activeScenario, killCheck.objective.id, 1);
+
+                setState(prev => ({ ...prev, activeScenario: updatedScenario }));
+
+                if (killCheck.shouldComplete) {
+                  addToLog(`OBJECTIVE COMPLETE: ${killCheck.objective.shortDescription}`);
+                  addFloatingText(activePlayer.position.q, activePlayer.position.r, "OBJECTIVE!", "text-accent");
+                }
+              }
+            }
           }
 
           setState(prev => ({
@@ -988,13 +1059,40 @@ const ShadowsGame: React.FC = () => {
 
   const handleMythosOverlayComplete = () => {
     setShowMythosOverlay(false);
+
+    // Update survival objectives based on new round
+    const newRound = state.round + 1;
+    let updatedScenario = state.activeScenario;
+
+    if (state.activeScenario) {
+      updatedScenario = updateSurvivalObjectives(state.activeScenario, newRound);
+
+      // Check if any survival objective was just completed
+      const survivalObjectives = updatedScenario.objectives.filter(
+        obj => obj.type === 'survive' && obj.completed
+      );
+      const previouslyCompleted = state.activeScenario.objectives.filter(
+        obj => obj.type === 'survive' && obj.completed
+      );
+
+      if (survivalObjectives.length > previouslyCompleted.length) {
+        const newlyCompleted = survivalObjectives.find(
+          obj => !previouslyCompleted.some(prev => prev.id === obj.id)
+        );
+        if (newlyCompleted) {
+          addToLog(`OBJECTIVE COMPLETE: ${newlyCompleted.shortDescription}`);
+        }
+      }
+    }
+
     setState(prev => ({
       ...prev,
       phase: GamePhase.MYTHOS,
       activePlayerIndex: 0,
       doom: prev.doom - 1,
-      round: prev.round + 1,
-      activeSpell: null
+      round: newRound,
+      activeSpell: null,
+      activeScenario: updatedScenario
     }));
   };
 
@@ -1087,13 +1185,31 @@ const ShadowsGame: React.FC = () => {
                 })}
               </div>
               <button disabled={state.players.length === 0} onClick={() => {
-                setState(prev => ({ ...prev, phase: GamePhase.INVESTIGATOR, doom: prev.activeScenario?.startDoom || 12 }));
-                addToLog("The investigation begins.");
-                spawnEnemy('cultist', 1, 0);
+                setShowBriefing(true);
               }} className={`px-12 py-4 font-display text-2xl tracking-[0.3em] uppercase border-2 transition-all ${state.players.length > 0 ? 'bg-primary border-foreground text-primary-foreground shadow-[var(--shadow-doom)]' : 'bg-muted border-border text-muted-foreground cursor-not-allowed'}`}>Assemble Team</button>
             </div>
           )}
         </div>
+      )}
+
+      {/* Scenario Briefing Popup */}
+      {showBriefing && state.activeScenario && (
+        <ScenarioBriefingPopup
+          scenario={state.activeScenario}
+          playerCount={state.players.length}
+          onBegin={() => {
+            setShowBriefing(false);
+            setState(prev => ({
+              ...prev,
+              phase: GamePhase.INVESTIGATOR,
+              doom: prev.activeScenario?.startDoom || 12
+            }));
+            addToLog("The investigation begins.");
+            addToLog(`SCENARIO: ${state.activeScenario?.title}`);
+            addToLog(`GOAL: ${state.activeScenario?.goal}`);
+            spawnEnemy('cultist', 1, 0);
+          }}
+        />
       )}
 
       {state.phase !== GamePhase.SETUP && !isMainMenuOpen && (

@@ -521,7 +521,37 @@ export interface Tile {
   watermarkIcon?: string;
 }
 
-export type VictoryType = 'escape' | 'assassination' | 'collection' | 'survival';
+export type VictoryType = 'escape' | 'assassination' | 'collection' | 'survival' | 'ritual' | 'investigation';
+
+export type ObjectiveType =
+  | 'find_item'      // Find a specific item
+  | 'find_tile'      // Discover a specific tile type
+  | 'kill_enemy'     // Kill specific enemy type(s)
+  | 'kill_boss'      // Kill a boss enemy
+  | 'survive'        // Survive for X rounds
+  | 'interact'       // Interact with specific object
+  | 'escape'         // Reach exit and leave
+  | 'collect'        // Collect X of something
+  | 'explore'        // Explore X tiles
+  | 'protect'        // Keep someone/something alive
+  | 'ritual';        // Perform a ritual action
+
+export interface ScenarioObjective {
+  id: string;
+  description: string;
+  shortDescription: string;  // For UI display
+  type: ObjectiveType;
+  targetId?: string;         // Item ID, Enemy type, Tile name, etc.
+  targetAmount?: number;     // How many needed (default 1)
+  currentAmount?: number;    // Current progress
+  isOptional: boolean;       // Required or bonus
+  isHidden: boolean;         // Revealed when discovered
+  revealedBy?: string;       // Objective ID that reveals this
+  completed: boolean;
+  failedCondition?: string;  // What causes this to fail
+  rewardInsight?: number;    // Insight gained on completion
+  rewardItem?: string;       // Item ID given on completion
+}
 
 export interface ScenarioStep {
   id: string;
@@ -535,16 +565,31 @@ export interface ScenarioStep {
 export interface DoomEvent {
   threshold: number;
   triggered: boolean;
-  type: 'spawn_enemy' | 'buff_enemies' | 'sanity_hit' | 'spawn_boss';
+  type: 'spawn_enemy' | 'buff_enemies' | 'sanity_hit' | 'spawn_boss' | 'unlock_area' | 'narrative';
   targetId?: string;
   amount?: number;
   message: string;
+}
+
+export interface VictoryCondition {
+  type: VictoryType;
+  description: string;
+  checkFunction: string;  // Name of function to check (evaluated in game)
+  requiredObjectives: string[];  // Objective IDs that must be completed
+  anyOfObjectives?: string[];    // Any one of these objectives
+}
+
+export interface DefeatCondition {
+  type: 'all_dead' | 'doom_zero' | 'objective_failed' | 'time_expired';
+  description: string;
+  objectiveId?: string;  // For objective_failed type
 }
 
 export interface Scenario {
   id: string;
   title: string;
   description: string;
+  briefing: string;              // Longer narrative briefing text
   startDoom: number;
   startLocation: string;
   specialRule: string;
@@ -552,8 +597,13 @@ export interface Scenario {
   tileSet: 'indoor' | 'outdoor' | 'mixed';
   goal: string;
   victoryType: VictoryType;
-  steps: ScenarioStep[];
+  steps: ScenarioStep[];         // Legacy - for backward compatibility
+  objectives: ScenarioObjective[]; // New detailed objectives
+  victoryConditions: VictoryCondition[];
+  defeatConditions: DefeatCondition[];
   doomEvents: DoomEvent[];
+  estimatedTime?: string;        // e.g. "30-45 min"
+  recommendedPlayers?: string;   // e.g. "2-4"
 }
 
 // ============================================================================

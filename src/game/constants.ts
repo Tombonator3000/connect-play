@@ -492,6 +492,15 @@ export const SCENARIOS: Scenario[] = [
     id: 's1',
     title: 'Escape from Blackwood Manor',
     description: 'You are trapped in the haunted Blackwood estate. The doors are sealed by dark magic. You must find the key and escape before the entity claims you.',
+    briefing: `The invitation arrived three days ago, written in an ink that seemed to shift in the candlelight.
+
+"Come to Blackwood Manor," it read. "All will be revealed."
+
+Now you understand the true meaning of those words. The doors have sealed themselves. The windows show only darkness, regardless of the hour. And something moves in the walls - something that knows you are here.
+
+You found the old caretaker's journal in the foyer. His final entry speaks of an Iron Key, hidden somewhere in the manor. "It is the only way out," he wrote. "Find it before HE finds you."
+
+The clock strikes midnight. The hunt begins.`,
     startDoom: 12,
     startLocation: 'Grand Hall',
     goal: 'Find the Iron Key, locate the Exit Door, and Escape.',
@@ -499,10 +508,77 @@ export const SCENARIOS: Scenario[] = [
     difficulty: 'Normal',
     tileSet: 'indoor',
     victoryType: 'escape',
+    estimatedTime: '30-45 min',
+    recommendedPlayers: '1-2',
     steps: [
       { id: 'step1', description: 'Find the Iron Key (Investigate locations)', type: 'find_item', targetId: 'quest_key', completed: false },
       { id: 'step2', description: 'Locate the Exit Door', type: 'find_tile', targetId: 'Exit Door', completed: false },
       { id: 'step3', description: 'Unlock the Door and Escape', type: 'interact', targetId: 'Exit Door', completed: false }
+    ],
+    objectives: [
+      {
+        id: 'obj_find_key',
+        description: 'Search the manor rooms to find the Iron Key that unlocks the sealed exit.',
+        shortDescription: 'Find the Iron Key',
+        type: 'find_item',
+        targetId: 'quest_key',
+        targetAmount: 1,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: false,
+        completed: false,
+        rewardInsight: 1
+      },
+      {
+        id: 'obj_find_exit',
+        description: 'Locate the Exit Door. It will only reveal itself once you possess the key.',
+        shortDescription: 'Find the Exit',
+        type: 'find_tile',
+        targetId: 'exit_door',
+        targetAmount: 1,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_find_key',
+        completed: false
+      },
+      {
+        id: 'obj_escape',
+        description: 'Use the Iron Key to unlock the exit and escape the manor.',
+        shortDescription: 'Escape the Manor',
+        type: 'escape',
+        targetId: 'exit_door',
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_find_exit',
+        completed: false
+      },
+      {
+        id: 'obj_bonus_journal',
+        description: 'Find the caretaker\'s hidden journal pages scattered throughout the manor.',
+        shortDescription: 'Find Journal Pages (0/3)',
+        type: 'collect',
+        targetId: 'journal_page',
+        targetAmount: 3,
+        currentAmount: 0,
+        isOptional: true,
+        isHidden: false,
+        completed: false,
+        rewardInsight: 2,
+        rewardItem: 'elder_sign'
+      }
+    ],
+    victoryConditions: [
+      {
+        type: 'escape',
+        description: 'Escape through the Exit Door with the Iron Key',
+        checkFunction: 'checkEscapeVictory',
+        requiredObjectives: ['obj_find_key', 'obj_find_exit', 'obj_escape']
+      }
+    ],
+    defeatConditions: [
+      { type: 'all_dead', description: 'All investigators have been killed' },
+      { type: 'doom_zero', description: 'The doom counter reaches zero' }
     ],
     doomEvents: [
       { threshold: 8, triggered: false, type: 'spawn_enemy', targetId: 'cultist', amount: 2, message: 'The cultists have found you!' },
@@ -514,6 +590,15 @@ export const SCENARIOS: Scenario[] = [
     id: 's2',
     title: 'Assassination of the High Priest',
     description: 'The Order of the Black Sun is performing a ritual to summon a Great Old One. You must silence their leader before the ritual completes.',
+    briefing: `The telegram from Agent Morrison was brief: "HIGH PRIEST LOCATED. RITUAL TONIGHT. STOP HIM OR ALL IS LOST."
+
+The Order of the Black Sun has been a shadow on the edges of your investigations for months. Their leader, the one they call the Dark Priest, has evaded capture at every turn. But tonight, he makes his move.
+
+In the abandoned cathedral at the edge of town, they will attempt to complete the Rite of Y'golonac. If they succeed, something ancient and terrible will walk the earth once more.
+
+You must infiltrate their gathering, locate the Dark Priest, and end his threat permanently. There will be no trial, no justice system that can handle what he has become. Only cold steel and righteous fury.
+
+The ritual begins at midnight. You have until then.`,
     startDoom: 10,
     startLocation: 'Town Square',
     goal: 'Find and kill the Dark Priest.',
@@ -521,9 +606,86 @@ export const SCENARIOS: Scenario[] = [
     difficulty: 'Hard',
     tileSet: 'mixed',
     victoryType: 'assassination',
+    estimatedTime: '45-60 min',
+    recommendedPlayers: '2-3',
     steps: [
       { id: 'step1', description: 'Find the Dark Priest', type: 'find_item', targetId: 'location_intel', completed: false },
       { id: 'step2', description: 'Kill the Dark Priest', type: 'kill_enemy', targetId: 'priest', amount: 1, completed: false }
+    ],
+    objectives: [
+      {
+        id: 'obj_gather_intel',
+        description: 'Search for clues about the Dark Priest\'s location. Question cultists or search their hideouts.',
+        shortDescription: 'Gather Intelligence',
+        type: 'collect',
+        targetId: 'intel_clue',
+        targetAmount: 2,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: false,
+        completed: false,
+        rewardInsight: 1
+      },
+      {
+        id: 'obj_find_priest',
+        description: 'Locate the Dark Priest in the ritual chamber.',
+        shortDescription: 'Find the Dark Priest',
+        type: 'find_tile',
+        targetId: 'ritual_chamber',
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_gather_intel',
+        completed: false
+      },
+      {
+        id: 'obj_kill_priest',
+        description: 'Kill the Dark Priest before he completes the summoning ritual.',
+        shortDescription: 'Kill the Dark Priest',
+        type: 'kill_boss',
+        targetId: 'priest',
+        targetAmount: 1,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_find_priest',
+        completed: false
+      },
+      {
+        id: 'obj_bonus_acolytes',
+        description: 'Eliminate the priest\'s inner circle of acolytes to weaken his power.',
+        shortDescription: 'Kill Acolytes (0/3)',
+        type: 'kill_enemy',
+        targetId: 'cultist',
+        targetAmount: 3,
+        currentAmount: 0,
+        isOptional: true,
+        isHidden: false,
+        completed: false,
+        rewardInsight: 1
+      },
+      {
+        id: 'obj_bonus_artifact',
+        description: 'Recover the Black Sun Medallion before it can be used in the ritual.',
+        shortDescription: 'Recover the Medallion',
+        type: 'find_item',
+        targetId: 'black_sun_medallion',
+        isOptional: true,
+        isHidden: true,
+        completed: false,
+        rewardItem: 'occult_tome'
+      }
+    ],
+    victoryConditions: [
+      {
+        type: 'assassination',
+        description: 'Kill the Dark Priest',
+        checkFunction: 'checkAssassinationVictory',
+        requiredObjectives: ['obj_kill_priest']
+      }
+    ],
+    defeatConditions: [
+      { type: 'all_dead', description: 'All investigators have been killed' },
+      { type: 'doom_zero', description: 'The ritual is completed' }
     ],
     doomEvents: [
       { threshold: 7, triggered: false, type: 'spawn_enemy', targetId: 'deepone', amount: 2, message: 'Deep Ones rise from the sewers.' },
@@ -535,20 +697,108 @@ export const SCENARIOS: Scenario[] = [
     id: 's3',
     title: 'The Siege of Arkham',
     description: 'They are coming. Wave after wave of horrors. You cannot run. You can only survive.',
+    briefing: `The stars are right. You knew this night would come.
+
+For weeks, the signs have been mounting. Missing persons. Strange lights over the harbor. The dreams that made you wake screaming. And now, as the clock strikes midnight, the barriers between worlds grow thin.
+
+Sheriff Douglas has barricaded himself and the remaining townsfolk in the police station. "Hold the line," he says, loading his shotgun. "Help is coming." But you've seen the darkness gathering at the edge of town. You know what's coming.
+
+Wave after wave of horrors from beyond the veil. Things that should not exist. Things that hunger.
+
+There is no escape. The roads are blocked. The telegraph lines are down. You must hold this position until dawn - if dawn ever comes.
+
+Ten rounds. Ten waves. Survive, and you might just live to see another sunrise.`,
     startDoom: 15,
     startLocation: 'Police Station',
     goal: 'Survive for 10 rounds.',
-    specialRule: 'Doom decreases every round automatically.',
+    specialRule: 'Doom decreases every round automatically. Enemies spawn in waves.',
     difficulty: 'Nightmare',
     tileSet: 'mixed',
     victoryType: 'survival',
+    estimatedTime: '60-90 min',
+    recommendedPlayers: '2-4',
     steps: [
       { id: 'step1', description: 'Survive until help arrives', type: 'survive', amount: 10, completed: false }
     ],
+    objectives: [
+      {
+        id: 'obj_survive_5',
+        description: 'Hold the line for the first 5 rounds as the initial waves attack.',
+        shortDescription: 'Survive 5 Rounds',
+        type: 'survive',
+        targetAmount: 5,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: false,
+        completed: false,
+        rewardInsight: 1
+      },
+      {
+        id: 'obj_survive_10',
+        description: 'Endure the full assault until help arrives at dawn.',
+        shortDescription: 'Survive 10 Rounds',
+        type: 'survive',
+        targetAmount: 10,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_survive_5',
+        completed: false
+      },
+      {
+        id: 'obj_protect_civilians',
+        description: 'Keep at least one investigator alive at all times.',
+        shortDescription: 'Protect the Team',
+        type: 'protect',
+        isOptional: false,
+        isHidden: false,
+        completed: false,
+        failedCondition: 'all_dead'
+      },
+      {
+        id: 'obj_bonus_barricade',
+        description: 'Fortify the police station by searching for supplies.',
+        shortDescription: 'Find Supplies (0/3)',
+        type: 'collect',
+        targetId: 'barricade_supply',
+        targetAmount: 3,
+        currentAmount: 0,
+        isOptional: true,
+        isHidden: false,
+        completed: false,
+        rewardItem: 'shotgun'
+      },
+      {
+        id: 'obj_bonus_radio',
+        description: 'Repair the radio to call for reinforcements earlier.',
+        shortDescription: 'Repair the Radio',
+        type: 'interact',
+        targetId: 'broken_radio',
+        isOptional: true,
+        isHidden: false,
+        completed: false,
+        rewardInsight: 2
+      }
+    ],
+    victoryConditions: [
+      {
+        type: 'survival',
+        description: 'Survive for 10 rounds',
+        checkFunction: 'checkSurvivalVictory',
+        requiredObjectives: ['obj_survive_10']
+      }
+    ],
+    defeatConditions: [
+      { type: 'all_dead', description: 'All investigators have been killed' },
+      { type: 'doom_zero', description: 'The darkness consumes Arkham' }
+    ],
     doomEvents: [
       { threshold: 12, triggered: false, type: 'spawn_enemy', targetId: 'cultist', amount: 3, message: 'Wave 1: Cultists attack!' },
+      { threshold: 10, triggered: false, type: 'narrative', message: 'The howling grows louder. Something approaches from the north.' },
       { threshold: 8, triggered: false, type: 'spawn_enemy', targetId: 'ghoul', amount: 3, message: 'Wave 2: Ghouls swarm the barricades!' },
-      { threshold: 4, triggered: false, type: 'spawn_boss', targetId: 'dark_young', amount: 1, message: 'Wave 3: A Dark Young appears!' }
+      { threshold: 6, triggered: false, type: 'spawn_enemy', targetId: 'deepone', amount: 2, message: 'Wave 3: Deep Ones emerge from the sewers!' },
+      { threshold: 4, triggered: false, type: 'spawn_boss', targetId: 'dark_young', amount: 1, message: 'Wave 4: A Dark Young crashes through the wall!' },
+      { threshold: 2, triggered: false, type: 'spawn_boss', targetId: 'shoggoth', amount: 1, message: 'FINAL WAVE: The Shoggoth has arrived!' }
     ]
   }
 ];
