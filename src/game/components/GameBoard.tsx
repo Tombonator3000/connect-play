@@ -4,6 +4,7 @@ import {
   User, Skull, DoorOpen, Lock, Flame, Hammer, Brain,
   BookOpen, Anchor, Church, MapPin, Building, ShoppingBag, Fish, PawPrint, Biohazard, Ghost, Bug
 } from 'lucide-react';
+import { EnemyTooltip } from './ItemTooltip';
 
 interface GameBoardProps {
   tiles: Tile[];
@@ -303,12 +304,14 @@ const GameBoard: React.FC<GameBoardProps> = ({
           const MonsterVisual = getMonsterIcon(enemy.type);
           const isSelected = selectedEnemyId === enemy.id;
           return (
-            <div key={enemy.id} className="absolute w-14 h-14 transition-all duration-500 z-40 cursor-pointer" style={{ left: `${x - 28}px`, top: `${y - 28}px`, transform: isSelected ? 'scale(1.2)' : 'scale(1)' }} onClick={(e) => { e.stopPropagation(); if (!hasDragged.current && onEnemyClick) onEnemyClick(enemy.id); }}>
-              <div className={`w-full h-full rounded-full bg-red-950 border-2 ${isSelected ? 'border-primary shadow-[var(--shadow-doom)]' : 'border-red-900 shadow-[0_0_20px_rgba(220,38,38,0.3)]'} flex items-center justify-center overflow-hidden relative`}>
-                <MonsterVisual.Icon className={MonsterVisual.color} size={24} />
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-black"><div className="h-full bg-health" style={{ width: `${(enemy.hp / enemy.maxHp) * 100}%` }} /></div>
+            <EnemyTooltip key={enemy.id} enemy={enemy}>
+              <div className="absolute w-14 h-14 transition-all duration-500 z-40 cursor-pointer" style={{ left: `${x - 28}px`, top: `${y - 28}px`, transform: isSelected ? 'scale(1.2)' : 'scale(1)' }} onClick={(e) => { e.stopPropagation(); if (!hasDragged.current && onEnemyClick) onEnemyClick(enemy.id); }}>
+                <div className={`w-full h-full rounded-full bg-red-950 border-2 ${isSelected ? 'border-primary shadow-[var(--shadow-doom)]' : 'border-red-900 shadow-[0_0_20px_rgba(220,38,38,0.3)]'} flex items-center justify-center overflow-hidden relative`}>
+                  <MonsterVisual.Icon className={MonsterVisual.color} size={24} />
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-black"><div className="h-full bg-health" style={{ width: `${(enemy.hp / enemy.maxHp) * 100}%` }} /></div>
+                </div>
               </div>
-            </div>
+            </EnemyTooltip>
           );
         })}
 

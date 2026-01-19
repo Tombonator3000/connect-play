@@ -1,7 +1,8 @@
 import React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Item, Spell } from '../types';
-import { Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, Eye } from 'lucide-react';
+import { Item, Spell, Enemy, EnemyType } from '../types';
+import { BESTIARY } from '../constants';
+import { Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, Eye, Skull, Brain, Swords, BookOpen } from 'lucide-react';
 
 interface ItemTooltipProps {
   item: Item;
@@ -125,6 +126,75 @@ export const SpellTooltip: React.FC<SpellTooltipProps> = ({ spell, children }) =
                 </span>
               )}
             </div>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
+interface EnemyTooltipProps {
+  enemy: Enemy;
+  children: React.ReactNode;
+}
+
+export const EnemyTooltip: React.FC<EnemyTooltipProps> = ({ enemy, children }) => {
+  const info = BESTIARY[enemy.type];
+  
+  return (
+    <TooltipProvider delayDuration={300}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {children}
+        </TooltipTrigger>
+        <TooltipContent 
+          side="top" 
+          className="max-w-72 bg-red-950/95 border-2 border-primary/50 p-0 shadow-[var(--shadow-doom)]"
+        >
+          <div className="bg-red-900/30 px-3 py-2 border-b border-primary/30">
+            <div className="flex items-center gap-2">
+              <Skull size={14} className="text-primary" />
+              <span className="font-bold text-sm text-foreground uppercase tracking-wide">{enemy.name}</span>
+            </div>
+            <div className="text-[10px] text-primary/80 uppercase tracking-wider">
+              {enemy.type.replace('_', ' ')}
+            </div>
+          </div>
+          <div className="p-3 space-y-3">
+            <div className="flex gap-3">
+              <div className="flex items-center gap-1.5 bg-background/30 px-2 py-1 rounded border border-red-900/30">
+                <Swords size={12} className="text-primary" />
+                <span className="text-xs font-bold text-foreground">{enemy.damage}</span>
+                <span className="text-[9px] text-muted-foreground">DMG</span>
+              </div>
+              <div className="flex items-center gap-1.5 bg-background/30 px-2 py-1 rounded border border-secondary/30">
+                <Brain size={12} className="text-sanity" />
+                <span className="text-xs font-bold text-foreground">{enemy.horror}</span>
+                <span className="text-[9px] text-muted-foreground">HOR</span>
+              </div>
+            </div>
+            
+            {enemy.traits && enemy.traits.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {enemy.traits.map(trait => (
+                  <span key={trait} className="px-1.5 py-0.5 bg-red-900/30 text-red-300 text-[9px] font-bold uppercase rounded border border-red-800/50">
+                    {trait}
+                  </span>
+                ))}
+              </div>
+            )}
+            
+            {info && (
+              <div className="pt-2 border-t border-primary/20">
+                <div className="flex items-center gap-1 text-[9px] text-primary uppercase tracking-wider mb-1">
+                  <BookOpen size={10} />
+                  <span>Lore</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground italic leading-relaxed line-clamp-3">
+                  "{info.description}"
+                </p>
+              </div>
+            )}
           </div>
         </TooltipContent>
       </Tooltip>
