@@ -800,6 +800,1095 @@ Ten rounds. Ten waves. Survive, and you might just live to see another sunrise.`
       { threshold: 4, triggered: false, type: 'spawn_boss', targetId: 'dark_young', amount: 1, message: 'Wave 4: A Dark Young crashes through the wall!' },
       { threshold: 2, triggered: false, type: 'spawn_boss', targetId: 'shoggoth', amount: 1, message: 'FINAL WAVE: The Shoggoth has arrived!' }
     ]
+  },
+  // ============================================================================
+  // SCENARIO 4: Forbidden Knowledge (Normal - Collection)
+  // ============================================================================
+  {
+    id: 's4',
+    title: 'Forbidden Knowledge',
+    description: 'The Necronomicon has been scattered across Arkham. You must collect all 5 pages before the cultists reassemble the cursed tome.',
+    briefing: `Professor Armitage burst into your office, his hands trembling.
+
+"They've done it," he gasped. "They've torn apart the library's Necronomicon. The pages... they scattered them across the city to prevent us from destroying it."
+
+But the cultists didn't account for one thing: each page calls to the others. You can feel them, can't you? That low hum at the edge of hearing, pulling you toward forbidden knowledge.
+
+Five pages. Five fragments of madness. Collect them all before the Order of the Silver Twilight finds them first. But be warned—each page you read chips away at your sanity. Some knowledge is not meant for mortal minds.
+
+The race for forbidden knowledge begins.`,
+    startDoom: 12,
+    startLocation: 'Miskatonic Library',
+    goal: 'Collect all 5 Necronomicon pages.',
+    specialRule: 'Each page collected causes -1 Sanity. Pages spawn at random explored locations.',
+    difficulty: 'Normal',
+    tileSet: 'mixed',
+    victoryType: 'collection',
+    estimatedTime: '30-45 min',
+    recommendedPlayers: '1-2',
+    steps: [
+      { id: 'step1', description: 'Find Necronomicon Page 1', type: 'find_item', targetId: 'necro_page', completed: false },
+      { id: 'step2', description: 'Collect all 5 pages', type: 'find_item', targetId: 'necro_page', amount: 5, completed: false }
+    ],
+    objectives: [
+      {
+        id: 'obj_collect_pages',
+        description: 'Search Arkham for the 5 scattered Necronomicon pages.',
+        shortDescription: 'Collect Pages (0/5)',
+        type: 'collect',
+        targetId: 'necro_page',
+        targetAmount: 5,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: false,
+        completed: false,
+        rewardInsight: 3
+      },
+      {
+        id: 'obj_bonus_tome',
+        description: 'Find the original binding to safely contain the pages.',
+        shortDescription: 'Find the Binding',
+        type: 'find_item',
+        targetId: 'tome_binding',
+        isOptional: true,
+        isHidden: false,
+        completed: false,
+        rewardItem: 'elder_sign'
+      }
+    ],
+    victoryConditions: [
+      {
+        type: 'collection',
+        description: 'Collect all 5 Necronomicon pages',
+        checkFunction: 'checkCollectionVictory',
+        requiredObjectives: ['obj_collect_pages']
+      }
+    ],
+    defeatConditions: [
+      { type: 'all_dead', description: 'All investigators have been killed' },
+      { type: 'doom_zero', description: 'The cultists have reassembled the Necronomicon' }
+    ],
+    doomEvents: [
+      { threshold: 9, triggered: false, type: 'spawn_enemy', targetId: 'cultist', amount: 2, message: 'Cultists search for the pages!' },
+      { threshold: 6, triggered: false, type: 'spawn_enemy', targetId: 'ghoul', amount: 2, message: 'Ghouls guard a hidden page!' },
+      { threshold: 3, triggered: false, type: 'spawn_boss', targetId: 'shoggoth', amount: 1, message: 'A Shoggoth awakens from the forbidden words!' }
+    ]
+  },
+  // ============================================================================
+  // SCENARIO 5: The Missing Professor (Normal - Rescue)
+  // ============================================================================
+  {
+    id: 's5',
+    title: 'The Missing Professor',
+    description: 'Professor Warren has vanished in the catacombs beneath Arkham. Find him before the creatures that dwell below claim another victim.',
+    briefing: `The note arrived three days after Professor Warren disappeared.
+
+"Gone to prove my theory. The tunnels connect. They ALL connect. If I'm not back by Thursday, send help to the Old Cemetery. Look for the angel with broken wings."
+
+That was a week ago.
+
+The catacombs beneath Arkham are older than the city itself. They say bootleggers used them during Prohibition. They say other things use them now. The search parties found nothing—but they didn't go deep enough.
+
+Professor Warren is down there. You're certain of it. Whether he's still alive... that's another question.
+
+Find the Professor. Bring him home. And try not to disturb whatever else calls those tunnels home.`,
+    startDoom: 12,
+    startLocation: 'Old Cemetery',
+    goal: 'Find Professor Warren and escort him to safety.',
+    specialRule: 'Underground tiles only after entering catacombs. Professor has 3 HP and must survive.',
+    difficulty: 'Normal',
+    tileSet: 'indoor',
+    victoryType: 'escape',
+    estimatedTime: '30-45 min',
+    recommendedPlayers: '1-2',
+    steps: [
+      { id: 'step1', description: 'Find the catacomb entrance', type: 'find_tile', targetId: 'catacomb_entrance', completed: false },
+      { id: 'step2', description: 'Locate Professor Warren', type: 'find_item', targetId: 'professor_warren', completed: false },
+      { id: 'step3', description: 'Escort the Professor to safety', type: 'interact', targetId: 'exit', completed: false }
+    ],
+    objectives: [
+      {
+        id: 'obj_find_entrance',
+        description: 'Search the cemetery for the entrance to the catacombs.',
+        shortDescription: 'Find Catacomb Entrance',
+        type: 'find_tile',
+        targetId: 'catacomb_entrance',
+        isOptional: false,
+        isHidden: false,
+        completed: false
+      },
+      {
+        id: 'obj_find_professor',
+        description: 'Locate Professor Warren deep in the catacombs.',
+        shortDescription: 'Find Professor Warren',
+        type: 'find_tile',
+        targetId: 'professor_warren',
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_find_entrance',
+        completed: false,
+        rewardInsight: 1
+      },
+      {
+        id: 'obj_escort',
+        description: 'Lead the Professor safely back to the surface.',
+        shortDescription: 'Escort to Safety',
+        type: 'escape',
+        targetId: 'exit',
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_find_professor',
+        completed: false
+      },
+      {
+        id: 'obj_bonus_notes',
+        description: 'Recover the Professor\'s research notes from the tunnels.',
+        shortDescription: 'Find Research Notes',
+        type: 'find_item',
+        targetId: 'research_notes',
+        isOptional: true,
+        isHidden: false,
+        completed: false,
+        rewardInsight: 2
+      }
+    ],
+    victoryConditions: [
+      {
+        type: 'escape',
+        description: 'Escort Professor Warren to safety',
+        checkFunction: 'checkEscortVictory',
+        requiredObjectives: ['obj_find_entrance', 'obj_find_professor', 'obj_escort']
+      }
+    ],
+    defeatConditions: [
+      { type: 'all_dead', description: 'All investigators have been killed' },
+      { type: 'doom_zero', description: 'The Professor has been consumed by the darkness' },
+      { type: 'objective_failed', description: 'Professor Warren has been killed', objectiveId: 'obj_escort' }
+    ],
+    doomEvents: [
+      { threshold: 9, triggered: false, type: 'spawn_enemy', targetId: 'ghoul', amount: 2, message: 'Ghouls emerge from the crypts!' },
+      { threshold: 6, triggered: false, type: 'narrative', message: 'The Professor screams in the distance. Hurry!' },
+      { threshold: 3, triggered: false, type: 'spawn_boss', targetId: 'ghoul', amount: 3, message: 'A ghoul pack blocks the exit!' }
+    ]
+  },
+  // ============================================================================
+  // SCENARIO 6: Seal the Gate (Hard - Seal Portal)
+  // ============================================================================
+  {
+    id: 's6',
+    title: 'Seal the Gate',
+    description: 'A portal to another dimension has opened in the old warehouse district. Use 3 Elder Signs to seal it before the Great Old Ones notice.',
+    briefing: `The rift opened at midnight. You felt it before you saw it—a tearing sensation in your mind, like reality itself was screaming.
+
+The warehouse on Pier 7 is no longer a warehouse. It's a doorway. Through it, you glimpse impossible geometries and hear the piping of mad flutes. Something vast and hungry has noticed the opening.
+
+You have three Elder Signs, recovered from the Miskatonic vault. Each must be placed at a specific point around the portal to seal it. But the rift is defended. Things have already come through—and they don't want the door closed.
+
+Work fast. Each moment the portal remains open, something worse might slip through. And some of those things make Shoggoths look like house pets.
+
+Seal the gate. Save reality. No pressure.`,
+    startDoom: 10,
+    startLocation: 'Harbor District',
+    goal: 'Place 3 Elder Signs at ritual points to seal the portal.',
+    specialRule: 'Elder Signs must be placed at 3 specific locations. Each placement triggers enemy spawn.',
+    difficulty: 'Hard',
+    tileSet: 'mixed',
+    victoryType: 'collection',
+    estimatedTime: '45-60 min',
+    recommendedPlayers: '2-3',
+    steps: [
+      { id: 'step1', description: 'Find the ritual locations', type: 'find_tile', targetId: 'ritual_point', completed: false },
+      { id: 'step2', description: 'Place all 3 Elder Signs', type: 'interact', targetId: 'elder_sign_placement', amount: 3, completed: false }
+    ],
+    objectives: [
+      {
+        id: 'obj_find_signs',
+        description: 'Recover 3 Elder Signs from various locations around Arkham.',
+        shortDescription: 'Find Elder Signs (0/3)',
+        type: 'collect',
+        targetId: 'elder_sign',
+        targetAmount: 3,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: false,
+        completed: false
+      },
+      {
+        id: 'obj_place_signs',
+        description: 'Place Elder Signs at the three ritual points surrounding the portal.',
+        shortDescription: 'Place Signs (0/3)',
+        type: 'interact',
+        targetId: 'ritual_point',
+        targetAmount: 3,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_find_signs',
+        completed: false
+      },
+      {
+        id: 'obj_bonus_close',
+        description: 'Seal the portal before any Great Old One notices.',
+        shortDescription: 'Seal Before Doom 3',
+        type: 'survive',
+        targetAmount: 1,
+        isOptional: true,
+        isHidden: false,
+        completed: false,
+        rewardInsight: 3
+      }
+    ],
+    victoryConditions: [
+      {
+        type: 'collection',
+        description: 'Place all 3 Elder Signs to seal the portal',
+        checkFunction: 'checkSealVictory',
+        requiredObjectives: ['obj_find_signs', 'obj_place_signs']
+      }
+    ],
+    defeatConditions: [
+      { type: 'all_dead', description: 'All investigators have been killed' },
+      { type: 'doom_zero', description: 'Something has come through the portal' }
+    ],
+    doomEvents: [
+      { threshold: 7, triggered: false, type: 'spawn_enemy', targetId: 'deepone', amount: 3, message: 'Deep Ones guard the ritual points!' },
+      { threshold: 4, triggered: false, type: 'spawn_boss', targetId: 'shoggoth', amount: 1, message: 'A Shoggoth emerges from the portal!' },
+      { threshold: 2, triggered: false, type: 'buff_enemies', message: 'Reality warps! All enemies gain +1 damage!' }
+    ]
+  },
+  // ============================================================================
+  // SCENARIO 7: The Innsmouth Conspiracy (Normal - Investigation)
+  // ============================================================================
+  {
+    id: 's7',
+    title: 'The Innsmouth Conspiracy',
+    description: 'Strange disappearances plague the coastal town. Uncover 4 clues about the cult before they complete their dark ritual.',
+    briefing: `The telegram from Innsmouth was brief: "HELP. THEY WATCH. TRUST NO ONE."
+
+The coastal town has always had a reputation. Inbred, they said. Isolated. Strange. But the recent disappearances have drawn federal attention. Twenty-three people, gone without a trace.
+
+You've been sent to investigate, but the moment you stepped off the bus, you felt the eyes. The locals watch with a peculiar intensity. Their movements are too fluid, their features too... uniform.
+
+There's a conspiracy here. The Esoteric Order of Dagon runs this town, and they're planning something. Find the clues, piece together their plot, and expose them before the next tide brings more than just fish.
+
+But be careful. In Innsmouth, the walls have ears. And the ears have gills.`,
+    startDoom: 12,
+    startLocation: 'Innsmouth Square',
+    goal: 'Find 4 clues about the cult\'s activities.',
+    specialRule: 'Coastal tiles only. Deep Ones spawn more frequently near water.',
+    difficulty: 'Normal',
+    tileSet: 'outdoor',
+    victoryType: 'collection',
+    estimatedTime: '30-45 min',
+    recommendedPlayers: '1-2',
+    steps: [
+      { id: 'step1', description: 'Investigate the town', type: 'find_item', targetId: 'investigation_clue', completed: false },
+      { id: 'step2', description: 'Find all 4 clues', type: 'find_item', targetId: 'investigation_clue', amount: 4, completed: false }
+    ],
+    objectives: [
+      {
+        id: 'obj_find_clues',
+        description: 'Investigate Innsmouth to uncover clues about the cult\'s conspiracy.',
+        shortDescription: 'Find Clues (0/4)',
+        type: 'collect',
+        targetId: 'investigation_clue',
+        targetAmount: 4,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: false,
+        completed: false,
+        rewardInsight: 2
+      },
+      {
+        id: 'obj_bonus_leader',
+        description: 'Identify the leader of the Esoteric Order of Dagon.',
+        shortDescription: 'Find the Leader',
+        type: 'find_item',
+        targetId: 'cult_leader_id',
+        isOptional: true,
+        isHidden: true,
+        completed: false,
+        rewardInsight: 2
+      },
+      {
+        id: 'obj_bonus_survivors',
+        description: 'Find any survivors from the disappearances.',
+        shortDescription: 'Find Survivors',
+        type: 'find_tile',
+        targetId: 'survivor_location',
+        isOptional: true,
+        isHidden: false,
+        completed: false,
+        rewardItem: 'medical_kit'
+      }
+    ],
+    victoryConditions: [
+      {
+        type: 'collection',
+        description: 'Uncover 4 clues about the conspiracy',
+        checkFunction: 'checkInvestigationVictory',
+        requiredObjectives: ['obj_find_clues']
+      }
+    ],
+    defeatConditions: [
+      { type: 'all_dead', description: 'All investigators have been killed' },
+      { type: 'doom_zero', description: 'The cult has completed their ritual' }
+    ],
+    doomEvents: [
+      { threshold: 9, triggered: false, type: 'spawn_enemy', targetId: 'cultist', amount: 2, message: 'Cult members are following you!' },
+      { threshold: 6, triggered: false, type: 'spawn_enemy', targetId: 'deepone', amount: 2, message: 'Deep Ones rise from the harbor!' },
+      { threshold: 3, triggered: false, type: 'spawn_boss', targetId: 'deepone', amount: 3, message: 'The tide brings more horrors!' }
+    ]
+  },
+  // ============================================================================
+  // SCENARIO 8: Cleanse the Crypt (Hard - Purge)
+  // ============================================================================
+  {
+    id: 's8',
+    title: 'Cleanse the Crypt',
+    description: 'The ancient crypt has been overrun by ghouls. Kill every last one to restore the sanctity of the burial grounds.',
+    briefing: `Father Michael's hands trembled as he showed you the photographs.
+
+"The crypt beneath St. Mary's... it's been defiled. They've made it their nest."
+
+The ghouls came three nights ago. They killed the gravedigger first, then the groundskeeper. When Father Michael went to investigate, he barely escaped with his life—and his sanity.
+
+Now the creatures breed in the crypts below, feeding on centuries of Arkham's dead. Left unchecked, they'll spread through the tunnel network to every cemetery in the city.
+
+There is only one solution: extermination. Every ghoul in that crypt must die. It won't be quick. It won't be clean. But it must be done.
+
+May God have mercy on your souls. The ghouls certainly won't.`,
+    startDoom: 10,
+    startLocation: 'St. Mary\'s Church',
+    goal: 'Kill all Ghouls in the crypt (at least 8).',
+    specialRule: 'Crypt tiles only. Ghouls regenerate 1 HP per round if not engaged.',
+    difficulty: 'Hard',
+    tileSet: 'indoor',
+    victoryType: 'assassination',
+    estimatedTime: '45-60 min',
+    recommendedPlayers: '2-3',
+    steps: [
+      { id: 'step1', description: 'Enter the crypt', type: 'find_tile', targetId: 'crypt_entrance', completed: false },
+      { id: 'step2', description: 'Kill all Ghouls', type: 'kill_enemy', targetId: 'ghoul', amount: 8, completed: false }
+    ],
+    objectives: [
+      {
+        id: 'obj_enter_crypt',
+        description: 'Find the entrance to the crypt beneath the church.',
+        shortDescription: 'Enter the Crypt',
+        type: 'find_tile',
+        targetId: 'crypt_entrance',
+        isOptional: false,
+        isHidden: false,
+        completed: false
+      },
+      {
+        id: 'obj_kill_ghouls',
+        description: 'Exterminate every ghoul infesting the crypt.',
+        shortDescription: 'Kill Ghouls (0/8)',
+        type: 'kill_enemy',
+        targetId: 'ghoul',
+        targetAmount: 8,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: false,
+        completed: false,
+        rewardInsight: 2
+      },
+      {
+        id: 'obj_bonus_nest',
+        description: 'Destroy the ghoul breeding nest to prevent them from returning.',
+        shortDescription: 'Destroy the Nest',
+        type: 'interact',
+        targetId: 'ghoul_nest',
+        isOptional: true,
+        isHidden: true,
+        completed: false,
+        rewardItem: 'relic_cross'
+      }
+    ],
+    victoryConditions: [
+      {
+        type: 'assassination',
+        description: 'Kill all Ghouls in the crypt',
+        checkFunction: 'checkPurgeVictory',
+        requiredObjectives: ['obj_kill_ghouls']
+      }
+    ],
+    defeatConditions: [
+      { type: 'all_dead', description: 'All investigators have been killed' },
+      { type: 'doom_zero', description: 'The ghouls have spread beyond the crypt' }
+    ],
+    doomEvents: [
+      { threshold: 8, triggered: false, type: 'spawn_enemy', targetId: 'ghoul', amount: 3, message: 'More ghouls emerge from the darkness!' },
+      { threshold: 5, triggered: false, type: 'spawn_enemy', targetId: 'ghoul', amount: 3, message: 'The pack grows larger!' },
+      { threshold: 2, triggered: false, type: 'spawn_boss', targetId: 'ghoul', amount: 2, message: 'Alpha ghouls defend their nest!' }
+    ]
+  },
+  // ============================================================================
+  // SCENARIO 9: The Ritual of Binding (Nightmare - Ritual)
+  // ============================================================================
+  {
+    id: 's9',
+    title: 'The Ritual of Binding',
+    description: 'A Great Old One stirs. You must complete binding rituals at 3 locations before it fully awakens.',
+    briefing: `The stars are almost right.
+
+Deep beneath the earth, something vast and ancient shifts in its sleep. Cthulhu. Yog-Sothoth. Names whispered in forbidden texts, entities so powerful that their mere dreams drive men mad.
+
+But there is hope. The Ritual of Binding, passed down through generations of occultists, can reinforce the barriers that keep these beings dormant. Three ritual sites across Arkham must be activated in precise sequence.
+
+You have the knowledge. You have the components. What you don't have is time.
+
+Each moment you delay, the sleeper stirs closer to waking. And if it wakes... if it truly wakes... Arkham will be the first to fall. But not the last.
+
+Begin the ritual. Bind the dreamer. Save the world.`,
+    startDoom: 15,
+    startLocation: 'Witch House',
+    goal: 'Complete binding rituals at 3 sacred locations.',
+    specialRule: 'Rituals require 2 rounds to complete. Interrupted rituals must restart. -2 Sanity per ritual.',
+    difficulty: 'Nightmare',
+    tileSet: 'mixed',
+    victoryType: 'collection',
+    estimatedTime: '60-90 min',
+    recommendedPlayers: '2-4',
+    steps: [
+      { id: 'step1', description: 'Find the ritual sites', type: 'find_tile', targetId: 'ritual_site', completed: false },
+      { id: 'step2', description: 'Complete all 3 rituals', type: 'interact', targetId: 'ritual_binding', amount: 3, completed: false }
+    ],
+    objectives: [
+      {
+        id: 'obj_find_sites',
+        description: 'Locate the three sacred sites where the binding must be performed.',
+        shortDescription: 'Find Ritual Sites (0/3)',
+        type: 'find_tile',
+        targetId: 'ritual_site',
+        targetAmount: 3,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: false,
+        completed: false
+      },
+      {
+        id: 'obj_complete_rituals',
+        description: 'Perform the binding ritual at each sacred site.',
+        shortDescription: 'Complete Rituals (0/3)',
+        type: 'interact',
+        targetId: 'ritual_binding',
+        targetAmount: 3,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_find_sites',
+        completed: false
+      },
+      {
+        id: 'obj_bonus_artifact',
+        description: 'Recover the Seal of Binding to strengthen the ritual.',
+        shortDescription: 'Find the Seal',
+        type: 'find_item',
+        targetId: 'seal_of_binding',
+        isOptional: true,
+        isHidden: false,
+        completed: false,
+        rewardInsight: 3
+      }
+    ],
+    victoryConditions: [
+      {
+        type: 'collection',
+        description: 'Complete all 3 binding rituals',
+        checkFunction: 'checkRitualVictory',
+        requiredObjectives: ['obj_find_sites', 'obj_complete_rituals']
+      }
+    ],
+    defeatConditions: [
+      { type: 'all_dead', description: 'All investigators have been killed' },
+      { type: 'doom_zero', description: 'The Great Old One has awakened' }
+    ],
+    doomEvents: [
+      { threshold: 12, triggered: false, type: 'spawn_enemy', targetId: 'cultist', amount: 3, message: 'Cultists try to stop the ritual!' },
+      { threshold: 9, triggered: false, type: 'spawn_enemy', targetId: 'deepone', amount: 2, message: 'The sleeper\'s dreams manifest!' },
+      { threshold: 6, triggered: false, type: 'sanity_hit', amount: 1, message: 'The dreams grow stronger. All investigators -1 Sanity.' },
+      { threshold: 3, triggered: false, type: 'spawn_boss', targetId: 'shoggoth', amount: 2, message: 'Nightmare guardians materialize!' }
+    ]
+  },
+  // ============================================================================
+  // SCENARIO 10: Mansion of Madness (Hard - Multi-Objective)
+  // ============================================================================
+  {
+    id: 's10',
+    title: 'Mansion of Madness',
+    description: 'The old Henderson estate holds many secrets. Find the key, kill the guardian, and escape with your sanity intact.',
+    briefing: `The Henderson Mansion has stood empty for thirty years. Empty of the living, at least.
+
+Old Marcus Henderson was a collector of the occult. When he died—or disappeared, depending on who you ask—his collection remained. Now someone has awakened the guardian he left to protect it.
+
+The mansion is a maze of locked doors and hidden passages. Somewhere inside is the Master Key that opens all doors. Somewhere inside is the guardian—a thing that was once human. And somewhere inside is the exit you'll need to escape.
+
+Three objectives. One mansion. Countless horrors.
+
+You'll need to find the key to progress. You'll need to kill the guardian to survive. And you'll need to find the exit before the house itself claims you.
+
+Good luck. You'll need it.`,
+    startDoom: 10,
+    startLocation: 'Henderson Estate',
+    goal: 'Find the key, kill the guardian, and escape the mansion.',
+    specialRule: 'Three objectives must be completed in any order. Guardian spawns after key is found.',
+    difficulty: 'Hard',
+    tileSet: 'indoor',
+    victoryType: 'escape',
+    estimatedTime: '45-60 min',
+    recommendedPlayers: '2-3',
+    steps: [
+      { id: 'step1', description: 'Find the Master Key', type: 'find_item', targetId: 'master_key', completed: false },
+      { id: 'step2', description: 'Kill the Guardian', type: 'kill_enemy', targetId: 'guardian', amount: 1, completed: false },
+      { id: 'step3', description: 'Find and use the Exit', type: 'interact', targetId: 'mansion_exit', completed: false }
+    ],
+    objectives: [
+      {
+        id: 'obj_find_key',
+        description: 'Search the mansion for the Master Key that unlocks all doors.',
+        shortDescription: 'Find Master Key',
+        type: 'find_item',
+        targetId: 'master_key',
+        isOptional: false,
+        isHidden: false,
+        completed: false,
+        rewardInsight: 1
+      },
+      {
+        id: 'obj_kill_guardian',
+        description: 'Defeat the guardian that protects the mansion\'s secrets.',
+        shortDescription: 'Kill the Guardian',
+        type: 'kill_boss',
+        targetId: 'guardian',
+        targetAmount: 1,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_find_key',
+        completed: false,
+        rewardInsight: 2
+      },
+      {
+        id: 'obj_escape',
+        description: 'Find the exit and escape the mansion.',
+        shortDescription: 'Escape the Mansion',
+        type: 'escape',
+        targetId: 'mansion_exit',
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_kill_guardian',
+        completed: false
+      },
+      {
+        id: 'obj_bonus_collection',
+        description: 'Recover Henderson\'s occult collection.',
+        shortDescription: 'Find Occult Items (0/3)',
+        type: 'collect',
+        targetId: 'occult_item',
+        targetAmount: 3,
+        currentAmount: 0,
+        isOptional: true,
+        isHidden: false,
+        completed: false,
+        rewardItem: 'occult_tome'
+      }
+    ],
+    victoryConditions: [
+      {
+        type: 'escape',
+        description: 'Complete all objectives and escape',
+        checkFunction: 'checkMultiObjectiveVictory',
+        requiredObjectives: ['obj_find_key', 'obj_kill_guardian', 'obj_escape']
+      }
+    ],
+    defeatConditions: [
+      { type: 'all_dead', description: 'All investigators have been killed' },
+      { type: 'doom_zero', description: 'The mansion has claimed you' }
+    ],
+    doomEvents: [
+      { threshold: 7, triggered: false, type: 'spawn_enemy', targetId: 'cultist', amount: 2, message: 'The mansion\'s servants awaken!' },
+      { threshold: 4, triggered: false, type: 'spawn_boss', targetId: 'guardian', amount: 1, message: 'The Guardian emerges!' },
+      { threshold: 2, triggered: false, type: 'narrative', message: 'The walls close in. Find the exit!' }
+    ]
+  },
+  // ============================================================================
+  // SCENARIO 11: The Deep One Raid (Normal - Survival)
+  // ============================================================================
+  {
+    id: 's11',
+    title: 'The Deep One Raid',
+    description: 'Deep Ones are attacking the harbor! Survive 5 rounds while protecting the fishing village.',
+    briefing: `The fog rolled in at sunset. By midnight, they came with it.
+
+The fishing village of Kingsport has always had an uneasy relationship with the sea. The fishermen know not to cast their nets in certain waters. They know not to be out after dark during the new moon. They know the old pacts.
+
+But someone broke a pact. And now the Deep Ones want blood.
+
+They rise from the waves in endless numbers, their fish-eyes gleaming with ancient hatred. The village militia is outmatched. The coast guard won't arrive until dawn. You're all that stands between the creatures and the villagers.
+
+Five rounds. Five waves. Hold the line until help arrives.
+
+The sea giveth, and the sea taketh away. Tonight, the sea wants to take everything.`,
+    startDoom: 10,
+    startLocation: 'Kingsport Harbor',
+    goal: 'Survive 5 rounds of Deep One attacks.',
+    specialRule: 'Deep Ones spawn every round. Bonus objective: protect all villagers.',
+    difficulty: 'Normal',
+    tileSet: 'outdoor',
+    victoryType: 'survival',
+    estimatedTime: '30-45 min',
+    recommendedPlayers: '1-2',
+    steps: [
+      { id: 'step1', description: 'Survive the Deep One raid', type: 'survive', amount: 5, completed: false }
+    ],
+    objectives: [
+      {
+        id: 'obj_survive_3',
+        description: 'Hold the harbor for the first 3 rounds.',
+        shortDescription: 'Survive 3 Rounds',
+        type: 'survive',
+        targetAmount: 3,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: false,
+        completed: false
+      },
+      {
+        id: 'obj_survive_5',
+        description: 'Survive until dawn arrives.',
+        shortDescription: 'Survive 5 Rounds',
+        type: 'survive',
+        targetAmount: 5,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_survive_3',
+        completed: false
+      },
+      {
+        id: 'obj_bonus_villagers',
+        description: 'Ensure no villager NPCs are killed during the attack.',
+        shortDescription: 'Protect Villagers',
+        type: 'protect',
+        isOptional: true,
+        isHidden: false,
+        completed: false,
+        rewardInsight: 2,
+        failedCondition: 'villager_death'
+      }
+    ],
+    victoryConditions: [
+      {
+        type: 'survival',
+        description: 'Survive 5 rounds',
+        checkFunction: 'checkSurvivalVictory',
+        requiredObjectives: ['obj_survive_5']
+      }
+    ],
+    defeatConditions: [
+      { type: 'all_dead', description: 'All investigators have been killed' },
+      { type: 'doom_zero', description: 'The village has been overrun' }
+    ],
+    doomEvents: [
+      { threshold: 8, triggered: false, type: 'spawn_enemy', targetId: 'deepone', amount: 2, message: 'Wave 1: Deep Ones emerge from the waves!' },
+      { threshold: 6, triggered: false, type: 'spawn_enemy', targetId: 'deepone', amount: 3, message: 'Wave 2: More Deep Ones attack!' },
+      { threshold: 4, triggered: false, type: 'spawn_enemy', targetId: 'deepone', amount: 3, message: 'Wave 3: The assault intensifies!' },
+      { threshold: 2, triggered: false, type: 'narrative', message: 'Dawn approaches! Hold the line!' }
+    ]
+  },
+  // ============================================================================
+  // SCENARIO 12: The Lost Artifact (Normal - Collection)
+  // ============================================================================
+  {
+    id: 's12',
+    title: 'The Lost Artifact',
+    description: 'An ancient relic of power has been hidden in the ruins. Find it before the cult does.',
+    briefing: `The Silver Key. A relic spoken of in whispered legends, said to open doors to places that shouldn't exist.
+
+Professor Wilmarth believed it was myth. Then he found the map—hidden in a tome so old the pages crumbled at his touch. The Key is real. And it's hidden somewhere in the ruins of Old Arkham.
+
+But you're not the only ones looking. The Silver Twilight Lodge has been searching for the Key for decades. They'll use it to open doorways that should remain forever closed.
+
+The ruins are dangerous. Collapsed tunnels, unstable floors, and things that never see sunlight. But somewhere in that darkness, the Silver Key waits.
+
+Find it first. The fate of multiple dimensions depends on it.`,
+    startDoom: 12,
+    startLocation: 'Old Arkham Ruins',
+    goal: 'Find the ancient Silver Key artifact.',
+    specialRule: 'Ruins have many hidden passages. Investigate bonus: +1 die.',
+    difficulty: 'Normal',
+    tileSet: 'mixed',
+    victoryType: 'collection',
+    estimatedTime: '30-45 min',
+    recommendedPlayers: '1-2',
+    steps: [
+      { id: 'step1', description: 'Search the ruins for clues', type: 'find_item', targetId: 'artifact_clue', completed: false },
+      { id: 'step2', description: 'Find the Silver Key', type: 'find_item', targetId: 'silver_key', completed: false }
+    ],
+    objectives: [
+      {
+        id: 'obj_find_clues',
+        description: 'Search the ruins for clues about the Silver Key\'s location.',
+        shortDescription: 'Find Clues (0/2)',
+        type: 'collect',
+        targetId: 'artifact_clue',
+        targetAmount: 2,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: false,
+        completed: false
+      },
+      {
+        id: 'obj_find_artifact',
+        description: 'Locate and recover the Silver Key.',
+        shortDescription: 'Find the Silver Key',
+        type: 'find_item',
+        targetId: 'silver_key',
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_find_clues',
+        completed: false,
+        rewardInsight: 2
+      },
+      {
+        id: 'obj_bonus_tome',
+        description: 'Find the ancient tome that explains the Key\'s power.',
+        shortDescription: 'Find the Tome',
+        type: 'find_item',
+        targetId: 'key_tome',
+        isOptional: true,
+        isHidden: false,
+        completed: false,
+        rewardItem: 'occult_tome'
+      }
+    ],
+    victoryConditions: [
+      {
+        type: 'collection',
+        description: 'Find the Silver Key',
+        checkFunction: 'checkArtifactVictory',
+        requiredObjectives: ['obj_find_clues', 'obj_find_artifact']
+      }
+    ],
+    defeatConditions: [
+      { type: 'all_dead', description: 'All investigators have been killed' },
+      { type: 'doom_zero', description: 'The cult has found the artifact first' }
+    ],
+    doomEvents: [
+      { threshold: 9, triggered: false, type: 'spawn_enemy', targetId: 'cultist', amount: 2, message: 'Cult searchers enter the ruins!' },
+      { threshold: 6, triggered: false, type: 'spawn_enemy', targetId: 'ghoul', amount: 2, message: 'Ghouls inhabit these tunnels!' },
+      { threshold: 3, triggered: false, type: 'spawn_boss', targetId: 'cultist', amount: 3, message: 'The cult\'s elite arrive!' }
+    ]
+  },
+  // ============================================================================
+  // SCENARIO 13: Arkham Asylum Breakout (Hard - Rescue)
+  // ============================================================================
+  {
+    id: 's13',
+    title: 'Arkham Asylum Breakout',
+    description: 'Two witnesses are trapped in Arkham Asylum. Break them out before the cult silences them forever.',
+    briefing: `Dr. Hardstrom's voice was barely a whisper on the phone.
+
+"They've committed them. Both of them. Said they were raving about fish-men and underwater cities. But I saw the orderlies—I saw their eyes. They're not here to treat them. They're here to silence them."
+
+Sarah Mitchell and Thomas Reid. The only surviving witnesses to the Innsmouth incident. The cult has infiltrated Arkham Asylum to eliminate them, but they need to make it look like natural causes. That gives you time.
+
+The asylum is a fortress. Locked wards, security checkpoints, and staff who may or may not be human. But somewhere inside, two innocent people are counting on you.
+
+Get in. Find them. Get out. And try not to become a patient yourself.`,
+    startDoom: 10,
+    startLocation: 'Asylum Gates',
+    goal: 'Rescue both patients from Arkham Asylum.',
+    specialRule: 'Stealth bonus: avoid combat to keep alarm low. Alarm at max = instant Nightmare spawn.',
+    difficulty: 'Hard',
+    tileSet: 'indoor',
+    victoryType: 'escape',
+    estimatedTime: '45-60 min',
+    recommendedPlayers: '2-3',
+    steps: [
+      { id: 'step1', description: 'Infiltrate the asylum', type: 'find_tile', targetId: 'asylum_interior', completed: false },
+      { id: 'step2', description: 'Find Patient 1 (Sarah)', type: 'find_item', targetId: 'patient_sarah', completed: false },
+      { id: 'step3', description: 'Find Patient 2 (Thomas)', type: 'find_item', targetId: 'patient_thomas', completed: false },
+      { id: 'step4', description: 'Escape with both patients', type: 'interact', targetId: 'asylum_exit', completed: false }
+    ],
+    objectives: [
+      {
+        id: 'obj_infiltrate',
+        description: 'Find a way into the asylum without raising the alarm.',
+        shortDescription: 'Infiltrate Asylum',
+        type: 'find_tile',
+        targetId: 'asylum_interior',
+        isOptional: false,
+        isHidden: false,
+        completed: false
+      },
+      {
+        id: 'obj_find_sarah',
+        description: 'Locate Sarah Mitchell in the asylum wards.',
+        shortDescription: 'Find Sarah',
+        type: 'find_tile',
+        targetId: 'patient_sarah',
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_infiltrate',
+        completed: false
+      },
+      {
+        id: 'obj_find_thomas',
+        description: 'Locate Thomas Reid in the asylum wards.',
+        shortDescription: 'Find Thomas',
+        type: 'find_tile',
+        targetId: 'patient_thomas',
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_infiltrate',
+        completed: false
+      },
+      {
+        id: 'obj_escape',
+        description: 'Escort both patients safely out of the asylum.',
+        shortDescription: 'Escape with Patients',
+        type: 'escape',
+        targetId: 'asylum_exit',
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_find_sarah',
+        completed: false
+      },
+      {
+        id: 'obj_bonus_records',
+        description: 'Steal the cult\'s patient records as evidence.',
+        shortDescription: 'Steal Records',
+        type: 'find_item',
+        targetId: 'cult_records',
+        isOptional: true,
+        isHidden: false,
+        completed: false,
+        rewardInsight: 3
+      }
+    ],
+    victoryConditions: [
+      {
+        type: 'escape',
+        description: 'Rescue both patients and escape',
+        checkFunction: 'checkRescueVictory',
+        requiredObjectives: ['obj_find_sarah', 'obj_find_thomas', 'obj_escape']
+      }
+    ],
+    defeatConditions: [
+      { type: 'all_dead', description: 'All investigators have been killed' },
+      { type: 'doom_zero', description: 'The patients have been eliminated' },
+      { type: 'objective_failed', description: 'A patient has been killed', objectiveId: 'obj_escape' }
+    ],
+    doomEvents: [
+      { threshold: 7, triggered: false, type: 'spawn_enemy', targetId: 'cultist', amount: 2, message: 'Cult orderlies patrol the halls!' },
+      { threshold: 4, triggered: false, type: 'spawn_enemy', targetId: 'deepone', amount: 2, message: 'They\'ve revealed their true forms!' },
+      { threshold: 2, triggered: false, type: 'spawn_boss', targetId: 'shoggoth', amount: 1, message: 'Something is loose in the basement!' }
+    ]
+  },
+  // ============================================================================
+  // SCENARIO 14: The Witch's Curse (Normal - Ritual)
+  // ============================================================================
+  {
+    id: 's14',
+    title: "The Witch's Curse",
+    description: 'A centuries-old curse plagues the cemetery. Break the curse by performing the counter-ritual.',
+    briefing: `Keziah Mason was hanged for witchcraft in 1692. She cursed the town with her dying breath.
+
+For three centuries, the curse has festered. Children who wander too close to her unmarked grave fall ill. Shadows move between the headstones on moonless nights. And every generation, someone goes missing from the cemetery—never to be found.
+
+But Professor Rice has discovered Keziah's grimoire. In it, a counter-ritual that can break the curse forever. It must be performed at her grave, under the light of the full moon.
+
+That's tonight.
+
+The cemetery will fight you. The curse will try to stop you. But if you can complete the ritual, you can end three hundred years of suffering.
+
+Break the curse. Free the dead. Save the living.`,
+    startDoom: 12,
+    startLocation: 'Arkham Cemetery',
+    goal: 'Complete the counter-ritual at the witch\'s grave.',
+    specialRule: 'Cemetery tiles only. Ghosts cannot be killed, only banished temporarily.',
+    difficulty: 'Normal',
+    tileSet: 'outdoor',
+    victoryType: 'collection',
+    estimatedTime: '30-45 min',
+    recommendedPlayers: '1-2',
+    steps: [
+      { id: 'step1', description: 'Find the witch\'s grave', type: 'find_tile', targetId: 'witch_grave', completed: false },
+      { id: 'step2', description: 'Gather ritual components', type: 'find_item', targetId: 'ritual_component', amount: 3, completed: false },
+      { id: 'step3', description: 'Complete the counter-ritual', type: 'interact', targetId: 'counter_ritual', completed: false }
+    ],
+    objectives: [
+      {
+        id: 'obj_find_grave',
+        description: 'Locate Keziah Mason\'s unmarked grave in the old section.',
+        shortDescription: 'Find the Grave',
+        type: 'find_tile',
+        targetId: 'witch_grave',
+        isOptional: false,
+        isHidden: false,
+        completed: false
+      },
+      {
+        id: 'obj_gather_components',
+        description: 'Collect the 3 ritual components needed for the counter-curse.',
+        shortDescription: 'Gather Components (0/3)',
+        type: 'collect',
+        targetId: 'ritual_component',
+        targetAmount: 3,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_find_grave',
+        completed: false
+      },
+      {
+        id: 'obj_complete_ritual',
+        description: 'Perform the counter-ritual at the witch\'s grave.',
+        shortDescription: 'Complete Ritual',
+        type: 'interact',
+        targetId: 'counter_ritual',
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_gather_components',
+        completed: false,
+        rewardInsight: 2
+      },
+      {
+        id: 'obj_bonus_grimoire',
+        description: 'Recover Keziah\'s grimoire for further study.',
+        shortDescription: 'Find Grimoire',
+        type: 'find_item',
+        targetId: 'keziah_grimoire',
+        isOptional: true,
+        isHidden: false,
+        completed: false,
+        rewardItem: 'occult_tome'
+      }
+    ],
+    victoryConditions: [
+      {
+        type: 'collection',
+        description: 'Complete the counter-ritual',
+        checkFunction: 'checkRitualVictory',
+        requiredObjectives: ['obj_find_grave', 'obj_gather_components', 'obj_complete_ritual']
+      }
+    ],
+    defeatConditions: [
+      { type: 'all_dead', description: 'All investigators have been killed' },
+      { type: 'doom_zero', description: 'The curse has grown too strong' }
+    ],
+    doomEvents: [
+      { threshold: 9, triggered: false, type: 'spawn_enemy', targetId: 'ghoul', amount: 2, message: 'The dead rise from their graves!' },
+      { threshold: 6, triggered: false, type: 'narrative', message: 'Keziah\'s spirit wails in rage. The curse strengthens.' },
+      { threshold: 3, triggered: false, type: 'spawn_boss', targetId: 'cultist', amount: 3, message: 'Keziah\'s coven manifests!' }
+    ]
+  },
+  // ============================================================================
+  // SCENARIO 15: The Final Gate (Nightmare - Seal Portal / Boss)
+  // ============================================================================
+  {
+    id: 's15',
+    title: 'The Final Gate',
+    description: 'Yog-Sothoth\'s portal is opening. This is humanity\'s last stand. Close the gate or face extinction.',
+    briefing: `This is it. The moment the prophecies warned of. The stars are right.
+
+The portal to Yog-Sothoth's realm has begun to open on Sentinel Hill. Through the growing rift, you can see... nothing. Not darkness—absence. The complete void where Yog-Sothoth waits, patient and eternal.
+
+The Order of the Silver Twilight has sacrificed hundreds to reach this moment. Their high priests channel power into the gate, widening it with each passing minute. Soon, Yog-Sothoth itself will pass through.
+
+Everything you've fought for comes down to this. Every horror you've survived, every friend you've lost, every nightmare that haunts your sleep—it all led here.
+
+Close the gate. Kill the priests. Save humanity.
+
+There is no Plan B. There is no retreat. Victory or extinction.
+
+May whatever gods remain have mercy on us all.`,
+    startDoom: 15,
+    startLocation: 'Sentinel Hill',
+    goal: 'Kill the High Priests and seal Yog-Sothoth\'s portal.',
+    specialRule: 'Boss scenario. Three High Priests must die. Gate strengthens all enemies. Time pressure: Doom decreases by 2 per round.',
+    difficulty: 'Nightmare',
+    tileSet: 'outdoor',
+    victoryType: 'assassination',
+    estimatedTime: '60-90 min',
+    recommendedPlayers: '3-4',
+    steps: [
+      { id: 'step1', description: 'Reach the summit', type: 'find_tile', targetId: 'sentinel_summit', completed: false },
+      { id: 'step2', description: 'Kill the three High Priests', type: 'kill_enemy', targetId: 'high_priest', amount: 3, completed: false },
+      { id: 'step3', description: 'Seal the portal', type: 'interact', targetId: 'yog_portal', completed: false }
+    ],
+    objectives: [
+      {
+        id: 'obj_reach_summit',
+        description: 'Fight your way to the summit of Sentinel Hill.',
+        shortDescription: 'Reach the Summit',
+        type: 'find_tile',
+        targetId: 'sentinel_summit',
+        isOptional: false,
+        isHidden: false,
+        completed: false
+      },
+      {
+        id: 'obj_kill_priests',
+        description: 'Slay the three High Priests maintaining the portal.',
+        shortDescription: 'Kill High Priests (0/3)',
+        type: 'kill_boss',
+        targetId: 'high_priest',
+        targetAmount: 3,
+        currentAmount: 0,
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_reach_summit',
+        completed: false,
+        rewardInsight: 2
+      },
+      {
+        id: 'obj_seal_portal',
+        description: 'Use the Elder Signs to seal Yog-Sothoth\'s portal.',
+        shortDescription: 'Seal the Portal',
+        type: 'interact',
+        targetId: 'yog_portal',
+        isOptional: false,
+        isHidden: true,
+        revealedBy: 'obj_kill_priests',
+        completed: false
+      },
+      {
+        id: 'obj_bonus_artifact',
+        description: 'Recover the Shining Trapezohedron before the portal closes.',
+        shortDescription: 'Get Trapezohedron',
+        type: 'find_item',
+        targetId: 'shining_trapezohedron',
+        isOptional: true,
+        isHidden: true,
+        completed: false,
+        rewardInsight: 5
+      }
+    ],
+    victoryConditions: [
+      {
+        type: 'assassination',
+        description: 'Kill the High Priests and seal the portal',
+        checkFunction: 'checkFinalVictory',
+        requiredObjectives: ['obj_reach_summit', 'obj_kill_priests', 'obj_seal_portal']
+      }
+    ],
+    defeatConditions: [
+      { type: 'all_dead', description: 'All investigators have been killed' },
+      { type: 'doom_zero', description: 'Yog-Sothoth has entered our reality' }
+    ],
+    doomEvents: [
+      { threshold: 12, triggered: false, type: 'spawn_enemy', targetId: 'cultist', amount: 4, message: 'The cult defends the hill!' },
+      { threshold: 9, triggered: false, type: 'spawn_boss', targetId: 'high_priest', amount: 1, message: 'The First Priest channels the portal!' },
+      { threshold: 7, triggered: false, type: 'spawn_enemy', targetId: 'deepone', amount: 3, message: 'Deep Ones answer the call!' },
+      { threshold: 5, triggered: false, type: 'spawn_boss', targetId: 'high_priest', amount: 1, message: 'The Second Priest strengthens the gate!' },
+      { threshold: 3, triggered: false, type: 'spawn_boss', targetId: 'high_priest', amount: 1, message: 'The Third Priest completes the ritual!' },
+      { threshold: 1, triggered: false, type: 'spawn_boss', targetId: 'shoggoth', amount: 2, message: 'Things from beyond pour through!' }
+    ]
   }
 ];
 

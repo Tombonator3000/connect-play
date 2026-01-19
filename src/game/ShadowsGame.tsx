@@ -103,6 +103,16 @@ const ShadowsGame: React.FC = () => {
   const [lastScenarioResult, setLastScenarioResult] = useState<ScenarioResult | null>(null);
   const [heroKillCounts, setHeroKillCounts] = useState<Record<string, number>>({});
 
+  // Difficulty selection for random scenario
+  const [selectedDifficulty, setSelectedDifficulty] = useState<'Normal' | 'Hard' | 'Nightmare' | null>(null);
+
+  // Get random scenario based on difficulty
+  const getRandomScenario = useCallback((difficulty: 'Normal' | 'Hard' | 'Nightmare'): Scenario => {
+    const filteredScenarios = SCENARIOS.filter(s => s.difficulty === difficulty);
+    const randomIndex = Math.floor(Math.random() * filteredScenarios.length);
+    return filteredScenarios[randomIndex];
+  }, []);
+
   // Game settings with localStorage persistence
   const [settings, setSettings] = useState<GameSettings>(() => {
     const saved = localStorage.getItem(SETTINGS_KEY);
@@ -1442,26 +1452,105 @@ const ShadowsGame: React.FC = () => {
             <div className="bg-card p-12 rounded-2xl border-2 border-primary shadow-[var(--shadow-doom)] max-w-4xl w-full text-center">
               <div className="flex justify-between items-center mb-8 border-b border-border pb-4">
                 <button onClick={() => setIsMainMenuOpen(true)} className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-xs uppercase tracking-widest transition-colors"><RotateCcw size={16} /> Back to Title</button>
-                <h1 className="text-3xl font-display text-primary italic uppercase tracking-widest">Select a Case File</h1>
+                <h1 className="text-3xl font-display text-primary italic uppercase tracking-widest">New Case</h1>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {SCENARIOS.map(s => (
-                  <button key={s.id} onClick={() => setState(prev => ({ ...prev, activeScenario: s }))} className="p-6 bg-background border border-border hover:border-primary rounded-xl text-left transition-all group">
-                    <h3 className="text-xl font-bold text-foreground group-hover:text-primary mb-2">{s.title}</h3>
-                    <p className="text-xs text-muted-foreground italic leading-relaxed">{s.description}</p>
-                    <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
-                      <span>Difficulty: {s.difficulty}</span>
-                      {s.estimatedTime && <span>Time: {s.estimatedTime}</span>}
+
+              {/* Difficulty Selection */}
+              <div className="mb-8">
+                <h2 className="text-xl text-muted-foreground mb-6 uppercase tracking-wider">Select Difficulty</h2>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Normal Difficulty */}
+                  <button
+                    onClick={() => {
+                      const scenario = getRandomScenario('Normal');
+                      setSelectedDifficulty('Normal');
+                      setState(prev => ({ ...prev, activeScenario: scenario }));
+                    }}
+                    className="p-6 bg-background border-2 border-emerald-700 hover:border-emerald-500 rounded-xl text-center transition-all group hover:shadow-[0_0_20px_rgba(16,185,129,0.3)]"
+                  >
+                    <div className="text-4xl mb-3">&#9733;&#9733;</div>
+                    <h3 className="text-2xl font-bold text-emerald-400 mb-2">Normal</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                      Standard difficulty. Good for learning the game mechanics.
+                    </p>
+                    <div className="text-xs text-emerald-500 font-mono">
+                      {SCENARIOS.filter(s => s.difficulty === 'Normal').length} scenarios available
                     </div>
                   </button>
-                ))}
+
+                  {/* Hard Difficulty */}
+                  <button
+                    onClick={() => {
+                      const scenario = getRandomScenario('Hard');
+                      setSelectedDifficulty('Hard');
+                      setState(prev => ({ ...prev, activeScenario: scenario }));
+                    }}
+                    className="p-6 bg-background border-2 border-amber-700 hover:border-amber-500 rounded-xl text-center transition-all group hover:shadow-[0_0_20px_rgba(245,158,11,0.3)]"
+                  >
+                    <div className="text-4xl mb-3">&#9733;&#9733;&#9733;</div>
+                    <h3 className="text-2xl font-bold text-amber-400 mb-2">Hard</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                      Challenging scenarios. Requires strategic thinking and teamwork.
+                    </p>
+                    <div className="text-xs text-amber-500 font-mono">
+                      {SCENARIOS.filter(s => s.difficulty === 'Hard').length} scenarios available
+                    </div>
+                  </button>
+
+                  {/* Nightmare Difficulty */}
+                  <button
+                    onClick={() => {
+                      const scenario = getRandomScenario('Nightmare');
+                      setSelectedDifficulty('Nightmare');
+                      setState(prev => ({ ...prev, activeScenario: scenario }));
+                    }}
+                    className="p-6 bg-background border-2 border-red-700 hover:border-red-500 rounded-xl text-center transition-all group hover:shadow-[0_0_20px_rgba(239,68,68,0.3)]"
+                  >
+                    <div className="text-4xl mb-3">&#9733;&#9733;&#9733;&#9733;</div>
+                    <h3 className="text-2xl font-bold text-red-400 mb-2">Nightmare</h3>
+                    <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                      Brutal difficulty. Only for experienced investigators.
+                    </p>
+                    <div className="text-xs text-red-500 font-mono">
+                      {SCENARIOS.filter(s => s.difficulty === 'Nightmare').length} scenarios available
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Scenario Pool Info */}
+              <div className="border-t border-border pt-6">
+                <p className="text-xs text-muted-foreground italic">
+                  A random scenario will be selected based on your chosen difficulty.
+                  <br />
+                  Total scenarios in pool: {SCENARIOS.length}
+                </p>
               </div>
             </div>
           ) : (
             <div className="bg-card p-12 rounded-2xl border-2 border-primary shadow-[var(--shadow-doom)] max-w-5xl w-full text-center">
               <div className="flex justify-between items-center mb-8 border-b border-border pb-4">
-                <button onClick={() => setState(prev => ({ ...prev, activeScenario: null, players: [] }))} className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-xs uppercase tracking-widest transition-colors"><ArrowLeft size={16} /> Back</button>
+                <button onClick={() => {
+                  setSelectedDifficulty(null);
+                  setState(prev => ({ ...prev, activeScenario: null, players: [] }));
+                }} className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-xs uppercase tracking-widest transition-colors"><ArrowLeft size={16} /> Back</button>
                 <h1 className="text-2xl font-display text-primary uppercase tracking-[0.2em]">{state.activeScenario.title}</h1>
+              </div>
+
+              {/* Show selected difficulty and scenario info */}
+              <div className="mb-6 p-4 bg-background/50 border border-border rounded-lg">
+                <div className="flex items-center justify-center gap-4 text-sm">
+                  <span className={`px-3 py-1 rounded-full border ${
+                    selectedDifficulty === 'Normal' ? 'border-emerald-500 text-emerald-400' :
+                    selectedDifficulty === 'Hard' ? 'border-amber-500 text-amber-400' :
+                    selectedDifficulty === 'Nightmare' ? 'border-red-500 text-red-400' :
+                    'border-border text-muted-foreground'
+                  }`}>
+                    {selectedDifficulty || state.activeScenario.difficulty}
+                  </span>
+                  <span className="text-muted-foreground">|</span>
+                  <span className="text-xs text-muted-foreground italic">{state.activeScenario.description.substring(0, 80)}...</span>
+                </div>
               </div>
 
               {/* Mode selection tabs */}
