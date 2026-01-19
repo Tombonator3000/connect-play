@@ -189,3 +189,30 @@ Every tile now has an atmospheric RPG-style description that displays when the p
 
 **The Black Pool:**
 > "Ink-dark water that doesn't ripple. Your reflection shows you older, changed, not entirely you anymore."
+
+---
+
+## 2026-01-19: Bug Fix - Lovecraftian Tile Descriptions Not Displayed
+
+### Problem
+The 150+ Lovecraftian tile descriptions defined in `LOCATION_DESCRIPTIONS` were never being used in the game. When players explored new tiles, only the tile name and category were logged, not the atmospheric descriptions.
+
+### Root Cause
+`LOCATION_DESCRIPTIONS` was defined in `constants.ts` but never imported or used in `ShadowsGame.tsx` where tile exploration is handled.
+
+### Fix Applied
+1. **Imported** `LOCATION_DESCRIPTIONS` in `ShadowsGame.tsx`
+2. **Added** description display logic in `spawnRoom()` function
+3. When a new tile is explored, the atmospheric description is now logged to the Field Journal
+
+### Files Modified
+- `src/game/ShadowsGame.tsx` (MODIFIED)
+  - Added `LOCATION_DESCRIPTIONS` to imports
+  - Added description lookup and logging in `spawnRoom()` function
+
+### Result
+Now when players explore tiles, they will see the full Lovecraftian description in the Field Journal:
+```
+[12:38:59] UTFORSKET: The Witch House. [FACADE]
+[12:38:59] The angles are wrong here. Corners that should be square are not. Your compass spins uselessly.
+```
