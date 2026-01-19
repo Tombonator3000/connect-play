@@ -166,8 +166,8 @@ const ShadowsGame: React.FC = () => {
       addToLog("Mythos-fasen vekkes. Eldgamle hjul snurrer i morket.");
 
       const runEnemyAI = async () => {
-        // Use the new AI system
-        const { updatedEnemies, attacks, messages } = processEnemyTurn(
+        // Use the enhanced AI system with smart targeting and special abilities
+        const { updatedEnemies, attacks, messages, specialEvents } = processEnemyTurn(
           state.enemies,
           state.players,
           state.board
@@ -176,19 +176,48 @@ const ShadowsGame: React.FC = () => {
         // Log AI messages
         messages.forEach(msg => addToLog(msg));
 
-        // Process attacks
+        // Log special events (teleportation, phasing, etc.)
+        if (specialEvents && specialEvents.length > 0) {
+          for (const event of specialEvents) {
+            addToLog(`⚡ ${event.description}`);
+            if (event.type === 'teleport') {
+              // Visual effect for teleportation
+              addFloatingText(
+                event.enemy.position.q,
+                event.enemy.position.r,
+                "✦ TELEPORT ✦",
+                "text-accent"
+              );
+              triggerScreenShake();
+            }
+          }
+        }
+
+        // Process attacks with enhanced damage calculation
         let updatedPlayers = [...state.players];
         const combatModifier = getCombatModifier(state.doom);
 
-        for (const { enemy, targetPlayer } of attacks) {
+        for (const attack of attacks) {
+          const { enemy, targetPlayer, isRanged, coverPenalty } = attack;
           const { hpDamage, sanityDamage, message } = calculateEnemyDamage(enemy, targetPlayer);
-          const totalHpDamage = hpDamage + combatModifier.enemyDamageBonus;
 
-          addToLog(message);
+          // Apply cover penalty for ranged attacks (reduces damage)
+          const coverReduction = isRanged && coverPenalty ? Math.min(coverPenalty, hpDamage) : 0;
+          const totalHpDamage = Math.max(0, hpDamage + combatModifier.enemyDamageBonus - coverReduction);
+
+          // Enhanced log message for ranged attacks
+          if (isRanged) {
+            const coverMsg = coverReduction > 0 ? ` (${coverReduction} blokkert av dekning)` : '';
+            addToLog(`🎯 ${message}${coverMsg}`);
+          } else {
+            addToLog(message);
+          }
+
+          const damageText = `-${totalHpDamage} HP${sanityDamage > 0 ? ` -${sanityDamage} SAN` : ''}`;
           addFloatingText(
             targetPlayer.position.q,
             targetPlayer.position.r,
-            `-${totalHpDamage} HP${sanityDamage > 0 ? ` -${sanityDamage} SAN` : ''}`,
+            damageText,
             "text-primary"
           );
           triggerScreenShake();
