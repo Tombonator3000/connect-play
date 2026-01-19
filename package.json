@@ -1,7 +1,9 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "shadows-of-the-1920s",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "A Lovecraftian horror game - Hero Quest meets Mansions of Madness",
+  "author": "Tombonator3000",
   "type": "module",
   "scripts": {
     "dev": "vite",
