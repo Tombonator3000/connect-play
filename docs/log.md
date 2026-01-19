@@ -2,6 +2,31 @@
 
 ## 2026-01-19
 
+### Session 12 - Agents.md Comprehensive Overhaul
+Fullstendig omskriving av agents.md fra 157 linjer til 370 linjer med komplett dokumentasjon.
+
+**Nye seksjoner lagt til:**
+- **Section 7: Character System** - Komplett investigator class-tabell med stats og abilities
+- **Section 8: Madness System** - Alle 8 conditions med mekaniske effekter, VFX og audio
+- **Section 9: Combat Quick Reference** - Attack resolution, horror checks, threat levels
+- **Section 10: Action Point Costs** - Komplett AP-tabell for alle handlinger
+- **Section 11: Storage & Persistence** - localStorage keys og branch info
+- **Section 12: Development Workflow** - Før/etter koding prosedyrer
+
+**Forbedringer til eksisterende seksjoner:**
+- Lagt til ny agent: ⚔️ The Warlord (Combat & AI Engineer)
+- Oppdatert alle agenter med Primary Files
+- Key Files Reference splittet i kategorier (Core, Utilities, Documentation, Assets)
+- Implemented Systems konvertert til tabellformat med key files
+- Design System utvidet med hex-farger, floor textures og visual effects
+- Game Statistics lagt til (6 investigators, 16 enemies, 15 scenarios, 84 tiles)
+
+### Files Modified This Session
+- `docs/agents.md` - Complete rewrite (157 → 370 lines)
+- `docs/log.md` - Added Session 12
+
+---
+
 ### Session 11 - Massive Tile Asset Expansion (52 nye tiles)
 Generert 52 nye tile-bilder med 90-graders top-down perspektiv. Totalt 84 tiles nå.
 
