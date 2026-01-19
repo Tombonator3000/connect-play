@@ -2,11 +2,18 @@
 
 ## 2026-01-19
 
+### Session 11 - Massive Tile Asset Expansion (52 nye tiles)
+Generert 52 nye tile-bilder med 90-graders top-down perspektiv. Totalt 84 tiles nå.
+
+**Innendørs rom (18 nye):** parlor, nursery, music, conservatory, billiard, trophy, drawing, office, boiler, smoking, servants, closet, maproom, records, gallery, belltower, witchhouse, tenement
+
+**Urban/Industriell (11 nye):** courthouse, newspaper, shipyard, gasworks, cannery, crossroads, deadend, funeral, gate, riverfront, fireescape
+
+**Natur/Utendørs (12 nye):** well, gallows, quarry, campsite, shack, farmhouse, hangingtree, stonecircle, orchard, ruins, mine, pond
+
+**Overnaturlig/Crypt (11 nye):** tomb, underground-lake, portal, sanctum, starchamber, massgrave, idol, blackpool, echo, petrified
+
 ### Session 10 - Regenerate All Tiles with Top-Down Perspective
-- **Problem**: Previous tile images had inconsistent perspective angles
-- **Solution**: Regenerated all 32 tiles with strict 90-degree top-down bird's eye perspective
-- **Prompt engineering**: Every prompt now includes "90-degree top-down view, bird's eye perspective board game tile"
-- All tiles now have consistent "floor plan" style matching board game aesthetics
 
 ### Tiles Regenerated (32 total):
 - **Indoor/Building**: library, church, police, museum, hospital, asylum, manor, hallway, cellar, hotel, lab, bedroom, kitchen, shop, lighthouse

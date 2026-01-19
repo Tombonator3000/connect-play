@@ -40,6 +40,58 @@ import tileCave from '@/assets/tiles/tile-cave.png';
 import tileBridge from '@/assets/tiles/tile-bridge.png';
 import tileKitchen from '@/assets/tiles/tile-kitchen.png';
 import tilePark from '@/assets/tiles/tile-park.png';
+// New tiles
+import tileParlor from '@/assets/tiles/tile-parlor.png';
+import tileNursery from '@/assets/tiles/tile-nursery.png';
+import tileMusic from '@/assets/tiles/tile-music.png';
+import tileConservatory from '@/assets/tiles/tile-conservatory.png';
+import tileBilliard from '@/assets/tiles/tile-billiard.png';
+import tileTrophy from '@/assets/tiles/tile-trophy.png';
+import tileDrawing from '@/assets/tiles/tile-drawing.png';
+import tileOffice from '@/assets/tiles/tile-office.png';
+import tileBoiler from '@/assets/tiles/tile-boiler.png';
+import tileTomb from '@/assets/tiles/tile-tomb.png';
+import tileUndergroundLake from '@/assets/tiles/tile-underground-lake.png';
+import tilePortal from '@/assets/tiles/tile-portal.png';
+import tileSanctum from '@/assets/tiles/tile-sanctum.png';
+import tileCourthouse from '@/assets/tiles/tile-courthouse.png';
+import tileNewspaper from '@/assets/tiles/tile-newspaper.png';
+import tileShipyard from '@/assets/tiles/tile-shipyard.png';
+import tileGasworks from '@/assets/tiles/tile-gasworks.png';
+import tileCannery from '@/assets/tiles/tile-cannery.png';
+import tileCrossroads from '@/assets/tiles/tile-crossroads.png';
+import tileDeadend from '@/assets/tiles/tile-deadend.png';
+import tileFuneral from '@/assets/tiles/tile-funeral.png';
+import tileWell from '@/assets/tiles/tile-well.png';
+import tileGallows from '@/assets/tiles/tile-gallows.png';
+import tileQuarry from '@/assets/tiles/tile-quarry.png';
+import tileCampsite from '@/assets/tiles/tile-campsite.png';
+import tileShack from '@/assets/tiles/tile-shack.png';
+import tileFarmhouse from '@/assets/tiles/tile-farmhouse.png';
+import tileHangingtree from '@/assets/tiles/tile-hangingtree.png';
+import tileStonecircle from '@/assets/tiles/tile-stonecircle.png';
+import tileOrchard from '@/assets/tiles/tile-orchard.png';
+import tileRuins from '@/assets/tiles/tile-ruins.png';
+import tileMine from '@/assets/tiles/tile-mine.png';
+import tilePond from '@/assets/tiles/tile-pond.png';
+import tileTenement from '@/assets/tiles/tile-tenement.png';
+import tileWitchhouse from '@/assets/tiles/tile-witchhouse.png';
+import tileBelltower from '@/assets/tiles/tile-belltower.png';
+import tileGallery from '@/assets/tiles/tile-gallery.png';
+import tileRecords from '@/assets/tiles/tile-records.png';
+import tileMaproom from '@/assets/tiles/tile-maproom.png';
+import tileSmoking from '@/assets/tiles/tile-smoking.png';
+import tileServants from '@/assets/tiles/tile-servants.png';
+import tileCloset from '@/assets/tiles/tile-closet.png';
+import tileGate from '@/assets/tiles/tile-gate.png';
+import tileRiverfront from '@/assets/tiles/tile-riverfront.png';
+import tileFireescape from '@/assets/tiles/tile-fireescape.png';
+import tileStarchamber from '@/assets/tiles/tile-starchamber.png';
+import tileMassgrave from '@/assets/tiles/tile-massgrave.png';
+import tileIdol from '@/assets/tiles/tile-idol.png';
+import tileBlackpool from '@/assets/tiles/tile-blackpool.png';
+import tileEcho from '@/assets/tiles/tile-echo.png';
+import tilePetrified from '@/assets/tiles/tile-petrified.png';
 
 // Map tile names to generated images
 const TILE_IMAGES: Record<string, string> = {
@@ -48,11 +100,13 @@ const TILE_IMAGES: Record<string, string> = {
   study: tileLibrary,
   reading: tileLibrary,
   archive: tileLibrary,
+  orne: tileLibrary,
   
   // Churches and religious
   church: tileChurch,
   chapel: tileChurch,
   shrine: tileChurch,
+  narthex: tileChurch,
   
   // Docks and water
   dock: tileDock,
@@ -60,16 +114,17 @@ const TILE_IMAGES: Record<string, string> = {
   harbor: tileDock,
   wharf: tileDock,
   waterfront: tileDock,
+  innsmouth: tileDock,
   
   // Town squares
   square: tileSquare,
   plaza: tileSquare,
   courtyard: tileSquare,
+  founders: tileSquare,
   
   // Graveyard and cemetery
   graveyard: tileGraveyard,
   cemetery: tileGraveyard,
-  tomb: tileGraveyard,
   burial: tileGraveyard,
   
   // Hallways and corridors
@@ -78,11 +133,15 @@ const TILE_IMAGES: Record<string, string> = {
   passage: tileHallway,
   stair: tileHallway,
   landing: tileHallway,
+  spiral: tileHallway,
+  rickety: tileHallway,
+  crumbling: tileHallway,
   
   // Alleys
   alley: tileAlley,
   lane: tileAlley,
   back: tileAlley,
+  narrows: tileAlley,
   
   // Crypts and underground
   crypt: tileCrypt,
@@ -101,51 +160,56 @@ const TILE_IMAGES: Record<string, string> = {
   police: tilePolice,
   precinct: tilePolice,
   jail: tilePolice,
-  cell: tilePolice,
   
   // Museum
   museum: tileMuseum,
   exhibit: tileMuseum,
-  gallery: tileMuseum,
-  artifact: tileMuseum,
   
   // Hospital
   hospital: tileHospital,
   ward: tileHospital,
   morgue: tileHospital,
   medical: tileHospital,
+  charity: tileHospital,
   
   // Asylum
   asylum: tileAsylum,
   padded: tileAsylum,
+  cell: tileAsylum,
   
   // Streets
   street: tileStreet,
   road: tileStreet,
   cobblestone: tileStreet,
-  main: tileStreet,
   avenue: tileStreet,
   
   // Manor and mansion
   manor: tileManor,
   mansion: tileManor,
   foyer: tileManor,
-  grand: tileManor,
   lobby: tileManor,
+  vestibule: tileManor,
+  atrium: tileManor,
+  blackwood: tileManor,
   
   // Cellar and basement
   cellar: tileCellar,
   basement: tileCellar,
   storage: tileCellar,
-  wine: tileCellar,
+  cold: tileCellar,
+  flooded: tileCellar,
+  coal: tileCellar,
+  root: tileCellar,
+  maintenance: tileCellar,
+  smuggler: tileCellar,
   
   // Forest and nature
   forest: tileForest,
   woods: tileForest,
   clearing: tileForest,
   grove: tileForest,
-  standing: tileForest,
-  stone: tileForest,
+  hollow: tileForest,
+  whispering: tileForest,
   
   // Ritual
   ritual: tileRitual,
@@ -158,47 +222,55 @@ const TILE_IMAGES: Record<string, string> = {
   warehouse: tileWarehouse,
   factory: tileWarehouse,
   industrial: tileWarehouse,
+  derelict: tileWarehouse,
   
   // Hotel
   hotel: tileHotel,
   inn: tileHotel,
-  reception: tileHotel,
-  lounge: tileHotel,
+  silver: tileHotel,
+  gilded: tileHotel,
   
   // Laboratory
   lab: tileLab,
   laboratory: tileLab,
   dissection: tileLab,
+  hidden: tileLab,
   
   // Bedroom
   bedroom: tileBedroom,
   bed: tileBedroom,
   sleep: tileBedroom,
-  master: tileBedroom,
   guest: tileBedroom,
+  quarters: tileBedroom,
   
   // Sewer
   sewer: tileSewer,
   tunnel: tileSewer,
   drain: tileSewer,
+  storm: tileSewer,
   
   // Swamp
   swamp: tileSwamp,
   marsh: tileSwamp,
   bog: tileSwamp,
   moor: tileSwamp,
+  treacherous: tileSwamp,
   
   // Lighthouse
   lighthouse: tileLighthouse,
   coast: tileLighthouse,
   cliff: tileLighthouse,
+  suicide: tileLighthouse,
   
   // Market
   market: tileMarket,
   fish: tileMarket,
   merchant: tileMarket,
+  
+  // Shop
   shop: tileShop,
   antique: tileShop,
+  dusty: tileShop,
   
   // Campus
   campus: tileCampus,
@@ -209,21 +281,219 @@ const TILE_IMAGES: Record<string, string> = {
   // Cave
   cave: tileCave,
   cavern: tileCave,
-  underground: tileCave,
-  pit: tileCave,
+  ancient: tileCave,
   
   // Bridge
   bridge: tileBridge,
   crossing: tileBridge,
   overpass: tileBridge,
+  iron: tileBridge,
   
   // Kitchen
   kitchen: tileKitchen,
   pantry: tileKitchen,
+  forgotten: tileKitchen,
   
   // Park
   park: tilePark,
-  garden: tilePark
+  garden: tilePark,
+  city: tilePark,
+  
+  // === NEW TILES ===
+  
+  // Parlor / Séance
+  parlor: tileParlor,
+  seance: tileParlor,
+  séance: tileParlor,
+  
+  // Nursery
+  nursery: tileNursery,
+  
+  // Music Room
+  music: tileMusic,
+  piano: tileMusic,
+  
+  // Conservatory
+  conservatory: tileConservatory,
+  sun: tileConservatory,
+  
+  // Billiard Room
+  billiard: tileBilliard,
+  pool: tileBilliard,
+  
+  // Trophy Room
+  trophy: tileTrophy,
+  hunting: tileTrophy,
+  
+  // Drawing Room
+  drawing: tileDrawing,
+  sitting: tileDrawing,
+  
+  // Office
+  office: tileOffice,
+  locked: tileOffice,
+  private: tileOffice,
+  
+  // Boiler Room
+  boiler: tileBoiler,
+  furnace: tileBoiler,
+  
+  // Tomb
+  tomb: tileTomb,
+  sarcophagus: tileTomb,
+  
+  // Underground Lake
+  lake: tileUndergroundLake,
+  
+  // Portal
+  portal: tilePortal,
+  eldritch: tilePortal,
+  dimensional: tilePortal,
+  
+  // Sanctum
+  sanctum: tileSanctum,
+  cultist: tileSanctum,
+  
+  // Courthouse
+  courthouse: tileCourthouse,
+  court: tileCourthouse,
+  
+  // Newspaper
+  newspaper: tileNewspaper,
+  press: tileNewspaper,
+  printing: tileNewspaper,
+  
+  // Shipyard
+  shipyard: tileShipyard,
+  
+  // Gasworks
+  gasworks: tileGasworks,
+  
+  // Cannery
+  cannery: tileCannery,
+  
+  // Crossroads
+  crossroads: tileCrossroads,
+  
+  // Dead End
+  deadend: tileDeadend,
+  
+  // Funeral Parlor
+  funeral: tileFuneral,
+  embalming: tileFuneral,
+  casket: tileFuneral,
+  
+  // Well
+  well: tileWell,
+  
+  // Gallows
+  gallows: tileGallows,
+  gibbet: tileGallows,
+  execution: tileGallows,
+  
+  // Quarry
+  quarry: tileQuarry,
+  
+  // Campsite
+  campsite: tileCampsite,
+  
+  // Shack
+  shack: tileShack,
+  hermit: tileShack,
+  
+  // Farmhouse
+  farmhouse: tileFarmhouse,
+  
+  // Hanging Tree
+  hangingtree: tileHangingtree,
+  
+  // Stone Circle
+  stonecircle: tileStonecircle,
+  
+  // Orchard
+  orchard: tileOrchard,
+  blighted: tileOrchard,
+  
+  // Ruins
+  ruins: tileRuins,
+  overgrown: tileRuins,
+  
+  // Mine
+  mine: tileMine,
+  collapsed: tileMine,
+  
+  // Pond
+  pond: tilePond,
+  stagnant: tilePond,
+  
+  // Tenement
+  tenement: tileTenement,
+  condemned: tileTenement,
+  immigrant: tileTenement,
+  
+  // Witch House
+  witch: tileWitchhouse,
+  
+  // Bell Tower
+  bell: tileBelltower,
+  tower: tileBelltower,
+  
+  // Gallery
+  gallery: tileGallery,
+  portrait: tileGallery,
+  
+  // Records Room
+  records: tileRecords,
+  filing: tileRecords,
+  
+  // Map Room
+  map: tileMaproom,
+  nautical: tileMaproom,
+  
+  // Smoking Lounge
+  smoking: tileSmoking,
+  cigar: tileSmoking,
+  
+  // Servants Quarters
+  servants: tileServants,
+  servant: tileServants,
+  
+  // Closet
+  closet: tileCloset,
+  linen: tileCloset,
+  
+  // Gate
+  gate: tileGate,
+  
+  // Riverfront
+  riverfront: tileRiverfront,
+  river: tileRiverfront,
+  
+  // Fire Escape
+  fire: tileFireescape,
+  escape: tileFireescape,
+  emergency: tileFireescape,
+  
+  // Star Chamber
+  star: tileStarchamber,
+  chamber: tileStarchamber,
+  astronomical: tileStarchamber,
+  
+  // Mass Grave
+  mass: tileMassgrave,
+  grave: tileMassgrave,
+  
+  // Idol Chamber
+  idol: tileIdol,
+  
+  // Black Pool
+  blackpool: tileBlackpool,
+  
+  // Echo Chamber
+  echo: tileEcho,
+  
+  // Petrified Garden
+  petrified: tilePetrified
 };
 
 // Get tile image based on name
