@@ -1,0 +1,259 @@
+import { Character, CharacterType, Item, EventCard, Tile, Scenario, Madness, Spell, BestiaryEntry, EnemyType } from './types';
+
+export const SPELLS: Spell[] = [
+  { id: 'wither', name: 'Wither', cost: 2, description: 'Drains life force from a target.', effectType: 'damage', value: 2, range: 3 },
+  { id: 'mend', name: 'Mend Flesh', cost: 2, description: 'Knits wounds together with arcane energy.', effectType: 'heal', value: 2, range: 1 },
+  { id: 'reveal', name: 'True Sight', cost: 1, description: 'Reveals hidden clues in the area.', effectType: 'reveal', value: 1, range: 0 },
+  { id: 'banish', name: 'Banish', cost: 4, description: 'A powerful rite to weaken the connection to the void.', effectType: 'banish', value: 5, range: 2 }
+];
+
+export const CHARACTERS: Record<CharacterType, Character> = {
+  detective: { id: 'detective', name: 'The Private Eye', hp: 5, maxHp: 5, sanity: 4, maxSanity: 4, insight: 1, special: '+1 die on Investigation' },
+  professor: { id: 'professor', name: 'The Professor', hp: 3, maxHp: 3, sanity: 6, maxSanity: 6, insight: 3, special: 'Can read occult texts safely' },
+  journalist: { id: 'journalist', name: 'The Journalist', hp: 4, maxHp: 4, sanity: 4, maxSanity: 4, insight: 1, special: '+1 Movement speed' },
+  veteran: { id: 'veteran', name: 'The Veteran', hp: 6, maxHp: 6, sanity: 3, maxSanity: 3, insight: 0, special: '+1 die on Combat' },
+  occultist: { id: 'occultist', name: 'The Occultist', hp: 3, maxHp: 3, sanity: 5, maxSanity: 5, insight: 4, special: 'Starts with knowledge of the Arcane' },
+  doctor: { id: 'doctor', name: 'The Doctor', hp: 4, maxHp: 4, sanity: 5, maxSanity: 5, insight: 2, special: 'Can heal HP or Sanity' }
+};
+
+export const INDOOR_LOCATIONS = [
+  'Abandoned Manor', 'Dark Cellar', 'The Library', 'Secret Crypt', 'Old Church', 'Police Station', 'Warehouse', 'Arkham Asylum', 'Historical Museum', "St. Mary's Hospital",
+  'Sanitarium', 'Underground Vault', 'Dusty Attic', 'Grand Hall', 'Study Room', 'Ritual Chamber', 'Boiler Room', 'Velvet Lounge', 'Opium Den', 'Grand Theater',
+  'Clock Tower Interior', 'Private Study', 'Damp Basement', 'Hidden Laboratory', 'Trophy Room'
+];
+
+export const OUTDOOR_LOCATIONS = [
+  'Misty Docks', 'Town Square', 'Old Lighthouse', 'Blackwood Forest', 'Graveyard', 'University Campus', 'Market District', 'River Bank', 'Train Station', 'Swamp',
+  'City Park', 'Merchant Street', 'Dark Pier', 'Hanging Tree', 'Ruined Farmhouse', 'Overgrown Garden', 'Foggy Harbor', 'Lonely Crossroads', 'Cemetery Gate',
+  'Stone Circle', 'Miskatonic Bridge', 'Innsmouth Wharf'
+];
+
+export const INDOOR_CONNECTORS = [
+  'Narrow Hallway', 'Dark Corridor', 'Grand Staircase', 'Servant Passage', 'Dusty Landing', 'Maintenance Shaft', 'Basement Tunnel', 'Service Elevator',
+  'Spiral Stairs', 'Crawlspace'
+];
+
+export const OUTDOOR_CONNECTORS = [
+  'Narrow Alley', 'Cobblestone Path', 'Foggy Bridge', 'Tram Track', 'Dark Tunnel', 'Stone Steps', 'River Crossing', 'Overpass', 'Dirt Trail',
+  'Winding Lane'
+];
+
+export const LOCATION_DESCRIPTIONS: Record<string, string> = {
+  'Train Station': 'The last train left hours ago. The clock on the wall is shattered.',
+  'Abandoned Manor': 'Dust motes dance in the stale air. Portraits seem to watch you pass.',
+  'Dark Cellar': 'It smells of rot and old earth. Something scuttles in the corner.',
+  'The Library': 'Rows of forbidden texts. You hear a page turn, but no one is there.',
+  'Secret Crypt': 'The air is cold enough to see your breath. Ancient names are carved into the stone.',
+  'Old Church': 'A sense of unease hangs heavy here. The pews are broken.',
+  'Misty Docks': 'The waves lap against the rotting wood. The fog is thick here.',
+  'Town Square': 'Deserted. The statue in the center looks different than you remember.',
+  'Graveyard': 'The soil looks disturbed in front of several headstones.',
+  'Blackwood Forest': 'The trees crowd close, their branches like grasping skeletal fingers.'
+};
+
+export const SCENARIOS: Scenario[] = [
+  {
+    id: 's1',
+    title: 'Escape from Blackwood Manor',
+    description: 'You are trapped in the haunted Blackwood estate. The doors are sealed by dark magic. You must find the key and escape before the entity claims you.',
+    startDoom: 12,
+    startLocation: 'Grand Hall',
+    goal: 'Find the Iron Key, locate the Exit Door, and Escape.',
+    specialRule: 'Indoors only. Exit Door spawns after Key is found.',
+    difficulty: 'Normal',
+    tileSet: 'indoor',
+    victoryType: 'escape',
+    steps: [
+      { id: 'step1', description: 'Find the Iron Key (Investigate locations)', type: 'find_item', targetId: 'quest_key', completed: false },
+      { id: 'step2', description: 'Locate the Exit Door', type: 'find_tile', targetId: 'Exit Door', completed: false },
+      { id: 'step3', description: 'Unlock the Door and Escape', type: 'interact', targetId: 'Exit Door', completed: false }
+    ],
+    doomEvents: [
+      { threshold: 8, triggered: false, type: 'spawn_enemy', targetId: 'cultist', amount: 2, message: 'The cultists have found you!' },
+      { threshold: 5, triggered: false, type: 'spawn_enemy', targetId: 'ghoul', amount: 2, message: 'Hungry ghouls emerge from the shadows.' },
+      { threshold: 2, triggered: false, type: 'spawn_boss', targetId: 'shoggoth', amount: 1, message: 'A Shoggoth blocks the way!' }
+    ]
+  },
+  {
+    id: 's2',
+    title: 'Assassination of the High Priest',
+    description: 'The Order of the Black Sun is performing a ritual to summon a Great Old One. You must silence their leader before the ritual completes.',
+    startDoom: 10,
+    startLocation: 'Town Square',
+    goal: 'Find and kill the Dark Priest.',
+    specialRule: 'Enemies are stronger. Time is short.',
+    difficulty: 'Hard',
+    tileSet: 'mixed',
+    victoryType: 'assassination',
+    steps: [
+      { id: 'step1', description: 'Find the Dark Priest', type: 'find_item', targetId: 'location_intel', completed: false },
+      { id: 'step2', description: 'Kill the Dark Priest', type: 'kill_enemy', targetId: 'priest', amount: 1, completed: false }
+    ],
+    doomEvents: [
+      { threshold: 7, triggered: false, type: 'spawn_enemy', targetId: 'deepone', amount: 2, message: 'Deep Ones rise from the sewers.' },
+      { threshold: 4, triggered: false, type: 'buff_enemies', message: 'The ritual empowers all enemies! (+1 HP)' },
+      { threshold: 2, triggered: false, type: 'spawn_boss', targetId: 'shoggoth', message: 'The Priest summons a guardian!' }
+    ]
+  },
+  {
+    id: 's3',
+    title: 'The Siege of Arkham',
+    description: 'They are coming. Wave after wave of horrors. You cannot run. You can only survive.',
+    startDoom: 15,
+    startLocation: 'Police Station',
+    goal: 'Survive for 10 rounds.',
+    specialRule: 'Doom decreases every round automatically.',
+    difficulty: 'Nightmare',
+    tileSet: 'mixed',
+    victoryType: 'survival',
+    steps: [
+      { id: 'step1', description: 'Survive until help arrives', type: 'survive', amount: 10, completed: false }
+    ],
+    doomEvents: [
+      { threshold: 12, triggered: false, type: 'spawn_enemy', targetId: 'cultist', amount: 3, message: 'Wave 1: Cultists attack!' },
+      { threshold: 8, triggered: false, type: 'spawn_enemy', targetId: 'ghoul', amount: 3, message: 'Wave 2: Ghouls swarm the barricades!' },
+      { threshold: 4, triggered: false, type: 'spawn_boss', targetId: 'dark_young', amount: 1, message: 'Wave 3: A Dark Young appears!' }
+    ]
+  }
+];
+
+export const START_TILE: Tile = {
+  id: 'start', q: 0, r: 0, name: 'Train Station', type: 'street', category: 'location', explored: true, searchable: true, searched: false
+};
+
+export const BESTIARY: Record<EnemyType, BestiaryEntry> = {
+  cultist: {
+    name: 'Cultist', type: 'cultist', hp: 2, damage: 1, horror: 1,
+    description: 'A brainwashed servant of the Outer Gods.',
+    lore: 'Recruited from the desperate and the mad.',
+    defeatFlavor: 'The cultist collapses, a dark amulet shattering.',
+    traits: []
+  },
+  ghoul: {
+    name: 'Ghoul', type: 'ghoul', hp: 3, damage: 2, horror: 2,
+    description: 'A flesh-eating subterranean dweller.',
+    lore: 'Subterranean dwellers that feast on the dead.',
+    defeatFlavor: 'It collapses into grave dirt.',
+    traits: ['scavenger']
+  },
+  deepone: {
+    name: 'Deep One', type: 'deepone', hp: 3, damage: 2, horror: 2,
+    description: 'An immortal amphibious humanoid.',
+    lore: 'Immortal servants of Father Dagon.',
+    defeatFlavor: 'The creature dissolves into brine.',
+    traits: ['aquatic']
+  },
+  shoggoth: {
+    name: 'Shoggoth', type: 'shoggoth', hp: 6, damage: 3, horror: 4,
+    description: 'A protoplasmic mass of eyes and mouths.',
+    lore: 'A nightmarish slave race created by the Elder Things.',
+    traits: ['massive', 'slow'],
+    defeatFlavor: 'The massive form loses cohesion.'
+  },
+  sniper: {
+    name: 'Cultist Sniper', type: 'sniper', hp: 2, damage: 2, horror: 1,
+    description: 'A cultist armed with a long-range rifle.',
+    lore: 'Chosen for their steady hands and lack of remorse.',
+    traits: ['ranged'],
+    defeatFlavor: 'The sniper falls from their perch.'
+  },
+  priest: {
+    name: 'Dark Priest', type: 'priest', hp: 5, damage: 2, horror: 3,
+    description: 'A high-ranking member of the cult, channeling dark energies.',
+    lore: 'They have traded their humanity for forbidden power.',
+    traits: ['elite'],
+    defeatFlavor: 'The priest screams as the darkness consumes them.'
+  },
+  'mi-go': {
+    name: 'Mi-Go', type: 'mi-go', hp: 3, damage: 1, horror: 1,
+    description: 'A fungoid crustacean from Yuggoth.',
+    lore: 'Fungi from Yuggoth who fly through space.',
+    traits: ['flying'],
+    defeatFlavor: 'The body disintegrates.'
+  },
+  nightgaunt: {
+    name: 'Nightgaunt', type: 'nightgaunt', hp: 3, damage: 1, horror: 1,
+    description: 'A faceless, horned flyer.',
+    lore: 'Faceless servants of Nodens.',
+    traits: ['flying'],
+    defeatFlavor: 'It vanishes into the night sky.'
+  },
+  hound: {
+    name: 'Hound of Tindalos', type: 'hound', hp: 4, damage: 2, horror: 3,
+    description: 'A predator from the angles of time.',
+    lore: 'Predators that inhabit the angles of time.',
+    traits: ['fast', 'ambusher'],
+    defeatFlavor: 'The beast recedes into the angles.'
+  },
+  dark_young: {
+    name: 'Dark Young', type: 'dark_young', hp: 6, damage: 2, horror: 3,
+    description: 'Offspring of Shub-Niggurath.',
+    lore: 'The Black Goat of the Woods.',
+    traits: ['massive'],
+    defeatFlavor: 'The monstrosity withers.'
+  },
+  byakhee: {
+    name: 'Byakhee', type: 'byakhee', hp: 3, damage: 2, horror: 1,
+    description: 'An interstellar steed.',
+    lore: 'Interstellar steeds serving Hastur.',
+    traits: ['flying', 'fast'],
+    defeatFlavor: 'It dissolves into cosmic dust.'
+  },
+  star_spawn: {
+    name: 'Star Spawn', type: 'star_spawn', hp: 8, damage: 3, horror: 5,
+    description: 'A colossal kin of Cthulhu.',
+    lore: 'Smaller versions of the Great Dreamer.',
+    traits: ['massive'],
+    defeatFlavor: 'The entity liquefies into green ooze.'
+  },
+  formless_spawn: {
+    name: 'Formless Spawn', type: 'formless_spawn', hp: 5, damage: 2, horror: 2,
+    description: 'Black ooze of Tsathoggua.',
+    lore: 'Living puddles of black ichor.',
+    traits: ['regenerate'],
+    defeatFlavor: 'The ooze evaporates into foul steam.'
+  },
+  hunting_horror: {
+    name: 'Hunting Horror', type: 'hunting_horror', hp: 4, damage: 3, horror: 3,
+    description: 'A viper of the void.',
+    lore: 'A serpentine entity that serves Nyarlathotep.',
+    traits: ['fast', 'flying'],
+    defeatFlavor: 'It coils in and vanishes.'
+  },
+  moon_beast: {
+    name: 'Moon-Beast', type: 'moon_beast', hp: 4, damage: 1, horror: 2,
+    description: 'Sadistic torturers from the moon.',
+    lore: 'Sadistic beings from the Dreamlands.',
+    traits: ['ranged'],
+    defeatFlavor: 'The abomination falls silent.'
+  },
+  boss: {
+    name: 'Ancient One', type: 'boss', hp: 10, damage: 4, horror: 6,
+    description: 'An avatar of cosmic destruction.',
+    lore: 'An intrusion from outside the ordered universe.',
+    traits: ['massive'],
+    defeatFlavor: 'The avatar is pulled back into the void.'
+  }
+};
+
+export const ITEMS: Item[] = [
+  { id: 'rev', name: 'Revolver', type: 'weapon', effect: '+1 Combat Die', bonus: 1, cost: 3, statModifier: 'combat' },
+  { id: 'shot', name: 'Shotgun', type: 'weapon', effect: '+2 Combat Dice', bonus: 2, cost: 5, statModifier: 'combat' },
+  { id: 'tommy', name: 'Tommy Gun', type: 'weapon', effect: '+3 Combat Dice', bonus: 3, cost: 10, statModifier: 'combat' },
+  { id: 'med', name: 'Medical Kit', type: 'consumable', effect: 'Heal 2 HP', bonus: 2, cost: 3 },
+  { id: 'whiskey', name: 'Old Whiskey', type: 'consumable', effect: 'Heal 2 Sanity', bonus: 2, cost: 2 },
+  { id: 'flash', name: 'Flashlight', type: 'tool', effect: '+1 Investigation Die', bonus: 1, cost: 2, statModifier: 'investigation' },
+  { id: 'book', name: 'Necronomicon', type: 'relic', effect: '+3 Insight, -1 Sanity', bonus: 3, cost: 8 }
+];
+
+export const EVENTS: EventCard[] = [
+  { id: 'e1', title: 'Shadows in the Dark', description: 'You feel watched. Lose 1 Sanity.', effectType: 'sanity', value: -1 },
+  { id: 'e2', title: 'Hidden Diary', description: 'Found important notes! +1 Insight.', effectType: 'insight', value: 1 },
+  { id: 'e3', title: 'Dark Ritual', description: 'You stumble upon a ceremony!', effectType: 'spawn', value: 1 }
+];
+
+export const MADNESS_CONDITIONS: Madness[] = [
+  { id: 'm1', name: 'Paranoia', description: 'Trust no one.', effect: 'Cannot rest.', visualClass: 'madness-paranoia' },
+  { id: 'm2', name: 'Hysteria', description: 'Your mind fractures.', effect: 'Random actions.', visualClass: 'madness-hysteria' },
+  { id: 'm3', name: 'Catatonia', description: 'You freeze.', effect: '-1 Action per turn.', visualClass: '' }
+];
