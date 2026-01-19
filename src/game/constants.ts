@@ -1,4 +1,4 @@
-import { Character, CharacterType, Item, EventCard, Tile, Scenario, Madness, Spell, BestiaryEntry, EnemyType } from './types';
+import { Character, CharacterType, Item, EventCard, Tile, Scenario, Madness, Spell, BestiaryEntry, EnemyType, Obstacle, ObstacleType, EdgeData } from './types';
 
 export const SPELLS: Spell[] = [
   { id: 'wither', name: 'Wither', cost: 2, description: 'Drains life force from a target.', effectType: 'damage', value: 2, range: 3 },
@@ -8,12 +8,36 @@ export const SPELLS: Spell[] = [
 ];
 
 export const CHARACTERS: Record<CharacterType, Character> = {
-  detective: { id: 'detective', name: 'The Private Eye', hp: 5, maxHp: 5, sanity: 4, maxSanity: 4, insight: 1, special: '+1 die on Investigation' },
-  professor: { id: 'professor', name: 'The Professor', hp: 3, maxHp: 3, sanity: 6, maxSanity: 6, insight: 3, special: 'Can read occult texts safely' },
-  journalist: { id: 'journalist', name: 'The Journalist', hp: 4, maxHp: 4, sanity: 4, maxSanity: 4, insight: 1, special: '+1 Movement speed' },
-  veteran: { id: 'veteran', name: 'The Veteran', hp: 6, maxHp: 6, sanity: 3, maxSanity: 3, insight: 0, special: '+1 die on Combat' },
-  occultist: { id: 'occultist', name: 'The Occultist', hp: 3, maxHp: 3, sanity: 5, maxSanity: 5, insight: 4, special: 'Starts with knowledge of the Arcane' },
-  doctor: { id: 'doctor', name: 'The Doctor', hp: 4, maxHp: 4, sanity: 5, maxSanity: 5, insight: 2, special: 'Can heal HP or Sanity' }
+  detective: { 
+    id: 'detective', name: 'The Private Eye', hp: 5, maxHp: 5, sanity: 4, maxSanity: 4, insight: 1, 
+    attributes: { strength: 3, agility: 3, intellect: 4, willpower: 3 },
+    special: '+1 die on Investigation', specialAbility: 'investigate_bonus'
+  },
+  professor: { 
+    id: 'professor', name: 'The Professor', hp: 3, maxHp: 3, sanity: 6, maxSanity: 6, insight: 3, 
+    attributes: { strength: 2, agility: 2, intellect: 5, willpower: 4 },
+    special: 'Can read occult texts safely', specialAbility: 'occult_immunity'
+  },
+  journalist: { 
+    id: 'journalist', name: 'The Journalist', hp: 4, maxHp: 4, sanity: 4, maxSanity: 4, insight: 1, 
+    attributes: { strength: 2, agility: 4, intellect: 4, willpower: 3 },
+    special: '+1 Movement, escape bonus', specialAbility: 'escape_bonus'
+  },
+  veteran: { 
+    id: 'veteran', name: 'The Veteran', hp: 6, maxHp: 6, sanity: 3, maxSanity: 3, insight: 0, 
+    attributes: { strength: 5, agility: 3, intellect: 2, willpower: 3 },
+    special: '+1 die on Combat and Str checks', specialAbility: 'combat_bonus'
+  },
+  occultist: { 
+    id: 'occultist', name: 'The Occultist', hp: 3, maxHp: 3, sanity: 5, maxSanity: 5, insight: 4, 
+    attributes: { strength: 2, agility: 3, intellect: 3, willpower: 5 },
+    special: 'Can perform rituals', specialAbility: 'ritual_master'
+  },
+  doctor: { 
+    id: 'doctor', name: 'The Doctor', hp: 4, maxHp: 4, sanity: 5, maxSanity: 5, insight: 2, 
+    attributes: { strength: 2, agility: 3, intellect: 4, willpower: 4 },
+    special: 'Heals 2 instead of 1', specialAbility: 'heal_bonus'
+  }
 };
 
 export const INDOOR_LOCATIONS = [
@@ -117,8 +141,15 @@ export const SCENARIOS: Scenario[] = [
   }
 ];
 
+const DEFAULT_EDGES: [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData] = [
+  { type: 'open' }, { type: 'open' }, { type: 'open' }, { type: 'open' }, { type: 'open' }, { type: 'open' }
+];
+
 export const START_TILE: Tile = {
-  id: 'start', q: 0, r: 0, name: 'Train Station', type: 'street', category: 'location', explored: true, searchable: true, searched: false
+  id: 'start', q: 0, r: 0, name: 'Train Station', type: 'street', 
+  category: 'urban', zoneLevel: 0, floorType: 'cobblestone', visibility: 'visible',
+  edges: DEFAULT_EDGES, explored: true, searchable: true, searched: false,
+  watermarkIcon: 'Train'
 };
 
 export const BESTIARY: Record<EnemyType, BestiaryEntry> = {
@@ -253,7 +284,69 @@ export const EVENTS: EventCard[] = [
 ];
 
 export const MADNESS_CONDITIONS: Madness[] = [
-  { id: 'm1', name: 'Paranoia', description: 'Trust no one.', effect: 'Cannot rest.', visualClass: 'madness-paranoia' },
-  { id: 'm2', name: 'Hysteria', description: 'Your mind fractures.', effect: 'Random actions.', visualClass: 'madness-hysteria' },
-  { id: 'm3', name: 'Catatonia', description: 'You freeze.', effect: '-1 Action per turn.', visualClass: '' }
+  { 
+    id: 'm1', type: 'hallucination', name: 'Hallucinations', 
+    description: 'You see things that are not there.',
+    mechanicalEffect: '25% chance to see false enemies. Must use action to "attack" them.',
+    visualClass: 'madness-hallucination', audioEffect: 'whispers'
+  },
+  { 
+    id: 'm2', type: 'paranoia', name: 'Paranoia', 
+    description: 'Trust no one. They are all watching.',
+    mechanicalEffect: 'Cannot share tile with allies. -1 on all rolls when others are near.',
+    visualClass: 'madness-paranoia', audioEffect: 'heartbeat'
+  },
+  { 
+    id: 'm3', type: 'hysteria', name: 'Hysteria', 
+    description: 'Your mind fractures into chaos.',
+    mechanicalEffect: '50% chance to lose 1 AP to uncontrolled action each round.',
+    visualClass: 'madness-hysteria', audioEffect: 'laughter'
+  },
+  { 
+    id: 'm4', type: 'catatonia', name: 'Catatonia', 
+    description: 'You freeze, unable to move.',
+    mechanicalEffect: '-1 AP per turn. Cannot use Flee action.',
+    visualClass: 'madness-catatonia', audioEffect: 'silence'
+  },
+  { 
+    id: 'm5', type: 'obsession', name: 'Obsession', 
+    description: 'You must know everything about this place.',
+    mechanicalEffect: 'Cannot leave room until all elements are investigated.',
+    visualClass: 'madness-obsession', audioEffect: 'ticking'
+  },
+  { 
+    id: 'm6', type: 'amnesia', name: 'Amnesia', 
+    description: 'Where am I? What is this place?',
+    mechanicalEffect: 'Fog of War resets each round. Cannot see previously explored tiles.',
+    visualClass: 'madness-amnesia', audioEffect: 'static'
+  },
+  { 
+    id: 'm7', type: 'night_terrors', name: 'Night Terrors', 
+    description: 'Sleep brings only horrors.',
+    mechanicalEffect: 'Cannot use Rest action. Sleep events cause -1 Sanity.',
+    visualClass: 'madness-night-terrors', audioEffect: 'screams'
+  },
+  { 
+    id: 'm8', type: 'dark_insight', name: 'Dark Insight', 
+    description: 'You see the truth behind the veil.',
+    mechanicalEffect: '+2 Insight permanent. But Doom decreases 1 extra per round.',
+    visualClass: 'madness-dark-insight', audioEffect: 'cosmic'
+  }
 ];
+
+// Obstacles from the Game Design Bible
+export const OBSTACLES: Record<ObstacleType, Obstacle> = {
+  rubble_light: { type: 'rubble_light', blocking: false, removable: true, apCost: 1, effect: '+1 AP to cross' },
+  rubble_heavy: { type: 'rubble_heavy', blocking: true, removable: true, skillRequired: 'strength', dc: 4, apCost: 2 },
+  collapsed: { type: 'collapsed', blocking: true, removable: false, effect: 'Permanently blocked' },
+  fire: { type: 'fire', blocking: false, removable: true, damage: 1, itemRequired: 'extinguisher', effect: '1 HP damage on pass' },
+  water_shallow: { type: 'water_shallow', blocking: false, removable: false, apCost: 1, effect: 'May hide items' },
+  water_deep: { type: 'water_deep', blocking: false, removable: false, skillRequired: 'agility', dc: 4, effect: 'Must swim' },
+  unstable_floor: { type: 'unstable_floor', blocking: false, removable: false, effect: '1d6: 1-2 = fall (2 HP damage)' },
+  gas_poison: { type: 'gas_poison', blocking: false, removable: true, itemRequired: 'gas_mask', damage: 1, effect: '-1 HP per round in area' },
+  darkness: { type: 'darkness', blocking: false, removable: true, skillRequired: 'willpower', dc: 4, itemRequired: 'light_source', effect: '-2 all rolls' },
+  ward_circle: { type: 'ward_circle', blocking: false, removable: true, skillRequired: 'willpower', dc: 5, damage: 1, effect: 'Sanity -1 to cross without removing' },
+  spirit_barrier: { type: 'spirit_barrier', blocking: true, removable: true, itemRequired: 'banish_ritual', damage: 1, effect: 'Sanity -1 per attempt to pass' },
+  spatial_warp: { type: 'spatial_warp', blocking: false, removable: true, effect: 'Doors lead to wrong places. Solve puzzle to fix.' },
+  time_loop: { type: 'time_loop', blocking: false, removable: true, effect: 'Tile resets when you leave. Must break sequence.' }
+};

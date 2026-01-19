@@ -9,6 +9,23 @@ export enum GamePhase {
 
 export type CharacterType = 'detective' | 'professor' | 'journalist' | 'veteran' | 'occultist' | 'doctor';
 
+export type SkillType = 'strength' | 'agility' | 'intellect' | 'willpower';
+
+export interface CharacterAttributes {
+  strength: number;
+  agility: number;
+  intellect: number;
+  willpower: number;
+}
+
+export interface SkillCheckResult {
+  dice: number[];
+  successes: number;
+  dc: number;
+  passed: boolean;
+  skill: SkillType;
+}
+
 export interface Spell {
   id: string;
   name: string;
@@ -27,15 +44,21 @@ export interface Character {
   sanity: number;
   maxSanity: number;
   insight: number;
+  attributes: CharacterAttributes;
   special: string;
+  specialAbility: 'investigate_bonus' | 'occult_immunity' | 'combat_bonus' | 'ritual_master' | 'escape_bonus' | 'heal_bonus';
 }
+
+export type MadnessType = 'hallucination' | 'paranoia' | 'hysteria' | 'catatonia' | 'obsession' | 'amnesia' | 'night_terrors' | 'dark_insight';
 
 export interface Madness {
   id: string;
+  type: MadnessType;
   name: string;
   description: string;
-  effect: string;
+  mechanicalEffect: string;
   visualClass: string;
+  audioEffect?: string;
 }
 
 export interface Trait {
@@ -109,14 +132,55 @@ export type TileObjectType =
   | 'gate' | 'barricade' | 'locked_door' | 'rubble' | 'fire' | 'trap'
   | 'mirror' | 'radio' | 'switch' | 'statue' | 'fog_wall' | 'exit_door';
 
+export type EdgeType = 'open' | 'wall' | 'door' | 'secret' | 'window' | 'stairs_up' | 'stairs_down' | 'blocked';
+
+export type DoorState = 'open' | 'closed' | 'locked' | 'barricaded' | 'broken' | 'sealed' | 'puzzle';
+
+export type LockType = 'simple' | 'quality' | 'complex' | 'occult';
+
+export type ObstacleType = 
+  | 'rubble_light' | 'rubble_heavy' | 'collapsed' | 'fire' 
+  | 'water_shallow' | 'water_deep' | 'unstable_floor' | 'gas_poison'
+  | 'darkness' | 'ward_circle' | 'spirit_barrier' | 'spatial_warp' | 'time_loop';
+
+export interface EdgeData {
+  type: EdgeType;
+  doorState?: DoorState;
+  lockType?: LockType;
+  keyId?: string;
+  puzzleId?: string;
+}
+
+export interface Obstacle {
+  type: ObstacleType;
+  blocking: boolean;
+  removable: boolean;
+  skillRequired?: SkillType;
+  dc?: number;
+  apCost?: number;
+  damage?: number;
+  itemRequired?: string;
+  effect?: string;
+}
+
 export interface TileObject {
   type: TileObjectType;
   searched: boolean;
   blocking?: boolean;
   health?: number;
   difficulty?: number;
-  reqSkill?: 'strength' | 'insight' | 'agility';
+  reqSkill?: SkillType;
 }
+
+export type TileVisibility = 'hidden' | 'adjacent' | 'revealed' | 'visible';
+
+export type ZoneLevel = -2 | -1 | 0 | 1 | 2;
+
+export type TileCategory = 
+  | 'nature' | 'urban' | 'street' | 'facade' | 'foyer' 
+  | 'corridor' | 'room' | 'stairs' | 'basement' | 'crypt';
+
+export type FloorType = 'wood' | 'cobblestone' | 'tile' | 'stone' | 'grass' | 'dirt' | 'water' | 'ritual';
 
 export interface Tile {
   id: string;
@@ -124,7 +188,12 @@ export interface Tile {
   r: number;
   name: string;
   type: 'building' | 'room' | 'street';
-  category?: 'connector' | 'location';
+  category?: TileCategory;
+  zoneLevel: ZoneLevel;
+  floorType: FloorType;
+  visibility: TileVisibility;
+  edges: [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData]; // 6 hex edges
+  obstacle?: Obstacle;
   roomId?: string;
   explored: boolean;
   hasWater?: boolean;
@@ -132,6 +201,7 @@ export interface Tile {
   searched: boolean;
   object?: TileObject;
   isGate?: boolean;
+  watermarkIcon?: string;
 }
 
 export type VictoryType = 'escape' | 'assassination' | 'collection' | 'survival';

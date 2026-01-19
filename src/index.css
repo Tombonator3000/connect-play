@@ -207,17 +207,89 @@
     animation: particle 1s ease-out forwards;
   }
   
-  /* Madness visual effects */
-  .madness-paranoia {
-    filter: contrast(1.2) saturate(0.8);
+  /* Madness visual effects - Complete from Game Design Bible */
+  .madness-hallucination {
+    animation: hallucinate 4s ease-in-out infinite;
   }
   
+  @keyframes hallucinate {
+    0%, 100% { filter: hue-rotate(0deg); }
+    50% { filter: hue-rotate(30deg) blur(1px); }
+  }
+  
+  .madness-paranoia {
+    animation: paranoia 2s ease-in-out infinite;
+  }
+  
+  @keyframes paranoia {
+    0%, 100% { filter: saturate(1) sepia(0); }
+    50% { filter: saturate(1.5) sepia(0.3); }
+  }
+
   .madness-hysteria {
-    animation: hysteria-pulse 2s ease-in-out infinite;
+    animation: hysteria-pulse 0.5s ease-in-out infinite;
   }
   
   @keyframes hysteria-pulse {
-    0%, 100% { filter: hue-rotate(0deg); }
-    50% { filter: hue-rotate(15deg) brightness(1.1); }
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-2px) rotate(-0.5deg); }
+    75% { transform: translateX(2px) rotate(0.5deg); }
+  }
+  
+  .madness-catatonia {
+    filter: saturate(0.5) brightness(0.8);
+    transition: all 0.5s ease;
+  }
+  
+  .madness-obsession .interactable {
+    animation: obsession-glow 1.5s ease-in-out infinite;
+  }
+  
+  @keyframes obsession-glow {
+    0%, 100% { box-shadow: 0 0 5px hsl(var(--gold)); }
+    50% { box-shadow: 0 0 20px hsl(var(--gold)); }
+  }
+  
+  .madness-amnesia {
+    position: relative;
+  }
+  
+  .madness-amnesia::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(circle at center, transparent 20%, rgba(0,0,0,0.5) 100%);
+    pointer-events: none;
+    animation: amnesia-fog 3s ease-in-out infinite;
+  }
+  
+  @keyframes amnesia-fog {
+    0%, 100% { opacity: 0.7; }
+    50% { opacity: 0.9; }
+  }
+  
+  .madness-night-terrors {
+    animation: night-terrors 5s ease-in-out infinite;
+  }
+  
+  @keyframes night-terrors {
+    0%, 90%, 100% { filter: brightness(1); }
+    92% { filter: brightness(1.5); }
+    94% { filter: brightness(0.7); }
+  }
+  
+  .madness-dark-insight {
+    animation: dark-insight 3s ease-in-out infinite;
+  }
+  
+  @keyframes dark-insight {
+    0%, 100% { 
+      filter: hue-rotate(0deg);
+      box-shadow: inset 0 0 50px hsla(280, 60%, 50%, 0.2);
+    }
+    50% { 
+      filter: hue-rotate(10deg);
+      box-shadow: inset 0 0 80px hsla(280, 60%, 50%, 0.4);
+    }
   }
 }
