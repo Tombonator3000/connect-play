@@ -40,6 +40,20 @@ import {
   createDefaultLegacyData
 } from './utils/legacyManager';
 import { generateValidatedScenario, getScenarioValidationInfo } from './utils/scenarioGenerator';
+import {
+  gatherConstraints,
+  findValidTemplates,
+  selectWeightedTemplate,
+  createTileFromTemplate,
+  TileTemplate,
+  TILE_TEMPLATES,
+  getTemplatesByCategory,
+  getClustersForCategory,
+  ROOM_CLUSTERS,
+  RoomCluster,
+  ConnectionEdgeType,
+  rotateEdges
+} from './tileConnectionSystem';
 
 const STORAGE_KEY = 'shadows_1920s_save';
 const SETTINGS_KEY = 'shadows_1920s_settings';
@@ -1292,171 +1306,290 @@ const ShadowsGame: React.FC = () => {
     addToLog(`A ${bestiary.name} emerges from the shadows!`);
   }, []);
 
+  /**
+   * LOGICAL TILE CONNECTION SYSTEM
+   * Uses template-based tile generation with edge compatibility matching.
+   * Each tile template has predefined edges (WALL, DOOR, OPEN, etc.) that
+   * must match with neighboring tiles - like puzzle pieces.
+   */
   const spawnRoom = useCallback((startQ: number, startR: number, tileSet: 'indoor' | 'outdoor' | 'mixed') => {
     const roomId = `room-${Date.now()}`;
-    const isConnector = Math.random() > 0.6;
 
-    // Find adjacent tiles to determine valid category
+    // Build a map of existing tiles for quick lookup
+    const boardMap = new Map<string, Tile>();
+    state.board.forEach(t => boardMap.set(`${t.q},${t.r}`, t));
+
+    // Check if position already has a tile
+    if (boardMap.has(`${startQ},${startR}`)) {
+      return;
+    }
+
+    // Find the tile we're coming from (source tile)
     const adjacentTiles = state.board.filter(t => hexDistance({ q: t.q, r: t.r }, { q: startQ, r: startR }) === 1);
-    const sourceCategory = adjacentTiles[0]?.category || (tileSet === 'indoor' ? 'foyer' : 'street');
+    const sourceTile = adjacentTiles[0];
+    const sourceCategory = sourceTile?.category || (tileSet === 'indoor' ? 'foyer' : 'street');
 
-    // Use tile connection validation to select appropriate category
-    const newCategory = selectRandomConnectableCategory(
-      sourceCategory as TileCategory,
-      tileSet === 'indoor'
-    );
+    // Gather edge constraints from all neighbors
+    const constraints = gatherConstraints(boardMap, startQ, startR);
 
-    // Validate the connection
-    const validation = validateTileConnection(sourceCategory as TileCategory, newCategory, false);
+    // Find all valid templates that match the constraints
+    const validMatches = findValidTemplates(constraints, sourceCategory as TileCategory);
 
-    // Select location pool based on validated category
-    const getCategoryPool = (cat: TileCategory) => {
-      switch (cat) {
-        case 'nature': return OUTDOOR_LOCATIONS.filter((_, i) => i < 15);
-        case 'urban': return OUTDOOR_LOCATIONS.filter((_, i) => i >= 15 && i < 35);
-        case 'street': return OUTDOOR_CONNECTORS;
-        case 'facade': return INDOOR_LOCATIONS.filter((_, i) => i < 14);
-        case 'foyer': return INDOOR_LOCATIONS.filter((_, i) => i >= 14 && i < 24);
-        case 'corridor': return INDOOR_CONNECTORS;
-        case 'room': return INDOOR_LOCATIONS.filter((_, i) => i >= 24 && i < 49);
-        case 'stairs': return INDOOR_LOCATIONS.filter((_, i) => i >= 49 && i < 59);
-        case 'basement': return INDOOR_LOCATIONS.filter((_, i) => i >= 59 && i < 74);
-        case 'crypt': return INDOOR_LOCATIONS.filter((_, i) => i >= 74);
-        default: return tileSet === 'indoor' ? INDOOR_LOCATIONS : OUTDOOR_LOCATIONS;
+    // Filter by tile set preference
+    const filteredMatches = validMatches.filter(match => {
+      const cat = match.template.category;
+      if (tileSet === 'indoor') {
+        return ['foyer', 'corridor', 'room', 'stairs', 'basement', 'crypt', 'facade'].includes(cat);
+      } else if (tileSet === 'outdoor') {
+        return ['nature', 'urban', 'street'].includes(cat);
       }
-    };
+      return true; // mixed accepts all
+    });
 
-    const pool = getCategoryPool(newCategory);
-    const roomName = pool.length > 0
-      ? pool[Math.floor(Math.random() * pool.length)]
-      : (isConnector
-        ? (tileSet === 'indoor' ? INDOOR_CONNECTORS : OUTDOOR_CONNECTORS)
-        : (tileSet === 'indoor' ? INDOOR_LOCATIONS : OUTDOOR_LOCATIONS))[Math.floor(Math.random() * 10)];
+    // Use filtered if available, otherwise fall back to all valid
+    const matchesToUse = filteredMatches.length > 0 ? filteredMatches : validMatches;
 
-    const shape = isConnector ? ROOM_SHAPES.LINEAR : ROOM_SHAPES.MEDIUM;
+    if (matchesToUse.length === 0) {
+      // Fallback: Use legacy system if no templates match
+      console.warn(`No valid templates for (${startQ},${startR}), using fallback`);
 
-    // Get floor type based on category
-    const getFloorType = (cat: TileCategory): 'wood' | 'cobblestone' | 'tile' | 'stone' | 'grass' | 'dirt' | 'water' | 'ritual' => {
-      switch (cat) {
-        case 'nature': return Math.random() > 0.5 ? 'grass' : 'dirt';
-        case 'urban': case 'street': return 'cobblestone';
-        case 'facade': case 'foyer': case 'corridor': case 'room': return 'wood';
-        case 'stairs': return 'stone';
-        case 'basement': return 'stone';
-        case 'crypt': return Math.random() > 0.7 ? 'ritual' : 'stone';
-        default: return 'wood';
-      }
-    };
+      // Legacy fallback - create a simple corridor or room
+      const newCategory = selectRandomConnectableCategory(
+        sourceCategory as TileCategory,
+        tileSet === 'indoor'
+      );
 
-    // Create edges based on tile connection validation
-    const createEdges = (): [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData] => {
-      const edges: EdgeData[] = [];
-      for (let i = 0; i < 6; i++) {
-        // Check if this edge connects to an existing tile
+      const getCategoryPool = (cat: TileCategory) => {
+        switch (cat) {
+          case 'nature': return OUTDOOR_LOCATIONS.filter((_, i) => i < 15);
+          case 'urban': return OUTDOOR_LOCATIONS.filter((_, i) => i >= 15 && i < 35);
+          case 'street': return OUTDOOR_CONNECTORS;
+          case 'facade': return INDOOR_LOCATIONS.filter((_, i) => i < 14);
+          case 'foyer': return INDOOR_LOCATIONS.filter((_, i) => i >= 14 && i < 24);
+          case 'corridor': return INDOOR_CONNECTORS;
+          case 'room': return INDOOR_LOCATIONS.filter((_, i) => i >= 24 && i < 49);
+          case 'stairs': return INDOOR_LOCATIONS.filter((_, i) => i >= 49 && i < 59);
+          case 'basement': return INDOOR_LOCATIONS.filter((_, i) => i >= 59 && i < 74);
+          case 'crypt': return INDOOR_LOCATIONS.filter((_, i) => i >= 74);
+          default: return tileSet === 'indoor' ? INDOOR_LOCATIONS : OUTDOOR_LOCATIONS;
+        }
+      };
+
+      const pool = getCategoryPool(newCategory);
+      const roomName = pool[Math.floor(Math.random() * pool.length)] || 'Unknown Chamber';
+
+      const getFloorType = (cat: TileCategory): 'wood' | 'cobblestone' | 'tile' | 'stone' | 'grass' | 'dirt' | 'water' | 'ritual' => {
+        switch (cat) {
+          case 'nature': return Math.random() > 0.5 ? 'grass' : 'dirt';
+          case 'urban': case 'street': return 'cobblestone';
+          case 'facade': case 'foyer': case 'corridor': case 'room': return 'wood';
+          case 'stairs': return 'stone';
+          case 'basement': return 'stone';
+          case 'crypt': return Math.random() > 0.7 ? 'ritual' : 'stone';
+          default: return 'wood';
+        }
+      };
+
+      // Create edges based on category validation
+      const createFallbackEdges = (): [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData] => {
+        const edges: EdgeData[] = [];
         const edgeDirections = [
-          { dq: 1, dr: 0 }, { dq: 1, dr: -1 }, { dq: 0, dr: -1 },
-          { dq: -1, dr: 0 }, { dq: -1, dr: 1 }, { dq: 0, dr: 1 }
+          { dq: 0, dr: -1 },  // 0: North
+          { dq: 1, dr: -1 },  // 1: North-East
+          { dq: 1, dr: 0 },   // 2: South-East
+          { dq: 0, dr: 1 },   // 3: South
+          { dq: -1, dr: 1 },  // 4: South-West
+          { dq: -1, dr: 0 }   // 5: North-West
         ];
-        const neighborQ = startQ + edgeDirections[i].dq;
-        const neighborR = startR + edgeDirections[i].dr;
-        const neighborTile = state.board.find(t => t.q === neighborQ && t.r === neighborR);
 
-        if (neighborTile && neighborTile.category) {
-          const edgeValidation = validateTileConnection(
-            newCategory,
-            neighborTile.category as TileCategory,
-            false
-          );
-          if (edgeValidation.requiresDoor) {
-            edges.push({ type: 'door', doorState: 'closed' });
-          } else if (!edgeValidation.isValid) {
-            edges.push({ type: 'wall' });
+        for (let i = 0; i < 6; i++) {
+          const neighborQ = startQ + edgeDirections[i].dq;
+          const neighborR = startR + edgeDirections[i].dr;
+          const neighborTile = boardMap.get(`${neighborQ},${neighborR}`);
+
+          if (neighborTile && neighborTile.category) {
+            const edgeValidation = validateTileConnection(
+              newCategory,
+              neighborTile.category as TileCategory,
+              false
+            );
+            if (edgeValidation.requiresDoor) {
+              edges.push({ type: 'door', doorState: 'closed' });
+            } else if (!edgeValidation.isValid) {
+              edges.push({ type: 'wall' });
+            } else {
+              edges.push({ type: 'open' });
+            }
           } else {
             edges.push({ type: 'open' });
           }
-        } else {
-          edges.push({ type: 'open' });
         }
-      }
-      return edges as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
-    };
+        return edges as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+      };
 
-    // Helper to check if a tile is a dead-end (only one non-wall exit)
-    const checkDeadEnd = (edges: EdgeData[]): boolean => {
-      const exitCount = edges.filter(e => e.type !== 'wall' && e.type !== 'blocked').length;
-      return exitCount <= 1;
-    };
+      const fallbackEdges = createFallbackEdges();
+      const exitCount = fallbackEdges.filter(e => e.type !== 'wall' && e.type !== 'blocked').length;
 
-    const newTiles: Tile[] = [];
-    shape.forEach((offset, idx) => {
-      const q = startQ + offset.q;
-      const r = startR + offset.r;
-      if (!state.board.some(t => t.q === q && t.r === r)) {
-        const tileEdges = idx === 0 ? createEdges() : [
-          { type: 'open' }, { type: 'open' }, { type: 'open' },
-          { type: 'open' }, { type: 'open' }, { type: 'open' }
-        ] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+      const fallbackTile: Tile = {
+        id: `tile-${Date.now()}-${Math.random()}`,
+        q: startQ,
+        r: startR,
+        name: roomName,
+        type: 'room',
+        category: newCategory,
+        zoneLevel: (CATEGORY_ZONE_LEVELS[newCategory] || 0) as ZoneLevel,
+        floorType: getFloorType(newCategory),
+        visibility: 'visible',
+        edges: fallbackEdges,
+        roomId,
+        explored: true,
+        searchable: !['facade', 'street', 'nature', 'corridor'].includes(newCategory),
+        searched: false,
+        isDeadEnd: exitCount <= 1
+      };
 
-        newTiles.push({
-          id: `tile-${Date.now()}-${Math.random()}`,
-          q, r,
-          name: roomName,
-          type: isConnector ? 'street' : 'room',
-          category: newCategory,
-          zoneLevel: (CATEGORY_ZONE_LEVELS[newCategory] || 0) as ZoneLevel,
-          floorType: getFloorType(newCategory),
-          visibility: 'visible',
-          edges: tileEdges,
-          roomId,
-          explored: true,
-          searchable: !isConnector && !['facade', 'street', 'nature'].includes(newCategory),
-          searched: false,
-          isDeadEnd: checkDeadEnd(tileEdges)
-        });
-      }
-    });
-
-    if (newTiles.length > 0) {
-      setState(prev => ({ ...prev, board: [...prev.board, ...newTiles] }));
+      setState(prev => ({ ...prev, board: [...prev.board, fallbackTile] }));
       addToLog(`UTFORSKET: ${roomName}. [${newCategory.toUpperCase()}]`);
 
-      // Show atmospheric Lovecraftian description if available
       const locationDescription = LOCATION_DESCRIPTIONS[roomName];
       if (locationDescription) {
         addToLog(locationDescription);
       }
 
-      // Check explore objectives
-      if (state.activeScenario) {
-        const tile = newTiles[0];
-        const exploreCheck = checkExploreObjectives(state.activeScenario, roomName, tile.id);
-        if (exploreCheck.objective) {
-          const updatedScenario = exploreCheck.shouldComplete
-            ? completeObjective(state.activeScenario, exploreCheck.objective.id)
-            : updateObjectiveProgress(state.activeScenario, exploreCheck.objective.id, 1);
+      return;
+    }
 
-          setState(prev => ({ ...prev, activeScenario: updatedScenario }));
+    // Select a template using weighted random selection
+    const selected = selectWeightedTemplate(matchesToUse);
+    if (!selected) {
+      console.warn('Failed to select template');
+      return;
+    }
 
-          if (exploreCheck.shouldComplete) {
-            addToLog(`OBJECTIVE COMPLETE: ${exploreCheck.objective.shortDescription}`);
+    // Check if we should spawn a room cluster instead of single tile
+    // (30% chance when entering a building from facade or entering from street)
+    const shouldSpawnCluster =
+      (sourceCategory === 'facade' || sourceCategory === 'street') &&
+      ['foyer', 'facade'].includes(selected.template.category) &&
+      Math.random() < 0.3;
+
+    if (shouldSpawnCluster) {
+      // Try to spawn a room cluster
+      const clusters = getClustersForCategory(selected.template.category);
+      if (clusters.length > 0) {
+        const cluster = clusters[Math.floor(Math.random() * clusters.length)];
+        const clusterTiles = instantiateRoomCluster(cluster, startQ, startR, boardMap);
+
+        if (clusterTiles.length > 0) {
+          setState(prev => ({ ...prev, board: [...prev.board, ...clusterTiles] }));
+          addToLog(`UTFORSKET: ${cluster.name}. [BUILDING]`);
+          addToLog(cluster.description);
+
+          // Spawn enemies in cluster
+          const firstTile = clusterTiles[0];
+          if (shouldSpawnMonster(firstTile, state.doom, state.enemies, true)) {
+            const enemyType = selectRandomEnemy(firstTile.category, state.doom);
+            if (enemyType) {
+              const spawnQ = startQ + (Math.random() > 0.5 ? 1 : -1);
+              const spawnR = startR + (Math.random() > 0.5 ? 1 : 0);
+              spawnEnemy(enemyType, spawnQ, spawnR);
+            }
           }
-        }
-      }
 
-      // Use new spawn system
-      const tile = newTiles[0];
-      const isFirstVisit = true; // New tiles are always first visit
-      if (shouldSpawnMonster(tile, state.doom, state.enemies, isFirstVisit)) {
-        const enemyType = selectRandomEnemy(tile.category, state.doom);
-        if (enemyType) {
-          // Spawn at a slight offset from player
-          const spawnQ = startQ + (Math.random() > 0.5 ? 1 : -1);
-          const spawnR = startR + (Math.random() > 0.5 ? 1 : 0);
-          spawnEnemy(enemyType, spawnQ, spawnR);
+          return;
         }
       }
     }
-  }, [state.board, state.doom, state.enemies, spawnEnemy]);
+
+    // Create single tile from selected template
+    const newTile = createTileFromTemplate(selected.template, startQ, startR, selected.rotation);
+    newTile.roomId = roomId;
+    newTile.visibility = 'visible';
+    newTile.explored = true;
+
+    const newTiles: Tile[] = [newTile];
+
+    setState(prev => ({ ...prev, board: [...prev.board, ...newTiles] }));
+    addToLog(`UTFORSKET: ${newTile.name}. [${newTile.category?.toUpperCase() || 'UNKNOWN'}]`);
+
+    // Show atmospheric description from template or location descriptions
+    if (selected.template.description) {
+      addToLog(selected.template.description);
+    } else {
+      const locationDescription = LOCATION_DESCRIPTIONS[newTile.name];
+      if (locationDescription) {
+        addToLog(locationDescription);
+      }
+    }
+
+    // Check explore objectives
+    if (state.activeScenario) {
+      const exploreCheck = checkExploreObjectives(state.activeScenario, newTile.name, newTile.id);
+      if (exploreCheck.objective) {
+        const updatedScenario = exploreCheck.shouldComplete
+          ? completeObjective(state.activeScenario, exploreCheck.objective.id)
+          : updateObjectiveProgress(state.activeScenario, exploreCheck.objective.id, 1);
+
+        setState(prev => ({ ...prev, activeScenario: updatedScenario }));
+
+        if (exploreCheck.shouldComplete) {
+          addToLog(`OBJECTIVE COMPLETE: ${exploreCheck.objective.shortDescription}`);
+        }
+      }
+    }
+
+    // Spawn enemies based on template settings
+    const template = selected.template;
+    const shouldSpawn = template.enemySpawnChance
+      ? Math.random() * 100 < template.enemySpawnChance
+      : shouldSpawnMonster(newTile, state.doom, state.enemies, true);
+
+    if (shouldSpawn) {
+      const possibleEnemies = template.possibleEnemies;
+      const enemyType = possibleEnemies && possibleEnemies.length > 0
+        ? possibleEnemies[Math.floor(Math.random() * possibleEnemies.length)] as EnemyType
+        : selectRandomEnemy(newTile.category, state.doom);
+
+      if (enemyType) {
+        const spawnQ = startQ + (Math.random() > 0.5 ? 1 : -1);
+        const spawnR = startR + (Math.random() > 0.5 ? 1 : 0);
+        spawnEnemy(enemyType, spawnQ, spawnR);
+      }
+    }
+  }, [state.board, state.doom, state.enemies, state.activeScenario, spawnEnemy]);
+
+  /**
+   * Instantiate a room cluster at the given world position
+   */
+  const instantiateRoomCluster = (
+    cluster: RoomCluster,
+    worldQ: number,
+    worldR: number,
+    boardMap: Map<string, Tile>
+  ): Tile[] => {
+    const tiles: Tile[] = [];
+    const clusterRoomId = `cluster-${Date.now()}`;
+
+    for (const tileData of cluster.tiles) {
+      const q = worldQ + tileData.localQ;
+      const r = worldR + tileData.localR;
+
+      // Skip if tile already exists
+      if (boardMap.has(`${q},${r}`)) {
+        continue;
+      }
+
+      const tile = createTileFromTemplate(tileData.template, q, r, tileData.rotation);
+      tile.roomId = clusterRoomId;
+      tile.visibility = 'visible';
+      tile.explored = true;
+
+      tiles.push(tile);
+      boardMap.set(`${q},${r}`, tile); // Update map for subsequent tiles
+    }
+
+    return tiles;
+  };
 
   // Helper function to get edge index between two tiles
   const getEdgeIndexBetweenTiles = (from: { q: number; r: number }, to: { q: number; r: number }): number => {
