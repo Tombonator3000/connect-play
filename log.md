@@ -335,7 +335,210 @@ Game ends in defeat when:
 - Specific objective fails (e.g., protection target dies)
 
 ### Next Steps
-- [ ] Implement legacy character persistence between scenarios
-- [ ] Implement shop/merchant phase between missions
+- [x] Implement legacy character persistence between scenarios
+- [x] Implement shop/merchant phase between missions
 - [ ] Add objective tracker UI during gameplay
 - [ ] Add more scenarios
+
+---
+
+## 2026-01-19: Legacy System Implementation
+
+### Oppgave
+Implementer fullt Legacy-system for persistent helter mellom scenarier:
+- Persistent heroes - bruk samme figur i flere scenarier
+- Gold economy - tjen gull fra scenarier og loot
+- Shop mellom oppdrag - kjøp våpen, verktøy, rustning
+- Equipment stash - lagre items mellom spill
+- XP og leveling (1-5) med stat bonuses
+- Permadeath - døde helter er borte for alltid
+- LocalStorage persistence - data lagres lokalt
+
+### Implementation
+
+#### 1. Types (types.ts)
+Utvidet med nye interfaces og funksjoner:
+
+**LegacyHero Interface:**
+```typescript
+interface LegacyHero {
+  id: string;                    // Unique hero ID
+  name: string;                  // Custom hero name
+  characterClass: CharacterType; // detective, professor, etc.
+  level: number;                 // 1-5
+  currentXP: number;             // Total XP earned
+  gold: number;                  // Currency for shop
+  baseAttributes: CharacterAttributes;
+  bonusAttributes: CharacterAttributes;  // From level ups
+  maxHp: number;
+  maxSanity: number;
+  equipment: InventorySlots;     // Persistent equipment
+  scenariosCompleted: string[];
+  scenariosFailed: string[];
+  totalKills: number;
+  isDead: boolean;               // Permadeath flag
+  deathScenario?: string;
+  deathCause?: string;
+}
+```
+
+**XP System:**
+- Level 1: 0 XP (starting)
+- Level 2: 50 XP
+- Level 3: 150 XP
+- Level 4: 300 XP
+- Level 5: 500 XP (max)
+
+**Level Up Bonuses:**
+- +1 to any attribute (STR/AGI/INT/WIL)
+- +2 Max HP
+- +1 Max Sanity
+
+**New Interfaces:**
+- `LegacyData` - Complete save data
+- `EquipmentStash` - Shared item storage
+- `ScenarioResult` - Results after completing scenario
+- `HeroScenarioResult` - Individual hero results
+- `ShopItem` - Shop inventory items
+- `ShopInventory` - Categorized shop
+
+#### 2. Legacy Manager (utils/legacyManager.ts)
+Created comprehensive manager for all legacy operations:
+
+**Core Functions:**
+- `loadLegacyData()` / `saveLegacyData()` - LocalStorage persistence
+- `createLegacyHero()` - Create new persistent hero
+- `addHeroToArchive()` / `updateHero()` - Hero management
+- `getLivingHeroes()` / `getDeadHeroes()` - Filter heroes
+
+**Permadeath:**
+- `killHero()` - Mark hero as permanently dead
+- `retireHero()` - Voluntary retirement
+- Equipment from dead/retired heroes goes to stash
+
+**XP & Leveling:**
+- `addXPToHero()` - Add experience
+- `applyLevelUpBonus()` - Apply chosen bonus
+- `getLevelUpOptions()` - Available bonuses
+- `getXPProgress()` - Progress to next level
+
+**Gold Economy:**
+- `addGoldToHero()` / `spendGold()` - Gold management
+- `calculateScenarioGoldReward()` - Reward calculation
+- `calculateScenarioXPReward()` - XP calculation
+
+**Stash:**
+- `addItemToStash()` / `removeItemFromStash()` - Item management
+- `getAllEquippedItems()` - Get hero's items
+
+**Player Conversion:**
+- `legacyHeroToPlayer()` - Convert hero to in-game player
+- `updateLegacyHeroFromPlayer()` - Update hero after scenario
+
+**Shop:**
+- `getDefaultShopInventory()` - Full shop catalog
+- `purchaseShopItem()` - Handle purchases
+
+#### 3. Hero Archive Panel (components/HeroArchivePanel.tsx)
+New UI component for managing heroes:
+
+**Views:**
+- List view - All living heroes with stats
+- Create view - Create new hero (name, class)
+- Detail view - Full hero stats and equipment
+- Level up view - Choose level up bonus
+- Memorial view - Fallen heroes graveyard
+
+**Features:**
+- Hero cards with level, XP bar, gold, attributes
+- Select heroes for missions (up to 4)
+- Level up notification and bonus selection
+- Visual stat bars for attributes
+
+#### 4. Equipment Stash Panel (components/EquipmentStashPanel.tsx)
+Shared storage management:
+
+**Features:**
+- View all stored items with filtering/sorting
+- Transfer items between stash and heroes
+- Color-coded item types
+- Capacity indicator (20 items max)
+
+#### 5. Merchant Shop (components/MerchantShop.tsx)
+Updated to use gold system:
+
+**Shop Categories:**
+- Weapons: Revolver (30g), Shotgun (50g), Tommy Gun (100g, Lv3), Combat Knife (15g)
+- Tools: Flashlight (10g), Lockpick Set (20g), Crowbar (15g), Oil Lantern (25g)
+- Armor: Leather Jacket (35g), Trench Coat (25g), Armored Vest (75g, Lv2)
+- Consumables: Medical Kit (20g), Old Whiskey (10g), Bandages (5g), Sedatives (15g)
+- Relics: Elder Sign (150g, Lv3), Protective Ward (60g), Eldritch Compass (80g, Lv2)
+
+**Features:**
+- Category tabs with icons
+- Gold/XP display
+- Level requirements for some items
+- Stock limits on rare items
+- Scenario rewards summary
+- Transfer items to stash
+
+#### 6. Main Menu Updates (components/MainMenu.tsx)
+Added Legacy system buttons:
+- "Heroes" button - Opens Hero Archive
+- "Stash" button - Opens Equipment Stash
+- Badge showing count of heroes/items
+
+#### 7. ShadowsGame Integration (ShadowsGame.tsx)
+Full integration of Legacy system:
+
+**New State:**
+- `legacyData` - Loaded from localStorage
+- `selectedLegacyHeroIds` - Heroes selected for mission
+- `showMerchantShop` - Merchant visibility
+- `lastScenarioResult` - Results for display
+- `heroKillCounts` - Track kills per hero
+
+**Game Mode Selection:**
+- Classic Mode - Traditional new investigators
+- Legacy Mode - Use persistent heroes
+
+**Scenario Completion Flow:**
+1. Victory/Defeat detected
+2. Calculate gold and XP rewards based on:
+   - Scenario difficulty (Normal/Hard/Nightmare)
+   - Bonus objectives completed
+   - Kill count
+3. Update each hero:
+   - Add XP (can trigger level up)
+   - Add gold
+   - Update stats (kills, insight earned)
+   - Record scenario completion/failure
+4. Handle permadeath for dead heroes
+5. Show Merchant Shop for survivors
+6. Archive heroes and return to menu
+
+### Files Created
+- `src/game/utils/legacyManager.ts` - Legacy system logic
+- `src/game/components/HeroArchivePanel.tsx` - Hero management UI
+- `src/game/components/EquipmentStashPanel.tsx` - Stash UI
+
+### Files Modified
+- `src/game/types.ts` - Added legacy interfaces and helpers
+- `src/game/components/MerchantShop.tsx` - Gold-based shop
+- `src/game/components/MainMenu.tsx` - Legacy buttons
+- `src/game/ShadowsGame.tsx` - Full integration
+
+### LocalStorage Keys
+- `shadows_1920s_legacy` - All legacy data (heroes, stash, stats)
+- `shadows_1920s_save` - Current game state (unchanged)
+- `shadows_1920s_settings` - Game settings (unchanged)
+
+### Summary
+The Legacy system is now fully implemented:
+- Create persistent heroes that survive between scenarios
+- Earn gold and XP from completing scenarios
+- Level up heroes (1-5) with stat bonuses
+- Buy equipment at the shop between missions
+- Store items in shared stash
+- Permadeath - dead heroes are gone forever
+- All data persisted in localStorage

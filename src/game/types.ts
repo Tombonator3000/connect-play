@@ -760,3 +760,219 @@ export interface GameState {
   exploredTiles: string[];
   pendingHorrorChecks: string[]; // Enemy IDs that need horror checks
 }
+
+// ============================================================================
+// LEGACY SYSTEM - Persistent Heroes & Progression
+// ============================================================================
+
+/**
+ * XP thresholds for each level (1-5)
+ * Level 1: 0 XP (starting)
+ * Level 2: 50 XP
+ * Level 3: 150 XP
+ * Level 4: 300 XP
+ * Level 5: 500 XP (max)
+ */
+export const XP_THRESHOLDS: Record<number, number> = {
+  1: 0,
+  2: 50,
+  3: 150,
+  4: 300,
+  5: 500
+};
+
+/**
+ * Stat bonuses per level
+ * Each level grants +1 to a chosen stat or +2 max HP or +1 max Sanity
+ */
+export type LevelUpBonus =
+  | { type: 'attribute'; attribute: keyof CharacterAttributes }
+  | { type: 'maxHp'; value: 2 }
+  | { type: 'maxSanity'; value: 1 };
+
+export interface LevelUpChoice {
+  level: number;
+  bonus: LevelUpBonus;
+}
+
+/**
+ * A persistent hero that survives between scenarios
+ */
+export interface LegacyHero {
+  // Identity
+  id: string;                           // Unique hero ID (UUID)
+  name: string;                         // Custom hero name
+  characterClass: CharacterType;        // detective, professor, etc.
+  portraitIndex: number;                // Which portrait to use (0-3)
+
+  // Progression
+  level: number;                        // 1-5
+  currentXP: number;                    // Total XP earned
+  levelUpBonuses: LevelUpChoice[];      // Bonuses chosen at each level
+
+  // Economy
+  gold: number;                         // Currency for shop
+
+  // Base stats (modified by level bonuses)
+  baseAttributes: CharacterAttributes;  // Starting attributes for class
+  bonusAttributes: CharacterAttributes; // Accumulated from level ups
+  maxHp: number;                        // Modified by level bonuses
+  maxSanity: number;                    // Modified by level bonuses
+
+  // Equipment
+  equipment: InventorySlots;            // Persistent equipment
+
+  // History
+  scenariosCompleted: string[];         // Scenario IDs completed
+  scenariosFailed: string[];            // Scenario IDs failed (but survived)
+  totalKills: number;                   // Total enemies defeated
+  totalInsightEarned: number;           // Lifetime insight
+  dateCreated: string;                  // ISO date string
+  lastPlayed: string;                   // ISO date string
+
+  // Status
+  isRetired: boolean;                   // Voluntarily retired
+  isDead: boolean;                      // Permadeath - cannot be used again
+  deathScenario?: string;               // Scenario where hero died
+  deathCause?: string;                  // How they died
+}
+
+/**
+ * Rewards earned from completing a scenario
+ */
+export interface ScenarioRewards {
+  baseGold: number;                     // Base gold for completion
+  bonusGold: number;                    // Bonus for optional objectives
+  baseXP: number;                       // Base XP for completion
+  bonusXP: number;                      // Bonus XP
+  lootItems: Item[];                    // Items found during scenario
+}
+
+/**
+ * Equipment stash - shared storage between scenarios
+ */
+export interface EquipmentStash {
+  items: Item[];                        // Stored items
+  maxCapacity: number;                  // Max items (default 20)
+}
+
+/**
+ * Complete legacy save data stored in localStorage
+ */
+export interface LegacyData {
+  version: number;                      // Save format version
+  heroes: LegacyHero[];                 // All created heroes (alive and dead)
+  stash: EquipmentStash;                // Shared equipment storage
+  totalGoldEarned: number;              // Lifetime gold
+  totalScenariosCompleted: number;      // All-time completions
+  totalScenariosAttempted: number;      // All-time attempts
+  unlockedScenarios: string[];          // Scenarios available to play
+  achievements: string[];               // Achievement IDs unlocked
+  lastSaved: string;                    // ISO date string
+}
+
+/**
+ * Shop item with price and availability
+ */
+export interface ShopItem {
+  item: Item;
+  goldCost: number;
+  insightCost?: number;                 // Alternative insight cost
+  stock: number;                        // -1 for unlimited
+  requiredLevel?: number;               // Min hero level to purchase
+  isNew?: boolean;                      // Highlight as new item
+}
+
+/**
+ * Shop inventory for merchant phase
+ */
+export interface ShopInventory {
+  weapons: ShopItem[];
+  tools: ShopItem[];
+  armor: ShopItem[];
+  consumables: ShopItem[];
+  relics: ShopItem[];
+}
+
+/**
+ * Result of a completed scenario for legacy system
+ */
+export interface ScenarioResult {
+  scenarioId: string;
+  victory: boolean;
+  roundsPlayed: number;
+  heroResults: HeroScenarioResult[];
+  totalGoldEarned: number;
+  totalXPEarned: number;
+}
+
+export interface HeroScenarioResult {
+  heroId: string;
+  survived: boolean;
+  xpEarned: number;
+  goldEarned: number;
+  killCount: number;
+  insightEarned: number;
+  itemsFound: Item[];
+  leveledUp: boolean;
+  newLevel?: number;
+}
+
+/**
+ * Helper function to calculate effective attributes including level bonuses
+ */
+export function getEffectiveAttributes(hero: LegacyHero): CharacterAttributes {
+  return {
+    strength: hero.baseAttributes.strength + hero.bonusAttributes.strength,
+    agility: hero.baseAttributes.agility + hero.bonusAttributes.agility,
+    intellect: hero.baseAttributes.intellect + hero.bonusAttributes.intellect,
+    willpower: hero.baseAttributes.willpower + hero.bonusAttributes.willpower
+  };
+}
+
+/**
+ * Calculate level from XP
+ */
+export function getLevelFromXP(xp: number): number {
+  if (xp >= XP_THRESHOLDS[5]) return 5;
+  if (xp >= XP_THRESHOLDS[4]) return 4;
+  if (xp >= XP_THRESHOLDS[3]) return 3;
+  if (xp >= XP_THRESHOLDS[2]) return 2;
+  return 1;
+}
+
+/**
+ * Calculate XP needed for next level
+ */
+export function getXPForNextLevel(currentLevel: number): number {
+  if (currentLevel >= 5) return 0; // Max level
+  return XP_THRESHOLDS[currentLevel + 1];
+}
+
+/**
+ * Check if hero can level up
+ */
+export function canLevelUp(hero: LegacyHero): boolean {
+  const newLevel = getLevelFromXP(hero.currentXP);
+  return newLevel > hero.level && hero.level < 5;
+}
+
+/**
+ * Default empty legacy data
+ */
+export function createDefaultLegacyData(): LegacyData {
+  return {
+    version: 1,
+    heroes: [],
+    stash: {
+      items: [],
+      maxCapacity: 20
+    },
+    totalGoldEarned: 0,
+    totalScenariosCompleted: 0,
+    totalScenariosAttempted: 0,
+    unlockedScenarios: ['s1'], // First scenario unlocked by default
+    achievements: [],
+    lastSaved: new Date().toISOString()
+  };
+}
