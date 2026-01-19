@@ -2,6 +2,20 @@
 
 ## 2026-01-19
 
+### Session 10 - Regenerate All Tiles with Top-Down Perspective
+- **Problem**: Previous tile images had inconsistent perspective angles
+- **Solution**: Regenerated all 32 tiles with strict 90-degree top-down bird's eye perspective
+- **Prompt engineering**: Every prompt now includes "90-degree top-down view, bird's eye perspective board game tile"
+- All tiles now have consistent "floor plan" style matching board game aesthetics
+
+### Tiles Regenerated (32 total):
+- **Indoor/Building**: library, church, police, museum, hospital, asylum, manor, hallway, cellar, hotel, lab, bedroom, kitchen, shop, lighthouse
+- **Urban/Street**: station, street, alley, square, market, campus, warehouse
+- **Nature**: forest, graveyard, swamp, park, cave, bridge
+- **Supernatural**: ritual, crypt, sewer
+
+---
+
 ### Session 9 - Fix Tile Image Display
 - **Root cause identified**: Tile images were imported correctly but not rendering due to:
   1. `backgroundImage` CSS approach didn't work properly with dynamic imports
