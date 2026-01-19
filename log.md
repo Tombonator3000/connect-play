@@ -718,3 +718,109 @@ Changed line 327 in `HeroArchivePanel.tsx`:
 
 ### Result
 The Create Hero screen now works correctly, displaying all character classes for selection.
+
+---
+
+## 2026-01-19: Deep Audit - Character Dice System
+
+### Oppgave
+Gjennomgang av terning-systemet etter at en spiller hadde uventet mange terninger mot fiender.
+
+### Regelsystem (fra game_design_bible.md)
+
+**Skill Check Formel:**
+```
+Total Terninger = 2 (base) + Attributtverdi + Spesielle Bonuser
+```
+
+**Difficulty Classes (DC):**
+| DC | Vanskelighet |
+|----|--------------|
+| 3  | Easy         |
+| 4  | Medium       |
+| 5  | Hard         |
+| 6  | Extreme      |
+
+Hver terning som viser >= DC teller som 1 suksess. Trenger minst 1 suksess for å lykkes.
+
+### Karakterer - Base Attributter
+
+| Karakter   | STR | AGI | INT | WIL | Spesialitet |
+|------------|-----|-----|-----|-----|-------------|
+| Detective  | 3   | 3   | 4   | 3   | +1 die på Investigation |
+| Professor  | 2   | 2   | 5   | 4   | Immunitet mot okkulte tekster |
+| Journalist | 2   | 4   | 4   | 3   | +1 Movement |
+| Veteran    | 5   | 3   | 2   | 3   | +1 die på Combat/STR |
+| Occultist  | 2   | 3   | 3   | 5   | Kan utføre ritualer |
+| Doctor     | 2   | 3   | 4   | 4   | Healer 2 i stedet for 1 |
+
+### Terninger i Kamp (Combat)
+
+**Kamp-formel (`combatUtils.ts:97-112`):**
+```typescript
+totalDice = baseDice (2)
+          + attribute (STR for melee, AGI for ranged)
+          + weaponBonus.combatDice
+          + classBonusDice (Veteran: +1)
+```
+
+### Våpen Bonuser
+
+**I constants.ts (standard items):**
+| Våpen      | Bonus |
+|------------|-------|
+| Revolver   | +1    |
+| Shotgun    | +2    |
+| Tommy Gun  | +3    |
+
+**I legacyManager.ts (shop):**
+| Våpen        | Bonus |
+|--------------|-------|
+| Combat Knife | +1    |
+| Revolver     | +2    |
+| Shotgun      | +3    |
+| Tommy Gun    | +4    |
+
+**INKONSISTENS FUNNET:** Våpen-bonusene er forskjellige mellom constants.ts og legacyManager.ts!
+
+### Maksimalt Antall Terninger
+
+**Veteran Level 1 (uten våpen):**
+- 2 (base) + 5 (STR) + 1 (klassebonus) = **8 terninger** ✓
+
+**Veteran Level 1 med Tommy Gun (shop-versjon):**
+- 2 + 5 + 4 + 1 = **12 terninger**
+
+**Veteran Level 5 med Tommy Gun (teoretisk worst-case):**
+- 2 (base) + 9 (STR 5 + 4 bonuser) + 4 (Tommy Gun) + 1 (klassebonus) = **16 terninger!**
+
+### Observasjon fra Screenshot
+
+Bildet viser **8 terninger**, som er helt korrekt for:
+- Veteran med STR 5 + klassebonus (+1) uten våpen: 2 + 5 + 1 = 8
+- Eller annen karakter med våpenbonus
+
+### Identifiserte Problemer
+
+1. **Ingen attributt-cap:** Det finnes ingen maksgrense på attributter. En Level 5 Legacy-helt kan ha attributt 9+ (5 base + 4 fra level ups).
+
+2. **Våpen-inkonsistens:** Shop-våpen gir høyere bonuser enn standard items.
+
+3. **Skill Check inkonsistens:** `skillCheck.ts` bruker `CHARACTERS[player.id].attributes` (base), mens `combatUtils.ts` bruker `player.attributes` (kan være oppgradert).
+
+### Kodesteder
+
+- **Skill check:** `src/game/utils/skillCheck.ts:10-43`
+- **Kamp:** `src/game/utils/combatUtils.ts:97-159`
+- **Karakterer:** `src/game/constants.ts:175-206`
+- **Legacy leveling:** `src/game/utils/legacyManager.ts:300-334`
+
+### Konklusjon
+
+Terning-systemet fungerer som designet. 8 terninger er normalt for en Veteran. Imidlertid kan Legacy-systemet føre til svært høye terning-tall (opp til 16) for høylevels helter med gode våpen. Dette kan være balanseproblem som bør vurderes.
+
+### Anbefalinger
+
+1. Vurder å legge til attributt-cap (f.eks. max 7)
+2. Synkroniser våpen-bonuser mellom constants.ts og legacyManager.ts
+3. Vurder å legge til total terning-cap (f.eks. max 12)
