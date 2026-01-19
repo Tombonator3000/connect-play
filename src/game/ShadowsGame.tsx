@@ -37,7 +37,8 @@ const DEFAULT_STATE: GameState = {
   screenShake: false,
   activeSpell: null,
   currentStepIndex: 0,
-  questItemsCollected: []
+  questItemsCollected: [],
+  exploredTiles: ['0,0'] // Start tile is always explored
 };
 
 const ROOM_SHAPES = {
@@ -265,9 +266,22 @@ const ShadowsGame: React.FC = () => {
         if (!targetTile) {
           spawnRoom(q, r, state.activeScenario?.tileSet || 'mixed');
         }
+        // Mark tile and surrounding tiles as explored
+        const newExplored = new Set(state.exploredTiles || []);
+        newExplored.add(`${q},${r}`);
+        // Also mark adjacent tiles as explored (visibility range)
+        const adjacentOffsets = [
+          { dq: 1, dr: 0 }, { dq: 1, dr: -1 }, { dq: 0, dr: -1 },
+          { dq: -1, dr: 0 }, { dq: -1, dr: 1 }, { dq: 0, dr: 1 }
+        ];
+        adjacentOffsets.forEach(({ dq, dr }) => {
+          newExplored.add(`${q + dq},${r + dr}`);
+        });
+        
         setState(prev => ({
           ...prev,
-          players: prev.players.map((p, i) => i === prev.activePlayerIndex ? { ...p, position: { q, r }, actions: p.actions - 1 } : p)
+          players: prev.players.map((p, i) => i === prev.activePlayerIndex ? { ...p, position: { q, r }, actions: p.actions - 1 } : p),
+          exploredTiles: Array.from(newExplored)
         }));
         break;
 
@@ -446,7 +460,18 @@ const ShadowsGame: React.FC = () => {
           </div>
 
           <div className="absolute inset-0 z-0">
-            <GameBoard tiles={state.board} players={state.players} enemies={state.enemies} selectedEnemyId={state.selectedEnemyId} onTileClick={(q, r) => handleAction('move', { q, r })} onEnemyClick={(id) => handleAction('enemy_click', { id })} floatingTexts={state.floatingTexts} doom={state.doom} activeModifiers={state.activeModifiers} />
+            <GameBoard 
+              tiles={state.board} 
+              players={state.players} 
+              enemies={state.enemies} 
+              selectedEnemyId={state.selectedEnemyId} 
+              onTileClick={(q, r) => handleAction('move', { q, r })} 
+              onEnemyClick={(id) => handleAction('enemy_click', { id })} 
+              floatingTexts={state.floatingTexts} 
+              doom={state.doom} 
+              activeModifiers={state.activeModifiers}
+              exploredTiles={new Set(state.exploredTiles || [])}
+            />
           </div>
 
           {activePlayer && (

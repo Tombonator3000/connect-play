@@ -293,4 +293,5 @@ export interface GameState {
   activeSpell: Spell | null;
   currentStepIndex: number;
   questItemsCollected: string[];
+  exploredTiles: string[];
 }

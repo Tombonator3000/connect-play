@@ -37,18 +37,24 @@
 - Reduce Motion setting now affects screen shake animation
 - Reset Data clears game save and returns to main menu
 
-### Session 4 - Context-Sensitive Tooltips
+### Session 4 - Context-Sensitive Tooltips & Fog of War
 - Created `src/game/components/ItemTooltip.tsx` with `ItemTooltip`, `SpellTooltip`, and `EnemyTooltip` components
-- Added tooltips to inventory items in CharacterPanel showing name, type, effect, bonus, cost, and stat modifiers
-- Added tooltips to spells in ActionBar grimoire menu showing name, cost, description, effect type, value, and range
-- Added tooltips to enemies on GameBoard showing name, type, damage, horror, traits, and bestiary lore
-- Uses shadcn Tooltip component with custom styling matching game aesthetic
+- Added tooltips to inventory items, spells, and enemies
+- **Fog of War System**:
+  - Gradient visibility based on distance from player (closer = clearer)
+  - Explored vs unexplored tile tracking in GameState
+  - "UTFORSK" button on unexplored adjacent hexes
+  - Mysterious noise overlay on never-explored tiles
+  - Explored but not visible tiles show dimmed (memory effect)
+  - Added `exploredTiles` to GameState type
 
 ### Files Created/Modified This Session
 - `src/game/components/ItemTooltip.tsx` - Tooltip components for items, spells, and enemies
 - `src/game/components/CharacterPanel.tsx` - Added item tooltips
 - `src/game/components/ActionBar.tsx` - Added spell tooltips
-- `src/game/components/GameBoard.tsx` - Added enemy tooltips
+- `src/game/components/GameBoard.tsx` - Enhanced fog of war with explore indicators
+- `src/game/types.ts` - Added exploredTiles to GameState
+- `src/game/ShadowsGame.tsx` - Track explored tiles on movement
 
 ---
 
