@@ -1,5 +1,125 @@
 # Development Log
 
+## 2026-01-19: The Whispering Elements - Værsystem
+
+### Oppgave
+Implementere et dynamisk værsystem som påvirker både visuell presentasjon og gameplay:
+- Fog: Semi-transparent tåke som reduserer sikt og skjuler fiender
+- Rain: Diagonale regnstriper (CSS-animasjon) som øker Agility-sjekk vanskelighet
+- Miasma: Overnaturlig lilla/grønn tåke som drenerer sanity
+- Cosmic Static: Reality distortion med støy og glitcher
+
+### Implementert
+
+#### 1. Typer og Interfaces (types.ts)
+Nye typer for værsystemet:
+- `WeatherType`: 'clear' | 'fog' | 'rain' | 'miasma' | 'cosmic_static'
+- `WeatherIntensity`: 'light' | 'moderate' | 'heavy'
+- `WeatherCondition`: Interface for aktiv værforhold (type, intensity, duration)
+- `WeatherEffect`: Interface for vær-effekter (vision, agility penalty, sanity drain, etc.)
+- `WeatherState`: Interface for aktiv vær-state (global, local, transition)
+- `createDefaultWeatherState()`: Helper-funksjon for initial state
+- Utvidet `GameState` med `weatherState: WeatherState`
+
+#### 2. Vær-effekter og Konstanter (constants.ts)
+Komplett vær-konfigurasjon:
+- `WEATHER_EFFECTS`: Record med alle værtyper og deres effekter
+- `getWeatherEffect()`: Hent effekt-data for en værtype
+- `getIntensityModifier()`: Multiplier basert på intensity (0.5/1.0/1.5)
+- `calculateWeatherVision()`: Beregn redusert sikt
+- `calculateWeatherAgilityPenalty()`: Beregn agility-straff
+- `weatherBlocksRanged()`: Sjekk om vær blokkerer ranged angrep
+- `weatherHidesEnemy()`: Sjekk om fiender er skjult i vær
+- `rollWeatherHorror()`: Rull for vær-indusert horror check
+- `WEATHER_DOOM_EVENTS`: Vær som utløses ved doom-terskler
+- `getWeatherForDoom()`: Sjekk om vær bør endre seg basert på doom
+
+**Vær-effekter:**
+| Vær | Vision | Agility | Move Cost | Horror % | Sanity Drain | Skjuler Fiender |
+|-----|--------|---------|-----------|----------|--------------|-----------------|
+| Clear | 0 | 0 | 0 | 0% | 0 | Nei |
+| Fog | -1 | 0 | 0 | 10% | 0 | Ja (range 2+) |
+| Rain | 0 | -1 | 0 | 0% | 0 | Nei |
+| Miasma | -1 | 0 | 0 | 25% | 1 | Ja (range 2+) |
+| Cosmic Static | 0 | -1 | +1 AP | 15% | 1 | Nei |
+
+#### 3. WeatherOverlay Komponent (components/WeatherOverlay.tsx)
+Ny React-komponent for visuelle væreffekter:
+- `FogParticles`: Drivende skyer med Cloud-ikoner
+- `RainEffect`: Diagonale regnstriper med CSS-animasjon
+- `MiasmaEffect`: Lilla/grønne partikler + subtile skalle-glimt
+- `CosmicStaticEffect`: Støy-overlay + glitch-barer + flimrende partikler
+- `WeatherIndicator`: HUD-element som viser aktiv vær med ikon
+
+#### 4. CSS Animasjoner (index.css)
+Nye keyframe-animasjoner:
+- `fog-drift`: Horisontalt tåke-drift (20s)
+- `rain-fall`: Diagonalt regnfall (0.5s)
+- `miasma-float`: Svevende giftpartikler (8s)
+- `miasma-skull`: Subtile skalle-glimt (12s)
+- `cosmic-noise`: Reality-støy (0.3s)
+- `glitch-bar`: Horizontale glitch-striper (4s)
+- `cosmic-glitch`: Reality-rift (3s)
+- `cosmic-flicker`: Flimrende partikler (1s)
+
+Vær-klasser med gradient-bakgrunner for stemning.
+
+#### 5. GameBoard Integrasjon (components/GameBoard.tsx)
+- Importert `WeatherOverlay`, `calculateWeatherVision`, `weatherHidesEnemy`
+- Utvidet `GameBoardProps` med `weatherState?: WeatherState`
+- Oppdatert `visibleTiles` useMemo til å bruke `calculateWeatherVision()`
+- Fiender på avstand 2+ blir semi-transparent og blurret i skjulende vær
+- `WeatherOverlay` rendres over brettet med z-index 30
+
+#### 6. Gameplay-logikk (ShadowsGame.tsx)
+- Importert `createDefaultWeatherState`, værfunksjoner fra constants
+- `DEFAULT_STATE` inkluderer nå `weatherState: createDefaultWeatherState()`
+- `GameBoard` mottar `weatherState` som prop
+- **Mythos-fase oppdatert:**
+  - Sjekker om vær bør endre seg basert på ny doom-verdi
+  - Logger vær-endringer til Field Journal
+  - Intensity øker ettersom doom synker (light → moderate → heavy)
+- **Skill checks oppdatert:**
+  - Agility-sjekker får penalty basert på aktiv vær
+  - Logger vær-påvirkning til Field Journal
+
+### Vær-system Flyt
+
+1. Spillet starter med `weatherState: { global: null, ... }` (klart vær)
+2. Hver Mythos-fase:
+   - Doom reduseres med 1
+   - System sjekker `getWeatherForDoom(newDoom)`
+   - 25% sjanse for å utløse vær ved terskler (doom 10, 7, 4, 2)
+   - Vær-intensity baseres på doom-nivå
+3. Vær-effekter:
+   - Visuell overlay rendres over brettet
+   - Sikt reduseres automatisk
+   - Fiender på avstand blir skjult/blurret
+   - Agility-sjekker får penalty
+   - Weather indicator vises øverst til venstre
+
+### Filer Opprettet
+- `src/game/components/WeatherOverlay.tsx` (NY)
+
+### Filer Modifisert
+- `src/game/types.ts` - Vær-typer og interfaces
+- `src/game/constants.ts` - Vær-effekter og hjelpefunksjoner
+- `src/game/components/GameBoard.tsx` - WeatherOverlay integrasjon
+- `src/game/ShadowsGame.tsx` - Vær-logikk og state
+- `src/index.css` - Vær-animasjoner
+
+### Resultat
+Værsystemet "The Whispering Elements" er nå komplett:
+- ✅ Fog med drivende partikler og redusert sikt
+- ✅ Rain med diagonale striper og Agility-penalty
+- ✅ Miasma med overnaturlige partikler og sanity drain
+- ✅ Cosmic Static med reality-distortion effekter
+- ✅ Vær utløses dynamisk basert på doom-nivå
+- ✅ Gameplay-påvirkning (sikt, agility, fiende-hiding)
+- ✅ HUD-indikator for aktiv vær
+
+---
+
 ## 2026-01-19: Hex Tiles System - Sperringer, Farer & Puzzles
 
 ### Oppgave
