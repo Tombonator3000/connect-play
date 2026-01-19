@@ -11,6 +11,7 @@ import {
   BookOpen, Sparkles, Lightbulb, Package, CircleDot
 } from 'lucide-react';
 import { ContextAction, ContextActionIconType } from '../types';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ContextActionBarProps {
   actions: ContextAction[];
@@ -25,6 +26,8 @@ const ContextActionBar: React.FC<ContextActionBarProps> = ({
   targetName,
   playerActions
 }) => {
+  const isMobile = useIsMobile();
+
   if (actions.length === 0) return null;
 
   const getIcon = (iconType: ContextActionIconType) => {
@@ -83,17 +86,17 @@ const ContextActionBar: React.FC<ContextActionBarProps> = ({
   };
 
   return (
-    <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50 animate-fadeIn">
-      <div className="bg-leather/95 border-2 border-primary rounded-2xl p-4 shadow-[var(--shadow-doom)] backdrop-blur-md min-w-[400px] max-w-[600px]">
+    <div className={`fixed ${isMobile ? 'bottom-24 left-2 right-2' : 'bottom-28 left-1/2 -translate-x-1/2'} z-50 animate-fadeIn`}>
+      <div className={`bg-leather/95 border-2 border-primary rounded-2xl ${isMobile ? 'p-3' : 'p-4'} shadow-[var(--shadow-doom)] backdrop-blur-md ${isMobile ? 'w-full' : 'min-w-[400px] max-w-[600px]'}`}>
         {/* Header */}
-        <div className="text-center mb-3 pb-2 border-b border-border">
-          <h3 className="text-xs font-bold text-parchment uppercase tracking-[0.2em]">
+        <div className={`text-center ${isMobile ? 'mb-2 pb-1.5' : 'mb-3 pb-2'} border-b border-border`}>
+          <h3 className={`${isMobile ? 'text-[10px]' : 'text-xs'} font-bold text-parchment uppercase tracking-[0.2em]`}>
             {targetName}
           </h3>
         </div>
 
         {/* Actions Grid */}
-        <div className="grid grid-cols-2 gap-2">
+        <div className={`grid ${isMobile ? 'grid-cols-1' : 'grid-cols-2'} gap-2`}>
           {actions.map((action) => {
             const canAfford = playerActions >= action.apCost;
             const isEnabled = action.enabled && canAfford;
@@ -105,9 +108,9 @@ const ContextActionBar: React.FC<ContextActionBarProps> = ({
                 onClick={() => isEnabled && onActionSelect(action)}
                 disabled={!isEnabled}
                 className={`
-                  flex items-center gap-3 p-3 rounded-lg border-2 transition-all
+                  flex items-center gap-2 md:gap-3 ${isMobile ? 'p-2.5' : 'p-3'} rounded-lg border-2 transition-all active:scale-[0.98]
                   ${isCancel
-                    ? 'col-span-2 bg-background/40 border-border hover:border-muted-foreground'
+                    ? `${isMobile ? '' : 'col-span-2'} bg-background/40 border-border hover:border-muted-foreground`
                     : isEnabled
                       ? `bg-background/60 ${getSkillColor(action.icon)} hover:bg-background hover:scale-[1.02] hover:shadow-[var(--shadow-glow)]`
                       : 'bg-background/20 border-border/30 opacity-50 cursor-not-allowed'
@@ -115,30 +118,30 @@ const ContextActionBar: React.FC<ContextActionBarProps> = ({
                 `}
               >
                 {/* Icon */}
-                <div className={`p-2 rounded-lg bg-card ${getSkillColor(action.icon)}`}>
+                <div className={`${isMobile ? 'p-1.5' : 'p-2'} rounded-lg bg-card ${getSkillColor(action.icon)}`}>
                   {getIcon(action.icon)}
                 </div>
 
                 {/* Label and Info */}
-                <div className="flex-1 text-left">
-                  <div className="text-sm font-bold text-parchment">
+                <div className="flex-1 text-left min-w-0">
+                  <div className={`${isMobile ? 'text-xs' : 'text-sm'} font-bold text-parchment truncate`}>
                     {action.label}
                   </div>
                   {action.reason && !isEnabled && (
-                    <div className="text-[10px] text-muted-foreground italic">
+                    <div className="text-[9px] md:text-[10px] text-muted-foreground italic truncate">
                       {action.reason}
                     </div>
                   )}
                   {action.skillCheck && (
-                    <div className="text-[10px] text-muted-foreground">
-                      Skill Check: DC {action.skillCheck.dc}
+                    <div className="text-[9px] md:text-[10px] text-muted-foreground">
+                      DC {action.skillCheck.dc}
                     </div>
                   )}
                 </div>
 
                 {/* AP Cost */}
                 {!isCancel && action.apCost > 0 && (
-                  <div className={`text-xs font-bold px-2 py-1 rounded ${canAfford ? 'bg-accent/20 text-accent' : 'bg-red-500/20 text-red-400'}`}>
+                  <div className={`${isMobile ? 'text-[10px]' : 'text-xs'} font-bold px-1.5 md:px-2 py-0.5 md:py-1 rounded shrink-0 ${canAfford ? 'bg-accent/20 text-accent' : 'bg-red-500/20 text-red-400'}`}>
                     {action.apCost} AP
                   </div>
                 )}

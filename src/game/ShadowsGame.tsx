@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package } from 'lucide-react';
+import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package, X } from 'lucide-react';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent } from './types';
 import ContextActionBar from './components/ContextActionBar';
 import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
@@ -100,6 +101,7 @@ const ROOM_SHAPES = {
 };
 
 const ShadowsGame: React.FC = () => {
+  const isMobile = useIsMobile();
   const [isMainMenuOpen, setIsMainMenuOpen] = useState(true);
   const [mainMenuView, setMainMenuView] = useState<MainMenuView>('title');
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
@@ -2729,15 +2731,16 @@ const ShadowsGame: React.FC = () => {
 
       {state.phase !== GamePhase.SETUP && !isMainMenuOpen && (
         <>
-          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl flex items-center gap-4">
-            <div className="flex-1 bg-leather/90 border-2 border-primary rounded-2xl p-4 shadow-[var(--shadow-doom)] backdrop-blur-md text-center pointer-events-none">
-              <div className="flex items-center justify-center gap-8 text-[10px] md:text-xs font-bold uppercase tracking-[0.3em] text-muted-foreground mb-1">
-                <span className="flex items-center gap-2"><History size={14} /> ROUND: <span className="text-foreground">{state.round}</span></span>
-                <span className="w-1.5 h-1.5 bg-primary rounded-full"></span>
-                <span className="flex items-center gap-2"><Skull size={14} /> DOOM: <span className="text-primary">{state.doom}</span></span>
+          {/* Top Header Bar - Responsive */}
+          <div className={`fixed ${isMobile ? 'top-2 left-2 right-2' : 'top-6 left-1/2 -translate-x-1/2 max-w-xl w-full'} z-50 flex items-center gap-2 md:gap-4`}>
+            <div className={`flex-1 bg-leather/90 border-2 border-primary ${isMobile ? 'rounded-xl p-2' : 'rounded-2xl p-4'} shadow-[var(--shadow-doom)] backdrop-blur-md text-center pointer-events-none`}>
+              <div className={`flex items-center justify-center ${isMobile ? 'gap-4' : 'gap-8'} ${isMobile ? 'text-[9px]' : 'text-[10px] md:text-xs'} font-bold uppercase tracking-[0.2em] md:tracking-[0.3em] text-muted-foreground`}>
+                <span className="flex items-center gap-1 md:gap-2"><History size={isMobile ? 12 : 14} /> R: <span className="text-foreground">{state.round}</span></span>
+                <span className={`${isMobile ? 'w-1 h-1' : 'w-1.5 h-1.5'} bg-primary rounded-full`}></span>
+                <span className="flex items-center gap-1 md:gap-2"><Skull size={isMobile ? 12 : 14} /> D: <span className="text-primary">{state.doom}</span></span>
               </div>
             </div>
-            <button onClick={() => setIsMainMenuOpen(true)} className="bg-leather/90 border-2 border-primary rounded-xl p-3 text-primary transition-colors hover:bg-background/50"><Settings size={24} /></button>
+            <button onClick={() => setIsMainMenuOpen(true)} className={`bg-leather/90 border-2 border-primary ${isMobile ? 'rounded-lg p-2' : 'rounded-xl p-3'} text-primary transition-colors hover:bg-background/50 active:scale-95`}><Settings size={isMobile ? 20 : 24} /></button>
           </div>
 
           <div className="absolute inset-0 z-0">
@@ -2756,35 +2759,93 @@ const ShadowsGame: React.FC = () => {
             />
           </div>
 
-          {activePlayer && (
-            <div className={`fixed top-1/2 -translate-y-1/2 left-6 h-[80vh] w-80 z-40 transition-all ${showLeftPanel ? 'translate-x-0 opacity-100' : '-translate-x-[calc(100%+40px)] opacity-0'}`}>
-              <CharacterPanel
-                player={activePlayer}
-                onUseItem={handleUseItem}
-                onUnequipItem={handleUnequipItem}
-                onEquipFromBag={handleEquipFromBag}
-                onDropItem={handleDropItem}
-              />
-            </div>
-          )}
-
-          <div className={`fixed top-1/2 -translate-y-1/2 right-6 h-[80vh] w-80 z-40 transition-all ${showRightPanel ? 'translate-x-0 opacity-100' : 'translate-x-[calc(100%+40px)] opacity-0'}`}>
-            {selectedEnemy ? (
-              <EnemyPanel enemy={selectedEnemy} onClose={() => setState(prev => ({ ...prev, selectedEnemyId: null }))} />
-            ) : (
-              <div className="bg-leather/95 border-2 border-primary rounded-2xl h-full flex flex-col overflow-hidden shadow-2xl">
-                <div className="p-4 border-b border-border bg-background/40 flex items-center gap-3">
-                  <ScrollText size={18} className="text-primary" />
-                  <h3 className="text-xs font-bold text-parchment uppercase tracking-[0.2em]">Field Journal</h3>
+          {/* Character Panel - Fullscreen modal on mobile, slide-in on desktop */}
+          {activePlayer && showLeftPanel && (
+            isMobile ? (
+              <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md overflow-y-auto">
+                <div className="sticky top-0 z-10 flex items-center justify-between p-3 bg-leather/95 border-b border-border">
+                  <h2 className="text-sm font-bold text-parchment uppercase tracking-wider">Character</h2>
+                  <button onClick={() => setShowLeftPanel(false)} className="p-2 rounded-lg bg-card border border-border active:scale-95">
+                    <X size={20} className="text-muted-foreground" />
+                  </button>
                 </div>
-                <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
-                  {state.log.map((entry, i) => <div key={i} className="text-xs font-serif italic text-muted-foreground leading-relaxed border-b border-border/30 pb-2">{entry}</div>)}
+                <div className="p-3">
+                  <CharacterPanel
+                    player={activePlayer}
+                    onUseItem={handleUseItem}
+                    onUnequipItem={handleUnequipItem}
+                    onEquipFromBag={handleEquipFromBag}
+                    onDropItem={handleDropItem}
+                  />
                 </div>
               </div>
-            )}
-          </div>
+            ) : (
+              <div className={`fixed top-1/2 -translate-y-1/2 left-6 h-[80vh] w-80 z-40 transition-all translate-x-0 opacity-100`}>
+                <CharacterPanel
+                  player={activePlayer}
+                  onUseItem={handleUseItem}
+                  onUnequipItem={handleUnequipItem}
+                  onEquipFromBag={handleEquipFromBag}
+                  onDropItem={handleDropItem}
+                />
+              </div>
+            )
+          )}
 
-          <footer className="fixed bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent z-50 flex items-center justify-center gap-4 px-4 pb-4">
+          {/* Desktop-only hidden state for character panel */}
+          {activePlayer && !showLeftPanel && !isMobile && (
+            <div className="fixed top-1/2 -translate-y-1/2 left-6 h-[80vh] w-80 z-40 transition-all -translate-x-[calc(100%+40px)] opacity-0 pointer-events-none" />
+          )}
+
+          {/* Journal/Enemy Panel - Fullscreen modal on mobile, slide-in on desktop */}
+          {showRightPanel && (
+            isMobile ? (
+              <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md overflow-y-auto">
+                <div className="sticky top-0 z-10 flex items-center justify-between p-3 bg-leather/95 border-b border-border">
+                  <h2 className="text-sm font-bold text-parchment uppercase tracking-wider flex items-center gap-2">
+                    <ScrollText size={16} className="text-primary" />
+                    {selectedEnemy ? 'Enemy Details' : 'Field Journal'}
+                  </h2>
+                  <button onClick={() => { setShowRightPanel(false); setState(prev => ({ ...prev, selectedEnemyId: null })); }} className="p-2 rounded-lg bg-card border border-border active:scale-95">
+                    <X size={20} className="text-muted-foreground" />
+                  </button>
+                </div>
+                <div className="p-3">
+                  {selectedEnemy ? (
+                    <EnemyPanel enemy={selectedEnemy} onClose={() => setState(prev => ({ ...prev, selectedEnemyId: null }))} />
+                  ) : (
+                    <div className="space-y-3">
+                      {state.log.map((entry, i) => <div key={i} className="text-xs font-serif italic text-muted-foreground leading-relaxed border-b border-border/30 pb-2">{entry}</div>)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className={`fixed top-1/2 -translate-y-1/2 right-6 h-[80vh] w-80 z-40 transition-all translate-x-0 opacity-100`}>
+                {selectedEnemy ? (
+                  <EnemyPanel enemy={selectedEnemy} onClose={() => setState(prev => ({ ...prev, selectedEnemyId: null }))} />
+                ) : (
+                  <div className="bg-leather/95 border-2 border-primary rounded-2xl h-full flex flex-col overflow-hidden shadow-2xl">
+                    <div className="p-4 border-b border-border bg-background/40 flex items-center gap-3">
+                      <ScrollText size={18} className="text-primary" />
+                      <h3 className="text-xs font-bold text-parchment uppercase tracking-[0.2em]">Field Journal</h3>
+                    </div>
+                    <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+                      {state.log.map((entry, i) => <div key={i} className="text-xs font-serif italic text-muted-foreground leading-relaxed border-b border-border/30 pb-2">{entry}</div>)}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          )}
+
+          {/* Desktop-only hidden state for right panel */}
+          {!showRightPanel && !isMobile && (
+            <div className="fixed top-1/2 -translate-y-1/2 right-6 h-[80vh] w-80 z-40 transition-all translate-x-[calc(100%+40px)] opacity-0 pointer-events-none" />
+          )}
+
+          {/* Footer Action Bar - Responsive */}
+          <footer className={`fixed bottom-0 left-0 right-0 ${isMobile ? 'h-20 pb-2 px-2' : 'h-24 pb-4 px-4'} bg-gradient-to-t from-background to-transparent z-50 flex items-center justify-center gap-2 md:gap-4`}>
             <ActionBar
               onAction={handleAction}
               actionsRemaining={activePlayer?.actions || 0}
@@ -2799,8 +2860,11 @@ const ShadowsGame: React.FC = () => {
               onToggleFieldGuide={() => setShowFieldGuide(!showFieldGuide)}
               contextAction={null}
             />
-            <button onClick={handleNextTurn} className="px-8 py-4 bg-primary text-primary-foreground font-bold rounded-xl uppercase tracking-widest hover:scale-110 active:scale-95 transition-all shadow-[var(--shadow-doom)]">
-              {state.activePlayerIndex === state.players.length - 1 ? "End Round" : "Next Turn"}
+            <button onClick={handleNextTurn} className={`${isMobile ? 'px-4 py-3 text-xs' : 'px-8 py-4'} bg-primary text-primary-foreground font-bold rounded-xl uppercase tracking-widest hover:scale-110 active:scale-95 transition-all shadow-[var(--shadow-doom)]`}>
+              {isMobile
+                ? (state.activePlayerIndex === state.players.length - 1 ? "End" : "Next")
+                : (state.activePlayerIndex === state.players.length - 1 ? "End Round" : "Next Turn")
+              }
             </button>
           </footer>
         </>

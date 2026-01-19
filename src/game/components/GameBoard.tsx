@@ -700,6 +700,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [dragStartRaw, setDragStartRaw] = useState({ x: 0, y: 0 });
 
+  // Touch-specific state for pinch-to-zoom
+  const lastTouchDistance = useRef<number | null>(null);
+  const lastTouchCenter = useRef<{ x: number; y: number } | null>(null);
+
   useEffect(() => {
     if (containerRef.current) {
       const { width, height } = containerRef.current.getBoundingClientRect();
@@ -707,6 +711,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
     }
   }, []);
 
+  // Mouse handlers
   const handleMouseDown = (e: React.MouseEvent) => {
     if (e.button !== 0) return;
     setIsDragging(true);
@@ -719,6 +724,85 @@ const GameBoard: React.FC<GameBoardProps> = ({
     if (!isDragging) return;
     if (Math.hypot(e.clientX - dragStartRaw.x, e.clientY - dragStartRaw.y) > DRAG_THRESHOLD) hasDragged.current = true;
     setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+  };
+
+  // Touch handlers for mobile
+  const getTouchDistance = (touches: React.TouchList) => {
+    if (touches.length < 2) return 0;
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.hypot(dx, dy);
+  };
+
+  const getTouchCenter = (touches: React.TouchList) => {
+    if (touches.length < 2) {
+      return { x: touches[0].clientX, y: touches[0].clientY };
+    }
+    return {
+      x: (touches[0].clientX + touches[1].clientX) / 2,
+      y: (touches[0].clientY + touches[1].clientY) / 2
+    };
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      // Single touch - start drag
+      setIsDragging(true);
+      setDragStart({ x: e.touches[0].clientX - position.x, y: e.touches[0].clientY - position.y });
+      setDragStartRaw({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      hasDragged.current = false;
+    } else if (e.touches.length === 2) {
+      // Two touches - prepare for pinch zoom
+      lastTouchDistance.current = getTouchDistance(e.touches);
+      lastTouchCenter.current = getTouchCenter(e.touches);
+      setIsDragging(false);
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && isDragging) {
+      // Single touch - drag/pan
+      const touch = e.touches[0];
+      if (Math.hypot(touch.clientX - dragStartRaw.x, touch.clientY - dragStartRaw.y) > DRAG_THRESHOLD) {
+        hasDragged.current = true;
+      }
+      setPosition({ x: touch.clientX - dragStart.x, y: touch.clientY - dragStart.y });
+    } else if (e.touches.length === 2) {
+      // Two touches - pinch to zoom
+      const newDistance = getTouchDistance(e.touches);
+      const newCenter = getTouchCenter(e.touches);
+
+      if (lastTouchDistance.current && lastTouchDistance.current > 0) {
+        const scaleDelta = newDistance / lastTouchDistance.current;
+        setScale(prev => Math.min(Math.max(prev * scaleDelta, 0.3), 1.5));
+        hasDragged.current = true;
+      }
+
+      // Also pan while pinching
+      if (lastTouchCenter.current) {
+        const dx = newCenter.x - lastTouchCenter.current.x;
+        const dy = newCenter.y - lastTouchCenter.current.y;
+        setPosition(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      }
+
+      lastTouchDistance.current = newDistance;
+      lastTouchCenter.current = newCenter;
+    }
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (e.touches.length === 0) {
+      setIsDragging(false);
+      lastTouchDistance.current = null;
+      lastTouchCenter.current = null;
+    } else if (e.touches.length === 1) {
+      // Went from 2 fingers to 1 - restart single-touch drag
+      setIsDragging(true);
+      setDragStart({ x: e.touches[0].clientX - position.x, y: e.touches[0].clientY - position.y });
+      setDragStartRaw({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      lastTouchDistance.current = null;
+      lastTouchCenter.current = null;
+    }
   };
 
   const hexToPixel = (q: number, r: number) => {
@@ -781,12 +865,16 @@ const GameBoard: React.FC<GameBoardProps> = ({
   return (
     <div
       ref={containerRef}
-      className="w-full h-full overflow-hidden relative cursor-move bg-background touch-none"
+      className="w-full h-full overflow-hidden relative cursor-move bg-background touch-none select-none"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={() => setIsDragging(false)}
       onMouseLeave={() => setIsDragging(false)}
       onWheel={(e) => setScale(prev => Math.min(Math.max(prev + (e.deltaY > 0 ? -0.1 : 0.1), 0.3), 1.5))}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
       {/* Doom-based chiaroscuro lighting overlay */}
       <div
