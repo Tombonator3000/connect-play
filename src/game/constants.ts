@@ -1,4 +1,169 @@
-import { Character, CharacterType, Item, EventCard, Tile, Scenario, Madness, Spell, BestiaryEntry, EnemyType, Obstacle, ObstacleType, EdgeData } from './types';
+import { Character, CharacterType, Item, EventCard, Tile, Scenario, Madness, Spell, BestiaryEntry, EnemyType, Obstacle, ObstacleType, EdgeData, TileCategory, SkillType } from './types';
+
+// ============================================================================
+// 1.1 TILE CONNECTION SYSTEM
+// ============================================================================
+
+/**
+ * Defines which tile categories can connect to each other.
+ * This ensures logical world building - you can't have a crypt next to a street.
+ */
+export const CATEGORY_CONNECTIONS: Record<TileCategory, TileCategory[]> = {
+  nature: ['nature', 'street', 'urban'],
+  urban: ['urban', 'street', 'nature', 'facade'],
+  street: ['street', 'nature', 'urban', 'facade'],
+  facade: ['street', 'urban', 'foyer'],  // FACADE -> FOYER requires DOOR
+  foyer: ['facade', 'corridor', 'room', 'stairs'],
+  corridor: ['foyer', 'corridor', 'room', 'stairs'],
+  room: ['corridor', 'room', 'stairs'],
+  stairs: ['foyer', 'corridor', 'room', 'basement', 'crypt'],
+  basement: ['stairs', 'basement', 'crypt'],
+  crypt: ['basement', 'crypt', 'stairs']
+};
+
+/**
+ * Defines which tile transitions require a door edge.
+ * Without a door, these transitions should be blocked by walls.
+ */
+export const DOOR_REQUIRED_TRANSITIONS: [TileCategory, TileCategory][] = [
+  ['facade', 'foyer'],
+  ['corridor', 'room'],
+  ['foyer', 'room']
+];
+
+/**
+ * Zone levels for each category - used for vertical navigation
+ */
+export const CATEGORY_ZONE_LEVELS: Record<TileCategory, number> = {
+  nature: 0,
+  urban: 0,
+  street: 0,
+  facade: 0,
+  foyer: 1,
+  corridor: 1,
+  room: 1,
+  stairs: 1,  // Stairs span multiple levels
+  basement: -1,
+  crypt: -2
+};
+
+/**
+ * Validates if two tile categories can be connected
+ * @param fromCategory - The source tile category
+ * @param toCategory - The target tile category
+ * @returns boolean indicating if connection is valid
+ */
+export function canCategoriesConnect(fromCategory: TileCategory, toCategory: TileCategory): boolean {
+  const allowedConnections = CATEGORY_CONNECTIONS[fromCategory];
+  return allowedConnections?.includes(toCategory) ?? false;
+}
+
+/**
+ * Checks if a door is required for a transition between two categories
+ * @param fromCategory - The source tile category
+ * @param toCategory - The target tile category
+ * @returns boolean indicating if door is required
+ */
+export function isDoorRequired(fromCategory: TileCategory, toCategory: TileCategory): boolean {
+  return DOOR_REQUIRED_TRANSITIONS.some(
+    ([from, to]) =>
+      (from === fromCategory && to === toCategory) ||
+      (from === toCategory && to === fromCategory)
+  );
+}
+
+export interface TileConnectionValidation {
+  isValid: boolean;
+  requiresDoor: boolean;
+  suggestedEdgeType: 'open' | 'door' | 'wall';
+  reason?: string;
+}
+
+/**
+ * Validates a tile connection and returns detailed information
+ * @param fromCategory - The source tile category
+ * @param toCategory - The target tile category
+ * @param hasExistingDoor - Whether there's already a door on this edge
+ * @returns Validation result with suggested edge type
+ */
+export function validateTileConnection(
+  fromCategory: TileCategory,
+  toCategory: TileCategory,
+  hasExistingDoor: boolean = false
+): TileConnectionValidation {
+  // Check if categories can connect at all
+  if (!canCategoriesConnect(fromCategory, toCategory)) {
+    return {
+      isValid: false,
+      requiresDoor: false,
+      suggestedEdgeType: 'wall',
+      reason: `${fromCategory} cannot connect to ${toCategory}`
+    };
+  }
+
+  // Check if door is required
+  const requiresDoor = isDoorRequired(fromCategory, toCategory);
+
+  if (requiresDoor && !hasExistingDoor) {
+    return {
+      isValid: true,
+      requiresDoor: true,
+      suggestedEdgeType: 'door',
+      reason: `Transition from ${fromCategory} to ${toCategory} requires a door`
+    };
+  }
+
+  return {
+    isValid: true,
+    requiresDoor: false,
+    suggestedEdgeType: 'open'
+  };
+}
+
+/**
+ * Gets valid neighbor categories for a given tile category
+ * @param category - The tile category to get neighbors for
+ * @returns Array of valid neighboring categories
+ */
+export function getValidNeighborCategories(category: TileCategory): TileCategory[] {
+  return CATEGORY_CONNECTIONS[category] || [];
+}
+
+/**
+ * Selects an appropriate category for a new tile based on the source tile
+ * @param fromCategory - The category of the tile we're expanding from
+ * @param preferIndoor - Whether to prefer indoor categories
+ * @returns A randomly selected valid category
+ */
+export function selectRandomConnectableCategory(
+  fromCategory: TileCategory,
+  preferIndoor: boolean = false
+): TileCategory {
+  const validCategories = getValidNeighborCategories(fromCategory);
+
+  if (validCategories.length === 0) {
+    return fromCategory; // Fallback to same category
+  }
+
+  // Filter by indoor/outdoor preference
+  const indoorCategories: TileCategory[] = ['facade', 'foyer', 'corridor', 'room', 'stairs', 'basement', 'crypt'];
+  const outdoorCategories: TileCategory[] = ['nature', 'urban', 'street'];
+
+  let filteredCategories = validCategories;
+  if (preferIndoor) {
+    const indoorOnly = validCategories.filter(c => indoorCategories.includes(c));
+    if (indoorOnly.length > 0) filteredCategories = indoorOnly;
+  } else {
+    const outdoorOnly = validCategories.filter(c => outdoorCategories.includes(c));
+    if (outdoorOnly.length > 0) filteredCategories = outdoorOnly;
+  }
+
+  return filteredCategories[Math.floor(Math.random() * filteredCategories.length)];
+}
+
+// ============================================================================
+// SPELLS AND CHARACTERS
+// ============================================================================
 
 export const SPELLS: Spell[] = [
   { id: 'wither', name: 'Wither', cost: 2, description: 'Drains life force from a target.', effectType: 'damage', value: 2, range: 3 },

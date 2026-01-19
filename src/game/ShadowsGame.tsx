@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText } from 'lucide-react';
-import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState } from './types';
-import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES } from './constants';
+import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget } from './types';
+import ContextActionBar from './components/ContextActionBar';
+import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
+import { performSkillCheck } from './utils/combatUtils';
+import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES, validateTileConnection, selectRandomConnectableCategory, isDoorRequired, CATEGORY_ZONE_LEVELS } from './constants';
 import { hexDistance, findPath } from './hexUtils';
 import GameBoard from './components/GameBoard';
 import CharacterPanel from './components/CharacterPanel';
@@ -60,6 +63,10 @@ const ShadowsGame: React.FC = () => {
   const [showRightPanel, setShowRightPanel] = useState(false);
   const [showMythosOverlay, setShowMythosOverlay] = useState(false);
   const [gameOverType, setGameOverType] = useState<GameOverType | null>(null);
+
+  // Context Action state
+  const [activeContextTarget, setActiveContextTarget] = useState<ContextActionTarget | null>(null);
+  const [contextActions, setContextActions] = useState<ContextAction[]>([]);
 
   // Game settings with localStorage persistence
   const [settings, setSettings] = useState<GameSettings>(() => {
@@ -263,6 +270,293 @@ const ShadowsGame: React.FC = () => {
     return false;
   }, []);
 
+  // Handle showing context actions for a tile/obstacle
+  const showContextActions = useCallback((tile: Tile, edgeIndex?: number) => {
+    const activePlayer = state.players[state.activePlayerIndex];
+    if (!activePlayer) return;
+
+    let target: ContextActionTarget;
+    let actions: ContextAction[];
+
+    if (edgeIndex !== undefined && tile.edges[edgeIndex]) {
+      // Edge/door interaction
+      target = {
+        type: 'edge',
+        tileId: tile.id,
+        edgeIndex,
+        edge: tile.edges[edgeIndex]
+      };
+      actions = getDoorActions(activePlayer, tile.edges[edgeIndex], tile);
+    } else if (tile.obstacle) {
+      // Obstacle interaction
+      target = {
+        type: 'obstacle',
+        tileId: tile.id,
+        obstacle: tile.obstacle
+      };
+      actions = getObstacleActions(activePlayer, tile.obstacle, tile);
+    } else if (tile.object) {
+      // Object interaction
+      target = {
+        type: 'object',
+        tileId: tile.id,
+        object: tile.object
+      };
+      actions = getContextActions(activePlayer, target, tile);
+    } else {
+      // General tile interaction
+      target = {
+        type: 'tile',
+        tileId: tile.id
+      };
+      actions = getContextActions(activePlayer, target, tile);
+    }
+
+    setActiveContextTarget(target);
+    setContextActions(actions);
+  }, [state.players, state.activePlayerIndex]);
+
+  // Handle executing a context action
+  const handleContextAction = useCallback((action: ContextAction) => {
+    const activePlayer = state.players[state.activePlayerIndex];
+    if (!activePlayer || !activeContextTarget) return;
+
+    // Cancel action
+    if (action.id === 'cancel') {
+      setActiveContextTarget(null);
+      setContextActions([]);
+      return;
+    }
+
+    // Check AP cost
+    if (activePlayer.actions < action.apCost) {
+      addToLog(`Not enough actions for ${action.label}`);
+      return;
+    }
+
+    // Perform skill check if required
+    if (action.skillCheck) {
+      const result = performSkillCheck(
+        activePlayer,
+        action.skillCheck.skill,
+        action.skillCheck.dc,
+        action.skillCheck.bonusDice
+      );
+
+      setState(prev => ({ ...prev, lastDiceRoll: result.dice }));
+
+      if (result.passed) {
+        addToLog(action.successMessage || `${action.label} succeeded!`);
+        addFloatingText(activePlayer.position.q, activePlayer.position.r, "SUCCESS!", "text-accent");
+
+        // Handle success consequences
+        if (action.consequences?.success) {
+          handleContextConsequence(action.consequences.success, activePlayer);
+        }
+
+        // Handle specific actions
+        handleContextActionEffect(action, true);
+      } else {
+        addToLog(action.failureMessage || `${action.label} failed.`);
+        addFloatingText(activePlayer.position.q, activePlayer.position.r, "FAILED", "text-primary");
+
+        // Handle failure consequences
+        if (action.consequences?.failure) {
+          handleContextConsequence(action.consequences.failure, activePlayer);
+        }
+      }
+
+      // Deduct AP
+      setState(prev => ({
+        ...prev,
+        players: prev.players.map((p, i) =>
+          i === prev.activePlayerIndex ? { ...p, actions: p.actions - action.apCost } : p
+        )
+      }));
+    } else {
+      // No skill check needed - automatic success
+      addToLog(action.successMessage || `${action.label} completed.`);
+
+      // Handle success consequences (some actions have consequences even without skill check)
+      if (action.consequences?.success) {
+        handleContextConsequence(action.consequences.success, activePlayer);
+      }
+
+      handleContextActionEffect(action, true);
+
+      // Deduct AP
+      if (action.apCost > 0) {
+        setState(prev => ({
+          ...prev,
+          players: prev.players.map((p, i) =>
+            i === prev.activePlayerIndex ? { ...p, actions: p.actions - action.apCost } : p
+          )
+        }));
+      }
+    }
+
+    // Close context menu
+    setActiveContextTarget(null);
+    setContextActions([]);
+  }, [state.players, state.activePlayerIndex, activeContextTarget]);
+
+  // Handle context action consequences (damage, sanity loss, etc.)
+  const handleContextConsequence = useCallback((
+    consequence: { type: string; value?: number; message?: string },
+    player: Player
+  ) => {
+    switch (consequence.type) {
+      case 'take_damage':
+        const dmgValue = consequence.value || 1;
+        setState(prev => ({
+          ...prev,
+          players: prev.players.map((p, i) =>
+            i === prev.activePlayerIndex ? {
+              ...p,
+              hp: Math.max(0, p.hp - dmgValue),
+              isDead: p.hp - dmgValue <= 0
+            } : p
+          )
+        }));
+        addFloatingText(player.position.q, player.position.r, `-${dmgValue} HP`, "text-health");
+        if (consequence.message) addToLog(consequence.message);
+        break;
+
+      case 'lose_sanity':
+        const sanValue = consequence.value || 1;
+        setState(prev => ({
+          ...prev,
+          players: prev.players.map((p, i) =>
+            i === prev.activePlayerIndex ? checkMadness({
+              ...p,
+              sanity: Math.max(0, p.sanity - sanValue)
+            }) : p
+          )
+        }));
+        addFloatingText(player.position.q, player.position.r, `-${sanValue} SAN`, "text-sanity");
+        if (consequence.message) addToLog(consequence.message);
+        break;
+
+      case 'trigger_alarm':
+        addToLog(consequence.message || "An alarm is triggered!");
+        // Could spawn enemies here
+        break;
+
+      case 'remove_obstacle':
+        if (activeContextTarget?.tileId) {
+          setState(prev => ({
+            ...prev,
+            board: prev.board.map(t =>
+              t.id === activeContextTarget.tileId ? { ...t, obstacle: undefined } : t
+            )
+          }));
+        }
+        break;
+    }
+  }, [activeContextTarget]);
+
+  // Handle specific action effects (opening doors, etc.)
+  const handleContextActionEffect = useCallback((action: ContextAction, success: boolean) => {
+    if (!activeContextTarget || !success) return;
+
+    const tile = state.board.find(t => t.id === activeContextTarget.tileId);
+    if (!tile) return;
+
+    switch (action.id) {
+      case 'open_door':
+      case 'use_key':
+      case 'lockpick':
+        if (activeContextTarget.edgeIndex !== undefined) {
+          setState(prev => ({
+            ...prev,
+            board: prev.board.map(t => {
+              if (t.id === tile.id) {
+                const newEdges = [...t.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+                newEdges[activeContextTarget.edgeIndex!] = {
+                  ...newEdges[activeContextTarget.edgeIndex!],
+                  doorState: 'open'
+                };
+                return { ...t, edges: newEdges };
+              }
+              return t;
+            })
+          }));
+        }
+        break;
+
+      case 'force_door':
+      case 'break_barricade':
+        if (activeContextTarget.edgeIndex !== undefined) {
+          setState(prev => ({
+            ...prev,
+            board: prev.board.map(t => {
+              if (t.id === tile.id) {
+                const newEdges = [...t.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+                newEdges[activeContextTarget.edgeIndex!] = {
+                  ...newEdges[activeContextTarget.edgeIndex!],
+                  doorState: 'broken'
+                };
+                return { ...t, edges: newEdges };
+              }
+              return t;
+            })
+          }));
+        }
+        break;
+
+      case 'close_door':
+        if (activeContextTarget.edgeIndex !== undefined) {
+          setState(prev => ({
+            ...prev,
+            board: prev.board.map(t => {
+              if (t.id === tile.id) {
+                const newEdges = [...t.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+                newEdges[activeContextTarget.edgeIndex!] = {
+                  ...newEdges[activeContextTarget.edgeIndex!],
+                  doorState: 'closed'
+                };
+                return { ...t, edges: newEdges };
+              }
+              return t;
+            })
+          }));
+        }
+        break;
+
+      case 'clear_rubble':
+      case 'extinguish':
+        setState(prev => ({
+          ...prev,
+          board: prev.board.map(t =>
+            t.id === tile.id ? { ...t, obstacle: undefined } : t
+          )
+        }));
+        break;
+
+      case 'search_tile':
+      case 'search_books':
+      case 'search_container':
+      case 'search_rubble':
+      case 'search_water':
+      case 'search_statue':
+        // Mark as searched and potentially give item
+        setState(prev => ({
+          ...prev,
+          board: prev.board.map(t => {
+            if (t.id === tile.id) {
+              if (t.object) {
+                return { ...t, searched: true, object: { ...t.object, searched: true } };
+              }
+              return { ...t, searched: true };
+            }
+            return t;
+          })
+        }));
+        // Could add random item here
+        break;
+    }
+  }, [activeContextTarget, state.board]);
+
   const spawnEnemy = useCallback((type: EnemyType, q: number, r: number) => {
     const bestiary = BESTIARY[type];
     if (!bestiary) return;
@@ -290,27 +584,91 @@ const ShadowsGame: React.FC = () => {
   const spawnRoom = useCallback((startQ: number, startR: number, tileSet: 'indoor' | 'outdoor' | 'mixed') => {
     const roomId = `room-${Date.now()}`;
     const isConnector = Math.random() > 0.6;
-    const pool = isConnector
-      ? (tileSet === 'indoor' ? INDOOR_CONNECTORS : OUTDOOR_CONNECTORS)
-      : (tileSet === 'indoor' ? INDOOR_LOCATIONS : OUTDOOR_LOCATIONS);
-    const roomName = pool[Math.floor(Math.random() * pool.length)];
+
+    // Find adjacent tiles to determine valid category
+    const adjacentTiles = state.board.filter(t => hexDistance({ q: t.q, r: t.r }, { q: startQ, r: startR }) === 1);
+    const sourceCategory = adjacentTiles[0]?.category || (tileSet === 'indoor' ? 'foyer' : 'street');
+
+    // Use tile connection validation to select appropriate category
+    const newCategory = selectRandomConnectableCategory(
+      sourceCategory as TileCategory,
+      tileSet === 'indoor'
+    );
+
+    // Validate the connection
+    const validation = validateTileConnection(sourceCategory as TileCategory, newCategory, false);
+
+    // Select location pool based on validated category
+    const getCategoryPool = (cat: TileCategory) => {
+      switch (cat) {
+        case 'nature': return OUTDOOR_LOCATIONS.filter((_, i) => i < 15);
+        case 'urban': return OUTDOOR_LOCATIONS.filter((_, i) => i >= 15 && i < 35);
+        case 'street': return OUTDOOR_CONNECTORS;
+        case 'facade': return INDOOR_LOCATIONS.filter((_, i) => i < 14);
+        case 'foyer': return INDOOR_LOCATIONS.filter((_, i) => i >= 14 && i < 24);
+        case 'corridor': return INDOOR_CONNECTORS;
+        case 'room': return INDOOR_LOCATIONS.filter((_, i) => i >= 24 && i < 49);
+        case 'stairs': return INDOOR_LOCATIONS.filter((_, i) => i >= 49 && i < 59);
+        case 'basement': return INDOOR_LOCATIONS.filter((_, i) => i >= 59 && i < 74);
+        case 'crypt': return INDOOR_LOCATIONS.filter((_, i) => i >= 74);
+        default: return tileSet === 'indoor' ? INDOOR_LOCATIONS : OUTDOOR_LOCATIONS;
+      }
+    };
+
+    const pool = getCategoryPool(newCategory);
+    const roomName = pool.length > 0
+      ? pool[Math.floor(Math.random() * pool.length)]
+      : (isConnector
+        ? (tileSet === 'indoor' ? INDOOR_CONNECTORS : OUTDOOR_CONNECTORS)
+        : (tileSet === 'indoor' ? INDOOR_LOCATIONS : OUTDOOR_LOCATIONS))[Math.floor(Math.random() * 10)];
+
     const shape = isConnector ? ROOM_SHAPES.LINEAR : ROOM_SHAPES.MEDIUM;
 
-    // Determine category and floor type based on tile set
-    const getCategory = () => {
-      if (isConnector) return tileSet === 'indoor' ? 'corridor' : 'street';
-      if (tileSet === 'indoor') return 'room';
-      return 'urban';
-    };
-    
-    const getFloorType = () => {
-      if (tileSet === 'indoor') return isConnector ? 'wood' : 'wood';
-      return 'cobblestone';
+    // Get floor type based on category
+    const getFloorType = (cat: TileCategory): 'wood' | 'cobblestone' | 'tile' | 'stone' | 'grass' | 'dirt' | 'water' | 'ritual' => {
+      switch (cat) {
+        case 'nature': return Math.random() > 0.5 ? 'grass' : 'dirt';
+        case 'urban': case 'street': return 'cobblestone';
+        case 'facade': case 'foyer': case 'corridor': case 'room': return 'wood';
+        case 'stairs': return 'stone';
+        case 'basement': return 'stone';
+        case 'crypt': return Math.random() > 0.7 ? 'ritual' : 'stone';
+        default: return 'wood';
+      }
     };
 
-    const defaultEdges: [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData] = [
-      { type: 'open' }, { type: 'open' }, { type: 'open' }, { type: 'open' }, { type: 'open' }, { type: 'open' }
-    ];
+    // Create edges based on tile connection validation
+    const createEdges = (): [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData] => {
+      const edges: EdgeData[] = [];
+      for (let i = 0; i < 6; i++) {
+        // Check if this edge connects to an existing tile
+        const edgeDirections = [
+          { dq: 1, dr: 0 }, { dq: 1, dr: -1 }, { dq: 0, dr: -1 },
+          { dq: -1, dr: 0 }, { dq: -1, dr: 1 }, { dq: 0, dr: 1 }
+        ];
+        const neighborQ = startQ + edgeDirections[i].dq;
+        const neighborR = startR + edgeDirections[i].dr;
+        const neighborTile = state.board.find(t => t.q === neighborQ && t.r === neighborR);
+
+        if (neighborTile && neighborTile.category) {
+          const edgeValidation = validateTileConnection(
+            newCategory,
+            neighborTile.category as TileCategory,
+            false
+          );
+          if (edgeValidation.requiresDoor) {
+            edges.push({ type: 'door', doorState: 'closed' });
+          } else if (!edgeValidation.isValid) {
+            edges.push({ type: 'wall' });
+          } else {
+            edges.push({ type: 'open' });
+          }
+        } else {
+          edges.push({ type: 'open' });
+        }
+      }
+      return edges as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+    };
 
     const newTiles: Tile[] = [];
     shape.forEach((offset, idx) => {
@@ -322,14 +680,17 @@ const ShadowsGame: React.FC = () => {
           q, r,
           name: roomName,
           type: isConnector ? 'street' : 'room',
-          category: getCategory(),
-          zoneLevel: tileSet === 'indoor' ? 1 : 0,
-          floorType: getFloorType(),
+          category: newCategory,
+          zoneLevel: CATEGORY_ZONE_LEVELS[newCategory] || 0,
+          floorType: getFloorType(newCategory),
           visibility: 'visible',
-          edges: defaultEdges,
+          edges: idx === 0 ? createEdges() : [
+            { type: 'open' }, { type: 'open' }, { type: 'open' },
+            { type: 'open' }, { type: 'open' }, { type: 'open' }
+          ],
           roomId,
           explored: true,
-          searchable: !isConnector,
+          searchable: !isConnector && !['facade', 'street', 'nature'].includes(newCategory),
           searched: false
         });
       }
@@ -337,7 +698,7 @@ const ShadowsGame: React.FC = () => {
 
     if (newTiles.length > 0) {
       setState(prev => ({ ...prev, board: [...prev.board, ...newTiles] }));
-      addToLog(`UTFORSKET: ${roomName}.`);
+      addToLog(`UTFORSKET: ${roomName}. [${newCategory.toUpperCase()}]`);
 
       // Use new spawn system
       const tile = newTiles[0];
@@ -354,6 +715,23 @@ const ShadowsGame: React.FC = () => {
     }
   }, [state.board, state.doom, state.enemies, spawnEnemy]);
 
+  // Helper function to get edge index between two tiles
+  const getEdgeIndexBetweenTiles = (from: { q: number; r: number }, to: { q: number; r: number }): number => {
+    const dq = to.q - from.q;
+    const dr = to.r - from.r;
+
+    // Hex edge directions (pointy-top orientation)
+    // 0: +q, 1: +q-r, 2: -r, 3: -q, 4: -q+r, 5: +r
+    if (dq === 1 && dr === 0) return 0;
+    if (dq === 1 && dr === -1) return 1;
+    if (dq === 0 && dr === -1) return 2;
+    if (dq === -1 && dr === 0) return 3;
+    if (dq === -1 && dr === 1) return 4;
+    if (dq === 0 && dr === 1) return 5;
+
+    return -1; // Not adjacent
+  };
+
   const handleAction = (actionType: string, payload?: any) => {
     const activePlayer = state.players[state.activePlayerIndex];
     if (!activePlayer || activePlayer.actions <= 0 || activePlayer.isDead || state.phase !== GamePhase.INVESTIGATOR) return;
@@ -362,11 +740,39 @@ const ShadowsGame: React.FC = () => {
       case 'move':
         const { q, r } = payload;
         const targetTile = state.board.find(t => t.q === q && t.r === r);
+
+        // Check for blocking objects - show context menu
         if (targetTile?.object?.blocking) {
           setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
+          showContextActions(targetTile);
           addToLog(`PATH BLOCKED: ${targetTile.object.type}.`);
           return;
         }
+
+        // Check for blocking obstacles - show context menu
+        if (targetTile?.obstacle?.blocking) {
+          setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
+          showContextActions(targetTile);
+          addToLog(`PATH BLOCKED: ${targetTile.obstacle.type.replace('_', ' ')}.`);
+          return;
+        }
+
+        // Check for closed/locked doors on the edge we're crossing
+        if (targetTile) {
+          // Calculate which edge we're crossing to reach this tile
+          const sourcePos = activePlayer.position;
+          const edgeIndex = getEdgeIndexBetweenTiles(sourcePos, { q, r });
+          if (edgeIndex !== -1 && targetTile.edges[edgeIndex]) {
+            const edge = targetTile.edges[edgeIndex];
+            if (edge.type === 'door' && edge.doorState !== 'open' && edge.doorState !== 'broken') {
+              setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
+              showContextActions(targetTile, edgeIndex);
+              addToLog(`DOOR: ${edge.doorState || 'closed'}.`);
+              return;
+            }
+          }
+        }
+
         if (!targetTile) {
           spawnRoom(q, r, state.activeScenario?.tileSet || 'mixed');
         }
@@ -518,17 +924,30 @@ const ShadowsGame: React.FC = () => {
       // Investigation roll
       if (successes > 0) {
         const randomItem = ITEMS[Math.floor(Math.random() * ITEMS.length)];
-        addToLog(`FUNNET: ${randomItem.name}!`);
-        addFloatingText(activePlayer.position.q, activePlayer.position.r, "GJENSTAND FUNNET", "text-accent");
-        setState(prev => ({
-          ...prev,
-          players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
-            ...p,
-            inventory: [...p.inventory, randomItem].slice(0, 6),
-            actions: p.actions - 1
-          } : p),
-          lastDiceRoll: null
-        }));
+
+        // Use new inventory slot system
+        if (isInventoryFull(activePlayer.inventory)) {
+          addToLog(`FUNNET: ${randomItem.name}! Men inventaret er fullt.`);
+          addFloatingText(activePlayer.position.q, activePlayer.position.r, "INVENTORY FULL!", "text-muted-foreground");
+          setState(prev => ({
+            ...prev,
+            players: prev.players.map((p, i) => i === prev.activePlayerIndex ? { ...p, actions: p.actions - 1 } : p),
+            lastDiceRoll: null
+          }));
+        } else {
+          const equipResult = equipItem(activePlayer.inventory, randomItem);
+          addToLog(`FUNNET: ${randomItem.name}!`);
+          addFloatingText(activePlayer.position.q, activePlayer.position.r, "GJENSTAND FUNNET", "text-accent");
+          setState(prev => ({
+            ...prev,
+            players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
+              ...p,
+              inventory: equipResult.newInventory,
+              actions: p.actions - 1
+            } : p),
+            lastDiceRoll: null
+          }));
+        }
       } else {
         addToLog(`INGENTING FUNNET.`);
         setState(prev => ({
@@ -649,7 +1068,7 @@ const ShadowsGame: React.FC = () => {
                       const char = CHARACTERS[type];
                       setState(prev => ({
                         ...prev,
-                        players: isSelected ? prev.players.filter(p => p.id !== type) : [...prev.players, { ...char, position: { q: 0, r: 0 }, inventory: [], spells: (type === 'occultist' ? [SPELLS[0]] : []), actions: 2, isDead: false, madness: [], activeMadness: null, traits: [] }]
+                        players: isSelected ? prev.players.filter(p => p.id !== type) : [...prev.players, { ...char, position: { q: 0, r: 0 }, inventory: createEmptyInventory(), spells: (type === 'occultist' ? [SPELLS[0]] : []), actions: 2, isDead: false, madness: [], activeMadness: null, traits: [] }]
                       }));
                     }} className={`p-4 bg-background border-2 rounded-xl transition-all ${isSelected ? 'border-primary shadow-[var(--shadow-doom)] scale-105' : 'border-border opacity-60'}`}>
                       <div className="text-lg font-bold text-foreground uppercase tracking-tighter">{CHARACTERS[type].name}</div>
@@ -742,6 +1161,21 @@ const ShadowsGame: React.FC = () => {
       )}
 
       {state.lastDiceRoll && <DiceRoller values={state.lastDiceRoll} onComplete={resolveDiceResult} />}
+
+      {/* Context Action Bar */}
+      {activeContextTarget && contextActions.length > 0 && activePlayer && (
+        <ContextActionBar
+          actions={contextActions}
+          onActionSelect={handleContextAction}
+          targetName={
+            activeContextTarget.type === 'edge' ? 'Door' :
+            activeContextTarget.type === 'obstacle' ? activeContextTarget.obstacle?.type.replace('_', ' ') || 'Obstacle' :
+            activeContextTarget.type === 'object' ? activeContextTarget.object?.type.replace('_', ' ') || 'Object' :
+            state.board.find(t => t.id === activeContextTarget.tileId)?.name || 'Area'
+          }
+          playerActions={activePlayer.actions}
+        />
+      )}
 
       {/* Mythos Phase Overlay */}
       <MythosPhaseOverlay

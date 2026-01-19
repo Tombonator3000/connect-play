@@ -1,6 +1,6 @@
 import React from 'react';
-import { Player, Item } from '../types';
-import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User } from 'lucide-react';
+import { Player, Item, countInventoryItems } from '../types';
+import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User, Hand, Shirt, Key } from 'lucide-react';
 import { ItemTooltip } from './ItemTooltip';
 
 interface CharacterPanelProps {
@@ -12,6 +12,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ player }) => {
 
   const hpPercent = (player.hp / player.maxHp) * 100;
   const sanPercent = (player.sanity / player.maxSanity) * 100;
+  const inventoryCount = countInventoryItems(player.inventory);
 
   const getItemIcon = (type: string) => {
     switch (type) {
@@ -20,8 +21,23 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ player }) => {
       case 'relic': return <Zap size={18} />;
       case 'armor': return <ShieldCheck size={18} />;
       case 'consumable': return <Cross size={18} />;
+      case 'key': return <Key size={18} />;
       default: return <FileQuestion size={18} />;
     }
+  };
+
+  const renderSlot = (item: Item | null, label: string, slotIcon: React.ReactNode) => {
+    const slotContent = (
+      <div className={`aspect-square border-2 rounded-lg flex flex-col items-center justify-center transition-all cursor-default relative ${item ? 'bg-leather border-parchment text-parchment hover:border-accent hover:shadow-[var(--shadow-glow)]' : 'bg-background/40 border-border opacity-50'}`}>
+        {item ? getItemIcon(item.type) : slotIcon}
+        <span className="text-[8px] uppercase tracking-wider mt-1 opacity-60">{label}</span>
+      </div>
+    );
+    return item ? (
+      <ItemTooltip item={item}>
+        {slotContent}
+      </ItemTooltip>
+    ) : slotContent;
   };
 
   return (
@@ -85,26 +101,31 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({ player }) => {
           <p className="text-sm text-sepia italic">"{player.special}"</p>
         </div>
 
+        {/* Equipment Slots */}
         <div className="pt-4 border-t-2 border-border">
           <h3 className="text-[10px] font-bold text-parchment uppercase tracking-widest mb-3 flex items-center gap-2">
-            <Backpack size={12} /> Inventory ({player.inventory.length}/6)
+            <Backpack size={12} /> Equipment ({inventoryCount}/7)
           </h3>
-          <div className="grid grid-cols-3 gap-2">
-            {Array.from({ length: 6 }).map((_, index) => {
-              const item = player.inventory[index];
-              const slotContent = (
-                <div className={`aspect-square border-2 rounded-lg flex items-center justify-center transition-all cursor-default ${item ? 'bg-leather border-parchment text-parchment hover:border-accent hover:shadow-[var(--shadow-glow)]' : 'bg-background/40 border-border opacity-30'}`}>
-                  {item && getItemIcon(item.type)}
+
+          {/* Hand and Body Slots */}
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            {renderSlot(player.inventory.leftHand, 'L.Hand', <Hand size={16} className="opacity-40" />)}
+            {renderSlot(player.inventory.body, 'Body', <Shirt size={16} className="opacity-40" />)}
+            {renderSlot(player.inventory.rightHand, 'R.Hand', <Hand size={16} className="opacity-40 scale-x-[-1]" />)}
+          </div>
+
+          {/* Bag Slots */}
+          <div className="mt-2">
+            <h4 className="text-[9px] text-muted-foreground uppercase tracking-widest mb-2 flex items-center gap-1">
+              <Backpack size={10} /> Bag
+            </h4>
+            <div className="grid grid-cols-4 gap-2">
+              {player.inventory.bag.map((item, index) => (
+                <div key={index}>
+                  {renderSlot(item, `${index + 1}`, <FileQuestion size={14} className="opacity-40" />)}
                 </div>
-              );
-              return item ? (
-                <ItemTooltip key={index} item={item}>
-                  {slotContent}
-                </ItemTooltip>
-              ) : (
-                <div key={index}>{slotContent}</div>
-              );
-            })}
+              ))}
+            </div>
           </div>
         </div>
       </div>

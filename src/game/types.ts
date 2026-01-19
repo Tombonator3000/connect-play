@@ -72,7 +72,8 @@ export interface Trait {
 
 export interface Player extends Character {
   position: { q: number; r: number };
-  inventory: Item[];
+  inventory: InventorySlots;
+  legacyInventory?: Item[];  // For backward compatibility during migration
   spells: Spell[];
   actions: number;
   isDead: boolean;
@@ -84,11 +85,326 @@ export interface Player extends Character {
 export interface Item {
   id: string;
   name: string;
-  type: 'weapon' | 'tool' | 'relic' | 'armor' | 'consumable';
+  type: 'weapon' | 'tool' | 'relic' | 'armor' | 'consumable' | 'key' | 'clue';
   effect: string;
   bonus?: number;
   cost?: number;
   statModifier?: 'combat' | 'investigation' | 'agility' | 'physical_defense' | 'mental_defense';
+  slotType?: ItemSlotType;  // Which slot this item can be equipped to
+  keyId?: string;           // For keys - which locks they open
+  isLightSource?: boolean;  // Whether this item provides light
+  uses?: number;            // For consumables - number of uses remaining
+  maxUses?: number;         // For consumables - maximum uses
+}
+
+// ============================================================================
+// INVENTORY SLOTS SYSTEM
+// ============================================================================
+
+export type ItemSlotType = 'hand' | 'body' | 'bag';
+
+export type InventorySlotName = 'leftHand' | 'rightHand' | 'body' | 'bag1' | 'bag2' | 'bag3' | 'bag4';
+
+/**
+ * Slot-based inventory system
+ * - 2 hand slots: weapons, tools, light sources
+ * - 1 body slot: armor, cloaks
+ * - 4 bag slots: everything else (keys, items, clues)
+ * Total capacity: 7 items
+ */
+export interface InventorySlots {
+  leftHand: Item | null;   // Weapons, tools, light sources
+  rightHand: Item | null;  // Weapons, tools, light sources
+  body: Item | null;       // Armor, cloaks, vests
+  bag: (Item | null)[];    // 4 slots for keys, items, clues, consumables
+}
+
+/**
+ * Creates an empty inventory with all slots set to null
+ */
+export function createEmptyInventory(): InventorySlots {
+  return {
+    leftHand: null,
+    rightHand: null,
+    body: null,
+    bag: [null, null, null, null]
+  };
+}
+
+/**
+ * Gets the appropriate slot type for an item
+ * @param item - The item to check
+ * @returns The slot type this item should go in
+ */
+export function getItemSlotType(item: Item): ItemSlotType {
+  // Check explicit slot type first
+  if (item.slotType) return item.slotType;
+
+  // Infer from item type
+  switch (item.type) {
+    case 'weapon':
+    case 'tool':
+      return 'hand';
+    case 'armor':
+      return 'body';
+    case 'relic':
+    case 'consumable':
+    case 'key':
+    case 'clue':
+    default:
+      return 'bag';
+  }
+}
+
+/**
+ * Checks if an item can be equipped to a specific slot
+ * @param item - The item to check
+ * @param slotName - The slot name to check against
+ * @returns boolean indicating if the item is compatible with the slot
+ */
+export function isSlotCompatible(item: Item, slotName: InventorySlotName): boolean {
+  const itemSlotType = getItemSlotType(item);
+
+  switch (slotName) {
+    case 'leftHand':
+    case 'rightHand':
+      return itemSlotType === 'hand';
+    case 'body':
+      return itemSlotType === 'body';
+    case 'bag1':
+    case 'bag2':
+    case 'bag3':
+    case 'bag4':
+      // Bag can hold anything, but hand/body items prefer their dedicated slots
+      return true;
+    default:
+      return false;
+  }
+}
+
+/**
+ * Counts the total number of items in an inventory
+ * @param inventory - The inventory to count
+ * @returns Total number of items
+ */
+export function countInventoryItems(inventory: InventorySlots): number {
+  let count = 0;
+  if (inventory.leftHand) count++;
+  if (inventory.rightHand) count++;
+  if (inventory.body) count++;
+  count += inventory.bag.filter(item => item !== null).length;
+  return count;
+}
+
+/**
+ * Checks if the inventory is full (7 items max)
+ * @param inventory - The inventory to check
+ * @returns boolean indicating if inventory is full
+ */
+export function isInventoryFull(inventory: InventorySlots): boolean {
+  return countInventoryItems(inventory) >= 7;
+}
+
+/**
+ * Finds the first available slot for an item
+ * @param inventory - The current inventory
+ * @param item - The item to find a slot for
+ * @returns The slot name or null if no slot available
+ */
+export function findAvailableSlot(inventory: InventorySlots, item: Item): InventorySlotName | null {
+  const slotType = getItemSlotType(item);
+
+  // Try preferred slots first
+  if (slotType === 'hand') {
+    if (!inventory.leftHand) return 'leftHand';
+    if (!inventory.rightHand) return 'rightHand';
+  } else if (slotType === 'body') {
+    if (!inventory.body) return 'body';
+  }
+
+  // Fall back to bag slots
+  for (let i = 0; i < inventory.bag.length; i++) {
+    if (!inventory.bag[i]) {
+      return `bag${i + 1}` as InventorySlotName;
+    }
+  }
+
+  return null;
+}
+
+export interface EquipResult {
+  success: boolean;
+  newInventory: InventorySlots;
+  droppedItem?: Item;
+  message: string;
+}
+
+/**
+ * Equips an item to a specific slot
+ * @param inventory - The current inventory
+ * @param item - The item to equip
+ * @param slotName - Optional specific slot (if not provided, auto-selects)
+ * @returns EquipResult with new inventory state
+ */
+export function equipItem(
+  inventory: InventorySlots,
+  item: Item,
+  slotName?: InventorySlotName
+): EquipResult {
+  const newInventory = { ...inventory, bag: [...inventory.bag] };
+
+  // Auto-select slot if not specified
+  const targetSlot = slotName || findAvailableSlot(inventory, item);
+
+  if (!targetSlot) {
+    return {
+      success: false,
+      newInventory: inventory,
+      message: 'Inventory is full'
+    };
+  }
+
+  // Check slot compatibility
+  if (!isSlotCompatible(item, targetSlot)) {
+    return {
+      success: false,
+      newInventory: inventory,
+      message: `${item.name} cannot be equipped to ${targetSlot}`
+    };
+  }
+
+  let droppedItem: Item | undefined;
+
+  // Handle the slot assignment
+  switch (targetSlot) {
+    case 'leftHand':
+      droppedItem = newInventory.leftHand || undefined;
+      newInventory.leftHand = item;
+      break;
+    case 'rightHand':
+      droppedItem = newInventory.rightHand || undefined;
+      newInventory.rightHand = item;
+      break;
+    case 'body':
+      droppedItem = newInventory.body || undefined;
+      newInventory.body = item;
+      break;
+    case 'bag1':
+      droppedItem = newInventory.bag[0] || undefined;
+      newInventory.bag[0] = item;
+      break;
+    case 'bag2':
+      droppedItem = newInventory.bag[1] || undefined;
+      newInventory.bag[1] = item;
+      break;
+    case 'bag3':
+      droppedItem = newInventory.bag[2] || undefined;
+      newInventory.bag[2] = item;
+      break;
+    case 'bag4':
+      droppedItem = newInventory.bag[3] || undefined;
+      newInventory.bag[3] = item;
+      break;
+  }
+
+  return {
+    success: true,
+    newInventory,
+    droppedItem,
+    message: droppedItem
+      ? `Equipped ${item.name}, dropped ${droppedItem.name}`
+      : `Equipped ${item.name}`
+  };
+}
+
+/**
+ * Unequips an item from a slot
+ * @param inventory - The current inventory
+ * @param slotName - The slot to unequip from
+ * @returns The unequipped item and new inventory state
+ */
+export function unequipItem(
+  inventory: InventorySlots,
+  slotName: InventorySlotName
+): { item: Item | null; newInventory: InventorySlots } {
+  const newInventory = { ...inventory, bag: [...inventory.bag] };
+  let item: Item | null = null;
+
+  switch (slotName) {
+    case 'leftHand':
+      item = newInventory.leftHand;
+      newInventory.leftHand = null;
+      break;
+    case 'rightHand':
+      item = newInventory.rightHand;
+      newInventory.rightHand = null;
+      break;
+    case 'body':
+      item = newInventory.body;
+      newInventory.body = null;
+      break;
+    case 'bag1':
+      item = newInventory.bag[0];
+      newInventory.bag[0] = null;
+      break;
+    case 'bag2':
+      item = newInventory.bag[1];
+      newInventory.bag[1] = null;
+      break;
+    case 'bag3':
+      item = newInventory.bag[2];
+      newInventory.bag[2] = null;
+      break;
+    case 'bag4':
+      item = newInventory.bag[3];
+      newInventory.bag[3] = null;
+      break;
+  }
+
+  return { item, newInventory };
+}
+
+/**
+ * Checks if a player has a specific key
+ * @param inventory - The player's inventory
+ * @param keyId - The key ID to check for
+ * @returns boolean indicating if player has the key
+ */
+export function hasKey(inventory: InventorySlots, keyId: string): boolean {
+  const allItems = [
+    inventory.leftHand,
+    inventory.rightHand,
+    inventory.body,
+    ...inventory.bag
+  ].filter((item): item is Item => item !== null);
+
+  return allItems.some(item => item.type === 'key' && item.keyId === keyId);
+}
+
+/**
+ * Checks if a player has a light source equipped
+ * @param inventory - The player's inventory
+ * @returns boolean indicating if player has a light source
+ */
+export function hasLightSource(inventory: InventorySlots): boolean {
+  return !!(
+    (inventory.leftHand?.isLightSource) ||
+    (inventory.rightHand?.isLightSource)
+  );
+}
+
+/**
+ * Gets all items from inventory as a flat array (for backward compatibility)
+ * @param inventory - The inventory to flatten
+ * @returns Array of all items
+ */
+export function getAllItems(inventory: InventorySlots): Item[] {
+  return [
+    inventory.leftHand,
+    inventory.rightHand,
+    inventory.body,
+    ...inventory.bag
+  ].filter((item): item is Item => item !== null);
 }
 
 export type EnemyAttackType = 'melee' | 'ranged' | 'sanity' | 'doom';
@@ -240,11 +556,56 @@ export interface Scenario {
   doomEvents: DoomEvent[];
 }
 
+// ============================================================================
+// CONTEXT ACTIONS SYSTEM
+// ============================================================================
+
+export type ContextActionIconType =
+  | 'strength' | 'agility' | 'intellect' | 'willpower'
+  | 'key' | 'lockpick' | 'force' | 'search' | 'interact'
+  | 'read' | 'ritual' | 'cancel' | 'light' | 'item';
+
+export interface SkillCheckRequirement {
+  skill: SkillType;
+  dc: number;
+  bonusDice?: number;
+}
+
+/**
+ * Represents a contextual action that can be performed on a tile, obstacle, or edge
+ */
 export interface ContextAction {
   id: string;
   label: string;
-  iconType: 'strength' | 'insight' | 'agility' | 'interact';
-  difficulty: number;
+  icon: ContextActionIconType;
+  skillCheck?: SkillCheckRequirement;
+  itemRequired?: string;       // Item ID required to perform this action
+  keyRequired?: string;        // Key ID required (for locked doors)
+  apCost: number;
+  enabled: boolean;
+  reason?: string;             // Why the action is disabled
+  successMessage?: string;     // Message to show on success
+  failureMessage?: string;     // Message to show on failure
+  consequences?: {
+    success?: ContextActionEffect;
+    failure?: ContextActionEffect;
+  };
+}
+
+export interface ContextActionEffect {
+  type: 'open_door' | 'break_door' | 'remove_obstacle' | 'trigger_alarm' | 'take_damage' | 'lose_sanity' | 'gain_item' | 'reveal_secret';
+  value?: number;
+  targetId?: string;
+  message?: string;
+}
+
+export interface ContextActionTarget {
+  type: 'tile' | 'obstacle' | 'edge' | 'object';
+  tileId: string;
+  edgeIndex?: number;          // For edge targets (0-5)
+  obstacle?: Obstacle;
+  object?: TileObject;
+  edge?: EdgeData;
 }
 
 export interface FloatingText {

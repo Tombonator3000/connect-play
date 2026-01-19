@@ -7,7 +7,7 @@
  * Need at least 1 success to hit
  */
 
-import { Player, Enemy, Item, SkillType, SkillCheckResult } from '../types';
+import { Player, Enemy, Item, SkillType, SkillCheckResult, getAllItems } from '../types';
 import { BESTIARY } from '../constants';
 
 // Combat result interface
@@ -76,7 +76,9 @@ export function getWeaponBonus(player: Player): { combatDice: number; damage: nu
   let combatDice = 0;
   let damage = 1; // Base unarmed damage
 
-  for (const item of player.inventory) {
+  // Use getAllItems to get items from slot-based inventory
+  const items = getAllItems(player.inventory);
+  for (const item of items) {
     if (item.type === 'weapon' && item.bonus) {
       combatDice += item.bonus;
       // Weapon damage scales with bonus
@@ -233,8 +235,9 @@ export function calculateEnemyDamage(enemy: Enemy, player: Player): {
     sanityDamage = Math.ceil(enemy.damage / 2);
   }
 
-  // Check player armor
-  for (const item of player.inventory) {
+  // Check player armor (using slot-based inventory)
+  const items = getAllItems(player.inventory);
+  for (const item of items) {
     if (item.type === 'armor' && item.bonus) {
       hpDamage = Math.max(0, hpDamage - item.bonus);
     }
@@ -285,7 +288,8 @@ export function canAttackEnemy(player: Player, enemy: Enemy, hasRangedWeapon: bo
  * Check if player has a ranged weapon
  */
 export function hasRangedWeapon(player: Player): boolean {
-  return player.inventory.some(item =>
+  const items = getAllItems(player.inventory);
+  return items.some(item =>
     item.type === 'weapon' &&
     (item.name.toLowerCase().includes('pistol') ||
      item.name.toLowerCase().includes('revolver') ||
