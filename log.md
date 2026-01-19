@@ -1,5 +1,83 @@
 # Development Log
 
+## 2026-01-19: Fix Hero Selection for Scenarios
+
+### Oppgave
+Sørge for at lagde helter faktisk kan velges og brukes i scenarier.
+
+### Problemer Funnet
+
+1. **Player ID Collision** - Når en LegacyHero ble konvertert til Player, brukte systemet `hero.characterClass` som player ID. Dette betydde at to helter av samme klasse (f.eks. to Detectives) ville ha identisk ID, og bare den første fikk lagret utstyret sitt etter et scenario.
+
+2. **Hero Matching Feil** - I `handleScenarioComplete()` var logikken for å matche spillere med legacy-helter ødelagt. Den fant bare *en vilkårlig* valgt helt, ikke den som faktisk matchet spilleren.
+
+3. **Deselection Ikke Mulig** - I HeroArchivePanel kunne brukere velge helter, men ikke fjerne valget. Koden returnerte tidlig hvis helten allerede var valgt.
+
+4. **Kill Tracking Aldri Implementert** - `incrementHeroKills` funksjonen eksisterte men ble aldri kalt. Dette betydde at ingen helter fikk kill-basert XP.
+
+### Løsninger Implementert
+
+#### 1. heroId i Player Interface (types.ts)
+```typescript
+export interface Player extends Character {
+  // ... existing fields ...
+  heroId?: string;  // The unique LegacyHero.id for tracking
+}
+```
+
+#### 2. legacyHeroToPlayer Fix (legacyManager.ts)
+```typescript
+return {
+  id: hero.id,          // Use unique hero ID, not class type
+  heroId: hero.id,      // Also store in dedicated field
+  // ... rest of conversion
+};
+```
+
+#### 3. Deselection Support (HeroArchivePanel.tsx)
+- Endret `handleSelectHero` til å kalle `onSelectHero` selv om helten allerede er valgt
+- ShadowsGame sin `handleSelectLegacyHero` håndterer toggling
+- Oppdatert UI: "Selected" badge er nå en klikkbar knapp med "✓ Selected (click to remove)"
+
+#### 4. Hero Matching Fix (ShadowsGame.tsx)
+```typescript
+// Before (broken):
+const legacyHero = legacyData.heroes.find(h => {
+  return !h.isDead && selectedLegacyHeroIds.includes(h.id);
+});
+
+// After (fixed):
+const heroId = player.heroId || player.id;
+const legacyHero = legacyData.heroes.find(h => h.id === heroId);
+```
+
+#### 5. Kill Tracking (ShadowsGame.tsx)
+La til kall til `incrementHeroKills` når en fiende blir drept:
+```typescript
+if (isKilled) {
+  // Track kill for legacy hero XP rewards
+  const heroId = activePlayer.heroId || activePlayer.id;
+  incrementHeroKills(heroId);
+  // ... rest of kill logic
+}
+```
+
+### Filer Modifisert
+- `src/game/types.ts` - Lagt til `heroId` felt i Player interface
+- `src/game/utils/legacyManager.ts` - Oppdatert `legacyHeroToPlayer` til å bruke unik hero ID
+- `src/game/components/HeroArchivePanel.tsx` - Lagt til deselection funksjonalitet
+- `src/game/ShadowsGame.tsx` - Fikset hero matching og lagt til kill tracking
+
+### Resultat
+- ✅ Legacy-helter kan nå velges OG de-velges i Hero Archive
+- ✅ Flere helter av samme klasse fungerer nå korrekt
+- ✅ Utstyr og stats lagres riktig til rett helt etter scenario
+- ✅ Kill-basert XP fungerer nå for legacy-helter
+- ✅ TypeScript kompilerer uten feil
+- ✅ Build vellykket
+
+---
+
 ## 2026-01-19: The Whispering Elements - Værsystem
 
 ### Oppgave

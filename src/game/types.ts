@@ -147,6 +147,8 @@ export interface Player extends Character {
   madness: string[];
   activeMadness: Madness | null;
   traits: Trait[];
+  // Legacy system - unique hero ID for persistent heroes
+  heroId?: string;  // The unique LegacyHero.id for tracking between scenarios
 }
 
 export interface Item {

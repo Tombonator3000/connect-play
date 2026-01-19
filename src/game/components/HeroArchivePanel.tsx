@@ -73,7 +73,12 @@ export const HeroArchivePanel: React.FC<HeroArchivePanelProps> = ({
   };
 
   const handleSelectHero = (hero: LegacyHero) => {
-    if (selectedHeroIds.includes(hero.id)) return; // Already selected
+    // Allow toggling selection - onSelectHero handles both select and deselect
+    if (selectedHeroIds.includes(hero.id)) {
+      // Deselect - call onSelectHero which toggles in ShadowsGame
+      onSelectHero(hero);
+      return;
+    }
     if (selectedHeroIds.length >= maxHeroesSelectable) return; // Max reached
     onSelectHero(hero);
   };
@@ -217,9 +222,15 @@ export const HeroArchivePanel: React.FC<HeroArchivePanelProps> = ({
           </button>
         )}
         {isSelected && (
-          <div className="mt-3 py-2 text-center text-amber-400 border border-amber-500 rounded">
-            Selected
-          </div>
+          <button
+            className="mt-3 w-full py-2 text-center text-amber-400 border border-amber-500 rounded hover:bg-amber-900/50 hover:text-amber-300 transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSelectHero(hero);
+            }}
+          >
+            ✓ Selected (click to remove)
+          </button>
         )}
       </div>
     );

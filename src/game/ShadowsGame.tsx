@@ -435,14 +435,13 @@ const ShadowsGame: React.FC = () => {
 
     // Build hero results
     const heroResults: HeroScenarioResult[] = state.players.map(player => {
-      // Find the corresponding legacy hero
-      const legacyHero = legacyData.heroes.find(h => {
-        // Match by character class since player.id is the class type
-        return !h.isDead && selectedLegacyHeroIds.includes(h.id);
-      });
+      // Find the corresponding legacy hero using player.heroId or player.id
+      // (player.id is now set to hero.id in legacyHeroToPlayer)
+      const heroId = player.heroId || player.id;
+      const legacyHero = legacyData.heroes.find(h => h.id === heroId);
 
       const survived = !player.isDead;
-      const killCount = heroKillCounts[legacyHero?.id || ''] || 0;
+      const killCount = heroKillCounts[heroId] || 0;
 
       // Calculate individual rewards
       const individualGold = survived
@@ -458,7 +457,7 @@ const ShadowsGame: React.FC = () => {
       );
 
       return {
-        heroId: legacyHero?.id || player.id,
+        heroId,  // Use the resolved heroId
         survived,
         xpEarned: individualXP,
         goldEarned: individualGold,
@@ -1377,6 +1376,10 @@ const ShadowsGame: React.FC = () => {
             const bestiary = BESTIARY[enemy.type];
             addToLog(bestiary.defeatFlavor || `${enemy.name} er beseiret!`);
             addFloatingText(enemy.position.q, enemy.position.r, "DREPT!", "text-accent");
+
+            // Track kill for legacy hero XP rewards
+            const heroId = activePlayer.heroId || activePlayer.id;
+            incrementHeroKills(heroId);
 
             // Update kill objectives
             if (state.activeScenario) {
