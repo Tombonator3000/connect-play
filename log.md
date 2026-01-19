@@ -1,5 +1,88 @@
 # Development Log
 
+## 2026-01-19: REGELBOK.MD Opprettet & CombatUtils Bug Fix
+
+### Oppgave
+1. Lage komplett REGELBOK.MD som referanse for alle spillregler
+2. Verifisere at spillmotoren har korrekte regler implementert
+3. Fikse eventuelle bugs funnet under verifisering
+
+### REGELBOK.MD - Innhold
+
+Opprettet en komplett regelbok med følgende seksjoner:
+
+1. **Kampsystemet (Hero Quest-stil)**
+   - Attack: Våpen bestemmer terninger direkte
+   - Defense: Base + Armor dice
+   - DC 4+ = suksess (50% per terning)
+   - Kritisk treff: +1 bonus skade
+
+2. **Karakterer (6 klasser)**
+   - Veteran (Barbarian) - Fighter, HP 6, Sanity 3
+   - Detective (Dwarf) - Investigator, HP 5, Sanity 4
+   - Professor (Wizard) - Scholar, HP 3, Sanity 6
+   - Occultist (Elf) - Hybrid med spells, HP 3, Sanity 5
+   - Journalist (Rogue) - Scout, HP 4, Sanity 4
+   - Doctor (Healer) - Support, HP 4, Sanity 5
+
+3. **Våpen (9 typer)**
+   - Melee: Unarmed (1d), Knife (2d), Club (2d), Machete (3d)
+   - Ranged: Derringer (2d), Revolver (3d), Shotgun (4d), Rifle (3d), Tommy Gun (5d)
+
+4. **Rustning (4 typer)**
+   - None (+0), Leather Jacket (+1), Trench Coat (+1), Armored Vest (+2)
+
+5. **Monstre (16 typer)**
+   - Minions: Cultist, Mi-Go, Nightgaunt, Moon-Beast
+   - Warriors: Ghoul, Deep One, Sniper, Byakhee, Formless Spawn, Hound
+   - Elites: Dark Priest, Hunting Horror, Dark Young
+   - Bosses: Shoggoth, Star Spawn, Ancient One
+
+6. **Skill Checks, Inventory, Sanity, Legacy, Scenarios**
+
+### BUG FUNNET OG FIKSET: combatUtils.ts
+
+#### Problem
+Filen `src/game/utils/combatUtils.ts` var KORRUPT:
+
+1. `getAttackDice()` funksjonen var ufullstendig - manglet kropp
+2. JSDoc for `getWeaponAttackDice()` manglet `/**` start
+3. `getDefenseDice()` hadde gammel kode fra `getAttackDice()` inni seg
+4. Kode-fragmenter var blandet sammen
+
+#### Root Cause
+Tidligere merge/edit hadde ødelagt filstrukturen - funksjoner ble delvis overskrevet.
+
+#### Fix
+Rewrote seksjonene linje 94-193 med korrekte funksjoner:
+- `getAttackDice()` - Komplett implementasjon som bruker `item.attackDice`
+- `getWeaponAttackDice()` - Full info inkl. range og weaponType
+- `getDefenseDice()` - Korrekt implementasjon som bruker `item.defenseDice`
+
+### Verifisering
+
+**Regelsystemet er nå korrekt implementert:**
+
+| Regel | Implementert i | Status |
+|-------|----------------|--------|
+| Våpen bestemmer attack dice | `getAttackDice()` | ✓ Fikset |
+| Base + Armor = defense dice | `getDefenseDice()` | ✓ Fikset |
+| DC 4+ = suksess | `COMBAT_DC = 4` | ✓ OK |
+| Veteran +1 melee die | `performAttack()` | ✓ OK |
+| Monster attackDice/defenseDice | `BESTIARY` | ✓ OK |
+| Kritisk treff +1 skade | `performAttack()` | ✓ OK |
+
+### Filer Opprettet
+- `REGELBOK.MD` - Komplett regelbok
+
+### Filer Modifisert
+- `src/game/utils/combatUtils.ts` - Bug fix
+
+### TypeScript Kompilering
+- ✓ Kompilerer uten feil etter fix
+
+---
+
 ## 2026-01-19: Hero Quest-stil Kampsystem Implementert
 
 ### Oppgave
