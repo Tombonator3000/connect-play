@@ -429,4 +429,248 @@
   .animate-float {
     animation: float 4s ease-in-out infinite;
   }
+
+  /* ==========================================================================
+     WEATHER SYSTEM ANIMATIONS - "The Whispering Elements"
+     ========================================================================== */
+
+  /* FOG - Drifting cloud particles */
+  @keyframes fog-drift {
+    0% {
+      transform: translateX(-100%) translateY(0) scale(1);
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateX(200%) translateY(-20px) scale(1.2);
+      opacity: 0;
+    }
+  }
+
+  .animate-fog-drift {
+    animation: fog-drift 20s linear infinite;
+  }
+
+  /* RAIN - Falling rain streaks */
+  @keyframes rain-fall {
+    0% {
+      transform: translateY(-100px) rotate(15deg);
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      transform: translateY(100vh) rotate(15deg);
+      opacity: 0;
+    }
+  }
+
+  .animate-rain-fall {
+    animation: rain-fall 0.5s linear infinite;
+  }
+
+  /* Rain container with diagonal effect */
+  .weather-rain {
+    background: linear-gradient(
+      to bottom right,
+      transparent 0%,
+      rgba(100, 150, 200, 0.02) 50%,
+      transparent 100%
+    );
+  }
+
+  /* MIASMA - Floating supernatural particles */
+  @keyframes miasma-float {
+    0%, 100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.3;
+    }
+    25% {
+      transform: translate(20px, -30px) scale(1.1);
+      opacity: 0.5;
+    }
+    50% {
+      transform: translate(-10px, -50px) scale(0.9);
+      opacity: 0.4;
+    }
+    75% {
+      transform: translate(30px, -20px) scale(1.05);
+      opacity: 0.5;
+    }
+  }
+
+  .animate-miasma-float {
+    animation: miasma-float 8s ease-in-out infinite;
+  }
+
+  /* Miasma skull glimpses */
+  @keyframes miasma-skull {
+    0%, 80%, 100% {
+      opacity: 0;
+      transform: scale(0.8) rotate(-10deg);
+    }
+    85%, 95% {
+      opacity: 0.3;
+      transform: scale(1) rotate(0deg);
+    }
+  }
+
+  .animate-miasma-skull {
+    animation: miasma-skull 12s ease-in-out infinite;
+  }
+
+  /* COSMIC STATIC - Reality distortion */
+  @keyframes cosmic-noise {
+    0%, 100% {
+      transform: translate(0, 0);
+    }
+    10% {
+      transform: translate(-2px, 1px);
+    }
+    20% {
+      transform: translate(2px, -1px);
+    }
+    30% {
+      transform: translate(-1px, 2px);
+    }
+    40% {
+      transform: translate(1px, -2px);
+    }
+    50% {
+      transform: translate(-2px, -1px);
+    }
+    60% {
+      transform: translate(2px, 1px);
+    }
+    70% {
+      transform: translate(-1px, -2px);
+    }
+    80% {
+      transform: translate(1px, 2px);
+    }
+    90% {
+      transform: translate(-2px, 2px);
+    }
+  }
+
+  .animate-cosmic-noise {
+    animation: cosmic-noise 0.3s steps(10) infinite;
+  }
+
+  /* Cosmic glitch bars */
+  @keyframes glitch-bar {
+    0%, 90%, 100% {
+      transform: translateX(-100%);
+      opacity: 0;
+    }
+    92%, 98% {
+      transform: translateX(0);
+      opacity: 1;
+    }
+  }
+
+  .animate-glitch-bar {
+    animation: glitch-bar 4s ease-in-out infinite;
+  }
+
+  /* Cosmic glitch overlay */
+  @keyframes cosmic-glitch {
+    0%, 95%, 100% {
+      opacity: 0;
+      transform: translateX(0);
+    }
+    96% {
+      opacity: 0.5;
+      transform: translateX(-5px);
+    }
+    97% {
+      opacity: 0.3;
+      transform: translateX(5px);
+    }
+    98% {
+      opacity: 0.4;
+      transform: translateX(-3px);
+    }
+    99% {
+      opacity: 0.2;
+      transform: translateX(3px);
+    }
+  }
+
+  .animate-cosmic-glitch {
+    animation: cosmic-glitch 3s ease-in-out infinite;
+  }
+
+  /* Cosmic flicker particles */
+  @keyframes cosmic-flicker {
+    0%, 100% {
+      opacity: 0;
+      transform: scale(0);
+    }
+    10%, 90% {
+      opacity: 0.8;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.3;
+      transform: scale(1.2);
+    }
+  }
+
+  .animate-cosmic-flicker {
+    animation: cosmic-flicker 1s ease-in-out infinite;
+  }
+
+  /* Weather visual classes for different weather types */
+  .weather-fog {
+    background: radial-gradient(
+      ellipse at center,
+      rgba(100, 120, 140, 0.1) 0%,
+      rgba(60, 80, 100, 0.2) 50%,
+      rgba(40, 60, 80, 0.3) 100%
+    );
+  }
+
+  .weather-rain {
+    background: linear-gradient(
+      180deg,
+      rgba(40, 60, 80, 0.1) 0%,
+      rgba(60, 80, 100, 0.15) 100%
+    );
+  }
+
+  .weather-miasma {
+    background: radial-gradient(
+      ellipse at 30% 70%,
+      rgba(100, 50, 150, 0.15) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 70% 30%,
+      rgba(50, 100, 50, 0.1) 0%,
+      transparent 50%
+    );
+  }
+
+  .weather-cosmic-static {
+    background: radial-gradient(
+      circle at center,
+      rgba(0, 200, 200, 0.05) 0%,
+      rgba(200, 0, 200, 0.05) 50%,
+      transparent 100%
+    );
+  }
+
+  .weather-clear {
+    /* No visual effect for clear weather */
+  }
 }

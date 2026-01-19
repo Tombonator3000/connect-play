@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package } from 'lucide-react';
-import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp } from './types';
+import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition } from './types';
 import ContextActionBar from './components/ContextActionBar';
 import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
 import { performSkillCheck } from './utils/combatUtils';
-import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES, validateTileConnection, selectRandomConnectableCategory, isDoorRequired, CATEGORY_ZONE_LEVELS, LOCATION_DESCRIPTIONS } from './constants';
+import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES, validateTileConnection, selectRandomConnectableCategory, isDoorRequired, CATEGORY_ZONE_LEVELS, LOCATION_DESCRIPTIONS, getWeatherForDoom, getWeatherEffect, calculateWeatherAgilityPenalty, rollWeatherHorror, WEATHER_EFFECTS } from './constants';
 import { hexDistance, findPath } from './hexUtils';
 import GameBoard from './components/GameBoard';
 import CharacterPanel from './components/CharacterPanel';
@@ -74,7 +74,8 @@ const DEFAULT_STATE: GameState = {
   currentStepIndex: 0,
   questItemsCollected: [],
   exploredTiles: ['0,0'], // Start tile is always explored
-  pendingHorrorChecks: []
+  pendingHorrorChecks: [],
+  weatherState: createDefaultWeatherState()
 };
 
 const ROOM_SHAPES = {
@@ -650,11 +651,22 @@ const ShadowsGame: React.FC = () => {
 
     // Perform skill check if required
     if (action.skillCheck) {
+      // Calculate weather penalty for agility checks
+      let bonusDice = action.skillCheck.bonusDice || 0;
+      if (action.skillCheck.skill === 'agility' && state.weatherState.global) {
+        const weatherPenalty = calculateWeatherAgilityPenalty(state.weatherState.global);
+        if (weatherPenalty > 0) {
+          bonusDice -= weatherPenalty;
+          const weatherEffect = getWeatherEffect(state.weatherState.global.type);
+          addToLog(`${weatherEffect.name} gjør det vanskeligere (-${weatherPenalty} terning)`);
+        }
+      }
+
       const result = performSkillCheck(
         activePlayer,
         action.skillCheck.skill,
         action.skillCheck.dc,
-        action.skillCheck.bonusDice
+        bonusDice
       );
 
       setState(prev => ({ ...prev, lastDiceRoll: result.dice }));
@@ -1490,14 +1502,55 @@ const ShadowsGame: React.FC = () => {
       }
     }
 
+    // Check if weather should change based on doom
+    const newDoom = state.doom - 1;
+    let newWeatherState = state.weatherState;
+
+    // Update weather duration and check for new weather conditions
+    if (newWeatherState.global) {
+      // Decrement weather duration
+      if (newWeatherState.global.duration > 0) {
+        newWeatherState = {
+          ...newWeatherState,
+          global: {
+            ...newWeatherState.global,
+            duration: newWeatherState.global.duration - 1
+          }
+        };
+        // Remove weather if duration expired
+        if (newWeatherState.global.duration === 0) {
+          addToLog("Været letter noe...");
+          newWeatherState = { ...newWeatherState, global: null };
+        }
+      }
+    }
+
+    // Check if doom triggers new weather (only if no current weather or current is less severe)
+    const potentialWeather = getWeatherForDoom(newDoom);
+    if (potentialWeather && !newWeatherState.global) {
+      const effect = getWeatherEffect(potentialWeather);
+      addToLog(`WEATHER: ${effect.name} - ${effect.description}`);
+      newWeatherState = {
+        ...newWeatherState,
+        global: {
+          type: potentialWeather,
+          intensity: newDoom <= 3 ? 'heavy' : newDoom <= 6 ? 'moderate' : 'light',
+          duration: -1 // Permanent until doom changes
+        },
+        isTransitioning: true,
+        transitionProgress: 0
+      };
+    }
+
     setState(prev => ({
       ...prev,
       phase: GamePhase.MYTHOS,
       activePlayerIndex: 0,
-      doom: prev.doom - 1,
+      doom: newDoom,
       round: newRound,
       activeSpell: null,
-      activeScenario: updatedScenario
+      activeScenario: updatedScenario,
+      weatherState: newWeatherState
     }));
   };
 
@@ -1885,17 +1938,18 @@ const ShadowsGame: React.FC = () => {
           </div>
 
           <div className="absolute inset-0 z-0">
-            <GameBoard 
-              tiles={state.board} 
-              players={state.players} 
-              enemies={state.enemies} 
-              selectedEnemyId={state.selectedEnemyId} 
-              onTileClick={(q, r) => handleAction('move', { q, r })} 
-              onEnemyClick={(id) => handleAction('enemy_click', { id })} 
-              floatingTexts={state.floatingTexts} 
-              doom={state.doom} 
+            <GameBoard
+              tiles={state.board}
+              players={state.players}
+              enemies={state.enemies}
+              selectedEnemyId={state.selectedEnemyId}
+              onTileClick={(q, r) => handleAction('move', { q, r })}
+              onEnemyClick={(id) => handleAction('enemy_click', { id })}
+              floatingTexts={state.floatingTexts}
+              doom={state.doom}
               activeModifiers={state.activeModifiers}
               exploredTiles={new Set(state.exploredTiles || [])}
+              weatherState={state.weatherState}
             />
           </div>
 

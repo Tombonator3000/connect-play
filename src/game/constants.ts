@@ -1,4 +1,4 @@
-import { Character, CharacterType, Item, EventCard, Tile, Scenario, Madness, Spell, BestiaryEntry, EnemyType, Obstacle, ObstacleType, EdgeData, TileCategory, SkillType, OccultistSpell, HQWeapon, HQArmor } from './types';
+import { Character, CharacterType, Item, EventCard, Tile, Scenario, Madness, Spell, BestiaryEntry, EnemyType, Obstacle, ObstacleType, EdgeData, TileCategory, SkillType, OccultistSpell, HQWeapon, HQArmor, WeatherEffect, WeatherType, WeatherCondition, WeatherIntensity } from './types';
 
 // ============================================================================
 // 1.1 TILE CONNECTION SYSTEM
@@ -2443,4 +2443,213 @@ export function getCombatModifier(doom: number) {
   if (doom >= 10) return DOOM_COMBAT_MODIFIERS.high;
   if (doom >= 5) return DOOM_COMBAT_MODIFIERS.medium;
   return DOOM_COMBAT_MODIFIERS.low;
+}
+
+// ============================================================================
+// WEATHER SYSTEM - "The Whispering Elements"
+// ============================================================================
+
+/**
+ * Weather effects definition
+ * Each weather type has visual and gameplay impact
+ */
+export const WEATHER_EFFECTS: Record<WeatherType, WeatherEffect> = {
+  // Clear weather - no effects
+  clear: {
+    type: 'clear',
+    name: 'Clear',
+    description: 'The night is still. Stars glimmer coldly overhead.',
+    visualClass: 'weather-clear',
+    visionReduction: 0,
+    agilityPenalty: 0,
+    movementCost: 0,
+    horrorChance: 0,
+    sanityDrain: 0,
+    hidesEnemies: false,
+    blocksRanged: false,
+    opacity: 0,
+    particleCount: 0,
+    animationSpeed: 'slow'
+  },
+
+  // Fog - reduces vision and hides enemies
+  fog: {
+    type: 'fog',
+    name: 'Arkham Fog',
+    description: 'A thick, unnatural fog rolls in from the harbor. Shapes move within it that should not exist.',
+    visualClass: 'weather-fog',
+    visionReduction: 1,       // Reduce vision range by 1
+    agilityPenalty: 0,
+    movementCost: 0,
+    horrorChance: 10,         // 10% chance of minor horror when moving
+    sanityDrain: 0,
+    hidesEnemies: true,       // Enemies at range 2+ are hidden
+    blocksRanged: true,       // Cannot use ranged weapons at range 3+
+    opacity: 0.4,
+    particleCount: 30,
+    animationSpeed: 'slow'
+  },
+
+  // Rain - makes Agility checks harder
+  rain: {
+    type: 'rain',
+    name: 'Cold Rain',
+    description: 'Icy rain lashes down from a sky the color of old bruises. The cobblestones become treacherous.',
+    visualClass: 'weather-rain',
+    visionReduction: 0,
+    agilityPenalty: 1,        // -1 die on Agility checks
+    movementCost: 0,
+    horrorChance: 0,
+    sanityDrain: 0,
+    hidesEnemies: false,
+    blocksRanged: false,
+    opacity: 0.3,
+    particleCount: 100,
+    animationSpeed: 'fast'
+  },
+
+  // Miasma - supernatural fog that drains sanity
+  miasma: {
+    type: 'miasma',
+    name: 'Eldritch Miasma',
+    description: 'A sickly green-purple haze seeps from the ground. It whispers secrets that erode the mind.',
+    visualClass: 'weather-miasma',
+    visionReduction: 1,
+    agilityPenalty: 0,
+    movementCost: 0,
+    horrorChance: 25,         // 25% chance of horror when moving through
+    sanityDrain: 1,           // Lose 1 sanity per round in miasma
+    hidesEnemies: true,
+    blocksRanged: true,
+    opacity: 0.5,
+    particleCount: 50,
+    animationSpeed: 'medium'
+  },
+
+  // Cosmic Static - reality distortion
+  cosmic_static: {
+    type: 'cosmic_static',
+    name: 'Cosmic Static',
+    description: 'Reality tears at the seams. Stars that should not exist flicker through gaps in the sky.',
+    visualClass: 'weather-cosmic-static',
+    visionReduction: 0,
+    agilityPenalty: 1,        // -1 die on Agility (reality warps)
+    movementCost: 1,          // +1 AP to move (space distorts)
+    horrorChance: 15,
+    sanityDrain: 1,
+    hidesEnemies: false,
+    blocksRanged: false,      // But ranged attacks may miss
+    opacity: 0.35,
+    particleCount: 80,
+    animationSpeed: 'medium'
+  }
+};
+
+/**
+ * Get weather effect by type
+ */
+export function getWeatherEffect(type: WeatherType): WeatherEffect {
+  return WEATHER_EFFECTS[type] || WEATHER_EFFECTS.clear;
+}
+
+/**
+ * Get weather intensity modifier
+ * Multiplies effects based on intensity
+ */
+export function getIntensityModifier(intensity: WeatherIntensity): number {
+  switch (intensity) {
+    case 'light': return 0.5;
+    case 'moderate': return 1.0;
+    case 'heavy': return 1.5;
+    default: return 1.0;
+  }
+}
+
+/**
+ * Calculate effective vision range with weather
+ */
+export function calculateWeatherVision(baseVision: number, weather: WeatherCondition | null): number {
+  if (!weather || weather.type === 'clear') return baseVision;
+
+  const effect = getWeatherEffect(weather.type);
+  const modifier = getIntensityModifier(weather.intensity);
+  const reduction = Math.floor(effect.visionReduction * modifier);
+
+  return Math.max(1, baseVision - reduction);
+}
+
+/**
+ * Calculate Agility penalty from weather
+ */
+export function calculateWeatherAgilityPenalty(weather: WeatherCondition | null): number {
+  if (!weather || weather.type === 'clear') return 0;
+
+  const effect = getWeatherEffect(weather.type);
+  const modifier = getIntensityModifier(weather.intensity);
+
+  return Math.floor(effect.agilityPenalty * modifier);
+}
+
+/**
+ * Check if weather blocks ranged attacks
+ */
+export function weatherBlocksRanged(weather: WeatherCondition | null, distance: number): boolean {
+  if (!weather || weather.type === 'clear') return false;
+
+  const effect = getWeatherEffect(weather.type);
+  // Ranged attacks blocked at distance 3+ in bad weather
+  return effect.blocksRanged && distance >= 3;
+}
+
+/**
+ * Check if weather hides enemies at distance
+ */
+export function weatherHidesEnemy(weather: WeatherCondition | null, distance: number): boolean {
+  if (!weather || weather.type === 'clear') return false;
+
+  const effect = getWeatherEffect(weather.type);
+  // Enemies hidden at distance 2+ in obscuring weather
+  return effect.hidesEnemies && distance >= 2;
+}
+
+/**
+ * Roll for weather-induced horror check
+ * @returns true if horror check should be triggered
+ */
+export function rollWeatherHorror(weather: WeatherCondition | null): boolean {
+  if (!weather || weather.type === 'clear') return false;
+
+  const effect = getWeatherEffect(weather.type);
+  const modifier = getIntensityModifier(weather.intensity);
+  const chance = effect.horrorChance * modifier;
+
+  return Math.random() * 100 < chance;
+}
+
+/**
+ * Weather doom events - weather can change based on doom
+ */
+export const WEATHER_DOOM_EVENTS: Record<number, WeatherType> = {
+  10: 'fog',           // At doom 10, fog may roll in
+  7: 'rain',           // At doom 7, cold rain begins
+  4: 'miasma',         // At doom 4, miasma seeps through
+  2: 'cosmic_static'   // At doom 2, reality begins to tear
+};
+
+/**
+ * Check if weather should change based on doom
+ */
+export function getWeatherForDoom(doom: number): WeatherType | null {
+  // 25% chance to trigger weather at threshold
+  const thresholds = Object.keys(WEATHER_DOOM_EVENTS)
+    .map(Number)
+    .sort((a, b) => b - a);
+
+  for (const threshold of thresholds) {
+    if (doom <= threshold && Math.random() < 0.25) {
+      return WEATHER_DOOM_EVENTS[threshold];
+    }
+  }
+
+  return null;
 }

@@ -1,11 +1,13 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { Tile, Player, Enemy, FloatingText, EnemyType, ScenarioModifier } from '../types';
+import { Tile, Player, Enemy, FloatingText, EnemyType, ScenarioModifier, WeatherState } from '../types';
 import {
   User, Skull, DoorOpen, Lock, Flame, Hammer, Brain,
   BookOpen, Anchor, Church, MapPin, Building, ShoppingBag, Fish, PawPrint, Biohazard, Ghost, Bug, Search,
   Trees, AlertTriangle, Fence, Cloud, Archive, Radio, ToggleLeft, Sparkles, Moon, Package, CircleSlash
 } from 'lucide-react';
 import { EnemyTooltip } from './ItemTooltip';
+import WeatherOverlay from './WeatherOverlay';
+import { calculateWeatherVision, weatherHidesEnemy } from '../constants';
 
 // Import AI-generated tile images
 import tileLibrary from '@/assets/tiles/tile-library.png';
@@ -518,6 +520,7 @@ interface GameBoardProps {
   doom: number;
   activeModifiers?: ScenarioModifier[];
   exploredTiles?: Set<string>;
+  weatherState?: WeatherState;
 }
 
 const HEX_SIZE = 95;
@@ -663,7 +666,7 @@ const getDoomLighting = (doom: number) => {
 };
 
 const GameBoard: React.FC<GameBoardProps> = ({
-  tiles, players, enemies, selectedEnemyId, onTileClick, onEnemyClick, floatingTexts = [], doom, activeModifiers = [], exploredTiles = new Set()
+  tiles, players, enemies, selectedEnemyId, onTileClick, onEnemyClick, floatingTexts = [], doom, activeModifiers = [], exploredTiles = new Set(), weatherState
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const hasDragged = useRef(false);
@@ -707,13 +710,18 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const { visibleTiles, tileDistances } = useMemo(() => {
     const visible = new Set<string>();
     const distances = new Map<string, number>();
-    const range = activeModifiers.some(m => m.effect === 'reduced_vision') ? 1 : VISIBILITY_RANGE;
-    
+    // Base vision range, modified by scenario modifiers
+    let baseRange = activeModifiers.some(m => m.effect === 'reduced_vision') ? 1 : VISIBILITY_RANGE;
+    // Apply weather vision reduction
+    const effectiveRange = weatherState?.global
+      ? calculateWeatherVision(baseRange, weatherState.global)
+      : baseRange;
+
     players.filter(p => !p.isDead).forEach(p => {
       tiles.forEach(t => {
         const d = hexDistance(p.position.q, p.position.r, t.q, t.r);
         const key = `${t.q},${t.r}`;
-        if (d <= range) {
+        if (d <= effectiveRange) {
           visible.add(key);
           const existing = distances.get(key);
           if (existing === undefined || d < existing) {
@@ -723,7 +731,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
       });
     });
     return { visibleTiles: visible, tileDistances: distances };
-  }, [players, tiles, activeModifiers]);
+  }, [players, tiles, activeModifiers, weatherState]);
 
   const possibleMoves = useMemo(() => {
     const moves: { q: number, r: number, isExplore: boolean }[] = [];
@@ -759,13 +767,16 @@ const GameBoard: React.FC<GameBoardProps> = ({
       {/* Doom-based chiaroscuro lighting overlay */}
       <div
         className="absolute inset-0 pointer-events-none z-20 transition-all duration-1000"
-        style={{ 
-          background: lighting.gradient, 
-          animation: lighting.animation, 
+        style={{
+          background: lighting.gradient,
+          animation: lighting.animation,
           mixBlendMode: 'overlay',
           boxShadow: lighting.additionalGlow
         }}
       />
+
+      {/* Weather overlay - "The Whispering Elements" */}
+      <WeatherOverlay weather={weatherState?.global || null} />
 
       <div
         style={{ transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`, transition: isDragging ? 'none' : 'transform 0.1s ease-out' }}
@@ -1018,9 +1029,28 @@ const GameBoard: React.FC<GameBoardProps> = ({
           const { x, y } = hexToPixel(enemy.position.q, enemy.position.r);
           const MonsterVisual = getMonsterIcon(enemy.type);
           const isSelected = selectedEnemyId === enemy.id;
+
+          // Calculate distance from nearest player for weather hiding
+          const distanceFromPlayers = players.filter(p => !p.isDead).map(p =>
+            hexDistance(p.position.q, p.position.r, enemy.position.q, enemy.position.r)
+          );
+          const minDistance = Math.min(...distanceFromPlayers);
+          const isHiddenByWeather = weatherState?.global && weatherHidesEnemy(weatherState.global, minDistance);
+          const weatherOpacity = isHiddenByWeather ? 0.3 : 1;
+
           return (
             <EnemyTooltip key={enemy.id} enemy={enemy}>
-              <div className="absolute w-14 h-14 transition-all duration-500 z-40 cursor-pointer" style={{ left: `${x - 28}px`, top: `${y - 28}px`, transform: isSelected ? 'scale(1.2)' : 'scale(1)' }} onClick={(e) => { e.stopPropagation(); if (!hasDragged.current && onEnemyClick) onEnemyClick(enemy.id); }}>
+              <div
+                className="absolute w-14 h-14 transition-all duration-500 z-40 cursor-pointer"
+                style={{
+                  left: `${x - 28}px`,
+                  top: `${y - 28}px`,
+                  transform: isSelected ? 'scale(1.2)' : 'scale(1)',
+                  opacity: weatherOpacity,
+                  filter: isHiddenByWeather ? 'blur(2px)' : 'none'
+                }}
+                onClick={(e) => { e.stopPropagation(); if (!hasDragged.current && onEnemyClick) onEnemyClick(enemy.id); }}
+              >
                 <div className={`w-full h-full rounded-full bg-red-950 border-2 ${isSelected ? 'border-primary shadow-[var(--shadow-doom)]' : 'border-red-900 shadow-[0_0_20px_rgba(220,38,38,0.3)]'} flex items-center justify-center overflow-hidden relative`}>
                   <MonsterVisual.Icon className={MonsterVisual.color} size={24} />
                   <div className="absolute bottom-0 left-0 right-0 h-1 bg-black"><div className="h-full bg-health" style={{ width: `${(enemy.hp / enemy.maxHp) * 100}%` }} /></div>

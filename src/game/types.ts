@@ -784,6 +784,77 @@ export interface ActivePuzzle {
   targetTileId: string;
 }
 
+// ============================================================================
+// WEATHER SYSTEM - "The Whispering Elements"
+// ============================================================================
+
+/**
+ * Weather types that can affect the game board
+ * Each weather has visual and gameplay effects
+ */
+export type WeatherType = 'clear' | 'fog' | 'rain' | 'miasma' | 'cosmic_static';
+
+/**
+ * Intensity levels for weather effects
+ */
+export type WeatherIntensity = 'light' | 'moderate' | 'heavy';
+
+/**
+ * Weather condition affecting the game
+ */
+export interface WeatherCondition {
+  type: WeatherType;
+  intensity: WeatherIntensity;
+  duration: number;              // Rounds remaining (-1 for permanent)
+  sourceId?: string;             // Tile or event that caused this weather
+  affectedTiles?: string[];      // Specific tiles affected (null = global)
+}
+
+/**
+ * Weather effect definitions - gameplay impact
+ */
+export interface WeatherEffect {
+  type: WeatherType;
+  name: string;
+  description: string;
+  visualClass: string;           // CSS class for visual effect
+  // Gameplay effects
+  visionReduction: number;       // Reduce vision range by this amount (0-2)
+  agilityPenalty: number;        // Penalty to Agility checks (0-2)
+  movementCost: number;          // Extra AP cost for movement (0-1)
+  horrorChance: number;          // % chance to trigger minor horror check (0-25)
+  sanityDrain: number;           // Sanity lost per round in weather (0-1)
+  // Special effects
+  hidesEnemies: boolean;         // Enemies harder to see
+  blocksRanged: boolean;         // Ranged attacks blocked
+  // Visual settings
+  opacity: number;               // 0-1 for overlay opacity
+  particleCount: number;         // Number of particles to render
+  animationSpeed: 'slow' | 'medium' | 'fast';
+}
+
+/**
+ * Active weather state for the game
+ */
+export interface WeatherState {
+  global: WeatherCondition | null;        // Global weather affecting entire board
+  local: WeatherCondition[];              // Local weather zones (e.g., miasma on specific tiles)
+  transitionProgress: number;             // 0-100 for weather transition animation
+  isTransitioning: boolean;
+}
+
+/**
+ * Creates default weather state (clear weather)
+ */
+export function createDefaultWeatherState(): WeatherState {
+  return {
+    global: null,
+    local: [],
+    transitionProgress: 100,
+    isTransitioning: false
+  };
+}
+
 // Combat system types
 export interface CombatState {
   enemyId: string;
@@ -837,6 +908,7 @@ export interface GameState {
   questItemsCollected: string[];
   exploredTiles: string[];
   pendingHorrorChecks: string[]; // Enemy IDs that need horror checks
+  weatherState: WeatherState;    // Active weather conditions
 }
 
 // ============================================================================
