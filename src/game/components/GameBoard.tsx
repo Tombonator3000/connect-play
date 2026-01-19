@@ -7,7 +7,8 @@ import {
 } from 'lucide-react';
 import { EnemyTooltip } from './ItemTooltip';
 import WeatherOverlay from './WeatherOverlay';
-import { calculateWeatherVision, weatherHidesEnemy } from '../constants';
+import { calculateWeatherVision, weatherHidesEnemy, getDarkRoomDisplayState } from '../constants';
+import { Flashlight } from 'lucide-react';
 
 // Import AI-generated tile images
 import tileLibrary from '@/assets/tiles/tile-library.png';
@@ -968,6 +969,36 @@ const GameBoard: React.FC<GameBoardProps> = ({
                     }} />
                   </div>
                 )}
+
+                {/* Dark Room Overlay - requires flashlight to see contents */}
+                {tile.isDarkRoom && isVisible && !tile.darkRoomIlluminated && (() => {
+                  const currentPlayer = players[0]; // Check first player (can be extended for multiplayer)
+                  const darkState = getDarkRoomDisplayState(tile, currentPlayer);
+
+                  if (darkState === 'dark') {
+                    return (
+                      <div className="absolute inset-0 z-35 pointer-events-none animate-darkness-pulse">
+                        {/* Dark overlay with swirling darkness effect */}
+                        <div
+                          className="absolute inset-0"
+                          style={{
+                            background: 'radial-gradient(circle at center, rgba(0,0,0,0.7) 0%, rgba(10,5,20,0.9) 70%, rgba(0,0,0,0.95) 100%)'
+                          }}
+                        />
+                        {/* Animated darkness tendrils */}
+                        <div className="absolute inset-0 opacity-60 animate-darkness-swirl" style={{
+                          backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'dark\'%3E%3CfeTurbulence type=\'turbulence\' baseFrequency=\'0.02\' numOctaves=\'3\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23dark)\' opacity=\'0.5\'/%3E%3C/svg%3E")',
+                        }} />
+                        {/* Flashlight required indicator */}
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+                          <Flashlight className="text-amber-300/60 animate-pulse" size={28} />
+                          <span className="text-[8px] font-bold text-amber-300/60 uppercase tracking-wider">Darkness</span>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
               
               {/* Hex border with visibility-based styling */}

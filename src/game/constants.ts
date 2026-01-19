@@ -1,4 +1,4 @@
-import { Character, CharacterType, Item, EventCard, Tile, Scenario, Madness, Spell, BestiaryEntry, EnemyType, Obstacle, ObstacleType, EdgeData, TileCategory, SkillType, OccultistSpell, HQWeapon, HQArmor, WeatherEffect, WeatherType, WeatherCondition, WeatherIntensity } from './types';
+import { Character, CharacterType, Item, EventCard, Tile, Scenario, Madness, Spell, BestiaryEntry, EnemyType, Obstacle, ObstacleType, EdgeData, TileCategory, SkillType, OccultistSpell, HQWeapon, HQArmor, WeatherEffect, WeatherType, WeatherCondition, WeatherIntensity, DarkRoomDiscoveryType, DarkRoomContent, createDarkRoomContent, Player, hasLightSource } from './types';
 
 // ============================================================================
 // 1.1 TILE CONNECTION SYSTEM
@@ -2690,5 +2690,215 @@ export function getWeatherForDoom(doom: number): WeatherType | null {
     }
   }
 
+  return null;
+}
+
+// ============================================================================
+// DARK ROOM SYSTEM - "What Lurks in the Shadows"
+// ============================================================================
+
+/**
+ * Weighted discovery chances for dark rooms
+ * Higher weight = more common
+ */
+export const DARK_ROOM_DISCOVERY_WEIGHTS: Record<DarkRoomDiscoveryType, number> = {
+  nothing: 25,           // 25% - Most common, just darkness
+  ambush: 15,            // 15% - Enemy waiting in darkness
+  horror: 12,            // 12% - Something horrible
+  cache: 10,             // 10% - Useful supplies
+  corpse: 10,            // 10% - Body with items (and horror check)
+  clue: 8,               // 8% - Investigation bonus
+  treasure: 6,           // 6% - Valuable items
+  trap: 5,               // 5% - Hidden trap
+  nest: 4,               // 4% - Multiple weak enemies
+  cultist_shrine: 3,     // 3% - Risky but rewarding
+  survivor: 1,           // 1% - Rare helpful NPC
+  ancient_secret: 1      // 1% - Very rare powerful discovery
+};
+
+/**
+ * Tile names that are likely to be dark rooms
+ * These are tiles that would naturally have no light
+ */
+export const DARK_ROOM_CANDIDATE_TILES: string[] = [
+  // Basements and underground
+  'Dark Cellar', 'Wine Cellar', 'Cold Storage', 'Flooded Basement',
+  'Coal Chute', 'Root Cellar', 'Underground Vault', 'Sewer Access',
+  'Maintenance Tunnel', 'Smugglers Cache',
+  // Crypts and deep areas
+  'Ancient Tomb', 'Ritual Chamber', 'Bone Pit', 'Forgotten Tomb',
+  'Cultist Sanctum', 'Ancient Cavern', 'Star Chamber', 'The Pit',
+  'Idol Chamber', 'The Black Pool', 'Sacrificial Chamber',
+  // Dark corridors
+  'Darkened Hallway', 'Servants Passage', 'Cell Block Corridor',
+  // Other dark locations
+  'Sealed Vault', 'Hidden Passage', 'Abandoned Mine', 'Storm Drain',
+  'Collapsed Mine Entrance', 'Emergency Exit', 'Hidden Stairwell'
+];
+
+/**
+ * Zone levels that have higher chance of dark rooms
+ */
+export const DARK_ROOM_ZONE_CHANCE: Record<number, number> = {
+  2: 0.1,    // Upper floors: 10%
+  1: 0.15,   // Ground floor: 15%
+  0: 0.05,   // Exterior: 5%
+  [-1]: 0.4, // Basement: 40%
+  [-2]: 0.6  // Deep underground: 60%
+};
+
+/**
+ * Items that can be found in dark room discoveries
+ */
+export const DARK_ROOM_LOOT_TABLES = {
+  random_valuable: [
+    { id: 'gold_coins', name: 'Gold Coins', type: 'relic' as const, effect: '+50 gold value', goldCost: 50, slotType: 'bag' as const },
+    { id: 'silver_pendant', name: 'Silver Pendant', type: 'relic' as const, effect: '+1 Willpower checks', bonus: 1, goldCost: 75, slotType: 'bag' as const },
+    { id: 'antique_watch', name: 'Antique Watch', type: 'relic' as const, effect: 'Valuable collector item', goldCost: 100, slotType: 'bag' as const }
+  ],
+  random_supplies: [
+    { id: 'bandage', name: 'Bandage', type: 'consumable' as const, effect: 'Heal 1 HP', bonus: 1, goldCost: 25, uses: 1, maxUses: 1, slotType: 'bag' as const },
+    { id: 'flash', name: 'Flashlight', type: 'tool' as const, effect: 'Removes Darkness penalty', bonus: 1, goldCost: 50, isLightSource: true, slotType: 'hand' as const },
+    { id: 'matches', name: 'Matches', type: 'consumable' as const, effect: 'Light source for 3 rounds', uses: 3, maxUses: 3, goldCost: 10, slotType: 'bag' as const },
+    { id: 'first_aid', name: 'First Aid Kit', type: 'consumable' as const, effect: 'Heal 2 HP', bonus: 2, goldCost: 100, uses: 3, maxUses: 3, slotType: 'bag' as const }
+  ],
+  random_from_corpse: [
+    { id: 'common_key', name: 'Rusty Key', type: 'key' as const, effect: 'Opens a nearby lock', keyId: 'common', goldCost: 0, slotType: 'bag' as const },
+    { id: 'journal_page', name: 'Journal Page', type: 'clue' as const, effect: '+1 Insight', bonus: 1, goldCost: 0, slotType: 'bag' as const },
+    { id: 'derringer', name: 'Derringer', type: 'weapon' as const, effect: '2 attack dice, range 2', attackDice: 2, weaponType: 'ranged' as const, range: 2, ammo: 2, goldCost: 100, slotType: 'hand' as const },
+    { id: 'knife', name: 'Knife', type: 'weapon' as const, effect: '2 attack dice, silent', attackDice: 2, weaponType: 'melee' as const, ammo: -1, silent: true, goldCost: 50, slotType: 'hand' as const }
+  ],
+  rare_relic: [
+    { id: 'elder_sign', name: 'Elder Sign', type: 'relic' as const, effect: 'Opens sealed doors, banishes spirits', goldCost: 750, slotType: 'bag' as const },
+    { id: 'protective_ward', name: 'Protective Ward', type: 'relic' as const, effect: '+1 die on Horror checks', bonus: 1, goldCost: 300, slotType: 'bag' as const },
+    { id: 'ancient_tome', name: 'Ancient Tome', type: 'relic' as const, effect: '+3 Insight, -1 Sanity on read', bonus: 3, goldCost: 400, slotType: 'bag' as const }
+  ]
+};
+
+/**
+ * Enemy types that can be found in dark room ambushes
+ */
+export const DARK_ROOM_AMBUSH_ENEMIES: Record<string, { enemies: EnemyType[], count: [number, number] }> = {
+  ambush: { enemies: ['ghoul', 'cultist', 'deepone'], count: [1, 1] },
+  nest: { enemies: ['cultist', 'mi-go'], count: [2, 3] }
+};
+
+/**
+ * Randomly selects a discovery type based on weights
+ */
+export function rollDarkRoomDiscovery(): DarkRoomDiscoveryType {
+  const totalWeight = Object.values(DARK_ROOM_DISCOVERY_WEIGHTS).reduce((a, b) => a + b, 0);
+  let roll = Math.random() * totalWeight;
+
+  for (const [type, weight] of Object.entries(DARK_ROOM_DISCOVERY_WEIGHTS)) {
+    roll -= weight;
+    if (roll <= 0) {
+      return type as DarkRoomDiscoveryType;
+    }
+  }
+
+  return 'nothing';
+}
+
+/**
+ * Creates dark room content with randomized specifics
+ */
+export function generateDarkRoomContent(): DarkRoomContent {
+  const discoveryType = rollDarkRoomDiscovery();
+  const content = createDarkRoomContent(discoveryType);
+
+  // Randomize specific items/enemies based on type
+  if (content.items && content.items[0]?.startsWith('random_')) {
+    const lootTable = content.items[0] as keyof typeof DARK_ROOM_LOOT_TABLES;
+    const possibleItems = DARK_ROOM_LOOT_TABLES[lootTable];
+    if (possibleItems) {
+      const randomItem = possibleItems[Math.floor(Math.random() * possibleItems.length)];
+      content.items = [randomItem.id];
+    }
+  }
+
+  // Randomize enemy types for ambushes
+  if (content.enemyTypes && (discoveryType === 'ambush' || discoveryType === 'nest')) {
+    const config = DARK_ROOM_AMBUSH_ENEMIES[discoveryType];
+    const randomEnemy = config.enemies[Math.floor(Math.random() * config.enemies.length)];
+    content.enemyTypes = [randomEnemy];
+    content.enemyCount = config.count[0] + Math.floor(Math.random() * (config.count[1] - config.count[0] + 1));
+  }
+
+  return content;
+}
+
+/**
+ * Determines if a tile should be a dark room based on its properties
+ */
+export function shouldBeDarkRoom(tile: Tile): boolean {
+  // Check if tile name is in candidate list
+  if (DARK_ROOM_CANDIDATE_TILES.includes(tile.name)) {
+    return true;
+  }
+
+  // Zone level based chance
+  const zoneChance = DARK_ROOM_ZONE_CHANCE[tile.zoneLevel] || 0;
+  if (Math.random() < zoneChance) {
+    // Additional filters - some tiles shouldn't be dark
+    const excludedCategories = ['facade', 'foyer', 'urban'];
+    if (tile.category && excludedCategories.includes(tile.category)) {
+      return false;
+    }
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Checks if a player can see the contents of a dark room
+ * @param player - The player to check
+ * @param tile - The tile to check
+ * @returns boolean indicating if player can see dark room contents
+ */
+export function canSeeDarkRoomContents(player: Player, tile: Tile): boolean {
+  // Not a dark room - always visible
+  if (!tile.isDarkRoom) return true;
+
+  // Already illuminated - always visible
+  if (tile.darkRoomIlluminated) return true;
+
+  // Player must be on the tile and have a light source
+  const isOnTile = player.position.q === tile.q && player.position.r === tile.r;
+  if (!isOnTile) return false;
+
+  return hasLightSource(player.inventory);
+}
+
+/**
+ * Gets the display state for a dark room tile
+ */
+export type DarkRoomDisplayState = 'hidden' | 'dark' | 'illuminated';
+
+export function getDarkRoomDisplayState(tile: Tile, player: Player | null): DarkRoomDisplayState {
+  if (!tile.isDarkRoom) return 'illuminated';
+  if (tile.darkRoomIlluminated) return 'illuminated';
+
+  if (player && canSeeDarkRoomContents(player, tile)) {
+    return 'illuminated';
+  }
+
+  // Tile is visible but contents are dark
+  if (tile.visibility === 'visible' || tile.visibility === 'revealed') {
+    return 'dark';
+  }
+
+  return 'hidden';
+}
+
+/**
+ * Gets the item object from a loot table by ID
+ */
+export function getDarkRoomItem(itemId: string): Item | null {
+  for (const items of Object.values(DARK_ROOM_LOOT_TABLES)) {
+    const found = items.find(item => item.id === itemId);
+    if (found) return found as Item;
+  }
   return null;
 }

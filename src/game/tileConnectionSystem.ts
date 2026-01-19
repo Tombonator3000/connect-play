@@ -9,7 +9,8 @@
  * Inspired by Wave Function Collapse algorithm.
  */
 
-import { TileCategory, FloorType, EdgeData, Tile, ZoneLevel } from './types';
+import { TileCategory, FloorType, EdgeData, Tile, ZoneLevel, DarkRoomContent } from './types';
+import { shouldBeDarkRoom, generateDarkRoomContent, DARK_ROOM_CANDIDATE_TILES } from './constants';
 
 // ============================================================================
 // 1. EDGE TYPES
@@ -1298,7 +1299,8 @@ export function createTileFromTemplate(
   // Count non-wall exits to determine if dead end
   const exitCount = rotatedEdges.filter(e => e !== 'WALL' && e !== 'WINDOW').length;
 
-  return {
+  // Determine if this should be a dark room
+  const baseTile: Tile = {
     id: `tile_${q}_${r}_${Date.now()}`,
     q,
     r,
@@ -1315,6 +1317,19 @@ export function createTileFromTemplate(
     watermarkIcon: template.watermarkIcon,
     isDeadEnd: exitCount <= 1
   };
+
+  // Check if this tile should be dark
+  // Named dark rooms are always dark, others have zone-based chance
+  const isNamedDarkRoom = DARK_ROOM_CANDIDATE_TILES.includes(template.name);
+  const shouldBeDark = isNamedDarkRoom || shouldBeDarkRoom(baseTile);
+
+  if (shouldBeDark) {
+    baseTile.isDarkRoom = true;
+    baseTile.darkRoomIlluminated = false;
+    baseTile.darkRoomContent = generateDarkRoomContent();
+  }
+
+  return baseTile;
 }
 
 /**

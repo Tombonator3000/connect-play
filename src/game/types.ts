@@ -578,6 +578,84 @@ export type TileCategory =
 
 export type FloorType = 'wood' | 'cobblestone' | 'tile' | 'stone' | 'grass' | 'dirt' | 'water' | 'ritual';
 
+// ============================================================================
+// DARK ROOM SYSTEM - "What Lurks in the Shadows"
+// ============================================================================
+
+/**
+ * Types of discoveries that can be made when illuminating a dark room
+ * These range from helpful to horrifying
+ */
+export type DarkRoomDiscoveryType =
+  | 'treasure'           // Valuable items left behind
+  | 'cache'              // Hidden supplies
+  | 'clue'               // Investigation clue
+  | 'corpse'             // Dead body with items (and possible horror)
+  | 'survivor'           // NPC survivor (rare, gives hint)
+  | 'nothing'            // Just darkness
+  | 'ambush'             // Hidden enemy attacks!
+  | 'nest'               // Multiple weak enemies
+  | 'horror'             // Something that causes sanity damage
+  | 'trap'               // A trap activates
+  | 'cultist_shrine'     // Occult shrine (sanity cost, but insight gain)
+  | 'ancient_secret';    // Rare powerful discovery
+
+/**
+ * Represents what is hidden in a dark room until illuminated
+ */
+export interface DarkRoomContent {
+  discoveryType: DarkRoomDiscoveryType;
+  description: string;           // Flavor text when revealed
+  items?: string[];              // Item IDs to spawn
+  enemyTypes?: EnemyType[];      // Enemy types to spawn
+  enemyCount?: number;           // How many enemies
+  sanityEffect?: number;         // Positive = gain, negative = lose
+  insightGain?: number;          // Insight gained from discovery
+  trapDamage?: number;           // Damage if it's a trap
+  isRevealed: boolean;           // Has this been illuminated?
+  requiresSearch?: boolean;      // Must search after illuminating to get items
+}
+
+/**
+ * Creates a dark room content based on discovery type
+ */
+export function createDarkRoomContent(type: DarkRoomDiscoveryType): DarkRoomContent {
+  const base: DarkRoomContent = {
+    discoveryType: type,
+    description: '',
+    isRevealed: false
+  };
+
+  switch (type) {
+    case 'treasure':
+      return { ...base, description: 'Your light reveals a forgotten stash—someone left in a hurry.', items: ['random_valuable'], requiresSearch: true };
+    case 'cache':
+      return { ...base, description: 'Emergency supplies, hidden from looters. Still intact.', items: ['random_supplies'], requiresSearch: true };
+    case 'clue':
+      return { ...base, description: 'Writing on the wall, only visible in the light. A warning? A message?', insightGain: 1 };
+    case 'corpse':
+      return { ...base, description: 'A body. Long dead. Their final possession still clutched in frozen fingers.', items: ['random_from_corpse'], sanityEffect: -1, requiresSearch: true };
+    case 'survivor':
+      return { ...base, description: 'Eyes blink in your light. A survivor! They whisper a warning before fleeing.', insightGain: 2, sanityEffect: 1 };
+    case 'nothing':
+      return { ...base, description: 'Just shadows. The darkness held nothing but your own fear.' };
+    case 'ambush':
+      return { ...base, description: 'MOVEMENT! Something lunges from the darkness!', enemyTypes: ['ghoul'], enemyCount: 1 };
+    case 'nest':
+      return { ...base, description: 'You\'ve disturbed a nest. Shapes scatter and hiss in the sudden light.', enemyTypes: ['cultist'], enemyCount: 2 };
+    case 'horror':
+      return { ...base, description: 'Your light reveals something that should not exist. You cannot unsee it.', sanityEffect: -2 };
+    case 'trap':
+      return { ...base, description: 'CLICK. Your light triggered something. Too late to dodge.', trapDamage: 2 };
+    case 'cultist_shrine':
+      return { ...base, description: 'A makeshift altar. Symbols of power. Knowledge has a price.', sanityEffect: -1, insightGain: 3 };
+    case 'ancient_secret':
+      return { ...base, description: 'Ancient writing covers the walls. This place predates the building above.', items: ['rare_relic'], insightGain: 2 };
+    default:
+      return base;
+  }
+}
+
 export interface Tile {
   id: string;
   q: number;
@@ -606,6 +684,10 @@ export interface Tile {
     duration: number; // Rounds remaining (-1 = permanent)
     source?: 'ritual' | 'event' | 'tile_feature'; // What caused this weather
   };
+  // Dark room system - requires light source to see contents
+  isDarkRoom?: boolean;           // Is this room shrouded in darkness?
+  darkRoomContent?: DarkRoomContent;  // Hidden content revealed when illuminated
+  darkRoomIlluminated?: boolean;  // Has this dark room been illuminated?
 }
 
 export type VictoryType = 'escape' | 'assassination' | 'collection' | 'survival' | 'ritual' | 'investigation';
