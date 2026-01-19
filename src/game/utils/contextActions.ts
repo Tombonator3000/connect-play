@@ -648,6 +648,108 @@ export function getTileObjectActions(
         successMessage: 'Freedom at last!'
       });
       break;
+
+    case 'trap':
+      actions.push({
+        id: 'disarm_trap',
+        label: 'Disarm Trap (Agi 4)',
+        icon: 'agility',
+        skillCheck: { skill: 'agility', dc: 4 },
+        apCost: 1,
+        enabled: true,
+        successMessage: 'You carefully disarm the trap mechanism.',
+        failureMessage: 'The trap triggers!',
+        consequences: {
+          success: { type: 'remove_obstacle', message: 'The trap is now safe.' },
+          failure: { type: 'take_damage', value: 2, message: 'The trap springs on you!' }
+        }
+      });
+      actions.push({
+        id: 'examine_trap',
+        label: 'Examine Trap (Int 3)',
+        icon: 'intellect',
+        skillCheck: { skill: 'intellect', dc: 3 },
+        apCost: 1,
+        enabled: true,
+        successMessage: 'You identify the trap mechanism and weak points.',
+        failureMessage: 'The trap mechanism is too complex.'
+      });
+      actions.push({
+        id: 'trigger_trap',
+        label: 'Trigger from Distance',
+        icon: 'interact',
+        apCost: 1,
+        enabled: true,
+        successMessage: 'The trap triggers harmlessly.',
+        consequences: {
+          success: { type: 'remove_obstacle', message: 'The trap is spent.' }
+        }
+      });
+      break;
+
+    case 'fog_wall':
+      actions.push({
+        id: 'dispel_fog',
+        label: 'Dispel Fog (Wil 4)',
+        icon: 'willpower',
+        skillCheck: { skill: 'willpower', dc: 4 },
+        apCost: 1,
+        enabled: true,
+        successMessage: 'Your will parts the unnatural fog!',
+        failureMessage: 'The fog resists your attempts.',
+        consequences: {
+          success: { type: 'remove_obstacle' },
+          failure: { type: 'lose_sanity', value: 1 }
+        }
+      });
+      actions.push({
+        id: 'pass_through_fog',
+        label: 'Pass Through',
+        icon: 'interact',
+        apCost: 1,
+        enabled: true,
+        successMessage: 'You blindly pass through the fog.',
+        consequences: {
+          success: { type: 'lose_sanity', value: 1, message: 'The fog whispers secrets you cannot unhear.' }
+        }
+      });
+      break;
+
+    case 'gate':
+      const hasGateKey = hasKey(player.inventory, 'gate_key');
+      actions.push({
+        id: 'open_gate',
+        label: 'Open Gate',
+        icon: 'key',
+        apCost: 1,
+        enabled: hasGateKey,
+        reason: hasGateKey ? undefined : 'You need a gate key',
+        successMessage: 'The gate creaks open.'
+      });
+      actions.push({
+        id: 'climb_gate',
+        label: 'Climb Over (Agi 4)',
+        icon: 'agility',
+        skillCheck: { skill: 'agility', dc: 4 },
+        apCost: 2,
+        enabled: true,
+        successMessage: 'You clamber over the gate.',
+        failureMessage: 'You slip and fall back.',
+        consequences: {
+          failure: { type: 'take_damage', value: 1 }
+        }
+      });
+      actions.push({
+        id: 'force_gate',
+        label: 'Force Gate (Str 5)',
+        icon: 'strength',
+        skillCheck: { skill: 'strength', dc: 5 },
+        apCost: 2,
+        enabled: true,
+        successMessage: 'The gate bursts open!',
+        failureMessage: 'The gate is too sturdy.'
+      });
+      break;
   }
 
   // Always add cancel

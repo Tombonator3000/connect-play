@@ -1,5 +1,100 @@
 # Development Log
 
+## 2026-01-19: Hex Tiles System - Sperringer, Farer & Puzzles
+
+### Oppgave
+Implementere hex tiles system med:
+- Sperringer: Trap, Altar, Gate, Fog Walls, locked_door, rubble
+- Farer: Brann og feller med HP-skade ved bevegelse
+- Puzzles: Elder Sign sekvens koblet til puzzle doors
+- Dead-ends: Visuelle markører for blindgater
+
+### Implementert
+
+#### 1. Puzzle Door → PuzzleModal Flow (ShadowsGame.tsx)
+- Importert og integrert `PuzzleModal` komponent
+- Lagt til `handlePuzzleSolve()` callback som:
+  - Ved suksess: Åpner puzzle door, fjerner locked_door object, logger "PUZZLE SOLVED!"
+  - Ved fail: -1 Sanity, trigger madness check, logger "PUZZLE FAILED!"
+- `solve_puzzle` action setter `activePuzzle` state og åpner modal
+- Modal viser memory-game (Simon-style) med Elder Sign tema
+
+#### 2. Trap/Fire Damage ved Bevegelse (ShadowsGame.tsx)
+I `handleAction('move')`:
+- **Trap object**: 2 HP damage, fjerner fellen etter triggering
+- **Fire object**: 1 HP damage per bevegelse
+- **Fire obstacle**: 1 HP damage per bevegelse
+- Visuell feedback: Screen shake, floating text, log messages
+
+#### 3. Trap Actions (contextActions.ts)
+Nye handlinger for `trap` object:
+- `disarm_trap` - Agility 4 check, fjerner felle
+- `examine_trap` - Intellect 3 check, gir info
+- `trigger_trap` - Trigger fra avstand (trygg)
+
+#### 4. Fog Wall Actions (contextActions.ts)
+Nye handlinger for `fog_wall` object:
+- `dispel_fog` - Willpower 4 check, fjerner tåke (-1 SAN ved fail)
+- `pass_through_fog` - Passerer gjennom (-1 SAN)
+
+#### 5. Gate Actions (contextActions.ts)
+Nye handlinger for `gate` object:
+- `open_gate` - Krever gate_key
+- `climb_gate` - Agility 4 check, 2 AP
+- `force_gate` - Strength 5 check, 2 AP
+
+#### 6. Utvidet Visuell Rendering (GameBoard.tsx)
+Nye ikoner og effekter for alle tile objects:
+| Object Type | Ikon | Farge/Effekt |
+|-------------|------|--------------|
+| fire | Flame | Orange, pulserende glow |
+| locked_door | Lock | Accent, "Locked" label |
+| rubble | Hammer | Stone-farget, rotert |
+| trap | AlertTriangle | Rød, pulserende glow |
+| gate | Fence | Grå, blocking indicator |
+| fog_wall | Cloud | Purple, ethereal glow |
+| altar | Sparkles | Purple, mystisk |
+| bookshelf | BookOpen | Amber |
+| crate/chest/cabinet | Package | Amber, dimmed når søkt |
+| barricade | Hammer | Amber, rotert |
+| mirror | Moon | Slate, refleksjon glow |
+| radio | Radio | Grønn, pulserende |
+| switch | ToggleLeft | Gul |
+| statue | Skull | Stone-farget |
+| exit_door | DoorOpen | Emerald, pulserende glow |
+
+#### 7. Dead-End Marking System
+**types.ts:**
+- Lagt til `isDeadEnd?: boolean` på Tile interface
+
+**ShadowsGame.tsx (spawnRoom):**
+- `checkDeadEnd()` funksjon teller ikke-wall/blocked edges
+- Tiles med ≤1 exit markeres automatisk som dead-end
+
+**GameBoard.tsx:**
+- CircleSlash ikon vises i nedre høyre hjørne på dead-end tiles
+- Halvtransparent rød farge (50% opacity)
+- Skjules når tile har object
+
+### Filer Opprettet
+Ingen nye filer
+
+### Filer Modifisert
+- `src/game/ShadowsGame.tsx` - PuzzleModal import, handlePuzzleSolve, trap damage, dead-end calc
+- `src/game/utils/contextActions.ts` - Trap, fog_wall, gate actions
+- `src/game/components/GameBoard.tsx` - Utvidet object rendering, dead-end marker
+- `src/game/types.ts` - isDeadEnd property på Tile
+
+### Resultat
+Hex tiles systemet er nå komplett:
+- ✅ Puzzle doors trigget Elder Sign memory game
+- ✅ Traps og fire gir skade ved bevegelse
+- ✅ Alle tile objects har visuelle ikoner
+- ✅ Dead-end tiles markeres visuelt
+- ✅ Context actions for trap, fog_wall, gate
+
+---
+
 ## 2026-01-19: Bug Fix - Create Hero TypeError
 
 ### Problem
