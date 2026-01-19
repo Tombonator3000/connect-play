@@ -338,7 +338,7 @@ const OptionsMenu: React.FC<OptionsMenuProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/80 backdrop-blur-sm">
       <div className="bg-card border-2 border-primary rounded-2xl shadow-[var(--shadow-doom)] w-full max-w-4xl mx-4 max-h-[90vh] overflow-hidden flex flex-col">
         {/* Container */}
         <div className="flex flex-1 overflow-hidden">
