@@ -38,19 +38,17 @@
 - Reset Data clears game save and returns to main menu
 
 ### Session 4 - Context-Sensitive Tooltips
-- Created `src/game/components/ItemTooltip.tsx` with `ItemTooltip` and `SpellTooltip` components
+- Created `src/game/components/ItemTooltip.tsx` with `ItemTooltip`, `SpellTooltip`, and `EnemyTooltip` components
 - Added tooltips to inventory items in CharacterPanel showing name, type, effect, bonus, cost, and stat modifiers
 - Added tooltips to spells in ActionBar grimoire menu showing name, cost, description, effect type, value, and range
+- Added tooltips to enemies on GameBoard showing name, type, damage, horror, traits, and bestiary lore
 - Uses shadcn Tooltip component with custom styling matching game aesthetic
 
 ### Files Created/Modified This Session
-- `docs/agents.md` - Agent instructions
-- `docs/log.md` - This development log
-- `src/game/components/OptionsMenu.tsx` - Full options menu component
-- `src/game/components/ItemTooltip.tsx` - Tooltip components for items and spells
+- `src/game/components/ItemTooltip.tsx` - Tooltip components for items, spells, and enemies
 - `src/game/components/CharacterPanel.tsx` - Added item tooltips
 - `src/game/components/ActionBar.tsx` - Added spell tooltips
-- `src/game/ShadowsGame.tsx` - Integrated options menu
+- `src/game/components/GameBoard.tsx` - Added enemy tooltips
 
 ---
 
