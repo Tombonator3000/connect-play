@@ -1646,3 +1646,103 @@ Implementert `autoFixScenario()` som automatisk retter vanlige problemer:
 
 ### Resultat
 Alle dynamisk genererte scenarier valideres nå før de brukes. Dette sikrer at spillere aldri får et umulig scenario, og gir bedre spillopplevelse ved å garantere at seier alltid er teoretisk mulig.
+
+---
+
+## 2026-01-19: Inventory Interaksjon - Bruk Items og Bytte Våpen
+
+### Oppgave
+Implementere funksjonalitet for å:
+1. Bruke items fra inventory (consumables som healer HP/Sanity)
+2. Bytte ut våpen til "hender" (unarmed) hvis spilleren ønsker det
+3. Flytte items mellom bag og hand slots
+
+### Løsning
+
+#### CharacterPanel.tsx - Oppdatert med klikkbare inventory slots
+
+**Nye props:**
+```typescript
+interface CharacterPanelProps {
+  player: Player | null;
+  onUseItem?: (item: Item, slotName: InventorySlotName) => void;
+  onUnequipItem?: (slotName: InventorySlotName) => void;
+  onEquipFromBag?: (bagIndex: number, targetSlot: 'leftHand' | 'rightHand') => void;
+  onDropItem?: (slotName: InventorySlotName) => void;
+}
+```
+
+**Ny funksjonalitet:**
+- Slots er nå klikkbare når de inneholder items
+- Klikk på en slot åpner et action menu med relevante handlinger
+- Visuell indikator for antall bruk igjen på consumables
+- Handlinger tilgjengelig:
+  - **USE** - For consumables (Medical Kit, Whiskey, etc.)
+  - **UNEQUIP** - Flytter våpen/armor fra hender/body til bag
+  - **EQUIP TO HAND** - Flytter våpen/tool fra bag til ledig hånd
+  - **DROP** - Kaster item (fjerner permanent)
+
+#### ShadowsGame.tsx - Nye inventory handlers
+
+**handleUseItem(item, slotName):**
+- Bruker consumable items
+- Parser item.effect for å finne HP eller Sanity healing
+- Oppdaterer player HP/Sanity basert på item.bonus
+- Dekrementerer item.uses eller fjerner item hvis oppbrukt
+- Viser floating text for healing effekt
+
+**handleUnequipItem(slotName):**
+- Fjerner item fra leftHand, rightHand, eller body
+- Flytter item til første ledige bag slot
+- Feilmelding hvis bag er full
+
+**handleEquipFromBag(bagIndex, targetSlot):**
+- Flytter weapon/tool fra bag til hånd
+- Validerer at target slot er ledig
+- Validerer at item kan utstyres til hender
+
+**handleDropItem(slotName):**
+- Fjerner item fra inventory permanent
+- Logger hvilken item som droppes
+
+### Unarmed Combat
+Systemet støttet allerede "unarmed" (1 attack die) i combatUtils.ts:
+```typescript
+// No weapon = use base attack dice (unarmed)
+const baseAttack = player.baseAttackDice || 1;
+return {
+  attackDice: baseAttack,
+  weaponName: 'Unarmed'
+};
+```
+
+Nå kan spillere faktisk **velge** å gå unarmed ved å unequipe våpen fra hendene.
+
+### Filer Modifisert
+
+**src/game/components/CharacterPanel.tsx:**
+- Lagt til useState for selectedSlot og showSlotMenu
+- Nye props: onUseItem, onUnequipItem, onEquipFromBag, onDropItem
+- Ny logikk: getItemFromSlot(), handleSlotClick(), closeMenu()
+- Ny logikk: isItemUsable(), canUnequip(), canEquipToHands()
+- Oppdatert renderSlot() med onClick og visuell tilbakemelding
+- Lagt til Item Action Menu UI med kontekstuelle handlinger
+- Nye Lucide icons: X, ArrowRight, Trash2, Pill
+
+**src/game/ShadowsGame.tsx:**
+- Importert Item og InventorySlotName fra types
+- Nye handlers: handleUseItem, handleUnequipItem, handleEquipFromBag, handleDropItem
+- Oppdatert CharacterPanel med nye props
+
+### Spillfunksjonalitet Etter Endring
+
+| Handling | Før | Etter |
+|----------|-----|-------|
+| Bruke Medical Kit | Ikke mulig | Klikk → Use → +2 HP |
+| Bruke Whiskey | Ikke mulig | Klikk → Use → +2 Sanity |
+| Bytte til Unarmed | Ikke mulig | Unequip våpen → bruker hender |
+| Equip fra bag | Ikke mulig | Klikk bag item → Equip to Hand |
+| Droppe items | Ikke mulig | Klikk item → Drop |
+
+### Build Status
+✅ Kompilerer uten feil

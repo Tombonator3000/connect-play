@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package } from 'lucide-react';
-import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition } from './types';
+import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName } from './types';
 import ContextActionBar from './components/ContextActionBar';
 import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
 import { performSkillCheck } from './utils/combatUtils';
@@ -551,6 +551,292 @@ const ShadowsGame: React.FC = () => {
       [heroId]: (prev[heroId] || 0) + 1
     }));
   }, []);
+
+  // ============================================================================
+  // INVENTORY MANAGEMENT HANDLERS
+  // ============================================================================
+
+  // Handle using a consumable item (healing, etc.)
+  const handleUseItem = useCallback((item: Item, slotName: InventorySlotName) => {
+    const activePlayer = state.players[state.activePlayerIndex];
+    if (!activePlayer || state.phase !== GamePhase.INVESTIGATOR) return;
+
+    // Only consumables can be used
+    if (item.type !== 'consumable') {
+      addToLog(`${item.name} cannot be used directly.`);
+      return;
+    }
+
+    // Check if item has uses remaining
+    if (item.uses !== undefined && item.uses <= 0) {
+      addToLog(`${item.name} is depleted.`);
+      return;
+    }
+
+    // Apply item effect
+    let hpHealed = 0;
+    let sanityHealed = 0;
+    let message = '';
+
+    // Parse effect - look for HP or Sanity healing
+    if (item.effect.toLowerCase().includes('hp') || item.effect.toLowerCase().includes('health')) {
+      hpHealed = item.bonus || 1;
+    }
+    if (item.effect.toLowerCase().includes('sanity') || item.effect.toLowerCase().includes('san')) {
+      sanityHealed = item.bonus || 1;
+    }
+
+    // Apply healing
+    const newHp = Math.min(activePlayer.maxHp, activePlayer.hp + hpHealed);
+    const newSanity = Math.min(activePlayer.maxSanity, activePlayer.sanity + sanityHealed);
+
+    // Build message
+    const effects: string[] = [];
+    if (hpHealed > 0) effects.push(`+${newHp - activePlayer.hp} HP`);
+    if (sanityHealed > 0) effects.push(`+${newSanity - activePlayer.sanity} Sanity`);
+    message = `${activePlayer.name} uses ${item.name}. ${effects.join(', ')}.`;
+
+    addToLog(message);
+    if (hpHealed > 0) {
+      addFloatingText(activePlayer.position.q, activePlayer.position.r, `+${newHp - activePlayer.hp} HP`, "text-health");
+    }
+    if (sanityHealed > 0) {
+      addFloatingText(activePlayer.position.q, activePlayer.position.r, `+${newSanity - activePlayer.sanity} SAN`, "text-sanity");
+    }
+
+    // Update player state and decrement item uses
+    setState(prev => ({
+      ...prev,
+      players: prev.players.map((p, i) => {
+        if (i !== prev.activePlayerIndex) return p;
+
+        // Create updated inventory
+        const newInventory = { ...p.inventory, bag: [...p.inventory.bag] };
+
+        // Find and update/remove the item
+        const updateItemInSlot = (currentItem: Item | null): Item | null => {
+          if (!currentItem || currentItem.id !== item.id) return currentItem;
+
+          // Decrement uses
+          if (currentItem.uses !== undefined) {
+            const newUses = currentItem.uses - 1;
+            if (newUses <= 0) {
+              return null; // Remove depleted item
+            }
+            return { ...currentItem, uses: newUses };
+          }
+          return null; // Single-use item without uses count
+        };
+
+        // Update the correct slot
+        switch (slotName) {
+          case 'leftHand':
+            newInventory.leftHand = updateItemInSlot(newInventory.leftHand);
+            break;
+          case 'rightHand':
+            newInventory.rightHand = updateItemInSlot(newInventory.rightHand);
+            break;
+          case 'body':
+            newInventory.body = updateItemInSlot(newInventory.body);
+            break;
+          case 'bag1':
+            newInventory.bag[0] = updateItemInSlot(newInventory.bag[0]);
+            break;
+          case 'bag2':
+            newInventory.bag[1] = updateItemInSlot(newInventory.bag[1]);
+            break;
+          case 'bag3':
+            newInventory.bag[2] = updateItemInSlot(newInventory.bag[2]);
+            break;
+          case 'bag4':
+            newInventory.bag[3] = updateItemInSlot(newInventory.bag[3]);
+            break;
+        }
+
+        return {
+          ...p,
+          hp: newHp,
+          sanity: newSanity,
+          inventory: newInventory
+        };
+      })
+    }));
+  }, [state.players, state.activePlayerIndex, state.phase]);
+
+  // Handle unequipping an item from hand/body to bag
+  const handleUnequipItem = useCallback((slotName: InventorySlotName) => {
+    const activePlayer = state.players[state.activePlayerIndex];
+    if (!activePlayer) return;
+
+    // Get the item from the slot
+    let item: Item | null = null;
+    switch (slotName) {
+      case 'leftHand':
+        item = activePlayer.inventory.leftHand;
+        break;
+      case 'rightHand':
+        item = activePlayer.inventory.rightHand;
+        break;
+      case 'body':
+        item = activePlayer.inventory.body;
+        break;
+      default:
+        return; // Can't unequip from bag
+    }
+
+    if (!item) return;
+
+    // Find an empty bag slot
+    const emptyBagIndex = activePlayer.inventory.bag.findIndex(slot => slot === null);
+    if (emptyBagIndex === -1) {
+      addToLog(`Cannot unequip ${item.name} - bag is full!`);
+      return;
+    }
+
+    addToLog(`${activePlayer.name} unequips ${item.name}.`);
+
+    setState(prev => ({
+      ...prev,
+      players: prev.players.map((p, i) => {
+        if (i !== prev.activePlayerIndex) return p;
+
+        const newInventory = { ...p.inventory, bag: [...p.inventory.bag] };
+
+        // Move item to bag
+        newInventory.bag[emptyBagIndex] = item;
+
+        // Clear the source slot
+        switch (slotName) {
+          case 'leftHand':
+            newInventory.leftHand = null;
+            break;
+          case 'rightHand':
+            newInventory.rightHand = null;
+            break;
+          case 'body':
+            newInventory.body = null;
+            break;
+        }
+
+        return { ...p, inventory: newInventory };
+      })
+    }));
+  }, [state.players, state.activePlayerIndex]);
+
+  // Handle equipping an item from bag to hand slot
+  const handleEquipFromBag = useCallback((bagIndex: number, targetSlot: 'leftHand' | 'rightHand') => {
+    const activePlayer = state.players[state.activePlayerIndex];
+    if (!activePlayer) return;
+
+    const item = activePlayer.inventory.bag[bagIndex];
+    if (!item) return;
+
+    // Check if target slot is empty
+    const targetItem = targetSlot === 'leftHand' ? activePlayer.inventory.leftHand : activePlayer.inventory.rightHand;
+    if (targetItem) {
+      addToLog(`${targetSlot === 'leftHand' ? 'Left hand' : 'Right hand'} is already occupied!`);
+      return;
+    }
+
+    // Check if item can be equipped to hand (weapon or tool)
+    if (item.type !== 'weapon' && item.type !== 'tool') {
+      addToLog(`${item.name} cannot be equipped to hands.`);
+      return;
+    }
+
+    addToLog(`${activePlayer.name} equips ${item.name} to ${targetSlot === 'leftHand' ? 'left hand' : 'right hand'}.`);
+
+    setState(prev => ({
+      ...prev,
+      players: prev.players.map((p, i) => {
+        if (i !== prev.activePlayerIndex) return p;
+
+        const newInventory = { ...p.inventory, bag: [...p.inventory.bag] };
+
+        // Move item to hand
+        if (targetSlot === 'leftHand') {
+          newInventory.leftHand = item;
+        } else {
+          newInventory.rightHand = item;
+        }
+
+        // Clear bag slot
+        newInventory.bag[bagIndex] = null;
+
+        return { ...p, inventory: newInventory };
+      })
+    }));
+  }, [state.players, state.activePlayerIndex]);
+
+  // Handle dropping an item
+  const handleDropItem = useCallback((slotName: InventorySlotName) => {
+    const activePlayer = state.players[state.activePlayerIndex];
+    if (!activePlayer) return;
+
+    // Get the item name for logging
+    let itemName = 'item';
+    switch (slotName) {
+      case 'leftHand':
+        itemName = activePlayer.inventory.leftHand?.name || 'item';
+        break;
+      case 'rightHand':
+        itemName = activePlayer.inventory.rightHand?.name || 'item';
+        break;
+      case 'body':
+        itemName = activePlayer.inventory.body?.name || 'item';
+        break;
+      case 'bag1':
+        itemName = activePlayer.inventory.bag[0]?.name || 'item';
+        break;
+      case 'bag2':
+        itemName = activePlayer.inventory.bag[1]?.name || 'item';
+        break;
+      case 'bag3':
+        itemName = activePlayer.inventory.bag[2]?.name || 'item';
+        break;
+      case 'bag4':
+        itemName = activePlayer.inventory.bag[3]?.name || 'item';
+        break;
+    }
+
+    addToLog(`${activePlayer.name} drops ${itemName}.`);
+
+    setState(prev => ({
+      ...prev,
+      players: prev.players.map((p, i) => {
+        if (i !== prev.activePlayerIndex) return p;
+
+        const newInventory = { ...p.inventory, bag: [...p.inventory.bag] };
+
+        // Clear the slot
+        switch (slotName) {
+          case 'leftHand':
+            newInventory.leftHand = null;
+            break;
+          case 'rightHand':
+            newInventory.rightHand = null;
+            break;
+          case 'body':
+            newInventory.body = null;
+            break;
+          case 'bag1':
+            newInventory.bag[0] = null;
+            break;
+          case 'bag2':
+            newInventory.bag[1] = null;
+            break;
+          case 'bag3':
+            newInventory.bag[2] = null;
+            break;
+          case 'bag4':
+            newInventory.bag[3] = null;
+            break;
+        }
+
+        return { ...p, inventory: newInventory };
+      })
+    }));
+  }, [state.players, state.activePlayerIndex]);
 
   // Handle finishing merchant shop
   const handleMerchantFinish = useCallback(() => {
@@ -1958,7 +2244,13 @@ const ShadowsGame: React.FC = () => {
 
           {activePlayer && (
             <div className={`fixed top-1/2 -translate-y-1/2 left-6 h-[80vh] w-80 z-40 transition-all ${showLeftPanel ? 'translate-x-0 opacity-100' : '-translate-x-[calc(100%+40px)] opacity-0'}`}>
-              <CharacterPanel player={activePlayer} />
+              <CharacterPanel
+                player={activePlayer}
+                onUseItem={handleUseItem}
+                onUnequipItem={handleUnequipItem}
+                onEquipFromBag={handleEquipFromBag}
+                onDropItem={handleDropItem}
+              />
             </div>
           )}
 
