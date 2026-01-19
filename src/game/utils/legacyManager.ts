@@ -548,6 +548,7 @@ export function processScenarioCompletion(
 
 /**
  * Convert a LegacyHero to a Player for in-game use
+ * Now uses hero.id as the player ID to enable proper hero-player mapping
  */
 export function legacyHeroToPlayer(hero: LegacyHero): Player {
   const character = CHARACTERS[hero.characterClass];
@@ -560,7 +561,8 @@ export function legacyHeroToPlayer(hero: LegacyHero): Player {
   };
 
   return {
-    id: hero.characterClass,
+    id: hero.id,  // Use unique hero ID, not class type
+    heroId: hero.id,  // Also store in dedicated field for clarity
     name: hero.name,
     hp: hero.maxHp,
     maxHp: hero.maxHp,
@@ -570,6 +572,9 @@ export function legacyHeroToPlayer(hero: LegacyHero): Player {
     attributes: effectiveAttributes,
     special: character?.special || '',
     specialAbility: character?.specialAbility || 'investigate_bonus',
+    // Hero Quest combat stats from character class
+    baseAttackDice: character?.baseAttackDice || 1,
+    baseDefenseDice: character?.baseDefenseDice || 1,
     position: { q: 0, r: 0 },
     inventory: { ...hero.equipment, bag: [...hero.equipment.bag] },
     spells: [],
