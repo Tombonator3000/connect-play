@@ -22,6 +22,7 @@ import MerchantShop from './components/MerchantShop';
 import { performAttack, performHorrorCheck, calculateEnemyDamage, hasRangedWeapon, canAttackEnemy } from './utils/combatUtils';
 import { processEnemyTurn, selectRandomEnemy, createEnemy, shouldSpawnMonster } from './utils/monsterAI';
 import { checkVictoryConditions, checkDefeatConditions, updateObjectiveProgress, completeObjective, checkKillObjectives, checkExploreObjectives, updateSurvivalObjectives, getVisibleObjectives } from './utils/scenarioUtils';
+import PuzzleModal from './components/PuzzleModal';
 import {
   loadLegacyData,
   saveLegacyData,
@@ -626,6 +627,27 @@ const ShadowsGame: React.FC = () => {
       return;
     }
 
+    // Special handling for puzzle doors - opens PuzzleModal instead of normal flow
+    if (action.id === 'solve_puzzle') {
+      addToLog('You examine the puzzle mechanism...');
+      const tile = state.board.find(t => t.id === activeContextTarget.tileId);
+      const puzzleDifficulty = tile?.edges[activeContextTarget.edgeIndex ?? 0]?.lockType === 'complex' ? 5 :
+                               tile?.edges[activeContextTarget.edgeIndex ?? 0]?.lockType === 'quality' ? 4 : 3;
+      setState(prev => ({
+        ...prev,
+        activePuzzle: {
+          type: 'sequence',
+          difficulty: puzzleDifficulty,
+          targetTileId: activeContextTarget.tileId
+        },
+        players: prev.players.map((p, i) =>
+          i === prev.activePlayerIndex ? { ...p, actions: p.actions - action.apCost } : p
+        )
+      }));
+      // Don't close context menu yet - puzzle modal will handle it
+      return;
+    }
+
     // Perform skill check if required
     if (action.skillCheck) {
       const result = performSkillCheck(
@@ -846,8 +868,79 @@ const ShadowsGame: React.FC = () => {
         }));
         // Could add random item here
         break;
+
+      // Handle gate/trap/fog_wall object removal
+      case 'open_gate':
+      case 'force_gate':
+      case 'disarm_trap':
+      case 'trigger_trap':
+      case 'dispel_fog':
+        setState(prev => ({
+          ...prev,
+          board: prev.board.map(t =>
+            t.id === tile.id ? { ...t, object: undefined } : t
+          )
+        }));
+        break;
     }
   }, [activeContextTarget, state.board]);
+
+  // Handle puzzle completion (from PuzzleModal)
+  const handlePuzzleSolve = useCallback((success: boolean) => {
+    const activePlayer = state.players[state.activePlayerIndex];
+    const puzzleTarget = state.activePuzzle;
+
+    if (!puzzleTarget || !activePlayer) {
+      setState(prev => ({ ...prev, activePuzzle: null }));
+      setActiveContextTarget(null);
+      setContextActions([]);
+      return;
+    }
+
+    if (success) {
+      addToLog('PUZZLE SOLVED! The mechanism clicks and the door opens.');
+      addFloatingText(activePlayer.position.q, activePlayer.position.r, "UNLOCKED!", "text-accent");
+
+      // Find the tile and open the puzzle door
+      const tileId = puzzleTarget.targetTileId;
+      setState(prev => ({
+        ...prev,
+        activePuzzle: null,
+        board: prev.board.map(t => {
+          if (t.id === tileId) {
+            // Find the puzzle door edge and open it
+            const newEdges = [...t.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+            for (let i = 0; i < 6; i++) {
+              if (newEdges[i].type === 'door' && newEdges[i].doorState === 'puzzle') {
+                newEdges[i] = { ...newEdges[i], doorState: 'open' };
+              }
+            }
+            // Also remove any locked_door object
+            return { ...t, edges: newEdges, object: t.object?.type === 'locked_door' ? undefined : t.object };
+          }
+          return t;
+        })
+      }));
+    } else {
+      addToLog('PUZZLE FAILED! Your mind reels from the eldritch symbols.');
+      addFloatingText(activePlayer.position.q, activePlayer.position.r, "-1 SAN", "text-sanity");
+
+      setState(prev => ({
+        ...prev,
+        activePuzzle: null,
+        players: prev.players.map((p, i) =>
+          i === prev.activePlayerIndex ? checkMadness({
+            ...p,
+            sanity: Math.max(0, p.sanity - 1)
+          }) : p
+        )
+      }));
+    }
+
+    // Close context menu
+    setActiveContextTarget(null);
+    setContextActions([]);
+  }, [state.players, state.activePlayerIndex, state.activePuzzle, checkMadness]);
 
   const spawnEnemy = useCallback((type: EnemyType, q: number, r: number) => {
     const bestiary = BESTIARY[type];
@@ -962,11 +1055,22 @@ const ShadowsGame: React.FC = () => {
       return edges as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
     };
 
+    // Helper to check if a tile is a dead-end (only one non-wall exit)
+    const checkDeadEnd = (edges: EdgeData[]): boolean => {
+      const exitCount = edges.filter(e => e.type !== 'wall' && e.type !== 'blocked').length;
+      return exitCount <= 1;
+    };
+
     const newTiles: Tile[] = [];
     shape.forEach((offset, idx) => {
       const q = startQ + offset.q;
       const r = startR + offset.r;
       if (!state.board.some(t => t.q === q && t.r === r)) {
+        const tileEdges = idx === 0 ? createEdges() : [
+          { type: 'open' }, { type: 'open' }, { type: 'open' },
+          { type: 'open' }, { type: 'open' }, { type: 'open' }
+        ] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+
         newTiles.push({
           id: `tile-${Date.now()}-${Math.random()}`,
           q, r,
@@ -976,14 +1080,12 @@ const ShadowsGame: React.FC = () => {
           zoneLevel: (CATEGORY_ZONE_LEVELS[newCategory] || 0) as ZoneLevel,
           floorType: getFloorType(newCategory),
           visibility: 'visible',
-          edges: idx === 0 ? createEdges() : [
-            { type: 'open' }, { type: 'open' }, { type: 'open' },
-            { type: 'open' }, { type: 'open' }, { type: 'open' }
-          ],
+          edges: tileEdges,
           roomId,
           explored: true,
           searchable: !isConnector && !['facade', 'street', 'nature'].includes(newCategory),
-          searched: false
+          searched: false,
+          isDeadEnd: checkDeadEnd(tileEdges)
         });
       }
     });
@@ -1091,6 +1193,37 @@ const ShadowsGame: React.FC = () => {
         if (!targetTile) {
           spawnRoom(q, r, state.activeScenario?.tileSet || 'mixed');
         }
+
+        // Check for hazards (trap/fire) on the tile being entered - deal damage
+        const tileToEnter = state.board.find(t => t.q === q && t.r === r);
+        let hazardDamage = 0;
+        let hazardMessage = '';
+
+        // Check for trap object
+        if (tileToEnter?.object?.type === 'trap') {
+          hazardDamage = 2;
+          hazardMessage = `${activePlayer.name} triggers a trap! -${hazardDamage} HP`;
+          // Remove trap after triggered
+          setState(prev => ({
+            ...prev,
+            board: prev.board.map(t =>
+              t.q === q && t.r === r ? { ...t, object: undefined } : t
+            )
+          }));
+        }
+
+        // Check for fire object
+        if (tileToEnter?.object?.type === 'fire') {
+          hazardDamage = 1;
+          hazardMessage = `${activePlayer.name} moves through flames! -${hazardDamage} HP`;
+        }
+
+        // Check for fire obstacle
+        if (tileToEnter?.obstacle?.type === 'fire') {
+          hazardDamage = 1;
+          hazardMessage = `${activePlayer.name} is burned by fire! -${hazardDamage} HP`;
+        }
+
         // Mark tile and surrounding tiles as explored
         const newExplored = new Set(state.exploredTiles || []);
         newExplored.add(`${q},${r}`);
@@ -1102,10 +1235,27 @@ const ShadowsGame: React.FC = () => {
         adjacentOffsets.forEach(({ dq, dr }) => {
           newExplored.add(`${q + dq},${r + dr}`);
         });
-        
+
+        // Apply movement and hazard damage
+        if (hazardDamage > 0) {
+          addToLog(hazardMessage);
+          addFloatingText(q, r, `-${hazardDamage} HP`, "text-health");
+          triggerScreenShake();
+        }
+
         setState(prev => ({
           ...prev,
-          players: prev.players.map((p, i) => i === prev.activePlayerIndex ? { ...p, position: { q, r }, actions: p.actions - 1 } : p),
+          players: prev.players.map((p, i) => {
+            if (i !== prev.activePlayerIndex) return p;
+            const newHp = Math.max(0, p.hp - hazardDamage);
+            return {
+              ...p,
+              position: { q, r },
+              actions: p.actions - 1,
+              hp: newHp,
+              isDead: newHp <= 0
+            };
+          }),
           exploredTiles: Array.from(newExplored)
         }));
         break;
@@ -1813,6 +1963,14 @@ const ShadowsGame: React.FC = () => {
         isVisible={showMythosOverlay}
         onComplete={handleMythosOverlayComplete}
       />
+
+      {/* Puzzle Modal */}
+      {state.activePuzzle && (
+        <PuzzleModal
+          difficulty={state.activePuzzle.difficulty}
+          onSolve={handlePuzzleSolve}
+        />
+      )}
 
       {/* Game Over Overlay */}
       {gameOverType && (

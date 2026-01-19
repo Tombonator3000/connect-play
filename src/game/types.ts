@@ -596,6 +596,7 @@ export interface Tile {
   object?: TileObject;
   isGate?: boolean;
   watermarkIcon?: string;
+  isDeadEnd?: boolean; // Marks tiles with only one exit
 }
 
 export type VictoryType = 'escape' | 'assassination' | 'collection' | 'survival' | 'ritual' | 'investigation';
