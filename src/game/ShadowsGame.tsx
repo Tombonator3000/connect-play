@@ -9,8 +9,10 @@ import EnemyPanel from './components/EnemyPanel';
 import ActionBar from './components/ActionBar';
 import DiceRoller from './components/DiceRoller';
 import MainMenu from './components/MainMenu';
+import OptionsMenu, { GameSettings, DEFAULT_SETTINGS } from './components/OptionsMenu';
 
 const STORAGE_KEY = 'shadows_1920s_save';
+const SETTINGS_KEY = 'shadows_1920s_settings';
 const APP_VERSION = "1.0.0";
 
 const DEFAULT_STATE: GameState = {
@@ -46,8 +48,24 @@ const ROOM_SHAPES = {
 
 const ShadowsGame: React.FC = () => {
   const [isMainMenuOpen, setIsMainMenuOpen] = useState(true);
+  const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [showLeftPanel, setShowLeftPanel] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(false);
+
+  // Game settings with localStorage persistence
+  const [settings, setSettings] = useState<GameSettings>(() => {
+    const saved = localStorage.getItem(SETTINGS_KEY);
+    if (saved) {
+      try {
+        return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+      } catch (e) { console.error(e); }
+    }
+    return DEFAULT_SETTINGS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  }, [settings]);
 
   const [state, setState] = useState<GameState>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -334,13 +352,28 @@ const ShadowsGame: React.FC = () => {
   const activePlayer = state.players[state.activePlayerIndex] || null;
   const selectedEnemy = state.enemies.find(e => e.id === state.selectedEnemyId);
 
+  const handleResetData = () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setState(DEFAULT_STATE);
+    setIsMainMenuOpen(true);
+  };
+
   return (
-    <div className={`h-screen w-screen bg-background text-foreground overflow-hidden select-none font-serif relative transition-all duration-1000 ${state.screenShake ? 'animate-shake' : ''} ${activePlayer?.activeMadness?.visualClass || ''}`}>
+    <div className={`h-screen w-screen bg-background text-foreground overflow-hidden select-none font-serif relative transition-all duration-1000 ${state.screenShake && !settings.reduceMotion ? 'animate-shake' : ''} ${activePlayer?.activeMadness?.visualClass || ''}`}>
+      {/* Options Menu */}
+      <OptionsMenu
+        isOpen={isOptionsOpen}
+        onClose={() => setIsOptionsOpen(false)}
+        settings={settings}
+        onSettingsChange={setSettings}
+        onResetData={handleResetData}
+      />
+
       {isMainMenuOpen && (
         <MainMenu
           onNewGame={() => { setState({ ...DEFAULT_STATE, phase: GamePhase.SETUP }); setIsMainMenuOpen(false); }}
           onContinue={() => setIsMainMenuOpen(false)}
-          onOptions={() => {}}
+          onOptions={() => setIsOptionsOpen(true)}
           canContinue={state.phase !== GamePhase.SETUP}
           version={APP_VERSION}
         />
