@@ -1,5 +1,79 @@
 # Development Log
 
+## 2026-01-19: Field Guide - "Notes on the Horrors I Have Witnessed"
+
+### Oppgave
+Implementere Field Guide-funksjonen der spillere kan lese om monstre de har oppdaget under spilling. Fungerer som et bestiary/encyclopedia som låses opp etter hvert som spilleren møter på fiender.
+
+### Implementasjon
+
+#### 1. Ny Komponent: FieldGuidePanel (`components/FieldGuidePanel.tsx`)
+
+**Monster-kategorier:**
+- **Minions**: Cultist, Mi-Go, Nightgaunt, Moon-Beast
+- **Warriors**: Ghoul, Deep One, Sniper, Byakhee, Formless Spawn, Hound of Tindalos
+- **Elites**: Dark Priest, Hunting Horror, Dark Young
+- **Bosses**: Shoggoth, Star Spawn, Ancient One
+
+**UI-struktur:**
+- Venstre panel: Grid med monster-kort (viser "UNKNOWN" for uoppdagede monstre)
+- Høyre panel: Detaljvisning med stats, lore og traits
+- Header med tittel og oppdagelsesteller
+- Footer med hint om hvordan låse opp flere monstre
+
+**Monster-detaljer viser:**
+| Felt | Beskrivelse |
+|------|-------------|
+| **HP** | Hitpoints |
+| **Attack Dice** | Antall angrepsterninger (Hero Quest-stil) |
+| **Defense Dice** | Antall forsvarsterninger |
+| **Horror** | Sanity-tap ved første møte |
+| **Lore** | Bakgrunnshistorie |
+| **Traits** | Spesielle egenskaper (flying, fast, aquatic, etc.) |
+| **Defeat Flavor** | Tekst som vises når monsteret beseires |
+
+**Fargetema per trussel-nivå:**
+- Minions: Stone/grå
+- Warriors: Amber/gull
+- Elites: Rød
+- Bosses: Lilla
+
+#### 2. ActionBar oppdatert (`components/ActionBar.tsx`)
+
+Lagt til nye props:
+```typescript
+onToggleFieldGuide?: () => void;
+showFieldGuide?: boolean;
+```
+
+Ny knapp med Skull-ikon plassert mellom AP-visning og Log-knapp.
+
+#### 3. ShadowsGame.tsx integrasjon
+
+- Ny state: `showFieldGuide`
+- FieldGuidePanel rendres som modal over spillbrettet
+- Bruker eksisterende `state.encounteredEnemies` for å spore oppdagede monstre
+
+### Tekniske detaljer
+
+**Discovery-logikk:**
+- Monstre legges til `encounteredEnemies`-arrayen når spilleren ser dem for første gang
+- Field Guide viser kun detaljer for monstre i denne arrayen
+- Uoppdagede monstre vises som "UNKNOWN" med spørsmålstegn-ikon
+
+**Styling:**
+- Konsistent med spillets Lovecraftian-tema
+- Amber/gull aksenter på mørk bakgrunn
+- Responsive design for mobil og desktop
+- Animasjoner ved hover og seleksjon
+
+### Filer endret
+- `src/game/components/FieldGuidePanel.tsx` (NY)
+- `src/game/components/ActionBar.tsx`
+- `src/game/ShadowsGame.tsx`
+
+---
+
 ## 2026-01-19: Dark Room System - "What Lurks in the Shadows"
 
 ### Oppgave
