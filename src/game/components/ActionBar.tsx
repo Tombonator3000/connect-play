@@ -62,10 +62,10 @@ const ActionBar: React.FC<ActionBarProps> = ({
             transition-all duration-300 animate-in zoom-in shrink-0
           `}
         >
-          {React.createElement(getContextIcon(contextAction.iconType), { className: "text-accent w-6 h-6 md:w-8 md:h-8" })}
+          {React.createElement(getContextIcon(contextAction.icon), { className: "text-accent w-6 h-6 md:w-8 md:h-8" })}
           <div className="text-left">
             <div className="text-xs md:text-sm font-bold text-foreground uppercase tracking-widest">{contextAction.label}</div>
-            <div className="text-[9px] md:text-[10px] text-accent/80">Diff: {contextAction.difficulty}+</div>
+            <div className="text-[9px] md:text-[10px] text-accent/80">{contextAction.skillCheck ? `DC: ${contextAction.skillCheck.dc}+` : `AP: ${contextAction.apCost}`}</div>
           </div>
         </button>
       ) : (

@@ -470,13 +470,11 @@ export const LOCATION_DESCRIPTIONS: Record<string, string> = {
   // ========== CONNECTORS ==========
   'Narrow Hallway': 'Portraits line both walls. The faces are all the same. They follow you with dead eyes.',
   'Dark Corridor': 'Your footsteps echo strangely, as if something walks alongside you, just out of sync.',
-  'Grand Staircase': 'Marble steps worn by centuries of feet. Or something dragging.',
   'Servant Passage': 'A hidden way through the walls. You hear conversations from rooms on either side—all the same voice.',
   'Dusty Landing': 'A platform between floors. A window shows a view that can\'t exist—the building isn\'t tall enough.',
   'Maintenance Shaft': 'Pipes and cables. The service hatch leads somewhere the blueprints don\'t show.',
   'Basement Tunnel': 'Damp stone walls. The tunnel goes further than the building above. Much further.',
   'Service Elevator': 'A small lift for staff. The buttons include floors that don\'t exist. Or shouldn\'t.',
-  'Spiral Stairs': 'You climb but never seem to arrive. Each landing shows the same view from the window.',
   'Crawlspace': 'Barely room to move. Evidence others have been through here. Some didn\'t make it.',
   'Narrow Alley': 'Shadows pool between buildings. Eyes watch from fire escapes. The shortcut may cost more than time.',
   'Cobblestone Path': 'Uneven stones twist ankles. Carved symbols worn almost smooth. Almost.',
@@ -486,8 +484,7 @@ export const LOCATION_DESCRIPTIONS: Record<string, string> = {
   'Stone Steps': 'Worn by countless feet descending. The carvings suggest what lies below isn\'t meant to be visited.',
   'River Crossing': 'Stepping stones barely break the surface. The water is thick and slow.',
   'Overpass': 'A bridge over roads below. The traffic sounds wrong—engines that shouldn\'t exist.',
-  'Dirt Trail': 'Winding through overgrowth. The path knows where it\'s going. Trust it or don\'t.',
-  'Winding Lane': 'It doubles back on itself. You pass the same house twice. Different faces watch each time.'
+  'Dirt Trail': 'Winding through overgrowth. The path knows where it\'s going. Trust it or don\'t.'
 };
 
 export const SCENARIOS: Scenario[] = [

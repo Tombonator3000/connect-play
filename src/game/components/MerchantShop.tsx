@@ -78,16 +78,25 @@ const MerchantShop: React.FC<MerchantShopProps> = ({ players, onBuy, onFinish })
 
                         <h4 className="text-xs text-slate-500 uppercase tracking-widest font-bold mb-3 border-b border-slate-800 pb-2">Inventory</h4>
                         <div className="space-y-2 mb-6 overflow-y-auto max-h-60 pr-2">
-                            {activePlayer.inventory.length === 0 ? (
-                                <p className="text-slate-600 italic text-sm">Empty pockets...</p>
-                            ) : (
-                                activePlayer.inventory.map((item, idx) => (
-                                    <div key={idx} className="bg-slate-800 p-2 rounded flex justify-between items-center border border-slate-700">
-                                        <span className="text-slate-300 text-sm">{item.name}</span>
-                                        <span className="text-[10px] text-slate-500 uppercase">{item.type}</span>
-                                    </div>
-                                ))
-                            )}
+                            {(() => {
+                                const items = [
+                                    activePlayer.inventory.leftHand,
+                                    activePlayer.inventory.rightHand,
+                                    activePlayer.inventory.body,
+                                    ...activePlayer.inventory.bag
+                                ].filter((item): item is import('../types').Item => item !== null);
+                                
+                                return items.length === 0 ? (
+                                    <p className="text-slate-600 italic text-sm">Empty pockets...</p>
+                                ) : (
+                                    items.map((item, idx) => (
+                                        <div key={idx} className="bg-slate-800 p-2 rounded flex justify-between items-center border border-slate-700">
+                                            <span className="text-slate-300 text-sm">{item.name}</span>
+                                            <span className="text-[10px] text-slate-500 uppercase">{item.type}</span>
+                                        </div>
+                                    ))
+                                );
+                            })()}
                         </div>
                     </>
                 )}
