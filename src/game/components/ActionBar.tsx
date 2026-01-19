@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Sword, Heart, Package, LockOpen, Hammer, Wind, Zap, X, Eye, User, BookOpen } from 'lucide-react';
+import { Search, Sword, Heart, Package, LockOpen, Hammer, Wind, Zap, X, Eye, User, BookOpen, Skull } from 'lucide-react';
 import { ContextAction, Spell } from '../types';
 import { SpellTooltip } from './ItemTooltip';
 
@@ -14,11 +14,13 @@ interface ActionBarProps {
   showCharacter: boolean;
   onToggleInfo: () => void;
   showInfo: boolean;
+  onToggleFieldGuide?: () => void;
+  showFieldGuide?: boolean;
 }
 
 const ActionBar: React.FC<ActionBarProps> = ({
   onAction, actionsRemaining, isInvestigatorPhase, contextAction, spells, activeSpell,
-  onToggleCharacter, showCharacter, onToggleInfo, showInfo
+  onToggleCharacter, showCharacter, onToggleInfo, showInfo, onToggleFieldGuide, showFieldGuide
 }) => {
   const [showSpellMenu, setShowSpellMenu] = useState(false);
   const disabled = actionsRemaining <= 0 || !isInvestigatorPhase;
@@ -171,6 +173,16 @@ const ActionBar: React.FC<ActionBarProps> = ({
       </div>
 
       <div className="w-px h-12 bg-border mx-1"></div>
+
+      {onToggleFieldGuide && (
+        <button
+          onClick={onToggleFieldGuide}
+          className={`group flex flex-col items-center justify-center w-14 h-14 md:w-20 md:h-20 rounded border transition-all duration-200 shrink-0 ${showFieldGuide ? 'bg-amber-900/30 border-amber-500 text-amber-400' : 'bg-card border-border text-muted-foreground hover:border-amber-600 hover:text-amber-500'}`}
+        >
+          <Skull size={20} className="mb-1" />
+          <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider hidden md:block">Guide</span>
+        </button>
+      )}
 
       <button
         onClick={onToggleInfo}

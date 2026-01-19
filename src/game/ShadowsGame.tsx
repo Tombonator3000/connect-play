@@ -23,6 +23,7 @@ import { performAttack, performHorrorCheck, calculateEnemyDamage, hasRangedWeapo
 import { processEnemyTurn, selectRandomEnemy, createEnemy, shouldSpawnMonster } from './utils/monsterAI';
 import { checkVictoryConditions, checkDefeatConditions, updateObjectiveProgress, completeObjective, checkKillObjectives, checkExploreObjectives, updateSurvivalObjectives, getVisibleObjectives } from './utils/scenarioUtils';
 import PuzzleModal from './components/PuzzleModal';
+import FieldGuidePanel from './components/FieldGuidePanel';
 import {
   loadLegacyData,
   saveLegacyData,
@@ -107,6 +108,7 @@ const ShadowsGame: React.FC = () => {
   const [showMythosOverlay, setShowMythosOverlay] = useState(false);
   const [showBriefing, setShowBriefing] = useState(false);
   const [gameOverType, setGameOverType] = useState<GameOverType | null>(null);
+  const [showFieldGuide, setShowFieldGuide] = useState(false);
 
   // Context Action state
   const [activeContextTarget, setActiveContextTarget] = useState<ContextActionTarget | null>(null);
@@ -2681,6 +2683,8 @@ const ShadowsGame: React.FC = () => {
               onToggleCharacter={() => setShowLeftPanel(!showLeftPanel)}
               showInfo={showRightPanel}
               onToggleInfo={() => setShowRightPanel(!showRightPanel)}
+              showFieldGuide={showFieldGuide}
+              onToggleFieldGuide={() => setShowFieldGuide(!showFieldGuide)}
               contextAction={null}
             />
             <button onClick={handleNextTurn} className="px-8 py-4 bg-primary text-primary-foreground font-bold rounded-xl uppercase tracking-widest hover:scale-110 active:scale-95 transition-all shadow-[var(--shadow-doom)]">
@@ -2718,6 +2722,14 @@ const ShadowsGame: React.FC = () => {
         <PuzzleModal
           difficulty={state.activePuzzle.difficulty}
           onSolve={handlePuzzleSolve}
+        />
+      )}
+
+      {/* Field Guide - Monster Bestiary */}
+      {showFieldGuide && (
+        <FieldGuidePanel
+          encounteredEnemies={state.encounteredEnemies}
+          onClose={() => setShowFieldGuide(false)}
         />
       )}
 
