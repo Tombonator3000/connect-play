@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { Tile, Player, Enemy, FloatingText, EnemyType, ScenarioModifier, WeatherState } from '../types';
+import { Tile, Player, Enemy, FloatingText, EnemyType, ScenarioModifier, WeatherState, EdgeData } from '../types';
 import {
   User, Skull, DoorOpen, Lock, Flame, Hammer, Brain,
   BookOpen, Anchor, Church, MapPin, Building, ShoppingBag, Fish, PawPrint, Biohazard, Ghost, Bug, Search,
@@ -528,6 +528,29 @@ const VISIBILITY_RANGE = 2;
 const DRAG_THRESHOLD = 5;
 const HEX_POLY_POINTS = "25,0 75,0 100,50 75,100 25,100 0,50";
 
+// Hex edge endpoints for flat-top hexagon (0-100 scale)
+// Edges: [N, NE, SE, S, SW, NW]
+const HEX_EDGE_POINTS: Array<{ x1: number; y1: number; x2: number; y2: number }> = [
+  { x1: 25, y1: 0, x2: 75, y2: 0 },      // 0: North (top)
+  { x1: 75, y1: 0, x2: 100, y2: 50 },    // 1: North-East (top-right)
+  { x1: 100, y1: 50, x2: 75, y2: 100 },  // 2: South-East (bottom-right)
+  { x1: 75, y1: 100, x2: 25, y2: 100 },  // 3: South (bottom)
+  { x1: 25, y1: 100, x2: 0, y2: 50 },    // 4: South-West (bottom-left)
+  { x1: 0, y1: 50, x2: 25, y2: 0 },      // 5: North-West (top-left)
+];
+
+// Check if an edge type represents a dead end (impassable)
+const isDeadEndEdge = (edgeType: string | undefined): boolean => {
+  if (!edgeType) return false;
+  return edgeType === 'wall' || edgeType === 'blocked';
+};
+
+// Check if an edge is a window (semi-blocked - can see through but hard to pass)
+const isWindowEdge = (edgeType: string | undefined): boolean => {
+  if (!edgeType) return false;
+  return edgeType === 'window';
+};
+
 const getMonsterIcon = (type: EnemyType) => {
   switch (type) {
     case 'cultist':
@@ -949,13 +972,89 @@ const GameBoard: React.FC<GameBoardProps> = ({
               
               {/* Hex border with visibility-based styling */}
               <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full pointer-events-none z-10">
-                <polygon 
-                  points={HEX_POLY_POINTS} 
-                  fill="none" 
-                  stroke={isVisible ? visual.strokeColor : 'rgba(100,100,100,0.2)'} 
-                  strokeWidth={isVisible ? "1.5" : "0.5"} 
+                <polygon
+                  points={HEX_POLY_POINTS}
+                  fill="none"
+                  stroke={isVisible ? visual.strokeColor : 'rgba(100,100,100,0.2)'}
+                  strokeWidth={isVisible ? "1.5" : "0.5"}
                   className={`transition-all duration-500 ${isVisible ? 'opacity-40' : 'opacity-20'}`}
                 />
+                {/* Dead-end edge indicators - walls, blocked edges, and windows */}
+                {isVisible && tile.edges && tile.edges.map((edge: EdgeData, edgeIndex: number) => {
+                  const isWall = isDeadEndEdge(edge?.type);
+                  const isWindow = isWindowEdge(edge?.type);
+
+                  if (!isWall && !isWindow) return null;
+                  const points = HEX_EDGE_POINTS[edgeIndex];
+                  if (!points) return null;
+
+                  // Calculate midpoint for markers
+                  const midX = (points.x1 + points.x2) / 2;
+                  const midY = (points.y1 + points.y2) / 2;
+
+                  if (isWall) {
+                    return (
+                      <g key={`edge-${edgeIndex}`}>
+                        {/* Thick wall line with dark color */}
+                        <line
+                          x1={points.x1}
+                          y1={points.y1}
+                          x2={points.x2}
+                          y2={points.y2}
+                          stroke="hsl(0, 10%, 15%)"
+                          strokeWidth="4"
+                          strokeLinecap="round"
+                          className="opacity-70"
+                        />
+                        {/* Subtle inner line for depth */}
+                        <line
+                          x1={points.x1}
+                          y1={points.y1}
+                          x2={points.x2}
+                          y2={points.y2}
+                          stroke="hsl(20, 15%, 25%)"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          className="opacity-80"
+                        />
+                        {/* Small cross marker at midpoint to indicate blocked */}
+                        <g transform={`translate(${midX}, ${midY})`} className="opacity-50">
+                          <line x1="-4" y1="-4" x2="4" y2="4" stroke="hsl(0, 40%, 30%)" strokeWidth="1.5" />
+                          <line x1="4" y1="-4" x2="-4" y2="4" stroke="hsl(0, 40%, 30%)" strokeWidth="1.5" />
+                        </g>
+                      </g>
+                    );
+                  }
+
+                  // Window edge - dashed line with different color
+                  return (
+                    <g key={`edge-${edgeIndex}`}>
+                      {/* Window frame line */}
+                      <line
+                        x1={points.x1}
+                        y1={points.y1}
+                        x2={points.x2}
+                        y2={points.y2}
+                        stroke="hsl(200, 30%, 40%)"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeDasharray="8,4"
+                        className="opacity-60"
+                      />
+                      {/* Inner glass line */}
+                      <line
+                        x1={points.x1}
+                        y1={points.y1}
+                        x2={points.x2}
+                        y2={points.y2}
+                        stroke="hsl(200, 50%, 60%)"
+                        strokeWidth="1"
+                        strokeLinecap="round"
+                        className="opacity-40"
+                      />
+                    </g>
+                  );
+                })}
               </svg>
             </div>
           );
