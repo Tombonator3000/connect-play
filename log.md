@@ -59,3 +59,59 @@
 #### 4. CSS Animations
 - `animate-fadeIn` - fade in effect for overlays
 - `animate-float` - floating particle animation
+
+---
+
+## 2026-01-19: Expanded Tile System & Location Descriptions
+
+### Tasks
+1. Expand `INDOOR_LOCATIONS` array with diverse thematic tiles
+2. Expand `OUTDOOR_LOCATIONS` array with diverse thematic tiles
+3. Add RPG-style descriptions for all tiles shown when player lands on them
+
+### Implementation
+
+#### Expanded INDOOR_LOCATIONS (75+ tiles)
+Organized by category from game_design_bible.md:
+- **FACADE**: Blackwood Mansion, Crumbling Church, The Gilded Hotel, The Witch House, Funeral Parlor, etc.
+- **FOYER**: Grand Foyer, Marble Lobby, Cobwebbed Vestibule, Asylum Reception, etc.
+- **CORRIDOR**: Dusty Corridor, Servants Passage, Cell Block Corridor, Portrait Gallery, etc.
+- **ROOM**: Private Study, Séance Parlor, Dissection Theater, Padded Cell, Records Room, etc.
+- **STAIRS**: Grand Staircase, Spiral Stairs, Bell Tower Steps, Hidden Stairwell, etc.
+- **BASEMENT**: Wine Cellar, Flooded Basement, Smugglers Cache, Catacombs Entrance, etc.
+- **CRYPT**: Sacrificial Altar, Eldritch Portal, Star Chamber, The Black Pool, etc.
+
+#### Expanded OUTDOOR_LOCATIONS (65+ tiles)
+Organized by category:
+- **NATURE**: Moonlit Clearing, Treacherous Marsh, Ancient Stone Circle, Dead Mans Hollow, etc.
+- **URBAN**: Arkham Harbor, Fish Market, Gallows Hill, Founders Plaza, Cannery Row, etc.
+- **STREET**: Shadowy Alley, Sewer Grate, Lamplit Avenue, Dead End, The Narrows, etc.
+- **SPECIAL**: Suicide Cliff, The Gibbet, Flooded Quarry, The Execution Ground, etc.
+
+#### Location Descriptions (150+ Lovecraftian descriptions)
+Every tile now has an atmospheric RPG-style description that displays when the player enters:
+- Written in Lovecraftian horror style
+- Second-person perspective ("You see...", "Your footsteps...")
+- Atmospheric details hinting at cosmic horror
+- Sensory details (sounds, smells, temperatures)
+- Subtle warnings and unsettling observations
+
+### Files Modified
+- `src/game/constants.ts` (MODIFIED)
+  - Expanded `INDOOR_LOCATIONS` array
+  - Expanded `OUTDOOR_LOCATIONS` array
+  - Massively expanded `LOCATION_DESCRIPTIONS` record
+
+### Examples of New Descriptions
+
+**The Witch House:**
+> "The angles are wrong here. Corners that should be square are not. Your compass spins uselessly."
+
+**Ritual Chamber:**
+> "Symbols painted in substances best not examined. The air thrums with wrongness. Something was summoned here."
+
+**Innsmouth Wharf:**
+> "Decaying piers and the smell of the deep. The locals watch with bulging eyes. They're not unfriendly—just hungry."
+
+**The Black Pool:**
+> "Ink-dark water that doesn't ripple. Your reflection shows you older, changed, not entirely you anymore."

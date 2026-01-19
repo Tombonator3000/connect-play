@@ -41,15 +41,63 @@ export const CHARACTERS: Record<CharacterType, Character> = {
 };
 
 export const INDOOR_LOCATIONS = [
-  'Abandoned Manor', 'Dark Cellar', 'The Library', 'Secret Crypt', 'Old Church', 'Police Station', 'Warehouse', 'Arkham Asylum', 'Historical Museum', "St. Mary's Hospital",
-  'Sanitarium', 'Underground Vault', 'Dusty Attic', 'Grand Hall', 'Study Room', 'Ritual Chamber', 'Boiler Room', 'Velvet Lounge', 'Opium Den', 'Grand Theater',
-  'Clock Tower Interior', 'Private Study', 'Damp Basement', 'Hidden Laboratory', 'Trophy Room'
+  // FACADE - Building entrances
+  'Abandoned Manor', 'Blackwood Mansion', 'Crumbling Church', 'Arkham Asylum', 'Derelict Warehouse',
+  'The Gilded Hotel', 'Dusty Antique Shop', 'Boarded-Up Townhouse', 'The Witch House', 'Funeral Parlor',
+  'The Silver Key Inn', 'Condemned Tenement', 'Faculty Building', 'Orne Library Entrance',
+
+  // FOYER - Entry areas
+  'Grand Foyer', 'Marble Lobby', 'Dim Reception', 'Cobwebbed Vestibule', 'Servants Entrance',
+  'Hotel Lobby', 'Library Atrium', 'Church Narthex', 'Asylum Reception', 'Museum Entrance Hall',
+
+  // CORRIDOR - Connecting passages
+  'Dusty Corridor', 'Servants Passage', 'Darkened Hallway', 'Collapsed Wing', 'Hospital Ward',
+  'Cell Block Corridor', 'Narrow Service Hall', 'Portrait Gallery', 'Windowless Passage', 'Creaking Floorboards',
+
+  // ROOM - Individual chambers
+  'Private Study', 'Master Bedroom', 'Abandoned Kitchen', 'Ritual Chamber', 'Hidden Laboratory',
+  'Trophy Room', 'Séance Parlor', 'Dusty Nursery', 'Wine Tasting Room', 'Music Room',
+  'Conservatory', 'Billiard Room', 'Drawing Room', 'Guest Quarters', 'Locked Office',
+  'Forgotten Pantry', 'Linen Closet', 'Servants Quarters', 'Sun Room', 'Smoking Lounge',
+  'Map Room', 'Artifact Storage', 'Dissection Theater', 'Padded Cell', 'Records Room',
+
+  // STAIRS - Vertical connections
+  'Grand Staircase', 'Spiral Stairs', 'Rickety Ladder', 'Servants Stair', 'Bell Tower Steps',
+  'Cellar Stairs', 'Emergency Exit', 'Hidden Stairwell', 'Crumbling Steps', 'Fire Escape',
+
+  // BASEMENT - Underground level 1
+  'Dark Cellar', 'Wine Cellar', 'Cold Storage', 'Flooded Basement', 'Boiler Room',
+  'Coal Chute', 'Root Cellar', 'Maintenance Tunnel', 'Smugglers Cache', 'Underground Vault',
+  'Sewer Access', 'Storm Drain', 'Foundation Ruins', 'Catacombs Entrance', 'Rats Nest',
+
+  // CRYPT - Deep underground
+  'Secret Crypt', 'Sacrificial Altar', 'Eldritch Portal', 'Bone Ossuary', 'Forgotten Tomb',
+  'Underground Lake', 'Cultist Sanctum', 'Ancient Cavern', 'Star Chamber', 'The Pit',
+  'Idol Chamber', 'Mass Grave', 'Petrified Garden', 'Echo Chamber', 'The Black Pool'
 ];
 
 export const OUTDOOR_LOCATIONS = [
-  'Misty Docks', 'Town Square', 'Old Lighthouse', 'Blackwood Forest', 'Graveyard', 'University Campus', 'Market District', 'River Bank', 'Train Station', 'Swamp',
-  'City Park', 'Merchant Street', 'Dark Pier', 'Hanging Tree', 'Ruined Farmhouse', 'Overgrown Garden', 'Foggy Harbor', 'Lonely Crossroads', 'Cemetery Gate',
-  'Stone Circle', 'Miskatonic Bridge', 'Innsmouth Wharf'
+  // NATURE - Wilderness areas
+  'Blackwood Forest', 'Moonlit Clearing', 'Coastal Cliffs', 'Treacherous Marsh', 'Ancient Stone Circle',
+  'Whispering Woods', 'Dead Mans Hollow', 'Blighted Orchard', 'Overgrown Ruins', 'The Standing Stones',
+  'Fog-Shrouded Moor', 'Witch Tree Grove', 'Stagnant Pond', 'Collapsed Mine Entrance', 'The Devils Acre',
+
+  // URBAN - City locations
+  'Town Square', 'Arkham Harbor', 'Merchant District', 'Train Station', 'Old Cemetery',
+  'University Campus', 'Industrial Quarter', 'Fish Market', 'City Park', 'Courthouse Steps',
+  'Town Hall Plaza', 'Newspaper Row', 'Charity Hospital Grounds', 'Police Precinct Yard', 'Gallows Hill',
+  'Founders Plaza', 'The Gasworks', 'Cannery Row', 'The Shipyard', 'Immigrant Quarter',
+
+  // STREET - Connecting paths
+  'Main Street', 'Shadowy Alley', 'Foggy Back Lane', 'Sewer Grate', 'Narrow Passage',
+  'Tram Tracks', 'Cobblestone Road', 'Lamplit Avenue', 'Dead End', 'The Crossroads',
+  'Waterfront Walk', 'Tenement Row', 'Church Street', 'Riverfront Path', 'Factory Gate',
+  'Iron Bridge', 'Stone Overpass', 'Winding Lane', 'Brick Tunnel', 'The Narrows',
+
+  // Special outdoor locations
+  'Old Lighthouse', 'Misty Docks', 'Hanging Tree', 'Ruined Farmhouse', 'Lonely Crossroads',
+  'Cemetery Gate', 'Miskatonic Bridge', 'Innsmouth Wharf', 'Suicide Cliff', 'The Gibbet',
+  'Forgotten Well', 'Flooded Quarry', 'Hermits Shack', 'Abandoned Campsite', 'The Execution Ground'
 ];
 
 export const INDOOR_CONNECTORS = [
@@ -63,16 +111,218 @@ export const OUTDOOR_CONNECTORS = [
 ];
 
 export const LOCATION_DESCRIPTIONS: Record<string, string> = {
-  'Train Station': 'The last train left hours ago. The clock on the wall is shattered.',
-  'Abandoned Manor': 'Dust motes dance in the stale air. Portraits seem to watch you pass.',
-  'Dark Cellar': 'It smells of rot and old earth. Something scuttles in the corner.',
-  'The Library': 'Rows of forbidden texts. You hear a page turn, but no one is there.',
-  'Secret Crypt': 'The air is cold enough to see your breath. Ancient names are carved into the stone.',
-  'Old Church': 'A sense of unease hangs heavy here. The pews are broken.',
-  'Misty Docks': 'The waves lap against the rotting wood. The fog is thick here.',
-  'Town Square': 'Deserted. The statue in the center looks different than you remember.',
-  'Graveyard': 'The soil looks disturbed in front of several headstones.',
-  'Blackwood Forest': 'The trees crowd close, their branches like grasping skeletal fingers.'
+  // ========== INDOOR - FACADE ==========
+  'Abandoned Manor': 'Dust motes dance in the stale air. Portraits seem to watch you pass. The floorboards groan beneath your feet.',
+  'Blackwood Mansion': 'The infamous Blackwood estate looms before you. Ivy chokes the stonework, and every window is dark.',
+  'Crumbling Church': 'The steeple leans at an impossible angle. The bells have not rung in decades, yet sometimes they toll at midnight.',
+  'Arkham Asylum': 'Iron gates screech as you pass. Behind barred windows, pale faces press against the glass, whispering warnings.',
+  'Derelict Warehouse': 'Broken crates and rusted chains litter the floor. The smell of fish and something fouler permeates everything.',
+  'The Gilded Hotel': 'Faded grandeur drips from every surface. The chandelier sways though there is no breeze. The concierge desk is unmanned.',
+  'Dusty Antique Shop': 'Curiosities from every era crowd the shelves. A music box plays a tune you almost remember from childhood nightmares.',
+  'Boarded-Up Townhouse': 'Boards cover every window, nailed from the inside. Someone wanted very badly to keep something out—or in.',
+  'The Witch House': 'The angles are wrong here. Corners that should be square are not. Your compass spins uselessly.',
+  'Funeral Parlor': 'Embalming fluid and lilies. The caskets on display are sized for bodies taller than any human.',
+  'The Silver Key Inn': 'A faded sign creaks overhead. The innkeeper\'s smile is too wide, and he knows your name without asking.',
+  'Condemned Tenement': 'Water stains map the walls like alien continents. Somewhere above, footsteps pace endlessly.',
+  'Faculty Building': 'Miskatonic University. Lecture halls echo with forbidden knowledge. The trophy cases hold things that were never animals.',
+  'Orne Library Entrance': 'Leather and dust. The restricted section calls to you. The librarian watches with knowing eyes.',
+
+  // ========== INDOOR - FOYER ==========
+  'Grand Foyer': 'A magnificent entrance hall. The chandelier\'s crystals catch light that has no source. Twin staircases spiral upward into shadow.',
+  'Marble Lobby': 'Your footsteps echo off veined marble. The elevator indicator points to a floor that should not exist.',
+  'Dim Reception': 'A single lamp flickers on the reception desk. The guest book lies open to a page filled with the same name repeated.',
+  'Cobwebbed Vestibule': 'Thick webs veil the coat hooks. Something large made these webs. Something that has not left.',
+  'Servants Entrance': 'A narrow passage for those who were meant to be unseen. Bell wires hang slack, yet occasionally one rings.',
+  'Hotel Lobby': 'Velvet ropes guide invisible queues. Keys dangle on the board behind the desk—room 13 is always occupied.',
+  'Library Atrium': 'Light filters through stained glass depicting scholars performing rites that no book describes.',
+  'Church Narthex': 'Holy water fonts stand dry. The donation box is stuffed with strange coins from no known nation.',
+  'Asylum Reception': 'Check-in forms yellow with age. The clock runs backwards. The admitting nurse has been dead for thirty years.',
+  'Museum Entrance Hall': 'Ancient artifacts line the walls. The dinosaur skeleton seems to turn its head as you pass.',
+
+  // ========== INDOOR - CORRIDOR ==========
+  'Dusty Corridor': 'No one has walked here in years—except for the fresh footprints in the dust that are not your own.',
+  'Servants Passage': 'Hidden arteries of the house. You hear whispered conversations through the walls—planning, plotting, praying.',
+  'Darkened Hallway': 'Your flashlight barely penetrates the gloom. The darkness here feels thick, almost liquid.',
+  'Collapsed Wing': 'Rubble blocks most paths. Through gaps in the debris, you glimpse rooms that were never in any floor plan.',
+  'Hospital Ward': 'Empty beds with restraints. Medical charts describe treatments that would kill, not cure.',
+  'Cell Block Corridor': 'Iron doors line both walls. Scratching sounds come from behind each one. Feeding time was hours ago.',
+  'Narrow Service Hall': 'Pipes run overhead, sweating moisture. The walls press close. Something breathes in rhythm with the building.',
+  'Portrait Gallery': 'Generations of the family watch you. The oldest portrait shows a face that appears in every painting after.',
+  'Windowless Passage': 'No natural light has ever touched these stones. The air tastes of centuries and secrets.',
+  'Creaking Floorboards': 'Every step announces your presence. The boards creak in response, as if something below is answering.',
+
+  // ========== INDOOR - ROOM ==========
+  'Private Study': 'Books in languages you cannot name. A half-finished letter warns of something coming. The ink is still wet.',
+  'Master Bedroom': 'The bed is made with military precision. A journal on the nightstand describes dreams that are not dreams.',
+  'Abandoned Kitchen': 'Pots on the stove contain meals decades old, still bubbling. The pantry door bulges outward.',
+  'Ritual Chamber': 'Symbols painted in substances best not examined. The air thrums with wrongness. Something was summoned here.',
+  'Hidden Laboratory': 'Glass tubes and copper coils. Specimens float in jars—some human, some almost human, some neither.',
+  'Trophy Room': 'Mounted heads of creatures from no bestiary. One of them blinks.',
+  'Séance Parlor': 'A round table with many chairs. The planchette moves on its own, spelling out "HELP US LEAVE."',
+  'Dusty Nursery': 'A rocking horse moves gently. The crib contains something wrapped in swaddling clothes. It is not a baby.',
+  'Wine Tasting Room': 'Vintages older than the nation. The sommelier\'s notes describe flavors no grape could produce.',
+  'Music Room': 'A grand piano plays itself. The melody is beautiful and terrible. You feel compelled to dance.',
+  'Conservatory': 'Plants that should not grow together thrive here. Some reach toward you as you pass.',
+  'Billiard Room': 'The balls roll on their own, always forming the same pattern—a constellation from no earthly sky.',
+  'Drawing Room': 'Elegant furniture arranged for conversation. The previous occupants still sit here, though they no longer breathe.',
+  'Guest Quarters': 'The bed is turned down for you. There is a chocolate on the pillow. It is not chocolate.',
+  'Locked Office': 'Filing cabinets full of records on people who never existed, with photographs of places that cannot be.',
+  'Forgotten Pantry': 'Preserves from years with impossible dates. Some jars contain things that move when you look away.',
+  'Linen Closet': 'Towels folded perfectly. Behind them, a passage leads somewhere the blueprints don\'t show.',
+  'Servants Quarters': 'Narrow beds, personal effects left mid-life. Everyone left at once. No one knows why.',
+  'Sun Room': 'Windows face every direction, yet no light enters. Houseplants grow toward the darkness.',
+  'Smoking Lounge': 'Cigar smoke hangs eternally. Leather chairs bear the impressions of those who still occupy them.',
+  'Map Room': 'Charts of coastlines that have changed, and some that were never real. One map shows your exact location.',
+  'Artifact Storage': 'Crates stenciled in dead languages. Something inside one of them is breathing.',
+  'Dissection Theater': 'Observation seats circle the operating table. The stains predate modern medicine. The tools are still sharp.',
+  'Padded Cell': 'The walls absorb sound. Words are scratched into every surface—the same phrase, in every language.',
+  'Records Room': 'Filing cabinets from floor to ceiling. Every record describes your life. They continue past today\'s date.',
+
+  // ========== INDOOR - STAIRS ==========
+  'Grand Staircase': 'Sweeping steps that have witnessed elegance and horror. The banister is worn smooth by countless hands—or tentacles.',
+  'Spiral Stairs': 'You climb but never seem to arrive. The view from the window shows the same scene at every landing.',
+  'Rickety Ladder': 'Rungs worn smooth by use. Looking down, you see no bottom. Looking up, you see no top.',
+  'Servants Stair': 'Hidden behind the walls. Generations of servants trod these steps. Their footsteps echo still.',
+  'Bell Tower Steps': 'The bells hang motionless above. Yet you hear tolling, always approaching, never arriving.',
+  'Cellar Stairs': 'Each step takes you deeper than the last should. The temperature drops with every descent.',
+  'Emergency Exit': 'Metal stairs leading down into darkness. The door at the bottom has been welded shut—from this side.',
+  'Hidden Stairwell': 'Not on any blueprint. The steps are worn in the middle, as if by a single shuffling foot.',
+  'Crumbling Steps': 'Stone stairs eaten by time. Each step might be your last. Something waits at the bottom.',
+  'Fire Escape': 'Rusted metal clinging to the building. The ladder leads to a window that shows a different city.',
+
+  // ========== INDOOR - BASEMENT ==========
+  'Dark Cellar': 'It smells of rot and old earth. Something scuttles in the corner. The darkness here is hungry.',
+  'Wine Cellar': 'Dusty bottles from vintages that predate the manor. Some contain things other than wine.',
+  'Cold Storage': 'Meat hooks hang empty. The cold comes from no mechanical source. Frost patterns spell words.',
+  'Flooded Basement': 'Black water reaches your knees. Things move beneath the surface. They know you\'re here.',
+  'Boiler Room': 'The boiler breathes like a living thing. Pressure gauges show impossible readings. It\'s getting hotter.',
+  'Coal Chute': 'A passage to the outside world—but the darkness within reaches out, reluctant to let you leave.',
+  'Root Cellar': 'Potatoes with too many eyes. Carrots that twist into screaming faces. Nothing here should be eaten.',
+  'Maintenance Tunnel': 'Pipes and wires run overhead. The tunnel extends further than the building above. Much further.',
+  'Smugglers Cache': 'Hidden compartments in the walls. Whatever was smuggled through here was never meant to be found.',
+  'Underground Vault': 'Steel doors and combination locks. What\'s inside is worth protecting. Worth killing for.',
+  'Sewer Access': 'The smell is overwhelming. Things live down here that have never seen the sun—and they\'re curious about you.',
+  'Storm Drain': 'Rainwater echoes through concrete tunnels. Something else echoes back, mimicking but not quite right.',
+  'Foundation Ruins': 'Older structures beneath the current building. Someone was here before. Someone is here still.',
+  'Catacombs Entrance': 'Bones stacked with care. The skulls are arranged to face the entrance. They\'re watching.',
+  'Rats Nest': 'Thousands of rodents. They part as you approach, forming a path. They want you to follow.',
+
+  // ========== INDOOR - CRYPT ==========
+  'Secret Crypt': 'The air is cold enough to see your breath. Ancient names are carved into stone. Some are still legible.',
+  'Sacrificial Altar': 'Black stone stained with centuries of offering. The grooves channel fluids toward a central basin.',
+  'Eldritch Portal': 'A doorway to somewhere else. Through it, you glimpse geometries that hurt to perceive.',
+  'Bone Ossuary': 'Walls built of human remains. The arrangement is deliberate—a message in an architectural language.',
+  'Forgotten Tomb': 'Sealed for millennia. The seal is broken now. Whatever was within has gone to find its descendants.',
+  'Underground Lake': 'Still black water that reflects no light. Something massive moves in the depths. It knows you\'re watching.',
+  'Cultist Sanctum': 'Robes hang on hooks. A schedule on the wall shows the next meeting. It\'s tonight.',
+  'Ancient Cavern': 'Stalactites and stalagmites older than humanity. Cave paintings show creatures that still exist down here.',
+  'Star Chamber': 'The ceiling is open to a sky full of stars—but you are deep underground, and those are not our stars.',
+  'The Pit': 'A hole descending into absolute darkness. Sounds rise from below—chanting, weeping, something feeding.',
+  'Idol Chamber': 'A statue of something that should not be worshipped. Your reflection in its eyes is kneeling.',
+  'Mass Grave': 'Hundreds buried hastily. Disease, they said. But the bones are gnawed, and the teeth marks are human.',
+  'Petrified Garden': 'Stone flowers and frozen fountains. People turned to stone mid-stride, faces locked in terror.',
+  'Echo Chamber': 'Your words return wrong, twisted into warnings and prophecies. The chamber speaks with borrowed voices.',
+  'The Black Pool': 'Ink-dark water that doesn\'t ripple. Your reflection shows you older, changed, not entirely you anymore.',
+
+  // ========== OUTDOOR - NATURE ==========
+  'Blackwood Forest': 'The trees crowd close, their branches like grasping skeletal fingers. No birds sing here.',
+  'Moonlit Clearing': 'A perfect circle where nothing grows except pale mushrooms. The moon seems closer here.',
+  'Coastal Cliffs': 'Waves crash far below. The drop calls to you. Something in the spray whispers promises.',
+  'Treacherous Marsh': 'The ground sucks at your boots. Will-o-wisps dance just out of reach. They want you to follow.',
+  'Ancient Stone Circle': 'Monoliths older than memory. The carvings shift when you\'re not looking directly at them.',
+  'Whispering Woods': 'The leaves rustle with voices almost understood. They speak your name. They know your secrets.',
+  'Dead Mans Hollow': 'Nothing lives here. Trees are blackened, grass is ash. The silence is complete and terrible.',
+  'Blighted Orchard': 'Twisted apple trees bear fruit that looks healthy until you bite. The taste is indescribable.',
+  'Overgrown Ruins': 'Foundations of something ancient. Vines have not reclaimed it—they\'re growing away from it.',
+  'The Standing Stones': 'Arranged by hands that were not quite human. At certain times, they cast shadows that don\'t match their shapes.',
+  'Fog-Shrouded Moor': 'Visibility drops to feet. Shapes move in the mist. They could be human. They probably aren\'t.',
+  'Witch Tree Grove': 'Branches twisted into symbols. Ropes still hang from some. Not all the executions were legal.',
+  'Stagnant Pond': 'Green scum covers the surface. Bubbles rise from the bottom—air escaping from something below.',
+  'Collapsed Mine Entrance': 'Timbers rotted through. The darkness beyond breathes cold air. The miners never left.',
+  'The Devils Acre': 'Crops won\'t grow. Animals won\'t graze. The soil itself is wrong—black, oily, warm to the touch.',
+
+  // ========== OUTDOOR - URBAN ==========
+  'Town Square': 'Deserted. The statue in the center looks different than you remember. Its hand has moved.',
+  'Arkham Harbor': 'Salt and decay. Ships creak at their moorings. Sailors watch with eyes that reflect no light.',
+  'Merchant District': 'Shops shuttered at midday. A sale sign promises "EVERYTHING MUST GO." The owner went first.',
+  'Train Station': 'The last train left hours ago. The clock on the wall is shattered. The schedule shows arrivals from places that don\'t exist.',
+  'Old Cemetery': 'The soil looks disturbed in front of several headstones. Fresh flowers on graves decades old.',
+  'University Campus': 'Gothic spires against grey sky. Students hurry past, not meeting your eyes. Some of them aren\'t students anymore.',
+  'Industrial Quarter': 'Smokestacks belch into the sky. The factory never stops. No one knows what it produces.',
+  'Fish Market': 'The stench is overpowering. The fish have too many eyes. The fishmongers have too few.',
+  'City Park': 'Manicured lawns and ancient trees. The benches face inward, toward a gazebo that wasn\'t there yesterday.',
+  'Courthouse Steps': 'Justice is blind, they say. The statue here has had its eyes chiseled out. Recently.',
+  'Town Hall Plaza': 'Official buildings ring the square. All the clocks show different times. All are correct.',
+  'Newspaper Row': 'Printing presses run day and night. Tomorrow\'s headlines describe today\'s horrors.',
+  'Charity Hospital Grounds': 'Where the indigent go to die. Some don\'t stay dead. The night shift is always busy.',
+  'Police Precinct Yard': 'Patrol cars sit idle. The officers are all inside. They\'ve been inside for three days.',
+  'Gallows Hill': 'The scaffold still stands, preserved as history. The rope sways though there\'s no wind.',
+  'Founders Plaza': 'A monument to the town\'s founders. Their descendants still live here. They still look the same.',
+  'The Gasworks': 'Pipes and valves and the smell of sulfur. Flames burn blue-green. Workers move mechanically, never speaking.',
+  'Cannery Row': 'Processing fish that come from nowhere any fishing boat goes. The labels are in no known language.',
+  'The Shipyard': 'Vessels being built for purposes unclear. The designs are wrong—too many decks, going down.',
+  'Immigrant Quarter': 'People from the old countries, keeping old ways. Some of those ways should have been forgotten.',
+
+  // ========== OUTDOOR - STREET ==========
+  'Main Street': 'Gaslights flicker overhead. Store windows display mannequins that turn to watch you pass.',
+  'Shadowy Alley': 'A narrow passage between buildings. Eyes watch from doorways. The shortcut may cost more than time.',
+  'Foggy Back Lane': 'Mist curls around your ankles. Footsteps follow yours, always stopping a moment after you do.',
+  'Sewer Grate': 'Iron bars over darkness. Something below reaches up. Fingers—too many fingers—grasp at the air.',
+  'Narrow Passage': 'Walls close in on either side. You can touch both at once. They\'re warm, and they pulse.',
+  'Tram Tracks': 'The trolley hasn\'t run in years. Yet you hear it coming. The driver has no face.',
+  'Cobblestone Road': 'Ancient stones worn smooth. Some bear carvings—warnings from those who walked here before.',
+  'Lamplit Avenue': 'Gas lamps cast yellow pools of light. Between them, darkness moves with purpose.',
+  'Dead End': 'A wall where no wall should be. Fresh mortar. Something is bricked up behind it.',
+  'The Crossroads': 'Four paths meet here. A marker stone lists distances to places you\'ve never heard of.',
+  'Waterfront Walk': 'The harbor laps at the seawall. Things surface briefly—pale, bloated, watching.',
+  'Tenement Row': 'Cramped buildings lean against each other. Faces at every window. None of them blink.',
+  'Church Street': 'Steeples of different faiths line the road. The bells toll in sequence, spelling a message.',
+  'Riverfront Path': 'The water flows thick and slow. It\'s not water. You hope it\'s not water.',
+  'Factory Gate': 'Workers shuffle in as the whistle blows. The day shift started hours ago. The night shift never ends.',
+  'Iron Bridge': 'Rusted spans over dark water. The bridge sways in rhythm—something underneath is scratching.',
+  'Stone Overpass': 'Carvings of gargoyles that seem to have moved since you last looked.',
+  'Winding Lane': 'Twists back on itself. You pass the same house three times. A different face watches each time.',
+  'Brick Tunnel': 'Victorian engineering, but the proportions are wrong—built for something larger than human.',
+  'The Narrows': 'Buildings so close their upper floors touch. Sunlight hasn\'t reached here in a century.',
+
+  // ========== OUTDOOR - SPECIAL ==========
+  'Old Lighthouse': 'The beam still sweeps the fog, though no one tends it. Ships that follow it don\'t return.',
+  'Misty Docks': 'The waves lap against rotting wood. The fog is thick here. Shapes move on the water.',
+  'Hanging Tree': 'A massive oak with a single thick branch. Rope marks scar the bark. It was very busy once.',
+  'Ruined Farmhouse': 'Fields gone to seed. The family is still at dinner—what remains of them.',
+  'Lonely Crossroads': 'Miles from anywhere. A gibbet stands empty. Nearby, fresh digging.',
+  'Cemetery Gate': 'Iron gates that swing open at dusk, regardless of locks. The path beyond welcomes visitors.',
+  'Miskatonic Bridge': 'Spanning the river between Arkham\'s halves. Some say what flows beneath isn\'t entirely water.',
+  'Innsmouth Wharf': 'Decaying piers and the smell of the deep. The locals watch with bulging eyes. They\'re not unfriendly—just hungry.',
+  'Suicide Cliff': 'The edge calls to the desperate. The rocks below are stained. Sometimes the bodies wave back.',
+  'The Gibbet': 'A rusted cage for the condemned. The last occupant gnawed through the bars to escape. Or to feed.',
+  'Forgotten Well': 'Stone walls dropping into darkness. Coins at the bottom—and coins on the way up, climbing.',
+  'Flooded Quarry': 'Abandoned when they dug too deep. The water is the wrong color. It doesn\'t freeze in winter.',
+  'Hermits Shack': 'A hermit lived here once. His journals describe visitors from beyond. His last entry is incomplete.',
+  'Abandoned Campsite': 'Tents still stand. Food half-eaten. The campfire is cold. Drag marks lead toward the trees.',
+  'The Execution Ground': 'Where justice was served, after a fashion. The ground is salted. Nothing grows. Nothing should.',
+
+  // ========== CONNECTORS ==========
+  'Narrow Hallway': 'Portraits line both walls. The faces are all the same. They follow you with dead eyes.',
+  'Dark Corridor': 'Your footsteps echo strangely, as if something walks alongside you, just out of sync.',
+  'Grand Staircase': 'Marble steps worn by centuries of feet. Or something dragging.',
+  'Servant Passage': 'A hidden way through the walls. You hear conversations from rooms on either side—all the same voice.',
+  'Dusty Landing': 'A platform between floors. A window shows a view that can\'t exist—the building isn\'t tall enough.',
+  'Maintenance Shaft': 'Pipes and cables. The service hatch leads somewhere the blueprints don\'t show.',
+  'Basement Tunnel': 'Damp stone walls. The tunnel goes further than the building above. Much further.',
+  'Service Elevator': 'A small lift for staff. The buttons include floors that don\'t exist. Or shouldn\'t.',
+  'Spiral Stairs': 'You climb but never seem to arrive. Each landing shows the same view from the window.',
+  'Crawlspace': 'Barely room to move. Evidence others have been through here. Some didn\'t make it.',
+  'Narrow Alley': 'Shadows pool between buildings. Eyes watch from fire escapes. The shortcut may cost more than time.',
+  'Cobblestone Path': 'Uneven stones twist ankles. Carved symbols worn almost smooth. Almost.',
+  'Foggy Bridge': 'The river whispers below. Halfway across, you can\'t see either end.',
+  'Tram Track': 'The trolley doesn\'t run anymore. You hear it anyway.',
+  'Dark Tunnel': 'Absolute blackness. Your light barely penetrates. Something in the dark is afraid of it. For now.',
+  'Stone Steps': 'Worn by countless feet descending. The carvings suggest what lies below isn\'t meant to be visited.',
+  'River Crossing': 'Stepping stones barely break the surface. The water is thick and slow.',
+  'Overpass': 'A bridge over roads below. The traffic sounds wrong—engines that shouldn\'t exist.',
+  'Dirt Trail': 'Winding through overgrowth. The path knows where it\'s going. Trust it or don\'t.',
+  'Winding Lane': 'It doubles back on itself. You pass the same house twice. Different faces watch each time.'
 };
 
 export const SCENARIOS: Scenario[] = [
