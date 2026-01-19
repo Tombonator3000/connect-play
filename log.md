@@ -216,3 +216,32 @@ Now when players explore tiles, they will see the full Lovecraftian description 
 [12:38:59] UTFORSKET: The Witch House. [FACADE]
 [12:38:59] The angles are wrong here. Corners that should be square are not. Your compass spins uselessly.
 ```
+
+---
+
+## 2026-01-19: Scenario System & Legacy System Design
+
+### Oppgave
+Design og implementering av:
+1. **Scenario-system** - Hero Quest + Mansions of Madness + roguelite med klare mål
+2. **Legacy-system** - Bruk figurer videre mellom scenarier, shop for utstyr
+
+### Kontekst
+Spillet er inspirert av:
+- **Hero Quest** - Enkle, klare regler og mål
+- **Mansions of Madness** - Cthulhu-utforskning, atmosfære
+- **ADOM/Roguelite** - Prosedyregenerert, hvert spill er unikt
+
+### Analyse av eksisterende system
+- `Scenario` interface finnes med `victoryType`, `steps`, `doomEvents`
+- Tre scenarier definert men victory conditions ikke implementert
+- `MERCHANT` fase definert men ikke brukt
+- Ingen persistens mellom scenarier (legacy)
+
+### Status
+- [ ] Design scenario-system
+- [ ] Design legacy-system
+- [ ] Implementer ScenarioBriefingPopup
+- [ ] Implementer victory condition checking
+- [ ] Implementer legacy character persistence
+- [ ] Implementer shop mellom oppdrag
