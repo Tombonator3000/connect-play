@@ -295,6 +295,33 @@ export interface ActivePuzzle {
   targetTileId: string;
 }
 
+// Combat system types
+export interface CombatState {
+  enemyId: string;
+  playerId: string;
+  phase: 'player_attack' | 'enemy_attack' | 'horror_check' | 'resolved';
+  playerRoll?: number[];
+  enemyDamageDealt?: number;
+  playerDamageDealt?: number;
+}
+
+// Monster AI types
+export type MonsterBehavior = 'aggressive' | 'defensive' | 'ranged' | 'ambusher' | 'patrol' | 'swarm';
+export type MonsterState = 'idle' | 'patrol' | 'alert' | 'hunting' | 'fleeing';
+
+export interface MonsterAIState {
+  state: MonsterState;
+  targetPlayerId?: string;
+  lastKnownPlayerPos?: { q: number; r: number };
+  alertLevel: number; // 0-100
+}
+
+// Extended Enemy with AI state
+export interface EnemyWithAI extends Enemy {
+  aiState?: MonsterAIState;
+  lastMoveRound?: number;
+}
+
 export interface GameState {
   phase: GamePhase;
   doom: number;
@@ -308,7 +335,7 @@ export interface GameState {
   log: string[];
   lastDiceRoll: number[] | null;
   activeEvent: EventCard | null;
-  activeCombat: { enemyId: string; playerId: string } | null;
+  activeCombat: CombatState | null;
   activePuzzle: ActivePuzzle | null;
   selectedEnemyId: string | null;
   selectedTileId: string | null;
@@ -320,4 +347,5 @@ export interface GameState {
   currentStepIndex: number;
   questItemsCollected: string[];
   exploredTiles: string[];
+  pendingHorrorChecks: string[]; // Enemy IDs that need horror checks
 }

@@ -350,3 +350,52 @@ export const OBSTACLES: Record<ObstacleType, Obstacle> = {
   spatial_warp: { type: 'spatial_warp', blocking: false, removable: true, effect: 'Doors lead to wrong places. Solve puzzle to fix.' },
   time_loop: { type: 'time_loop', blocking: false, removable: true, effect: 'Tile resets when you leave. Must break sequence.' }
 };
+
+// Monster spawn configuration
+export interface SpawnConfig {
+  type: EnemyType;
+  weight: number;
+  minDoom: number;
+  maxDoom: number;
+}
+
+// Base spawn chances by tile category
+export const SPAWN_CHANCES: Record<string, number> = {
+  nature: 0.25,
+  urban: 0.15,
+  street: 0.20,
+  facade: 0.10,
+  foyer: 0.15,
+  corridor: 0.30,
+  room: 0.25,
+  stairs: 0.20,
+  basement: 0.35,
+  crypt: 0.45,
+  default: 0.20
+};
+
+// Monster movement speeds
+export const MONSTER_SPEEDS: Partial<Record<EnemyType, number>> = {
+  hound: 2,
+  byakhee: 2,
+  hunting_horror: 2,
+  shoggoth: 1, // Actually slow, but massive
+  formless_spawn: 1,
+  cultist: 1,
+  ghoul: 1,
+  deepone: 1
+};
+
+// Combat difficulty modifiers by doom level
+export const DOOM_COMBAT_MODIFIERS = {
+  high: { doomMin: 10, enemyDamageBonus: 0, playerDiceBonus: 0 },
+  medium: { doomMin: 5, enemyDamageBonus: 1, playerDiceBonus: 0 },
+  low: { doomMin: 0, enemyDamageBonus: 2, playerDiceBonus: -1 }
+};
+
+// Get combat modifier based on current doom
+export function getCombatModifier(doom: number) {
+  if (doom >= 10) return DOOM_COMBAT_MODIFIERS.high;
+  if (doom >= 5) return DOOM_COMBAT_MODIFIERS.medium;
+  return DOOM_COMBAT_MODIFIERS.low;
+}
