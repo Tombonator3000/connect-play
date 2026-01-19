@@ -1,5 +1,87 @@
 # Development Log
 
+## 2026-01-19: Fix Scenario Victory Condition Checking
+
+### Oppgave
+Fikse at scenarioer aldri kunne vinnes fordi victory conditions aldri ble sjekket. Spesifikt ble "Survive for X rounds" scenarioer aldri avsluttet selv når spilleren hadde overlevd det nødvendige antall runder.
+
+### Problem
+1. `checkGameOver()` funksjonen var definert men ble aldri kalt
+2. Etter at runden ble inkrementert i `handleMythosOverlayComplete()`, ble det aldri sjekket om victory conditions var oppfylt
+3. Når objectives ble markert som fullført (f.eks. boss drept, items samlet), ble det heller aldri sjekket om dette førte til seier
+
+### Løsning
+Implementert victory condition checking på to steder:
+
+#### 1. handleMythosOverlayComplete() i ShadowsGame.tsx
+Lagt til eksplisitt victory og defeat check med de NYE verdiene (newRound, newDoom, updatedScenario) rett FØR state oppdateres. Dette sikrer at survival scenarios avsluttes korrekt når spilleren overlever det nødvendige antall runder.
+
+```typescript
+// Check for victory conditions with the NEW values before transitioning
+if (updatedScenario) {
+  const victoryResult = checkVictoryConditions(updatedScenario, {
+    players: state.players,
+    enemies: state.enemies,
+    board: state.board,
+    round: newRound,
+    doom: newDoom,
+    questItemsCollected: state.questItemsCollected
+  });
+
+  if (victoryResult.isVictory) {
+    addToLog(victoryResult.message);
+    setGameOverType('victory');
+    setState(prev => ({ ...prev, phase: GamePhase.GAME_OVER, ... }));
+    return;
+  }
+  // ... defeat check also added
+}
+```
+
+#### 2. useEffect for scenario changes i ShadowsGame.tsx
+Lagt til en useEffect som sjekker victory conditions når som helst `state.activeScenario` endres. Dette fanger opp victory conditions for alle andre scenario-typer (assassination, collection, investigation, ritual, escape) når objectives markeres som fullført.
+
+```typescript
+useEffect(() => {
+  if (!state.activeScenario || state.phase === GamePhase.GAME_OVER || state.phase === GamePhase.SETUP) {
+    return;
+  }
+
+  const victoryResult = checkVictoryConditions(state.activeScenario, {
+    players: state.players,
+    enemies: state.enemies,
+    board: state.board,
+    round: state.round,
+    doom: state.doom,
+    questItemsCollected: state.questItemsCollected
+  });
+
+  if (victoryResult.isVictory) {
+    addToLog(victoryResult.message);
+    setGameOverType('victory');
+    setState(prev => ({ ...prev, phase: GamePhase.GAME_OVER }));
+  }
+}, [state.activeScenario, state.players, state.enemies, state.board, state.round, state.doom, state.questItemsCollected, state.phase]);
+```
+
+### Scenario-typer og deres victory conditions
+
+Alle følgende scenario-typer har nå fungerende victory checks:
+
+| Type | Victory Condition | Trigger |
+|------|-------------------|---------|
+| **Survival** | Overlev X runder | Runden når targetAmount (f.eks. 5) |
+| **Assassination** | Drep boss | Boss-fienden drepes |
+| **Collection** | Samle items | Alle required items samlet |
+| **Escape** | Nå utgangen | Spiller på exit tile med required items |
+| **Investigation** | Finn ledetråder | Alle required tiles/items funnet |
+| **Ritual** | Utfør ritual | Ritual objective markert som fullført |
+
+### Status
+Fullført. Alle scenariotyper sjekker nå victory conditions korrekt og spillet avsluttes med seier når betingelsene er oppfylt.
+
+---
+
 ## 2026-01-19: Hex Tile Dead-End Edge Visualization
 
 ### Oppgave
