@@ -37,6 +37,66 @@ export interface Spell {
   range: number;
 }
 
+// ============================================================================
+// HERO QUEST STYLE COMBAT SYSTEM
+// ============================================================================
+
+/**
+ * Occultist Spells - Replace heavy weapons with magic
+ * Spells use Willpower dice and have limited uses per scenario
+ */
+export interface OccultistSpell {
+  id: string;
+  name: string;
+  description: string;
+  attackDice: number;           // Number of attack dice (0 for non-attack spells)
+  useWillpower: boolean;        // Uses WIL dice instead of fixed amount
+  usesPerScenario: number;      // How many times can be used per scenario
+  currentUses?: number;         // Remaining uses
+  effect: 'attack' | 'attack_horror' | 'banish' | 'defense' | 'utility';
+  horrorDamage?: number;        // For spells that cause sanity damage to enemies
+  defenseBonus?: number;        // For defensive spells
+  range: number;                // 0 = self, 1+ = tiles away
+}
+
+/**
+ * Hero Quest style weapon - determines total attack dice
+ * In Hero Quest, the weapon IS your attack, not a bonus
+ */
+export interface HQWeapon {
+  id: string;
+  name: string;
+  attackDice: number;           // Total attack dice this weapon provides
+  weaponType: 'melee' | 'ranged';
+  range?: number;               // For ranged weapons
+  ammo?: number;                // Shots before reload (-1 = unlimited)
+  notes?: string;               // Special properties
+  goldCost: number;
+  requiredLevel?: number;       // Level required to purchase
+  silent?: boolean;             // For stealth
+}
+
+/**
+ * Hero Quest style armor - determines defense dice
+ */
+export interface HQArmor {
+  id: string;
+  name: string;
+  defenseDice: number;          // Total defense dice this armor provides
+  goldCost: number;
+  requiredLevel?: number;
+  notes?: string;
+}
+
+/**
+ * Combat stats for Hero Quest style combat
+ * These are base values before equipment
+ */
+export interface CombatStats {
+  baseAttackDice: number;       // Attack dice without weapon (unarmed)
+  baseDefenseDice: number;      // Defense dice without armor
+}
+
 export interface Character {
   id: CharacterType;
   name: string;
@@ -48,6 +108,11 @@ export interface Character {
   attributes: CharacterAttributes;
   special: string;
   specialAbility: 'investigate_bonus' | 'occult_immunity' | 'combat_bonus' | 'ritual_master' | 'escape_bonus' | 'heal_bonus';
+  // Hero Quest style combat stats
+  baseAttackDice: number;       // Attack dice when unarmed (weapon replaces this)
+  baseDefenseDice: number;      // Base defense dice (armor adds to this)
+  weaponRestrictions?: string[];  // List of weapon IDs this class CANNOT use
+  canCastSpells?: boolean;      // Only Occultist can cast spells
 }
 
 export type MadnessType = 'hallucination' | 'paranoia' | 'hysteria' | 'catatonia' | 'obsession' | 'amnesia' | 'night_terrors' | 'dark_insight';
@@ -75,6 +140,8 @@ export interface Player extends Character {
   inventory: InventorySlots;
   legacyInventory?: Item[];  // For backward compatibility during migration
   spells: Spell[];
+  // Hero Quest style Occultist spells
+  selectedSpells?: OccultistSpell[];  // Spells chosen for this scenario (Occultist only)
   actions: number;
   isDead: boolean;
   madness: string[];
@@ -87,14 +154,22 @@ export interface Item {
   name: string;
   type: 'weapon' | 'tool' | 'relic' | 'armor' | 'consumable' | 'key' | 'clue';
   effect: string;
-  bonus?: number;
-  cost?: number;
+  bonus?: number;           // Legacy: general bonus (being replaced by attackDice/defenseDice)
+  cost?: number;            // Legacy: insight cost
+  goldCost?: number;        // Gold cost for shop
   statModifier?: 'combat' | 'investigation' | 'agility' | 'physical_defense' | 'mental_defense';
   slotType?: ItemSlotType;  // Which slot this item can be equipped to
   keyId?: string;           // For keys - which locks they open
   isLightSource?: boolean;  // Whether this item provides light
   uses?: number;            // For consumables - number of uses remaining
   maxUses?: number;         // For consumables - maximum uses
+  // Hero Quest style combat values
+  attackDice?: number;      // For weapons: total attack dice this weapon provides
+  defenseDice?: number;     // For armor: total defense dice this armor provides
+  weaponType?: 'melee' | 'ranged';  // For weapons
+  range?: number;           // For ranged weapons
+  ammo?: number;            // Shots before reload (-1 = unlimited melee)
+  silent?: boolean;         // For stealth weapons
 }
 
 // ============================================================================

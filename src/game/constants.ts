@@ -1,4 +1,4 @@
-import { Character, CharacterType, Item, EventCard, Tile, Scenario, Madness, Spell, BestiaryEntry, EnemyType, Obstacle, ObstacleType, EdgeData, TileCategory, SkillType } from './types';
+import { Character, CharacterType, Item, EventCard, Tile, Scenario, Madness, Spell, BestiaryEntry, EnemyType, Obstacle, ObstacleType, EdgeData, TileCategory, SkillType, OccultistSpell, HQWeapon, HQArmor } from './types';
 
 // ============================================================================
 // 1.1 TILE CONNECTION SYSTEM
@@ -172,36 +172,210 @@ export const SPELLS: Spell[] = [
   { id: 'banish', name: 'Banish', cost: 4, description: 'A powerful rite to weaken the connection to the void.', effectType: 'banish', value: 5, range: 2 }
 ];
 
+// ============================================================================
+// HERO QUEST STYLE WEAPONS
+// ============================================================================
+// In Hero Quest, the weapon DETERMINES your attack dice (not a bonus)
+// Weapon = Total attack dice. Higher tier weapons = more dice.
+
+export const HQ_WEAPONS: HQWeapon[] = [
+  // MELEE WEAPONS
+  { id: 'unarmed', name: 'Unarmed', attackDice: 1, weaponType: 'melee', goldCost: 0, notes: 'Fists and feet' },
+  { id: 'knife', name: 'Knife', attackDice: 2, weaponType: 'melee', goldCost: 50, silent: true, notes: 'Silent, concealable' },
+  { id: 'club', name: 'Club / Pipe', attackDice: 2, weaponType: 'melee', goldCost: 30, notes: 'Improvised weapon' },
+  { id: 'machete', name: 'Machete', attackDice: 3, weaponType: 'melee', goldCost: 150, notes: 'Heavy blade' },
+
+  // RANGED WEAPONS
+  { id: 'derringer', name: 'Derringer', attackDice: 2, weaponType: 'ranged', range: 2, ammo: 2, goldCost: 100, notes: 'Hidden, 2 shots' },
+  { id: 'revolver', name: 'Revolver', attackDice: 3, weaponType: 'ranged', range: 3, ammo: 6, goldCost: 200, notes: 'Standard sidearm' },
+  { id: 'shotgun', name: 'Shotgun', attackDice: 4, weaponType: 'ranged', range: 2, ammo: 2, goldCost: 400, notes: 'Devastating close range' },
+  { id: 'rifle', name: 'Rifle', attackDice: 3, weaponType: 'ranged', range: 5, ammo: 5, goldCost: 350, notes: 'Long range precision' },
+  { id: 'tommy_gun', name: 'Tommy Gun', attackDice: 5, weaponType: 'ranged', range: 3, ammo: 20, goldCost: 800, requiredLevel: 2, notes: 'Rare, devastating' }
+];
+
+// ============================================================================
+// HERO QUEST STYLE ARMOR
+// ============================================================================
+// Defense dice = base defense + armor defense dice
+// Roll defense dice, each 4+ blocks 1 damage (like shields in Hero Quest)
+
+export const HQ_ARMOR: HQArmor[] = [
+  { id: 'none', name: 'No Armor', defenseDice: 0, goldCost: 0 },
+  { id: 'leather_jacket', name: 'Leather Jacket', defenseDice: 1, goldCost: 100, notes: 'Light protection' },
+  { id: 'trench_coat', name: 'Trench Coat', defenseDice: 1, goldCost: 150, notes: 'Conceals weapons' },
+  { id: 'armored_vest', name: 'Armored Vest', defenseDice: 2, goldCost: 500, requiredLevel: 2, notes: 'Military grade' }
+];
+
+// ============================================================================
+// OCCULTIST SPELLS (Hero Quest Elf-style)
+// ============================================================================
+// Occultist uses SPELLS instead of heavy weapons
+// Spells have limited uses per scenario
+// Attack spells use Willpower dice OR fixed dice
+
+export const OCCULTIST_SPELLS: OccultistSpell[] = [
+  // ATTACK SPELLS
+  {
+    id: 'eldritch_bolt',
+    name: 'Eldritch Bolt',
+    description: 'A crackling bolt of otherworldly energy strikes the target.',
+    attackDice: 3,
+    useWillpower: false, // Fixed 3 dice
+    usesPerScenario: -1, // Unlimited (1/round)
+    effect: 'attack',
+    range: 3
+  },
+  {
+    id: 'mind_blast',
+    name: 'Mind Blast',
+    description: 'Psychic assault that damages both body and mind.',
+    attackDice: 2,
+    useWillpower: false,
+    usesPerScenario: 2,
+    effect: 'attack_horror',
+    horrorDamage: 1, // Also causes 1 horror to enemy
+    range: 2
+  },
+
+  // BANISH SPELL
+  {
+    id: 'banish_spell',
+    name: 'Banish',
+    description: 'Send a weak enemy back to the void.',
+    attackDice: 0, // Uses WIL check vs DC 5
+    useWillpower: true,
+    usesPerScenario: 2,
+    effect: 'banish', // Instantly destroys weak enemy (HP <= 3)
+    range: 2
+  },
+
+  // DEFENSIVE SPELL
+  {
+    id: 'dark_shield',
+    name: 'Dark Shield',
+    description: 'Shadows coalesce into a protective barrier.',
+    attackDice: 0,
+    useWillpower: false,
+    usesPerScenario: 3,
+    effect: 'defense',
+    defenseBonus: 2, // +2 defense dice this round
+    range: 0
+  },
+
+  // UTILITY SPELL
+  {
+    id: 'glimpse_beyond',
+    name: 'Glimpse Beyond',
+    description: 'See through walls and into adjacent rooms.',
+    attackDice: 0,
+    useWillpower: false,
+    usesPerScenario: 1,
+    effect: 'utility', // Reveal all tiles within 3 range
+    range: 3
+  }
+];
+
+// ============================================================================
+// HERO QUEST STYLE CHARACTERS
+// ============================================================================
+// Combat uses WEAPON dice for attack (not attribute + bonus)
+// Defense uses BASE + ARMOR dice
+// Mapped from Hero Quest classes:
+// - Veteran = Barbarian (Fighter, high attack/HP)
+// - Detective = Dwarf (Investigator, balanced with defense)
+// - Professor = Wizard (Scholar, low combat, high sanity)
+// - Occultist = Elf (Hybrid, uses SPELLS instead of heavy weapons)
+// - Journalist = Rogue (Scout, +1 movement)
+// - Doctor = Healer (Support, heals 2 HP)
+
 export const CHARACTERS: Record<CharacterType, Character> = {
-  detective: { 
-    id: 'detective', name: 'The Private Eye', hp: 5, maxHp: 5, sanity: 4, maxSanity: 4, insight: 1, 
-    attributes: { strength: 3, agility: 3, intellect: 4, willpower: 3 },
-    special: '+1 die on Investigation', specialAbility: 'investigate_bonus'
-  },
-  professor: { 
-    id: 'professor', name: 'The Professor', hp: 3, maxHp: 3, sanity: 6, maxSanity: 6, insight: 3, 
-    attributes: { strength: 2, agility: 2, intellect: 5, willpower: 4 },
-    special: 'Can read occult texts safely', specialAbility: 'occult_immunity'
-  },
-  journalist: { 
-    id: 'journalist', name: 'The Journalist', hp: 4, maxHp: 4, sanity: 4, maxSanity: 4, insight: 1, 
-    attributes: { strength: 2, agility: 4, intellect: 4, willpower: 3 },
-    special: '+1 Movement, escape bonus', specialAbility: 'escape_bonus'
-  },
-  veteran: { 
-    id: 'veteran', name: 'The Veteran', hp: 6, maxHp: 6, sanity: 3, maxSanity: 3, insight: 0, 
+  // VETERAN (Barbarian) - Fighter class
+  // Can use ALL weapons, +1 Attack die with melee
+  // Special: "Fearless" - Immune to first Horror check
+  veteran: {
+    id: 'veteran', name: 'The Veteran',
+    hp: 6, maxHp: 6, sanity: 3, maxSanity: 3, insight: 0,
     attributes: { strength: 5, agility: 3, intellect: 2, willpower: 3 },
-    special: '+1 die on Combat and Str checks', specialAbility: 'combat_bonus'
+    special: 'Can use ALL weapons. +1 melee attack die. Fearless (immune to first Horror check)',
+    specialAbility: 'combat_bonus',
+    baseAttackDice: 3,    // Highest base attack (like Barbarian)
+    baseDefenseDice: 2,   // Standard defense
+    weaponRestrictions: [] // Can use everything
   },
-  occultist: { 
-    id: 'occultist', name: 'The Occultist', hp: 3, maxHp: 3, sanity: 5, maxSanity: 5, insight: 4, 
+
+  // DETECTIVE (Dwarf) - Investigator class
+  // Can use all weapons except Tommy Gun
+  // +1 die on Investigation, Sharp Eye (finds hidden doors automatically)
+  detective: {
+    id: 'detective', name: 'The Private Eye',
+    hp: 5, maxHp: 5, sanity: 4, maxSanity: 4, insight: 1,
+    attributes: { strength: 3, agility: 3, intellect: 4, willpower: 3 },
+    special: '+1 Investigation die. Sharp Eye (auto-find hidden doors)',
+    specialAbility: 'investigate_bonus',
+    baseAttackDice: 2,    // Standard attack
+    baseDefenseDice: 3,   // Higher defense (like Dwarf)
+    weaponRestrictions: ['tommy_gun']
+  },
+
+  // PROFESSOR (Wizard) - Scholar class
+  // Can ONLY use Derringer, Knife
+  // Can read occult texts without Sanity loss
+  // Special: "Knowledge" - +2 dice on puzzles
+  professor: {
+    id: 'professor', name: 'The Professor',
+    hp: 3, maxHp: 3, sanity: 6, maxSanity: 6, insight: 3,
+    attributes: { strength: 2, agility: 2, intellect: 5, willpower: 4 },
+    special: 'Read occult safely. Knowledge (+2 puzzle dice). Limited weapons',
+    specialAbility: 'occult_immunity',
+    baseAttackDice: 1,    // Lowest attack (like Wizard)
+    baseDefenseDice: 2,   // Standard defense
+    weaponRestrictions: ['revolver', 'shotgun', 'tommy_gun', 'rifle', 'machete'] // Can only use derringer, knife
+  },
+
+  // OCCULTIST (Elf) - Hybrid class with SPELLS
+  // Can use Knife, Revolver only
+  // Has SPELLS instead of heavy weapons
+  // Special: "Ritual Master" - Can cast 3 spells per scenario
+  occultist: {
+    id: 'occultist', name: 'The Occultist',
+    hp: 3, maxHp: 3, sanity: 5, maxSanity: 5, insight: 4,
     attributes: { strength: 2, agility: 3, intellect: 3, willpower: 5 },
-    special: 'Can perform rituals', specialAbility: 'ritual_master'
+    special: 'Ritual Master: Uses SPELLS instead of heavy weapons. Picks 3 spells per scenario',
+    specialAbility: 'ritual_master',
+    baseAttackDice: 2,    // Standard attack (like Elf)
+    baseDefenseDice: 2,   // Standard defense
+    weaponRestrictions: ['shotgun', 'tommy_gun', 'rifle', 'machete'], // Can only use knife, revolver
+    canCastSpells: true
   },
-  doctor: { 
-    id: 'doctor', name: 'The Doctor', hp: 4, maxHp: 4, sanity: 5, maxSanity: 5, insight: 2, 
+
+  // JOURNALIST (Rogue) - Scout class
+  // Can use all except Shotgun, Tommy Gun
+  // +1 Movement
+  // Special: "Escape Artist" - Can flee without Horror check
+  journalist: {
+    id: 'journalist', name: 'The Journalist',
+    hp: 4, maxHp: 4, sanity: 4, maxSanity: 4, insight: 1,
+    attributes: { strength: 2, agility: 4, intellect: 4, willpower: 3 },
+    special: '+1 Movement. Escape Artist (flee without Horror check)',
+    specialAbility: 'escape_bonus',
+    baseAttackDice: 2,    // Standard attack
+    baseDefenseDice: 2,   // Standard defense
+    weaponRestrictions: ['shotgun', 'tommy_gun']
+  },
+
+  // DOCTOR (Healer) - Support class
+  // Can use Derringer, Knife only
+  // Heals 2 HP instead of 1
+  // Special: "Medical Kit" - Starts with free heal item
+  doctor: {
+    id: 'doctor', name: 'The Doctor',
+    hp: 4, maxHp: 4, sanity: 5, maxSanity: 5, insight: 2,
     attributes: { strength: 2, agility: 3, intellect: 4, willpower: 4 },
-    special: 'Heals 2 instead of 1', specialAbility: 'heal_bonus'
+    special: 'Heals 2 HP instead of 1. Medical Kit (starts with free heal)',
+    specialAbility: 'heal_bonus',
+    baseAttackDice: 1,    // Low attack
+    baseDefenseDice: 2,   // Standard defense
+    weaponRestrictions: ['revolver', 'shotgun', 'tommy_gun', 'rifle', 'machete'] // Can only use derringer, knife
   }
 };
 
@@ -2048,14 +2222,104 @@ export const BESTIARY: Record<EnemyType, BestiaryEntry> = {
   }
 };
 
+// ============================================================================
+// ITEMS (Updated with Hero Quest style combat values)
+// ============================================================================
+// Weapons now use attackDice (total dice, not bonus)
+// Armor now uses defenseDice (total dice from armor)
+
 export const ITEMS: Item[] = [
-  { id: 'rev', name: 'Revolver', type: 'weapon', effect: '+1 Combat Die', bonus: 1, cost: 3, statModifier: 'combat' },
-  { id: 'shot', name: 'Shotgun', type: 'weapon', effect: '+2 Combat Dice', bonus: 2, cost: 5, statModifier: 'combat' },
-  { id: 'tommy', name: 'Tommy Gun', type: 'weapon', effect: '+3 Combat Dice', bonus: 3, cost: 10, statModifier: 'combat' },
-  { id: 'med', name: 'Medical Kit', type: 'consumable', effect: 'Heal 2 HP', bonus: 2, cost: 3 },
-  { id: 'whiskey', name: 'Old Whiskey', type: 'consumable', effect: 'Heal 2 Sanity', bonus: 2, cost: 2 },
-  { id: 'flash', name: 'Flashlight', type: 'tool', effect: '+1 Investigation Die', bonus: 1, cost: 2, statModifier: 'investigation' },
-  { id: 'book', name: 'Necronomicon', type: 'relic', effect: '+3 Insight, -1 Sanity', bonus: 3, cost: 8 }
+  // ===== MELEE WEAPONS =====
+  {
+    id: 'knife', name: 'Knife', type: 'weapon',
+    effect: '2 Attack Dice, Silent',
+    attackDice: 2, weaponType: 'melee', ammo: -1,
+    goldCost: 50, silent: true, slotType: 'hand'
+  },
+  {
+    id: 'club', name: 'Club', type: 'weapon',
+    effect: '2 Attack Dice',
+    attackDice: 2, weaponType: 'melee', ammo: -1,
+    goldCost: 30, slotType: 'hand'
+  },
+  {
+    id: 'machete', name: 'Machete', type: 'weapon',
+    effect: '3 Attack Dice, Heavy',
+    attackDice: 3, weaponType: 'melee', ammo: -1,
+    goldCost: 150, slotType: 'hand'
+  },
+
+  // ===== RANGED WEAPONS =====
+  {
+    id: 'derringer', name: 'Derringer', type: 'weapon',
+    effect: '2 Attack Dice, Hidden, 2 shots',
+    attackDice: 2, weaponType: 'ranged', range: 2, ammo: 2,
+    goldCost: 100, slotType: 'hand'
+  },
+  {
+    id: 'rev', name: 'Revolver', type: 'weapon',
+    effect: '3 Attack Dice, 6 shots',
+    attackDice: 3, weaponType: 'ranged', range: 3, ammo: 6,
+    goldCost: 200, slotType: 'hand',
+    // Legacy compatibility
+    bonus: 1, cost: 3, statModifier: 'combat'
+  },
+  {
+    id: 'shot', name: 'Shotgun', type: 'weapon',
+    effect: '4 Attack Dice, 2 shots, close range',
+    attackDice: 4, weaponType: 'ranged', range: 2, ammo: 2,
+    goldCost: 400, slotType: 'hand',
+    // Legacy compatibility
+    bonus: 2, cost: 5, statModifier: 'combat'
+  },
+  {
+    id: 'rifle', name: 'Rifle', type: 'weapon',
+    effect: '3 Attack Dice, Long range',
+    attackDice: 3, weaponType: 'ranged', range: 5, ammo: 5,
+    goldCost: 350, slotType: 'hand'
+  },
+  {
+    id: 'tommy', name: 'Tommy Gun', type: 'weapon',
+    effect: '5 Attack Dice, 20 shots, Rare',
+    attackDice: 5, weaponType: 'ranged', range: 3, ammo: 20,
+    goldCost: 800, slotType: 'hand',
+    // Legacy compatibility
+    bonus: 3, cost: 10, statModifier: 'combat'
+  },
+
+  // ===== ARMOR =====
+  {
+    id: 'leather_jacket', name: 'Leather Jacket', type: 'armor',
+    effect: '+1 Defense Die',
+    defenseDice: 1, goldCost: 100, slotType: 'body'
+  },
+  {
+    id: 'trench_coat', name: 'Trench Coat', type: 'armor',
+    effect: '+1 Defense Die, Conceals weapons',
+    defenseDice: 1, goldCost: 150, slotType: 'body'
+  },
+  {
+    id: 'armored_vest', name: 'Armored Vest', type: 'armor',
+    effect: '+2 Defense Dice, Military grade',
+    defenseDice: 2, goldCost: 500, slotType: 'body'
+  },
+
+  // ===== CONSUMABLES =====
+  { id: 'med', name: 'Medical Kit', type: 'consumable', effect: 'Heal 2 HP', bonus: 2, goldCost: 100, uses: 3, maxUses: 3, slotType: 'bag' },
+  { id: 'whiskey', name: 'Old Whiskey', type: 'consumable', effect: 'Heal 2 Sanity', bonus: 2, goldCost: 50, uses: 1, maxUses: 1, slotType: 'bag' },
+  { id: 'bandages', name: 'Bandages', type: 'consumable', effect: 'Heal 1 HP', bonus: 1, goldCost: 25, uses: 2, maxUses: 2, slotType: 'bag' },
+  { id: 'sedatives', name: 'Sedatives', type: 'consumable', effect: 'Heal 1 Sanity', bonus: 1, goldCost: 75, uses: 2, maxUses: 2, slotType: 'bag' },
+
+  // ===== TOOLS =====
+  { id: 'flash', name: 'Flashlight', type: 'tool', effect: 'Removes Darkness penalty', bonus: 1, goldCost: 50, isLightSource: true, slotType: 'hand', statModifier: 'investigation' },
+  { id: 'lantern', name: 'Oil Lantern', type: 'tool', effect: 'Light source, can ignite', bonus: 1, goldCost: 75, isLightSource: true, slotType: 'hand' },
+  { id: 'lockpick', name: 'Lockpick Set', type: 'tool', effect: '+1 die on lockpicking', bonus: 1, goldCost: 100, slotType: 'bag' },
+  { id: 'crowbar', name: 'Crowbar', type: 'tool', effect: '+1 die on forcing doors', bonus: 1, goldCost: 75, slotType: 'hand' },
+
+  // ===== RELICS =====
+  { id: 'elder_sign', name: 'Elder Sign', type: 'relic', effect: 'Opens sealed doors, banishes spirits', goldCost: 750, slotType: 'bag' },
+  { id: 'protective_ward', name: 'Protective Ward', type: 'relic', effect: '+1 die on Horror checks', bonus: 1, goldCost: 300, slotType: 'bag' },
+  { id: 'book', name: 'Necronomicon', type: 'relic', effect: '+3 Insight, -1 Sanity per read', bonus: 3, goldCost: 400, slotType: 'bag' }
 ];
 
 export const EVENTS: EventCard[] = [

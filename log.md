@@ -1,5 +1,165 @@
 # Development Log
 
+## 2026-01-19: Hero Quest-stil Kampsystem Implementert
+
+### Oppgave
+Forenkle kampsystemet fra komplekst terning-bonus-system til Hero Quest-stil der **våpenet BESTEMMER** antall terninger direkte.
+
+### Problem med Gammelt System
+- Vårt system: `2 (base) + Attributt (2-5) + Våpenbonus = 6-12+ terninger`
+- For komplekst og ga for mange terninger
+- Inkonsistente våpen-bonuser mellom constants.ts og legacyManager.ts
+
+### Nytt Hero Quest-stil System
+
+#### Kamp-flow (forenklet)
+```
+ATTACK:
+1. Roll [Weapon Dice]
+2. Count skulls (4, 5, 6 på d6)
+3. = Damage dealt
+
+DEFEND:
+1. Roll [Base Defense + Armor Dice]
+2. Count shields (4, 5, 6 på d6)
+3. = Damage blocked
+
+RESULT:
+Damage = Skulls - Shields (minimum 0)
+```
+
+#### Klasse-mapping til Hero Quest
+
+| 1920s Klasse | Hero Quest | Rolle | Base Attack | Base Defense | HP | Sanity |
+|--------------|------------|-------|-------------|--------------|-----|--------|
+| Veteran | Barbarian | Fighter | 3 | 2 | 6 | 3 |
+| Detective | Dwarf | Investigator | 2 | 3 | 5 | 4 |
+| Professor | Wizard | Scholar | 1 | 2 | 3 | 6 |
+| Occultist | Elf | Hybrid (spells) | 2 | 2 | 3 | 5 |
+| Journalist | Rogue | Scout | 2 | 2 | 4 | 4 |
+| Doctor | Healer | Support | 1 | 2 | 4 | 5 |
+
+#### Våpen-system (1920s)
+
+**Melee:**
+| Våpen | Attack Dice | Pris | Notater |
+|-------|-------------|------|---------|
+| Unarmed | 1 | - | Alle |
+| Knife | 2 | $50 | Stille |
+| Club/Pipe | 2 | $30 | - |
+| Machete | 3 | $150 | - |
+
+**Ranged:**
+| Våpen | Attack Dice | Pris | Notater |
+|-------|-------------|------|---------|
+| Derringer | 2 | $100 | 2 skudd, skjult |
+| Revolver | 3 | $200 | 6 skudd |
+| Shotgun | 4 | $400 | 2 skudd, kort rekkevidde |
+| Rifle | 3 | $350 | Lang rekkevidde |
+| Tommy Gun | 5 | $800 | Sjelden, høy pris, Level 2+ |
+
+#### Armor-system
+
+| Armor | Defense Dice | Pris |
+|-------|--------------|------|
+| None | 0 | - |
+| Leather Jacket | +1 | $100 |
+| Trench Coat | +1 | $150 |
+| Armored Vest | +2 | $500 |
+
+#### Klasse-spesialiteter
+
+**Veteran (Barbarian)**
+- Kan bruke ALLE våpen
+- +1 Attack die med melee
+- Spesial: "Fearless" - Immune mot første Horror check
+
+**Detective (Dwarf)**
+- Kan bruke alle våpen unntatt Tommy Gun
+- +1 die på Investigation
+- Spesial: "Sharp Eye" - Finner skjulte dører automatisk
+
+**Professor (Wizard)**
+- Kan KUN bruke Derringer, Knife
+- Kan lese okkulte tekster uten Sanity-tap
+- Spesial: "Knowledge" - +2 dice på puzzles
+
+**Occultist (Elf)**
+- Kan bruke Knife, Revolver
+- Har SPELLS i stedet for tunge våpen
+- Spesial: "Ritual Master" - Velger 3 spells per scenario
+
+**Journalist (Rogue)**
+- Kan bruke alle unntatt Shotgun, Tommy Gun
+- +1 Movement
+- Spesial: "Escape Artist" - Kan flykte uten Horror check
+
+**Doctor (Healer)**
+- Kan bruke Derringer, Knife
+- Healer 2 HP i stedet for 1
+- Spesial: "Medical Kit" - Starter med gratis heal item
+
+#### Magi-system for Occultist
+
+Occultist velger 3 spells før scenario starter:
+
+| Spell | Effect | Dice | Bruk |
+|-------|--------|------|------|
+| Eldritch Bolt | 3 attack dice, range | Fixed 3 | 1/runde |
+| Mind Blast | 2 attack + Horror på fiende | Fixed 2 | 2/scenario |
+| Banish | Fjerner 1 svak fiende | WIL DC 5 | 2/scenario |
+| Dark Shield | +2 Defense denne runden | Auto | 3/scenario |
+| Glimpse Beyond | Se alle tiles i 3 range | Auto | 1/scenario |
+
+### Files Modified
+
+#### types.ts
+- Lagt til `OccultistSpell` interface for Occultist magi
+- Lagt til `HQWeapon` interface for Hero Quest våpen
+- Lagt til `HQArmor` interface for Hero Quest rustning
+- Lagt til `CombatStats` interface
+- Utvidet `Character` med `baseAttackDice`, `baseDefenseDice`, `weaponRestrictions`, `canCastSpells`
+- Utvidet `Player` med `selectedSpells` for Occultist
+- Utvidet `Item` med `attackDice`, `defenseDice`, `weaponType`, `range`, `ammo`, `silent`, `goldCost`
+
+#### constants.ts
+- Importert nye typer (`OccultistSpell`, `HQWeapon`, `HQArmor`)
+- Oppdatert `CHARACTERS` med Hero Quest stats og spesialiteter
+- Lagt til `HQ_WEAPONS` array med alle våpen
+- Lagt til `HQ_ARMOR` array med alle rustninger
+- Lagt til `OCCULTIST_SPELLS` array med alle spells
+- Fullstendig restrukturert `ITEMS` med nye attackDice/defenseDice verdier
+
+#### combatUtils.ts
+- Fullstendig omskrevet til Hero Quest-stil
+- `performAttack()` - Bruker nå våpen-terninger direkte
+- `performDefense()` - NY funksjon for forsvarsrulling
+- `getWeaponAttackDice()` - NY funksjon for å hente våpen-terninger
+- `getDefenseDice()` - NY funksjon for å hente forsvarsterninger
+- `castSpell()` - NY funksjon for Occultist magi
+- `getCombatPreview()` - Oppdatert for Hero Quest-stil
+- `getWeaponBonus()` - Beholdt for bakoverkompatibilitet
+
+### Terning-sammenligning
+
+**Gammelt system (Veteran med Tommy Gun):**
+- 2 (base) + 5 (STR) + 3 (våpenbonus) + 1 (klassebonus) = 11 terninger
+
+**Nytt Hero Quest system (Veteran med Tommy Gun):**
+- 5 (Tommy Gun) = 5 terninger (våpenet bestemmer alt)
+
+**Veteran med melee (Machete):**
+- 3 (Machete) + 1 (Veteran melee bonus) = 4 terninger
+
+### Konklusjon
+Systemet er nå mye enklere og mer i tråd med Hero Quest:
+- Våpen = dine angrepsterninger (ikke bonus på toppen av attributter)
+- Armor = ekstra forsvarsterninger (legges til base)
+- Occultist har spells som erstatning for tunge våpen
+- Klasser har tydelige roller og begrensninger
+
+---
+
 ## 2026-01-19: Priority 1 - Core Mechanics Implementation
 
 ### Tasks Completed
