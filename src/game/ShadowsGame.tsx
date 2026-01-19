@@ -29,6 +29,7 @@ const DEFAULT_STATE: GameState = {
   lastDiceRoll: null,
   activeEvent: null,
   activeCombat: null,
+  activePuzzle: null,
   selectedEnemyId: null,
   selectedTileId: null,
   activeScenario: null,

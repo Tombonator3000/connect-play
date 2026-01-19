@@ -2,6 +2,43 @@
 
 ## 2026-01-19
 
+### Session 6 - Board Game Aesthetic & AI Tile Generation
+- Implemented complete 1920s oil painting board game aesthetic:
+  - **Chiaroscuro lighting** with dramatic light/dark contrasts
+  - **Color palette**: Sepia browns, Prussian blue, Lovecraftian green, coagulated red
+  - New CSS tile textures: darkwood, marble, carpet, stone, cobblestone, water
+  - Added gaslight-glow, eldritch-glow, and ritual-glow effects
+- **AI-Generated Tile Images**:
+  - Generated 8 unique oil painting tiles: library, church, dock, square, graveyard, hallway, alley, crypt
+  - Tiles stored in `src/assets/tiles/`
+  - Images automatically applied based on tile name matching
+- Created `src/game/AssetLibrary.ts` with:
+  - Strict prompt engineering for AI image generation
+  - Tile category system (indoor, outdoor, connector, supernatural)
+  - Floor texture definitions
+  - Edge visual effects
+- Updated `index.css` with board game aesthetic tokens and animations
+- Updated `tailwind.config.ts` with new color palette
+
+### Files Created This Session
+- `src/game/AssetLibrary.ts` - Asset generation prompts and tile visual definitions
+- `src/assets/tiles/tile-library.png` - AI-generated library tile
+- `src/assets/tiles/tile-church.png` - AI-generated church/ritual tile
+- `src/assets/tiles/tile-dock.png` - AI-generated dock tile
+- `src/assets/tiles/tile-square.png` - AI-generated town square tile
+- `src/assets/tiles/tile-graveyard.png` - AI-generated graveyard tile
+- `src/assets/tiles/tile-hallway.png` - AI-generated hallway tile
+- `src/assets/tiles/tile-alley.png` - AI-generated alley tile
+- `src/assets/tiles/tile-crypt.png` - AI-generated crypt tile
+
+### Files Modified This Session
+- `src/game/components/GameBoard.tsx` - Added tile image imports and board game styling
+- `src/index.css` - Added tile texture classes and chiaroscuro effects
+- `tailwind.config.ts` - Added board game color palette
+- `src/game/ShadowsGame.tsx` - Added activePuzzle to DEFAULT_STATE
+
+---
+
 ### Session 5 - External Repo Sync & Documentation
 - Synced missing components from external repo (https://github.com/Tombonator3000/https-github.com-Tombonator3000)
 - **New Components Added:**
