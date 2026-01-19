@@ -3,14 +3,16 @@
 ## 2026-01-19
 
 ### Session 9 - Fix Tile Image Display
-- **Fixed missing CSS classes** that prevented tile images from showing:
-  - Added `.chiaroscuro-overlay` class for dramatic shadow effects
-  - Added `.oil-texture` class for canvas painting effect
-  - Added tile floor texture classes: `.tile-darkwood`, `.tile-cobblestone`, `.tile-stone`, `.tile-carpet`, `.tile-marble`, `.tile-water`
-  - Added glow effect classes: `.gaslight-glow`, `.ritual-glow`, `.eldritch-glow`
-  - Added `.animate-gaslight` keyframe animation
-- **Root cause**: GameBoard.tsx referenced CSS classes that were never added to index.css
-- All 32 tile images are now visible on the game board
+- **Root cause identified**: Tile images were imported correctly but not rendering due to:
+  1. `backgroundImage` CSS approach didn't work properly with dynamic imports
+  2. Overlays (`chiaroscuro-overlay`, `oil-texture`) had no z-index and opacity controls
+  3. CSS classes were missing from index.css
+- **Fix applied**:
+  - Changed from `backgroundImage` to proper `<img>` tag with `object-cover`
+  - Added explicit `z-index` values (`z-[1]`, `z-[2]`, `z-[3]`) to layer properly
+  - Reduced overlay opacity (40% and 30%) so images show through
+  - Added missing CSS classes to index.css (chiaroscuro-overlay, oil-texture, tile textures)
+- All 32 tile images now display correctly on the game board
 
 ### Files Modified This Session
 - `src/index.css` - Added ~100 lines of board game aesthetic CSS classes

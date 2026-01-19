@@ -527,20 +527,21 @@ const GameBoard: React.FC<GameBoardProps> = ({
               onClick={() => { if (!hasDragged.current) onTileClick(tile.q, tile.r); }}
             >
               {/* Board game tile with AI-generated oil painting texture */}
-              <div className={`absolute inset-0 hex-clip transition-all duration-500 ${visual.floorClass} ${visual.glowClass} relative overflow-hidden group`}>
-                {/* AI-generated tile image */}
-                {tileImage && (
-                  <div 
-                    className="absolute inset-0 bg-cover bg-center opacity-90"
-                    style={{ backgroundImage: `url(${tileImage})` }}
+              <div className={`absolute inset-0 hex-clip transition-all duration-500 ${visual.floorClass} ${visual.glowClass} overflow-hidden group`}>
+                {/* AI-generated tile image - MUST be on top with z-index */}
+                {tileImage ? (
+                  <img 
+                    src={tileImage}
+                    alt={tile.name}
+                    className="absolute inset-0 w-full h-full object-cover z-[1]"
                   />
-                )}
+                ) : null}
                 
-                {/* Chiaroscuro lighting overlay */}
-                <div className="absolute inset-0 chiaroscuro-overlay pointer-events-none" />
+                {/* Chiaroscuro lighting overlay - semi-transparent */}
+                <div className="absolute inset-0 z-[2] chiaroscuro-overlay pointer-events-none opacity-40" />
                 
-                {/* Oil painting texture */}
-                <div className="absolute inset-0 oil-texture pointer-events-none" />
+                {/* Oil painting texture - subtle */}
+                <div className="absolute inset-0 z-[3] oil-texture pointer-events-none opacity-30" />
                 
                 {/* Tile icon - only show if no image */}
                 {!tileImage && (
