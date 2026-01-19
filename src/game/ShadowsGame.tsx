@@ -4,7 +4,7 @@ import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Sc
 import ContextActionBar from './components/ContextActionBar';
 import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
 import { performSkillCheck } from './utils/combatUtils';
-import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES, validateTileConnection, selectRandomConnectableCategory, isDoorRequired, CATEGORY_ZONE_LEVELS } from './constants';
+import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES, validateTileConnection, selectRandomConnectableCategory, isDoorRequired, CATEGORY_ZONE_LEVELS, LOCATION_DESCRIPTIONS } from './constants';
 import { hexDistance, findPath } from './hexUtils';
 import GameBoard from './components/GameBoard';
 import CharacterPanel from './components/CharacterPanel';
@@ -699,6 +699,12 @@ const ShadowsGame: React.FC = () => {
     if (newTiles.length > 0) {
       setState(prev => ({ ...prev, board: [...prev.board, ...newTiles] }));
       addToLog(`UTFORSKET: ${roomName}. [${newCategory.toUpperCase()}]`);
+
+      // Show atmospheric Lovecraftian description if available
+      const locationDescription = LOCATION_DESCRIPTIONS[roomName];
+      if (locationDescription) {
+        addToLog(locationDescription);
+      }
 
       // Use new spawn system
       const tile = newTiles[0];
