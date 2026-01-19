@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText } from 'lucide-react';
-import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget } from './types';
+import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget } from './types';
 import ContextActionBar from './components/ContextActionBar';
 import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
 import { performSkillCheck } from './utils/combatUtils';
@@ -681,7 +681,7 @@ const ShadowsGame: React.FC = () => {
           name: roomName,
           type: isConnector ? 'street' : 'room',
           category: newCategory,
-          zoneLevel: CATEGORY_ZONE_LEVELS[newCategory] || 0,
+          zoneLevel: (CATEGORY_ZONE_LEVELS[newCategory] || 0) as ZoneLevel,
           floorType: getFloorType(newCategory),
           visibility: 'visible',
           edges: idx === 0 ? createEdges() : [
