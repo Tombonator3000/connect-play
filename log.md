@@ -1746,3 +1746,206 @@ Nå kan spillere faktisk **velge** å gå unarmed ved å unequipe våpen fra hen
 
 ### Build Status
 ✅ Kompilerer uten feil
+
+---
+
+## 2026-01-19: Enhanced Enemy Movement AI
+
+### Oppgave
+Forbedre enemy movement AI med:
+- Pathfinding rundt hindringer (rubble, locked_door, fog_wall, fire)
+- Bedre target prioritering basert på HP, Sanity, isolasjon
+- Ranged attacks med line of sight checking
+- Special movement abilities basert på monster type
+
+### Implementert
+
+#### 1. Obstacle Handling System (monsterAI.ts)
+
+**Ny `OBSTACLE_PASSABILITY` konfigurasjon:**
+
+Definerer hvordan forskjellige monster-typer interagerer med hindringer:
+
+| Hindring | Blokkerer | Flying Passerer | Aquatic Passerer | Ethereal Passerer | Massive Ødelegger |
+|----------|-----------|-----------------|------------------|-------------------|-------------------|
+| locked_door | Ja | Nei | Nei | Nei | Ja |
+| rubble | Ja | Ja | Nei | Ja | Ja |
+| fire | Nei (+1 move) | Ja | Nei | Ja | Nei |
+| fog_wall | Nei (+1 move) | Ja | Ja | Ja | Nei |
+| trap | Nei | Ja | Nei | Ja | Nei |
+| gate | Ja | Ja | Nei | Nei | Ja |
+| barricade | Ja | Ja | Nei | Ja | Ja |
+
+**Ny `canEnemyPassTile()` funksjon:**
+- Sjekker både `tile.obstacle` og `tile.object`
+- Tar hensyn til flying, aquatic, ethereal, og massive traits
+- Returnerer passability status og movement cost
+- Aquatic fiender får bonus i vann (-1 movement cost)
+
+#### 2. Target Prioritization System (monsterAI.ts)
+
+**`ENEMY_TARGET_PREFERENCES` per monster type:**
+
+| Monster | Prefererer Lav HP | Prefererer Lav Sanity | Prefererer Isolert | Spesial |
+|---------|-------------------|----------------------|-------------------|---------|
+| Cultist | Nei | Nei | Ja | - |
+| Deep One | Nei | Nei | Nei | Vann-nærhet |
+| Ghoul | **Ja** | Nei | Ja | Scavenger |
+| Hound | Ja | Nei | Ja | Hunter |
+| Mi-Go | Nei | Nei | Ja | Professor-target |
+| Nightgaunt | Nei | **Ja** | Ja | Psykologisk |
+| Priest | Nei | **Ja** | Nei | Occultist-target |
+| Sniper | Nei | Nei | Ja | Unngår Veteran |
+| Byakhee | Nei | **Ja** | Ja | Svake sinn |
+| Star Spawn | Nei | Ja | Nei | Magic users |
+
+**`calculateTargetPriority()` scoring:**
+- Distance score: 0-100 poeng (nærmere = høyere)
+- Low HP bonus: 0-30 poeng (for scavengers)
+- Low Sanity bonus: 0-25 poeng (for psykologiske monstre)
+- Isolated bonus: 0-20 poeng (for jegere)
+- Class preference: ±15 poeng (favoriserte/unngåtte klasser)
+- Water preference: +15 poeng (for Deep Ones)
+
+#### 3. Enhanced Pathfinding (monsterAI.ts)
+
+**Ny `findEnhancedPath()` algoritme:**
+- Weighted A* pathfinding
+- Tar hensyn til obstacle movement costs
+- Prioriterer lavkost-ruter
+- Støtter flying enemies (ignorerer hindringer)
+- Aquatic enemies får bonus i vann
+
+**Forbedret `getPatrolDestination()`:**
+- Weighted random valg basert på preferanser
+- Ghouls foretrekker crypts/basements
+- Deep Ones foretrekker vann
+- Flying enemies foretrekker åpne områder
+- Unngår traps og fire
+
+#### 4. Ranged Attack System (monsterAI.ts)
+
+**Ny `canMakeRangedAttack()` funksjon:**
+- Sjekker range og line of sight
+- Bruker `hasLineOfSight()` fra hexUtils
+- Beregner cover penalty fra objekter i veien
+- Objekter som gir dekning: crate, bookshelf, statue, cabinet
+
+**Ny `findOptimalRangedPosition()` funksjon:**
+- Finner beste posisjon for ranged angripere
+- Optimal avstand: 2 tiles fra target
+- Tar hensyn til line of sight
+- Minimerer cover penalty
+
+**Cover System:**
+- Hver hindring i line of sight gir +1 cover penalty
+- Cover penalty reduserer damage
+- Ranged angripere prøver å finne posisjon uten cover
+
+#### 5. Special Movement Abilities (monsterAI.ts)
+
+**`getSpecialMovement()` typer:**
+
+| Monster | Special Movement | Beskrivelse |
+|---------|-----------------|-------------|
+| Flying creatures | `fly` | Ignorerer obstacles, speed 2 |
+| Aquatic creatures | `swim` | Bonus i vann |
+| Nightgaunt | `phase` | Kan passere gjennom noen hindringer |
+| Hound of Tindalos | `teleport` | Teleporterer gjennom "vinkler" |
+| Formless Spawn | `phase` | Kan klemme seg gjennom gaps |
+
+**`executeSpecialMovement()` - Hound Teleportation:**
+- Finner teleport-destinasjoner nær spillere
+- Prioriterer spillere med lav Sanity
+- Teleporterer til nærmeste posisjon ved target
+- Visuell effekt: "materialiserer seg gjennom vinklene"
+
+#### 6. Enhanced getMonsterDecision() (monsterAI.ts)
+
+Fullstendig omskrevet for smart AI:
+
+**Decision Flow:**
+```
+1. Find best target (smart targeting)
+   ↓
+2. No target? → Special movement / Patrol / Wait
+   ↓
+3. Ranged enemy? → Check LOS, find optimal position, retreat if too close
+   ↓
+4. Melee range? → Attack with contextual message
+   ↓
+5. Special movement available? → Teleport/Phase
+   ↓
+6. Chase using enhanced pathfinding
+```
+
+**Kontekstuelle meldinger basert på priority:**
+- Low HP target: "sanser svakhet og angriper..."
+- Isolated target: "går løs på den isolerte..."
+- Low Sanity target: "jakter på den redde..."
+- Flying approach: "daler ned mot..."
+- Swimming approach: "glir gjennom vannet mot..."
+
+#### 7. Updated processEnemyTurn() (monsterAI.ts)
+
+**Ny return type:**
+```typescript
+{
+  updatedEnemies: Enemy[];
+  attacks: Array<{
+    enemy: Enemy;
+    targetPlayer: Player;
+    isRanged?: boolean;      // NY
+    coverPenalty?: number;   // NY
+  }>;
+  messages: string[];
+  specialEvents: Array<{    // NY
+    type: 'teleport' | 'phase' | 'destruction';
+    enemy: Enemy;
+    description: string;
+  }>;
+}
+```
+
+#### 8. ShadowsGame.tsx Integrasjon
+
+**Oppdatert Mythos phase handler:**
+- Destrukturerer `specialEvents` fra processEnemyTurn
+- Logger special events med ⚡ ikon
+- Floating text for teleportation
+- Ranged attacks logges med 🎯 ikon
+- Cover penalty reduserer damage
+
+### Filer Modifisert
+- `src/game/utils/monsterAI.ts` - Komplett AI overhaul
+- `src/game/ShadowsGame.tsx` - Integrert nye AI features
+
+### Tekniske Detaljer
+
+**Pathfinding Algorithm:**
+- Bruker weighted A* med movement costs
+- Max depth: 12 tiles
+- Prioriterer lavkost-ruter
+
+**Target Priority Calculation:**
+```
+Score = DistanceScore + LowHpBonus + LowSanityBonus + IsolatedBonus + TypePreference
+```
+
+**Cover System:**
+- Maks cover penalty: 3 (damage reduction)
+- Ranged enemies posisjonerer seg for minimal cover
+
+### Resultat
+Fiender er nå mye smartere:
+- ✅ Pathfinding rundt hindringer basert på traits
+- ✅ Flying enemies ignorerer obstacles
+- ✅ Aquatic enemies får bonus i vann
+- ✅ Ghouls jakter på wounded players
+- ✅ Nightgaunts angriper mentally weak players
+- ✅ Deep Ones prefererer targets nær vann
+- ✅ Ranged enemies bruker line of sight
+- ✅ Cover system reduserer ranged damage
+- ✅ Hound of Tindalos kan teleportere
+- ✅ Kontekstuelle angrepsmeldinger
+- ✅ Build vellykket
