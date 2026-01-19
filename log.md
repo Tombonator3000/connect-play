@@ -1,5 +1,26 @@
 # Development Log
 
+## 2026-01-19: Endret spilltittel til "Mythos Quest"
+
+### Oppgave
+Endre spilltittelen fra "Shadows of the 1920s" til "Mythos Quest".
+
+### Endringer
+
+#### 1. index.html
+- Oppdatert `<title>` tag
+- Oppdatert `og:title` meta tag
+- Oppdatert `twitter:title` meta tag
+
+#### 2. MainMenu.tsx
+- Endret hovedtittelen fra "Shadows" til "Mythos"
+- Endret undertittelen fra "of the 1920s" til "Quest"
+
+### Status
+Fullført. Spilltittelen er nå "Mythos Quest" på hovedmenyen og i nettleserens tittel.
+
+---
+
 ## 2026-01-19: Logical Tile Connection System
 
 ### Oppgave

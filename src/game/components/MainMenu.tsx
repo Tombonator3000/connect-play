@@ -33,10 +33,10 @@ const MainMenu: React.FC<MainMenuProps> = ({
       <div className="relative z-10 flex flex-col items-center text-center animate-in fade-in zoom-in duration-1000 w-full px-4">
         <div className="mb-8 md:mb-12">
           <h1 className="text-5xl md:text-9xl font-display italic tracking-tighter text-primary drop-shadow-[0_0_15px_hsla(348,75%,50%,0.4)] mb-2 md:mb-4 text-stroke-sm">
-            Shadows
+            Mythos
           </h1>
           <h2 className="text-xl md:text-5xl font-display text-muted-foreground tracking-widest uppercase">
-            of the 1920s
+            Quest
           </h2>
           <div className="w-24 md:w-32 h-1 bg-primary mx-auto mt-4 md:mt-6 shadow-[var(--shadow-doom)]"></div>
         </div>
