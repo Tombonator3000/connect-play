@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText } from 'lucide-react';
-import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText } from './types';
+import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData } from './types';
 import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS } from './constants';
 import { hexDistance, findPath } from './hexUtils';
 import GameBoard from './components/GameBoard';
@@ -185,6 +185,22 @@ const ShadowsGame: React.FC = () => {
     const roomName = pool[Math.floor(Math.random() * pool.length)];
     const shape = isConnector ? ROOM_SHAPES.LINEAR : ROOM_SHAPES.MEDIUM;
 
+    // Determine category and floor type based on tile set
+    const getCategory = () => {
+      if (isConnector) return tileSet === 'indoor' ? 'corridor' : 'street';
+      if (tileSet === 'indoor') return 'room';
+      return 'urban';
+    };
+    
+    const getFloorType = () => {
+      if (tileSet === 'indoor') return isConnector ? 'wood' : 'wood';
+      return 'cobblestone';
+    };
+
+    const defaultEdges: [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData] = [
+      { type: 'open' }, { type: 'open' }, { type: 'open' }, { type: 'open' }, { type: 'open' }, { type: 'open' }
+    ];
+
     const newTiles: Tile[] = [];
     shape.forEach((offset, idx) => {
       const q = startQ + offset.q;
@@ -195,7 +211,11 @@ const ShadowsGame: React.FC = () => {
           q, r,
           name: roomName,
           type: isConnector ? 'street' : 'room',
-          category: isConnector ? 'connector' : 'location',
+          category: getCategory(),
+          zoneLevel: tileSet === 'indoor' ? 1 : 0,
+          floorType: getFloorType(),
+          visibility: 'visible',
+          edges: defaultEdges,
           roomId,
           explored: true,
           searchable: !isConnector,
