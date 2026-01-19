@@ -1,5 +1,43 @@
 # Development Log
 
+## 2026-01-19: Enable New Game with Selected Hero
+
+### Oppgave
+Fikse at når man velger en hero i Hero Archive og vil starte nytt spill, så skal man gå til scenario-velger istedenfor tilbake til hovedmenyen.
+
+### Problem
+Brukeren kunne velge en hero i Hero Archive, men det var ingen måte å starte et nytt spill med den valgte helten. "Back to Menu" knappen gikk bare tilbake til hovedmenyen.
+
+### Løsning
+Lagt til en "Start New Game" knapp i HeroArchivePanel som vises når minst én hero er valgt. Denne knappen tar brukeren direkte til scenario-velgeren (difficulty selection).
+
+### Endringer
+
+#### 1. HeroArchivePanel.tsx
+- Lagt til ny prop `onStartNewGame?: () => void`
+- Lagt til "Start New Game" knapp ved siden av "Back to Menu" som vises når heroes er valgt
+- Knappen viser antall valgte helter: "Start New Game (1 hero)" eller "Start New Game (2 heroes)"
+
+#### 2. ShadowsGame.tsx
+- Implementert `onStartNewGame` callback som:
+  - Setter mainMenuView tilbake til 'title'
+  - Setter game phase til SETUP med null activeScenario
+  - Lukker hovedmenyen slik at difficulty selection vises
+  - Beholder de valgte legacy hero ID'ene
+
+### Flow
+1. Bruker åpner Hero Archive fra hovedmenyen
+2. Bruker velger en eller flere helter
+3. Bruker trykker "Start New Game"
+4. Bruker blir tatt til difficulty selection (Normal/Hard/Nightmare)
+5. Etter å velge difficulty, vises scenario med de valgte legacy heroes allerede merket
+6. Bruker kan "Assemble Team" og starte spillet
+
+### Status
+Fullført. Brukere kan nå starte nytt spill direkte fra Hero Archive etter å ha valgt helter.
+
+---
+
 ## 2026-01-19: Endret spilltittel til "Mythos Quest"
 
 ### Oppgave
