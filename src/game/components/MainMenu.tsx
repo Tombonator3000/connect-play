@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Skull, Settings } from 'lucide-react';
+import { Play, Skull, Settings, Users, Package } from 'lucide-react';
 
 interface MainMenuProps {
   onNewGame: () => void;
@@ -7,9 +7,24 @@ interface MainMenuProps {
   onOptions: () => void;
   canContinue: boolean;
   version: string;
+  // Legacy system props
+  onHeroArchive?: () => void;
+  onStash?: () => void;
+  heroCount?: number;
+  stashCount?: number;
 }
 
-const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onContinue, onOptions, canContinue, version }) => {
+const MainMenu: React.FC<MainMenuProps> = ({
+  onNewGame,
+  onContinue,
+  onOptions,
+  canContinue,
+  version,
+  onHeroArchive,
+  onStash,
+  heroCount = 0,
+  stashCount = 0
+}) => {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background text-foreground overflow-hidden font-serif">
       <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] opacity-20 animate-pulse"></div>
@@ -47,6 +62,44 @@ const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onContinue, onOptions, c
             </span>
           </button>
 
+          {/* Legacy System Buttons */}
+          {(onHeroArchive || onStash) && (
+            <div className="flex gap-3 mt-2">
+              {onHeroArchive && (
+                <button
+                  onClick={onHeroArchive}
+                  className="group flex-1 relative px-4 py-3 bg-amber-900/20 border border-amber-700 hover:border-amber-500 text-amber-400 hover:text-amber-300 transition-all uppercase tracking-wider font-bold text-xs rounded backdrop-blur-sm"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <Users size={16} />
+                    <span className="hidden md:inline">Heroes</span>
+                    {heroCount > 0 && (
+                      <span className="px-1.5 py-0.5 bg-amber-600 text-amber-100 rounded-full text-[10px]">
+                        {heroCount}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              )}
+              {onStash && (
+                <button
+                  onClick={onStash}
+                  className="group flex-1 relative px-4 py-3 bg-blue-900/20 border border-blue-700 hover:border-blue-500 text-blue-400 hover:text-blue-300 transition-all uppercase tracking-wider font-bold text-xs rounded backdrop-blur-sm"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <Package size={16} />
+                    <span className="hidden md:inline">Stash</span>
+                    {stashCount > 0 && (
+                      <span className="px-1.5 py-0.5 bg-blue-600 text-blue-100 rounded-full text-[10px]">
+                        {stashCount}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
+
           <button
             onClick={onOptions}
             className="group relative px-4 py-3 bg-transparent border border-border hover:border-accent text-muted-foreground hover:text-accent transition-all uppercase tracking-[0.2em] font-bold text-xs md:text-sm rounded hover:bg-accent/10"
@@ -59,6 +112,11 @@ const MainMenu: React.FC<MainMenuProps> = ({ onNewGame, onContinue, onOptions, c
 
         <div className="mt-8 md:mt-16 text-muted-foreground text-[10px] md:text-xs uppercase tracking-widest font-sans">
           <p>Version {version} • A Cosmic Horror Experience</p>
+          {heroCount > 0 && (
+            <p className="mt-2 text-amber-500/60">
+              Legacy Mode: {heroCount} hero{heroCount !== 1 ? 'es' : ''} in archive
+            </p>
+          )}
         </div>
       </div>
     </div>

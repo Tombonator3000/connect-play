@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText } from 'lucide-react';
-import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget } from './types';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package } from 'lucide-react';
+import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp } from './types';
 import ContextActionBar from './components/ContextActionBar';
 import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
 import { performSkillCheck } from './utils/combatUtils';
@@ -16,13 +16,36 @@ import OptionsMenu, { GameSettings, DEFAULT_SETTINGS } from './components/Option
 import GameOverOverlay, { GameOverType } from './components/GameOverOverlay';
 import MythosPhaseOverlay from './components/MythosPhaseOverlay';
 import ScenarioBriefingPopup from './components/ScenarioBriefingPopup';
+import HeroArchivePanel from './components/HeroArchivePanel';
+import EquipmentStashPanel from './components/EquipmentStashPanel';
+import MerchantShop from './components/MerchantShop';
 import { performAttack, performHorrorCheck, calculateEnemyDamage, hasRangedWeapon, canAttackEnemy } from './utils/combatUtils';
 import { processEnemyTurn, selectRandomEnemy, createEnemy, shouldSpawnMonster } from './utils/monsterAI';
 import { checkVictoryConditions, checkDefeatConditions, updateObjectiveProgress, completeObjective, checkKillObjectives, checkExploreObjectives, updateSurvivalObjectives, getVisibleObjectives } from './utils/scenarioUtils';
+import {
+  loadLegacyData,
+  saveLegacyData,
+  addHeroToArchive,
+  updateHero,
+  getLivingHeroes,
+  legacyHeroToPlayer,
+  updateLegacyHeroFromPlayer,
+  processScenarioCompletion,
+  calculateScenarioGoldReward,
+  calculateScenarioXPReward,
+  killHero,
+  addXPToHero,
+  addGoldToHero,
+  createDefaultLegacyData
+} from './utils/legacyManager';
 
 const STORAGE_KEY = 'shadows_1920s_save';
 const SETTINGS_KEY = 'shadows_1920s_settings';
+const LEGACY_STORAGE_KEY = 'shadows_1920s_legacy';
 const APP_VERSION = "1.0.0";
+
+// Menu view modes for main menu
+type MainMenuView = 'title' | 'heroArchive' | 'stash' | 'merchant';
 
 const DEFAULT_STATE: GameState = {
   phase: GamePhase.SETUP,
@@ -60,6 +83,7 @@ const ROOM_SHAPES = {
 
 const ShadowsGame: React.FC = () => {
   const [isMainMenuOpen, setIsMainMenuOpen] = useState(true);
+  const [mainMenuView, setMainMenuView] = useState<MainMenuView>('title');
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [showLeftPanel, setShowLeftPanel] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(false);
@@ -70,6 +94,14 @@ const ShadowsGame: React.FC = () => {
   // Context Action state
   const [activeContextTarget, setActiveContextTarget] = useState<ContextActionTarget | null>(null);
   const [contextActions, setContextActions] = useState<ContextAction[]>([]);
+
+  // Legacy System State
+  const [legacyData, setLegacyData] = useState<LegacyData>(() => loadLegacyData());
+  const [selectedLegacyHeroIds, setSelectedLegacyHeroIds] = useState<string[]>([]);
+  const [showMerchantShop, setShowMerchantShop] = useState(false);
+  const [showStashPanel, setShowStashPanel] = useState(false);
+  const [lastScenarioResult, setLastScenarioResult] = useState<ScenarioResult | null>(null);
+  const [heroKillCounts, setHeroKillCounts] = useState<Record<string, number>>({});
 
   // Game settings with localStorage persistence
   const [settings, setSettings] = useState<GameSettings>(() => {
@@ -100,6 +132,11 @@ const ShadowsGame: React.FC = () => {
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state]);
+
+  // Save legacy data when it changes
+  useEffect(() => {
+    saveLegacyData(legacyData);
+  }, [legacyData]);
 
   useEffect(() => {
     if (state.phase === GamePhase.MYTHOS) {
@@ -306,6 +343,203 @@ const ShadowsGame: React.FC = () => {
 
     return false;
   }, [state.activeScenario, state.enemies, state.board, state.round, state.questItemsCollected]);
+
+  // ============================================================================
+  // LEGACY SYSTEM HANDLERS
+  // ============================================================================
+
+  // Handle creating a new legacy hero
+  const handleCreateLegacyHero = useCallback((hero: LegacyHero) => {
+    setLegacyData(prev => addHeroToArchive(prev, hero));
+    addToLog(`New investigator created: ${hero.name}`);
+  }, []);
+
+  // Handle selecting a legacy hero for the mission
+  const handleSelectLegacyHero = useCallback((hero: LegacyHero) => {
+    if (selectedLegacyHeroIds.includes(hero.id)) {
+      // Deselect
+      setSelectedLegacyHeroIds(prev => prev.filter(id => id !== hero.id));
+    } else {
+      // Select (max 4)
+      if (selectedLegacyHeroIds.length < 4) {
+        setSelectedLegacyHeroIds(prev => [...prev, hero.id]);
+      }
+    }
+  }, [selectedLegacyHeroIds]);
+
+  // Handle updating a legacy hero (level up, equipment changes)
+  const handleUpdateLegacyHero = useCallback((hero: LegacyHero) => {
+    setLegacyData(prev => updateHero(prev, hero));
+  }, []);
+
+  // Convert selected legacy heroes to players and start game
+  const handleStartGameWithLegacyHeroes = useCallback(() => {
+    const selectedHeroes = selectedLegacyHeroIds
+      .map(id => legacyData.heroes.find(h => h.id === id))
+      .filter((h): h is LegacyHero => h !== undefined && !h.isDead);
+
+    if (selectedHeroes.length === 0) return;
+
+    const players: Player[] = selectedHeroes.map(hero => legacyHeroToPlayer(hero));
+
+    // Initialize kill counts tracking
+    const initialKillCounts: Record<string, number> = {};
+    selectedHeroes.forEach(hero => {
+      initialKillCounts[hero.id] = 0;
+    });
+    setHeroKillCounts(initialKillCounts);
+
+    setState(prev => ({
+      ...prev,
+      players
+    }));
+
+    setMainMenuView('title');
+  }, [selectedLegacyHeroIds, legacyData.heroes]);
+
+  // Handle scenario completion (victory or defeat with survivors)
+  const handleScenarioComplete = useCallback((victory: boolean) => {
+    if (!state.activeScenario) return;
+
+    const difficulty = state.activeScenario.difficulty;
+    const completedBonusObjectives = state.activeScenario.objectives.filter(
+      obj => obj.isOptional && obj.completed
+    ).length;
+
+    // Calculate rewards
+    const goldReward = calculateScenarioGoldReward(victory, difficulty, completedBonusObjectives);
+    const xpReward = calculateScenarioXPReward(victory, difficulty, 0, completedBonusObjectives);
+
+    // Build hero results
+    const heroResults: HeroScenarioResult[] = state.players.map(player => {
+      // Find the corresponding legacy hero
+      const legacyHero = legacyData.heroes.find(h => {
+        // Match by character class since player.id is the class type
+        return !h.isDead && selectedLegacyHeroIds.includes(h.id);
+      });
+
+      const survived = !player.isDead;
+      const killCount = heroKillCounts[legacyHero?.id || ''] || 0;
+
+      // Calculate individual rewards
+      const individualGold = survived
+        ? Math.floor((goldReward.base + goldReward.bonus) / state.players.filter(p => !p.isDead).length)
+        : 0;
+      const individualXP = survived
+        ? xpReward.base + (killCount * 2) + (completedBonusObjectives > 0 ? xpReward.bonus : 0)
+        : Math.floor(xpReward.base / 3); // Small XP even if died
+
+      // Collect items found during scenario (from inventory)
+      const itemsFound = getAllItems(player.inventory).filter(item =>
+        item.id.startsWith('shop_') === false // Don't count shop items as "found"
+      );
+
+      return {
+        heroId: legacyHero?.id || player.id,
+        survived,
+        xpEarned: individualXP,
+        goldEarned: individualGold,
+        killCount,
+        insightEarned: player.insight,
+        itemsFound: survived ? [] : itemsFound, // If died, items go to stash
+        leveledUp: false,
+        newLevel: undefined
+      };
+    });
+
+    // Create scenario result
+    const result: ScenarioResult = {
+      scenarioId: state.activeScenario.id,
+      victory,
+      roundsPlayed: state.round,
+      heroResults,
+      totalGoldEarned: goldReward.base + goldReward.bonus,
+      totalXPEarned: xpReward.base + xpReward.bonus + xpReward.kills
+    };
+
+    // Process completion and update legacy data
+    let updatedLegacyData = { ...legacyData };
+
+    // Update each hero in legacy data
+    heroResults.forEach(heroResult => {
+      const hero = updatedLegacyData.heroes.find(h => h.id === heroResult.heroId);
+      if (!hero) return;
+
+      if (!heroResult.survived) {
+        // Permadeath
+        updatedLegacyData = killHero(
+          updatedLegacyData,
+          hero.id,
+          state.activeScenario!.id,
+          'Fell during the investigation'
+        );
+      } else {
+        // Apply rewards
+        let updatedHero = { ...hero };
+        updatedHero = addXPToHero(updatedHero, heroResult.xpEarned);
+        updatedHero = addGoldToHero(updatedHero, heroResult.goldEarned);
+        updatedHero.totalKills += heroResult.killCount;
+        updatedHero.totalInsightEarned += heroResult.insightEarned;
+        updatedHero.lastPlayed = new Date().toISOString();
+
+        // Check for level up
+        if (canLevelUp(updatedHero)) {
+          heroResult.leveledUp = true;
+          heroResult.newLevel = updatedHero.level + 1;
+        }
+
+        // Track scenario
+        if (victory && !updatedHero.scenariosCompleted.includes(state.activeScenario!.id)) {
+          updatedHero.scenariosCompleted.push(state.activeScenario!.id);
+        } else if (!victory && !updatedHero.scenariosFailed.includes(state.activeScenario!.id)) {
+          updatedHero.scenariosFailed.push(state.activeScenario!.id);
+        }
+
+        // Find corresponding player and update equipment
+        const player = state.players.find(p => p.id === hero.characterClass);
+        if (player) {
+          updatedHero.equipment = { ...player.inventory, bag: [...player.inventory.bag] };
+        }
+
+        updatedLegacyData = updateHero(updatedLegacyData, updatedHero);
+      }
+    });
+
+    // Update global stats
+    updatedLegacyData.totalScenariosAttempted++;
+    if (victory) {
+      updatedLegacyData.totalScenariosCompleted++;
+    }
+    updatedLegacyData.totalGoldEarned += result.totalGoldEarned;
+
+    setLegacyData(updatedLegacyData);
+    setLastScenarioResult(result);
+
+    // Show merchant shop if there are survivors
+    const survivors = heroResults.filter(r => r.survived);
+    if (survivors.length > 0) {
+      setShowMerchantShop(true);
+    }
+  }, [state.activeScenario, state.players, state.round, legacyData, selectedLegacyHeroIds, heroKillCounts]);
+
+  // Track kills during gameplay
+  const incrementHeroKills = useCallback((heroId: string) => {
+    setHeroKillCounts(prev => ({
+      ...prev,
+      [heroId]: (prev[heroId] || 0) + 1
+    }));
+  }, []);
+
+  // Handle finishing merchant shop
+  const handleMerchantFinish = useCallback(() => {
+    setShowMerchantShop(false);
+    setLastScenarioResult(null);
+    setSelectedLegacyHeroIds([]);
+    setHeroKillCounts({});
+    setState(DEFAULT_STATE);
+    setIsMainMenuOpen(true);
+    setMainMenuView('title');
+  }, []);
 
   // Handle showing context actions for a tile/obstacle
   const showContextActions = useCallback((tile: Tile, edgeIndex?: number) => {
@@ -1107,6 +1341,8 @@ const ShadowsGame: React.FC = () => {
 
   const handleGameOverRestart = () => {
     setGameOverType(null);
+    setSelectedLegacyHeroIds([]);
+    setHeroKillCounts({});
     setState(prev => ({
       ...DEFAULT_STATE,
       activeScenario: prev.activeScenario,
@@ -1115,9 +1351,19 @@ const ShadowsGame: React.FC = () => {
   };
 
   const handleGameOverMainMenu = () => {
+    // Process scenario completion before going to main menu
+    const victory = gameOverType === 'victory';
+    const hasSurvivors = state.players.some(p => !p.isDead);
+
+    if (selectedLegacyHeroIds.length > 0 && (victory || hasSurvivors)) {
+      // Process legacy rewards
+      handleScenarioComplete(victory);
+    }
+
     setGameOverType(null);
     setState(DEFAULT_STATE);
     setIsMainMenuOpen(true);
+    setMainMenuView('title');
   };
 
   return (
@@ -1131,13 +1377,62 @@ const ShadowsGame: React.FC = () => {
         onResetData={handleResetData}
       />
 
-      {isMainMenuOpen && (
+      {isMainMenuOpen && mainMenuView === 'title' && (
         <MainMenu
-          onNewGame={() => { setState({ ...DEFAULT_STATE, phase: GamePhase.SETUP }); setIsMainMenuOpen(false); }}
+          onNewGame={() => {
+            setSelectedLegacyHeroIds([]);
+            setState({ ...DEFAULT_STATE, phase: GamePhase.SETUP });
+            setIsMainMenuOpen(false);
+          }}
           onContinue={() => setIsMainMenuOpen(false)}
           onOptions={() => setIsOptionsOpen(true)}
           canContinue={state.phase !== GamePhase.SETUP}
           version={APP_VERSION}
+          // Legacy system buttons
+          onHeroArchive={() => setMainMenuView('heroArchive')}
+          onStash={() => setMainMenuView('stash')}
+          heroCount={getLivingHeroes(legacyData).length}
+          stashCount={legacyData.stash.items.length}
+        />
+      )}
+
+      {isMainMenuOpen && mainMenuView === 'heroArchive' && (
+        <HeroArchivePanel
+          legacyData={legacyData}
+          onSelectHero={handleSelectLegacyHero}
+          onCreateHero={handleCreateLegacyHero}
+          onUpdateHero={handleUpdateLegacyHero}
+          onBack={() => setMainMenuView('title')}
+          maxHeroesSelectable={4}
+          selectedHeroIds={selectedLegacyHeroIds}
+        />
+      )}
+
+      {/* Equipment Stash Panel */}
+      {(mainMenuView === 'stash' || showStashPanel) && (
+        <EquipmentStashPanel
+          stash={legacyData.stash}
+          heroes={getLivingHeroes(legacyData)}
+          onStashUpdate={(stash) => setLegacyData(prev => ({ ...prev, stash }))}
+          onHeroUpdate={handleUpdateLegacyHero}
+          onClose={() => {
+            setMainMenuView('title');
+            setShowStashPanel(false);
+          }}
+        />
+      )}
+
+      {/* Merchant Shop after scenario completion */}
+      {showMerchantShop && (
+        <MerchantShop
+          heroes={getLivingHeroes(legacyData).filter(h =>
+            selectedLegacyHeroIds.includes(h.id) && !h.isDead
+          )}
+          stash={legacyData.stash}
+          scenarioResult={lastScenarioResult || undefined}
+          onHeroUpdate={handleUpdateLegacyHero}
+          onStashUpdate={(stash) => setLegacyData(prev => ({ ...prev, stash }))}
+          onFinish={handleMerchantFinish}
         />
       )}
 
@@ -1154,39 +1449,126 @@ const ShadowsGame: React.FC = () => {
                   <button key={s.id} onClick={() => setState(prev => ({ ...prev, activeScenario: s }))} className="p-6 bg-background border border-border hover:border-primary rounded-xl text-left transition-all group">
                     <h3 className="text-xl font-bold text-foreground group-hover:text-primary mb-2">{s.title}</h3>
                     <p className="text-xs text-muted-foreground italic leading-relaxed">{s.description}</p>
+                    <div className="flex gap-4 mt-3 text-xs text-muted-foreground">
+                      <span>Difficulty: {s.difficulty}</span>
+                      {s.estimatedTime && <span>Time: {s.estimatedTime}</span>}
+                    </div>
                   </button>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="bg-card p-12 rounded-2xl border-2 border-primary shadow-[var(--shadow-doom)] max-w-4xl w-full text-center">
+            <div className="bg-card p-12 rounded-2xl border-2 border-primary shadow-[var(--shadow-doom)] max-w-5xl w-full text-center">
               <div className="flex justify-between items-center mb-8 border-b border-border pb-4">
-                <button onClick={() => setState(prev => ({ ...prev, activeScenario: null }))} className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-xs uppercase tracking-widest transition-colors"><ArrowLeft size={16} /> Back</button>
+                <button onClick={() => setState(prev => ({ ...prev, activeScenario: null, players: [] }))} className="text-muted-foreground hover:text-foreground flex items-center gap-2 text-xs uppercase tracking-widest transition-colors"><ArrowLeft size={16} /> Back</button>
                 <h1 className="text-2xl font-display text-primary uppercase tracking-[0.2em]">{state.activeScenario.title}</h1>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-12">
-                {(Object.keys(CHARACTERS) as CharacterType[]).map(type => {
-                  const isSelected = !!state.players.find(p => p.id === type);
-                  return (
-                    <button key={type} onClick={() => {
-                      const char = CHARACTERS[type];
-                      setState(prev => ({
-                        ...prev,
-                        players: isSelected ? prev.players.filter(p => p.id !== type) : [...prev.players, { ...char, position: { q: 0, r: 0 }, inventory: createEmptyInventory(), spells: (type === 'occultist' ? [SPELLS[0]] : []), actions: 2, isDead: false, madness: [], activeMadness: null, traits: [] }]
-                      }));
-                    }} className={`p-4 bg-background border-2 rounded-xl transition-all ${isSelected ? 'border-primary shadow-[var(--shadow-doom)] scale-105' : 'border-border opacity-60'}`}>
-                      <div className="text-lg font-bold text-foreground uppercase tracking-tighter">{CHARACTERS[type].name}</div>
-                      <div className="flex justify-center gap-4 text-xs font-bold mt-2">
-                        <span className="text-health flex items-center gap-1"><Heart size={12} /> {CHARACTERS[type].hp}</span>
-                        <span className="text-sanity flex items-center gap-1"><Brain size={12} /> {CHARACTERS[type].sanity}</span>
-                      </div>
-                    </button>
-                  );
-                })}
+
+              {/* Mode selection tabs */}
+              <div className="flex justify-center gap-4 mb-8">
+                <button
+                  onClick={() => {
+                    setSelectedLegacyHeroIds([]);
+                    setState(prev => ({ ...prev, players: [] }));
+                  }}
+                  className={`px-6 py-3 rounded-lg border-2 transition-all ${
+                    selectedLegacyHeroIds.length === 0
+                      ? 'border-primary bg-primary/20 text-primary'
+                      : 'border-border text-muted-foreground hover:border-primary/50'
+                  }`}
+                >
+                  <Users size={20} className="inline mr-2" />
+                  Classic Mode
+                  <span className="block text-xs opacity-70">New investigators each game</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setState(prev => ({ ...prev, players: [] }));
+                    setMainMenuView('heroArchive');
+                    setIsMainMenuOpen(true);
+                  }}
+                  className={`px-6 py-3 rounded-lg border-2 transition-all ${
+                    selectedLegacyHeroIds.length > 0
+                      ? 'border-amber-500 bg-amber-500/20 text-amber-400'
+                      : 'border-border text-muted-foreground hover:border-amber-500/50'
+                  }`}
+                >
+                  <Package size={20} className="inline mr-2" />
+                  Legacy Mode
+                  <span className="block text-xs opacity-70">Persistent heroes with XP & gold</span>
+                </button>
               </div>
-              <button disabled={state.players.length === 0} onClick={() => {
-                setShowBriefing(true);
-              }} className={`px-12 py-4 font-display text-2xl tracking-[0.3em] uppercase border-2 transition-all ${state.players.length > 0 ? 'bg-primary border-foreground text-primary-foreground shadow-[var(--shadow-doom)]' : 'bg-muted border-border text-muted-foreground cursor-not-allowed'}`}>Assemble Team</button>
+
+              {/* Selected Legacy Heroes */}
+              {selectedLegacyHeroIds.length > 0 && (
+                <div className="mb-8 p-4 bg-amber-900/20 border border-amber-700 rounded-xl">
+                  <h3 className="text-amber-400 font-bold mb-3">Selected Legacy Heroes ({selectedLegacyHeroIds.length}/4)</h3>
+                  <div className="flex justify-center gap-4 flex-wrap">
+                    {selectedLegacyHeroIds.map(heroId => {
+                      const hero = legacyData.heroes.find(h => h.id === heroId);
+                      if (!hero) return null;
+                      return (
+                        <div key={heroId} className="px-4 py-2 bg-amber-900/30 border border-amber-600 rounded-lg">
+                          <span className="font-bold text-amber-200">{hero.name}</span>
+                          <span className="text-xs text-amber-400 ml-2">Lv{hero.level} {hero.characterClass}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button
+                    onClick={() => {
+                      setMainMenuView('heroArchive');
+                      setIsMainMenuOpen(true);
+                    }}
+                    className="mt-3 px-4 py-1 text-sm text-amber-400 hover:text-amber-300 underline"
+                  >
+                    Change Selection
+                  </button>
+                </div>
+              )}
+
+              {/* Classic mode character selection */}
+              {selectedLegacyHeroIds.length === 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-12">
+                  {(Object.keys(CHARACTERS) as CharacterType[]).map(type => {
+                    const isSelected = !!state.players.find(p => p.id === type);
+                    return (
+                      <button key={type} onClick={() => {
+                        const char = CHARACTERS[type];
+                        setState(prev => ({
+                          ...prev,
+                          players: isSelected ? prev.players.filter(p => p.id !== type) : [...prev.players, { ...char, position: { q: 0, r: 0 }, inventory: createEmptyInventory(), spells: (type === 'occultist' ? [SPELLS[0]] : []), actions: 2, isDead: false, madness: [], activeMadness: null, traits: [] }]
+                        }));
+                      }} className={`p-4 bg-background border-2 rounded-xl transition-all ${isSelected ? 'border-primary shadow-[var(--shadow-doom)] scale-105' : 'border-border opacity-60'}`}>
+                        <div className="text-lg font-bold text-foreground uppercase tracking-tighter">{CHARACTERS[type].name}</div>
+                        <div className="flex justify-center gap-4 text-xs font-bold mt-2">
+                          <span className="text-health flex items-center gap-1"><Heart size={12} /> {CHARACTERS[type].hp}</span>
+                          <span className="text-sanity flex items-center gap-1"><Brain size={12} /> {CHARACTERS[type].sanity}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Start button */}
+              <button
+                disabled={state.players.length === 0 && selectedLegacyHeroIds.length === 0}
+                onClick={() => {
+                  // If legacy mode, convert heroes to players first
+                  if (selectedLegacyHeroIds.length > 0) {
+                    handleStartGameWithLegacyHeroes();
+                  }
+                  setShowBriefing(true);
+                }}
+                className={`px-12 py-4 font-display text-2xl tracking-[0.3em] uppercase border-2 transition-all ${
+                  (state.players.length > 0 || selectedLegacyHeroIds.length > 0)
+                    ? 'bg-primary border-foreground text-primary-foreground shadow-[var(--shadow-doom)]'
+                    : 'bg-muted border-border text-muted-foreground cursor-not-allowed'
+                }`}
+              >
+                Assemble Team
+              </button>
             </div>
           )}
         </div>
