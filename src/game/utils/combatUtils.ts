@@ -96,15 +96,41 @@ export function performSkillCheck(
  * Weapon DETERMINES dice count directly, not adds bonus
  * Unarmed: 1 die
  * Knife/Club: 2 dice
- * Revolver: 2 dice
- * Shotgun: 3 dice
- * Tommy Gun: 4 dice
+ * Revolver/Derringer: 2-3 dice
+ * Shotgun: 4 dice
+ * Tommy Gun: 5 dice
  */
 export function getAttackDice(player: Player): { attackDice: number; weaponName: string } {
-  let attackDice = 1; // Unarmed
-  let weaponName = 'Unarmed';
+  const items = getAllItems(player.inventory);
 
- * Get the equipped weapon's attack dice
+  // Find best weapon by attackDice
+  let bestWeapon: Item | null = null;
+
+  for (const item of items) {
+    if (item.type === 'weapon' && item.attackDice) {
+      if (!bestWeapon || (item.attackDice > (bestWeapon.attackDice || 0))) {
+        bestWeapon = item;
+      }
+    }
+  }
+
+  if (bestWeapon && bestWeapon.attackDice) {
+    return {
+      attackDice: bestWeapon.attackDice,
+      weaponName: bestWeapon.name
+    };
+  }
+
+  // No weapon = use base attack dice (unarmed)
+  const baseAttack = player.baseAttackDice || 1;
+  return {
+    attackDice: baseAttack,
+    weaponName: 'Unarmed'
+  };
+}
+
+/**
+ * Get the equipped weapon's attack dice with full info
  * Hero Quest style: weapon DETERMINES total dice (not bonus)
  */
 export function getWeaponAttackDice(player: Player): { attackDice: number; weaponName: string; isRanged: boolean; range: number } {
@@ -154,33 +180,6 @@ export function getDefenseDice(player: Player): { defenseDice: number; armorName
   let armorName = 'No Armor';
 
   for (const item of items) {
-    if (item.type === 'weapon' && item.bonus) {
-      // Weapon bonus directly determines dice count
-      // bonus 1 = 2 dice, bonus 2 = 3 dice, bonus 3 = 4 dice
-      const weaponDice = 1 + item.bonus;
-      if (weaponDice > attackDice) {
-        attackDice = weaponDice;
-        weaponName = item.name;
-      }
-    }
-  }
-
-  return { attackDice, weaponName };
-}
-
-/**
- * Legacy function for backwards compatibility
- */
-export function getWeaponBonus(player: Player): { combatDice: number; damage: number } {
-  const { attackDice } = getAttackDice(player);
-  return { combatDice: attackDice - 1, damage: attackDice };
-}
-
-/**
- * Perform combat attack using Hero Quest dice system
- * Weapon DETERMINES attack dice count directly
- * Enemy rolls defense dice to block
- * Net damage = attack successes - defense successes
     if (item.type === 'armor' && item.defenseDice) {
       armorDefense = Math.max(armorDefense, item.defenseDice);
       armorName = item.name;
