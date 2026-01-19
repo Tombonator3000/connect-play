@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText } from 'lucide-react';
-import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData } from './types';
-import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS } from './constants';
+import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState } from './types';
+import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES } from './constants';
 import { hexDistance, findPath } from './hexUtils';
 import GameBoard from './components/GameBoard';
 import CharacterPanel from './components/CharacterPanel';
@@ -10,6 +10,8 @@ import ActionBar from './components/ActionBar';
 import DiceRoller from './components/DiceRoller';
 import MainMenu from './components/MainMenu';
 import OptionsMenu, { GameSettings, DEFAULT_SETTINGS } from './components/OptionsMenu';
+import { performAttack, performHorrorCheck, calculateEnemyDamage, hasRangedWeapon, canAttackEnemy } from './utils/combatUtils';
+import { processEnemyTurn, selectRandomEnemy, createEnemy, shouldSpawnMonster } from './utils/monsterAI';
 
 const STORAGE_KEY = 'shadows_1920s_save';
 const SETTINGS_KEY = 'shadows_1920s_settings';
@@ -39,7 +41,8 @@ const DEFAULT_STATE: GameState = {
   activeSpell: null,
   currentStepIndex: 0,
   questItemsCollected: [],
-  exploredTiles: ['0,0'] // Start tile is always explored
+  exploredTiles: ['0,0'], // Start tile is always explored
+  pendingHorrorChecks: []
 };
 
 const ROOM_SHAPES = {
@@ -86,60 +89,106 @@ const ShadowsGame: React.FC = () => {
 
   useEffect(() => {
     if (state.phase === GamePhase.MYTHOS) {
-      addToLog("The Mythos awakens. Ancient gears turn in the darkness.");
-      const processEnemyAI = async () => {
-        let updatedEnemies = [...state.enemies];
+      addToLog("Mythos-fasen vekkes. Eldgamle hjul snurrer i morket.");
+
+      const runEnemyAI = async () => {
+        // Use the new AI system
+        const { updatedEnemies, attacks, messages } = processEnemyTurn(
+          state.enemies,
+          state.players,
+          state.board
+        );
+
+        // Log AI messages
+        messages.forEach(msg => addToLog(msg));
+
+        // Process attacks
         let updatedPlayers = [...state.players];
+        const combatModifier = getCombatModifier(state.doom);
 
-        for (let i = 0; i < updatedEnemies.length; i++) {
-          const enemy = updatedEnemies[i];
-          const alivePlayers = updatedPlayers.filter(p => !p.isDead);
-          if (alivePlayers.length === 0) continue;
+        for (const { enemy, targetPlayer } of attacks) {
+          const { hpDamage, sanityDamage, message } = calculateEnemyDamage(enemy, targetPlayer);
+          const totalHpDamage = hpDamage + combatModifier.enemyDamageBonus;
 
-          const nearestPlayer = alivePlayers.sort((a, b) =>
-            hexDistance(enemy.position, a.position) - hexDistance(enemy.position, b.position)
-          )[0];
+          addToLog(message);
+          addFloatingText(
+            targetPlayer.position.q,
+            targetPlayer.position.r,
+            `-${totalHpDamage} HP${sanityDamage > 0 ? ` -${sanityDamage} SAN` : ''}`,
+            "text-primary"
+          );
+          triggerScreenShake();
 
-          const dist = hexDistance(enemy.position, nearestPlayer.position);
-
-          if (dist <= enemy.attackRange) {
-            addToLog(`The ${enemy.name} strikes ${nearestPlayer.name}!`);
-            addFloatingText(nearestPlayer.position.q, nearestPlayer.position.r, `-${enemy.damage} HP`, "text-primary");
-            triggerScreenShake();
-
-            updatedPlayers = updatedPlayers.map(p => {
-              if (p.id === nearestPlayer.id) {
-                const newHp = Math.max(0, p.hp - enemy.damage);
-                const newSanity = Math.max(0, p.sanity - enemy.horror);
-                const isDead = newHp <= 0;
-                if (isDead) addToLog(`${p.name} has fallen to the darkness...`);
-                return checkMadness({ ...p, hp: newHp, sanity: newSanity, isDead });
-              }
-              return p;
-            });
-          } else {
-            const enemyBlockers = new Set(updatedEnemies.filter(e => e.id !== enemy.id).map(e => `${e.position.q},${e.position.r}`));
-            const path = findPath(enemy.position, [nearestPlayer.position], state.board, enemyBlockers, false);
-            if (path && path.length > 1) {
-              updatedEnemies[i] = { ...enemy, position: path[1] };
+          updatedPlayers = updatedPlayers.map(p => {
+            if (p.id === targetPlayer.id) {
+              const newHp = Math.max(0, p.hp - totalHpDamage);
+              const newSanity = Math.max(0, p.sanity - sanityDamage);
+              const isDead = newHp <= 0;
+              if (isDead) addToLog(`${p.name} har falt for morket...`);
+              return checkMadness({ ...p, hp: newHp, sanity: newSanity, isDead });
             }
-          }
+            return p;
+          });
         }
 
+        // Check for doom events
+        checkDoomEvents(state.doom - 1);
+
+        // Transition back to investigator phase after a delay
         setTimeout(() => {
           setState(prev => ({
             ...prev,
-            enemies: updatedEnemies,
+            enemies: updatedEnemies.filter(e => e.hp > 0),
             phase: GamePhase.INVESTIGATOR,
             activePlayerIndex: 0,
             players: updatedPlayers.map(p => ({ ...p, actions: p.isDead ? 0 : 2 }))
           }));
-          addToLog("A new day breaks...");
-        }, 1000);
+          addToLog("En ny dag gryr...");
+        }, 1200);
       };
-      processEnemyAI();
+
+      runEnemyAI();
     }
   }, [state.phase]);
+
+  // Check and trigger doom events
+  const checkDoomEvents = useCallback((currentDoom: number) => {
+    if (!state.activeScenario) return;
+
+    state.activeScenario.doomEvents.forEach(event => {
+      if (!event.triggered && currentDoom <= event.threshold) {
+        addToLog(event.message);
+        triggerScreenShake();
+
+        if (event.type === 'spawn_enemy' || event.type === 'spawn_boss') {
+          const spawnType = event.targetId as EnemyType;
+          const count = event.amount || 1;
+
+          // Spawn near a random player
+          const alivePlayers = state.players.filter(p => !p.isDead);
+          if (alivePlayers.length > 0) {
+            const targetPlayer = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+            for (let i = 0; i < count; i++) {
+              const offsetQ = Math.floor(Math.random() * 3) - 1;
+              const offsetR = Math.floor(Math.random() * 3) - 1;
+              spawnEnemy(spawnType, targetPlayer.position.q + offsetQ + 1, targetPlayer.position.r + offsetR);
+            }
+          }
+        }
+
+        // Mark event as triggered
+        setState(prev => ({
+          ...prev,
+          activeScenario: prev.activeScenario ? {
+            ...prev.activeScenario,
+            doomEvents: prev.activeScenario.doomEvents.map(e =>
+              e.threshold === event.threshold ? { ...e, triggered: true } : e
+            )
+          } : null
+        }));
+      }
+    });
+  }, [state.activeScenario, state.players]);
 
   const addToLog = (message: string) => {
     setState(prev => ({ ...prev, log: [`[${new Date().toLocaleTimeString()}] ${message}`, ...prev.log].slice(0, 50) }));
@@ -246,10 +295,22 @@ const ShadowsGame: React.FC = () => {
 
     if (newTiles.length > 0) {
       setState(prev => ({ ...prev, board: [...prev.board, ...newTiles] }));
-      addToLog(`ENTERED: ${roomName}.`);
-      if (Math.random() > 0.7) spawnEnemy('cultist', startQ, startR);
+      addToLog(`UTFORSKET: ${roomName}.`);
+
+      // Use new spawn system
+      const tile = newTiles[0];
+      const isFirstVisit = true; // New tiles are always first visit
+      if (shouldSpawnMonster(tile, state.doom, state.enemies, isFirstVisit)) {
+        const enemyType = selectRandomEnemy(tile.category, state.doom);
+        if (enemyType) {
+          // Spawn at a slight offset from player
+          const spawnQ = startQ + (Math.random() > 0.5 ? 1 : -1);
+          const spawnR = startR + (Math.random() > 0.5 ? 1 : 0);
+          spawnEnemy(enemyType, spawnQ, spawnR);
+        }
+      }
     }
-  }, [state.board, spawnEnemy]);
+  }, [state.board, state.doom, state.enemies, spawnEnemy]);
 
   const handleAction = (actionType: string, payload?: any) => {
     const activePlayer = state.players[state.activePlayerIndex];
@@ -303,8 +364,54 @@ const ShadowsGame: React.FC = () => {
       case 'attack':
         const targetEnemy = state.enemies.find(e => e.id === state.selectedEnemyId);
         if (!targetEnemy) return;
-        const combatRoll = Array.from({ length: 1 + (activePlayer.id === 'veteran' ? 1 : 0) }, () => Math.floor(Math.random() * 6) + 1);
-        setState(prev => ({ ...prev, lastDiceRoll: combatRoll, activeCombat: { playerId: activePlayer.id, enemyId: targetEnemy.id } }));
+
+        // Check if can attack
+        const isRanged = hasRangedWeapon(activePlayer);
+        const { canAttack, reason } = canAttackEnemy(activePlayer, targetEnemy, isRanged);
+        if (!canAttack) {
+          addToLog(reason);
+          return;
+        }
+
+        // Check for horror check first if not encountered
+        const enemyTypeKey = targetEnemy.type;
+        if (!state.encounteredEnemies.includes(enemyTypeKey)) {
+          const horrorResult = performHorrorCheck(activePlayer, targetEnemy, false);
+          addToLog(horrorResult.message);
+
+          if (!horrorResult.resisted) {
+            addFloatingText(activePlayer.position.q, activePlayer.position.r, `-${horrorResult.sanityLoss} SAN`, "text-sanity");
+            setState(prev => ({
+              ...prev,
+              encounteredEnemies: [...prev.encounteredEnemies, enemyTypeKey],
+              players: prev.players.map((p, i) => i === prev.activePlayerIndex ? checkMadness({
+                ...p,
+                sanity: Math.max(0, p.sanity - horrorResult.sanityLoss)
+              }) : p),
+              lastDiceRoll: horrorResult.rolls
+            }));
+            // Horror check uses action but doesn't prevent attack this turn
+          } else {
+            setState(prev => ({
+              ...prev,
+              encounteredEnemies: [...prev.encounteredEnemies, enemyTypeKey]
+            }));
+          }
+        }
+
+        // Perform the attack using new combat system
+        const combatResult = performAttack(activePlayer, targetEnemy, isRanged);
+        setState(prev => ({
+          ...prev,
+          lastDiceRoll: combatResult.rolls,
+          activeCombat: {
+            playerId: activePlayer.id,
+            enemyId: targetEnemy.id,
+            phase: 'player_attack',
+            playerRoll: combatResult.rolls,
+            playerDamageDealt: combatResult.damage
+          }
+        }));
         break;
 
       case 'enemy_click':
@@ -320,35 +427,73 @@ const ShadowsGame: React.FC = () => {
     const activePlayer = state.players[state.activePlayerIndex];
 
     if (state.activeCombat) {
-      const enemy = state.enemies.find(e => e.id === state.activeCombat?.enemyId);
-      if (enemy && successes > 0) {
-        addToLog(`HIT: ${activePlayer.name} deals ${successes} damage.`);
-        addFloatingText(enemy.position.q, enemy.position.r, `-${successes} HP`, "text-primary");
-        triggerScreenShake();
-        setState(prev => ({
-          ...prev,
-          enemies: prev.enemies.map(e => e.id === enemy.id ? { ...e, hp: e.hp - successes } : e).filter(e => e.hp > 0),
-          players: prev.players.map((p, i) => i === prev.activePlayerIndex ? { ...p, actions: p.actions - 1 } : p),
-          lastDiceRoll: null,
-          activeCombat: null
-        }));
-      } else {
-        addToLog(`MISS! Attack failed.`);
-        setState(prev => ({ ...prev, players: prev.players.map((p, i) => i === prev.activePlayerIndex ? { ...p, actions: p.actions - 1 } : p), lastDiceRoll: null, activeCombat: null }));
+      const combat = state.activeCombat;
+      const enemy = state.enemies.find(e => e.id === combat.enemyId);
+
+      if (enemy) {
+        const damage = combat.playerDamageDealt || successes;
+        const criticalHit = successes === roll.length && roll.length > 0;
+        const criticalMiss = successes === 0;
+
+        if (damage > 0 && !criticalMiss) {
+          const newEnemyHp = enemy.hp - damage;
+          const isKilled = newEnemyHp <= 0;
+
+          if (criticalHit) {
+            addToLog(`KRITISK TREFF! ${activePlayer.name} knuser ${enemy.name} for ${damage} skade!`);
+          } else {
+            addToLog(`TREFF! ${activePlayer.name} gjor ${damage} skade til ${enemy.name}.`);
+          }
+
+          addFloatingText(enemy.position.q, enemy.position.r, `-${damage} HP`, "text-primary");
+          triggerScreenShake();
+
+          if (isKilled) {
+            const bestiary = BESTIARY[enemy.type];
+            addToLog(bestiary.defeatFlavor || `${enemy.name} er beseiret!`);
+            addFloatingText(enemy.position.q, enemy.position.r, "DREPT!", "text-accent");
+          }
+
+          setState(prev => ({
+            ...prev,
+            enemies: prev.enemies.map(e => e.id === enemy.id ? { ...e, hp: newEnemyHp, isDying: isKilled } : e).filter(e => e.hp > 0),
+            players: prev.players.map((p, i) => i === prev.activePlayerIndex ? { ...p, actions: p.actions - 1 } : p),
+            lastDiceRoll: null,
+            activeCombat: null,
+            selectedEnemyId: isKilled ? null : prev.selectedEnemyId
+          }));
+        } else {
+          addToLog(`BOMMERT! ${activePlayer.name} treffer ikke ${enemy.name}.`);
+          setState(prev => ({
+            ...prev,
+            players: prev.players.map((p, i) => i === prev.activePlayerIndex ? { ...p, actions: p.actions - 1 } : p),
+            lastDiceRoll: null,
+            activeCombat: null
+          }));
+        }
       }
     } else {
+      // Investigation roll
       if (successes > 0) {
         const randomItem = ITEMS[Math.floor(Math.random() * ITEMS.length)];
-        addToLog(`FOUND: ${randomItem.name}!`);
-        addFloatingText(activePlayer.position.q, activePlayer.position.r, "ITEM FOUND", "text-accent");
+        addToLog(`FUNNET: ${randomItem.name}!`);
+        addFloatingText(activePlayer.position.q, activePlayer.position.r, "GJENSTAND FUNNET", "text-accent");
         setState(prev => ({
           ...prev,
-          players: prev.players.map((p, i) => i === prev.activePlayerIndex ? { ...p, inventory: [...p.inventory, randomItem].slice(0, 6), actions: p.actions - 1 } : p),
+          players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
+            ...p,
+            inventory: [...p.inventory, randomItem].slice(0, 6),
+            actions: p.actions - 1
+          } : p),
           lastDiceRoll: null
         }));
       } else {
-        addToLog(`NOTHING FOUND.`);
-        setState(prev => ({ ...prev, players: prev.players.map((p, i) => i === prev.activePlayerIndex ? { ...p, actions: p.actions - 1 } : p), lastDiceRoll: null }));
+        addToLog(`INGENTING FUNNET.`);
+        setState(prev => ({
+          ...prev,
+          players: prev.players.map((p, i) => i === prev.activePlayerIndex ? { ...p, actions: p.actions - 1 } : p),
+          lastDiceRoll: null
+        }));
       }
     }
   };

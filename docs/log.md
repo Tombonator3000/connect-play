@@ -2,6 +2,36 @@
 
 ## 2026-01-19
 
+### Session 7 - Combat System & Monster AI
+- **Combat System Implementation**:
+  - Created `combatUtils.ts` with full combat resolution logic
+  - Attack rolls using 2d6 + STR/weapon bonus vs enemy defense
+  - Horror checks when first encountering enemies (WIL check)
+  - Critical hits (all dice succeed) and critical fails (all dice fail)
+  - Weapon damage bonuses and enemy damage reduction
+- **Monster AI System**:
+  - Created `monsterAI.ts` with intelligent monster behavior
+  - Monster spawning system based on tile type and doom level
+  - Patrol behavior for idle monsters
+  - Hunting behavior when player is spotted
+  - Different AI behaviors per enemy type (aggressive, ranged, ambusher)
+  - Vision range and detection system
+- **Types & Constants Updates**:
+  - Added CombatResult, MonsterBehavior interfaces
+  - Added spawn tables and AI behavior definitions
+  - Monster trait effects (flying, fast, ranged, etc.)
+
+### Files Created This Session
+- `src/game/utils/combatUtils.ts` - Combat resolution and damage calculation
+- `src/game/utils/monsterAI.ts` - Monster behavior and spawning logic
+
+### Files Modified This Session
+- `src/game/types.ts` - Added combat and AI interfaces
+- `src/game/constants.ts` - Added spawn tables and AI configs
+- `src/game/ShadowsGame.tsx` - Integrated combat and AI systems
+
+---
+
 ### Session 6 - Board Game Aesthetic & AI Tile Generation
 - Implemented complete 1920s oil painting board game aesthetic:
   - **Chiaroscuro lighting** with dramatic light/dark contrasts

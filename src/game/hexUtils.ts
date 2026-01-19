@@ -60,6 +60,18 @@ export const hasLineOfSight = (start: { q: number; r: number }, end: { q: number
   return true;
 };
 
+// Get all 6 neighboring hex positions
+export const getHexNeighbors = (pos: { q: number; r: number }): { q: number; r: number }[] => {
+  return [
+    { q: pos.q + 1, r: pos.r },
+    { q: pos.q - 1, r: pos.r },
+    { q: pos.q, r: pos.r + 1 },
+    { q: pos.q, r: pos.r - 1 },
+    { q: pos.q + 1, r: pos.r - 1 },
+    { q: pos.q - 1, r: pos.r + 1 }
+  ];
+};
+
 export const findPath = (
   start: { q: number; r: number },
   goals: { q: number; r: number }[],
