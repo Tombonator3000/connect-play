@@ -1217,3 +1217,139 @@ Meldinger viser nå terningkast visuelt:
 - Suksesser vises i klammer: `[4] [6]`
 - Misser vises uten: `2 3`
 - Eksempel: `"TREFF! Detective (Revolver) gjør 1 skade mot Ghoul. (Angrep: [4] 2 = 1 | Forsvar: 3 = 0)"`
+
+---
+
+## 2026-01-19: Scenario Winnability Validator
+
+### Oppgave
+Lage en validerings-funksjon som sjekker om genererte scenarier faktisk går an å vinne. For eksempel hvis et scenario går ut på "collect 3 artefacts before enemy" må dette faktisk være mulig å få til.
+
+### Problemet
+Når scenarier genereres dynamisk fra element-pools, kan det oppstå situasjoner der:
+- "Collect 5 artifacts" - men det spawner kanskje ikke 5 artifacts i spillet
+- "Kill all 8 enemies" - men doom counter kan nå 0 før man har mulighet til å drepe dem alle
+- "Find the exit key and escape" - men key spawner kanskje aldri
+- "Survive 10 rounds" - men doom starter på 8
+
+### Løsning: scenarioValidator.ts
+
+Opprettet en komplett valideringsfil som analyserer scenarier og identifiserer problemer.
+
+#### Validerings-sjekker
+
+**1. Doom Timer Feasibility**
+- Beregner estimert minimum runder for å fullføre objectives
+- Sammenligner med "effektivt doom budget" (doom * efficiency factor)
+- Efficiency factor: Normal=0.8, Hard=0.7, Nightmare=0.6
+
+**2. Resource Availability**
+- Sjekker at items som kreves faktisk kan spawne
+- Verifiserer at escape missions har exit-mekanisme
+- Kontrollerer at find_item objectives har gyldige targetId
+
+**3. Enemy Spawn Consistency**
+- Teller totale fiender fra doom events
+- Sammenligner med kill objectives
+- Sjekker at assassination missions har boss spawn
+
+**4. Objective Chain Integrity**
+- Validerer at revealedBy referanser peker på eksisterende objectives
+- Sjekker for sirkulære avhengigheter
+- Verifiserer at hidden required objectives har reveal triggers
+
+**5. Survival Feasibility**
+- Sjekker at doom >= survival rounds required
+- Analyserer fiende-trykk per runde
+
+**6. Collection Feasibility**
+- Estimerer tilgjengelige collectibles basert på exploration
+- Advarer om urealistisk høye samle-mål
+
+**7. Victory Path Exists**
+- Verifiserer at minst én victory condition er oppnåelig
+
+#### Validerings-resultat
+
+```typescript
+interface ValidationResult {
+  isWinnable: boolean;        // true hvis ingen kritiske feil
+  confidence: number;         // 0-100, hvor sikre vi er
+  issues: ValidationIssue[];  // liste over problemer
+  analysis: ScenarioAnalysis; // detaljert analyse
+}
+
+interface ValidationIssue {
+  severity: 'error' | 'warning' | 'info';
+  code: string;               // f.eks. 'DOOM_TOO_LOW'
+  message: string;            // menneske-lesbar melding
+  suggestion?: string;        // forslag til fix
+  objectiveId?: string;
+  details?: Record<string, unknown>;
+}
+```
+
+#### Auto-Fix Funksjon
+
+Implementert `autoFixScenario()` som automatisk retter vanlige problemer:
+- Øker doom for survival missions
+- Legger til boss spawn for assassination
+- Legger til flere fiende-spawns for kill objectives
+- Øker doom for komplekse scenarier
+
+#### Integrering
+
+**scenarioGenerator.ts:**
+- Ny funksjon `generateValidatedScenario()` som genererer og validerer
+- Prøver opptil 5 ganger å generere et vinnbart scenario
+- Bruker auto-fix hvis første forsøk feiler
+- Returnerer scenario med valideringsinfo
+
+**ShadowsGame.tsx:**
+- `getRandomScenario()` bruker nå `generateValidatedScenario()`
+- Logger valideringsinformasjon til konsollen
+- Viser confidence score og eventuelle fixes
+
+### Filer Opprettet
+- `src/game/utils/scenarioValidator.ts` (NY) - Komplett validator
+
+### Filer Modifisert
+- `src/game/utils/scenarioGenerator.ts` - Integrert validator
+- `src/game/ShadowsGame.tsx` - Bruker validert generator
+
+### Eksempel på validering
+
+```
+[ScenarioValidator] Applied 1 fixes: ["Increased startDoom from 6 to 12 for survival feasibility"]
+[ScenarioValidator] Confidence: 85% | Attempts: 1
+```
+
+### Tekniske Detaljer
+
+**Estimerte runder per handling:**
+| Handling | Runder |
+|----------|--------|
+| Explore tile | 1 |
+| Find item | 2 |
+| Kill minion | 1 |
+| Kill elite | 2 |
+| Kill boss | 3 |
+| Collect single | 1.5 |
+| Reach exit | 2 |
+| Perform ritual | 1 |
+| Find specific tile | 3 |
+
+**Feilkoder:**
+| Kode | Betydning |
+|------|-----------|
+| `DOOM_TOO_LOW` | Ikke nok tid til objectives |
+| `DOOM_TIGHT` | Marginalt nok tid |
+| `INSUFFICIENT_ENEMY_SPAWNS` | Ikke nok fiender for kill objectives |
+| `MISSING_BOSS_SPAWN` | Assassination uten boss |
+| `SURVIVAL_DOOM_MISMATCH` | Survival > doom |
+| `INVALID_REVEAL_REFERENCE` | Ugyldig objective chain |
+| `NO_VICTORY_CONDITIONS` | Ingen victory conditions |
+| `NO_ACHIEVABLE_VICTORY` | Alle victory paths blokkert |
+
+### Resultat
+Alle dynamisk genererte scenarier valideres nå før de brukes. Dette sikrer at spillere aldri får et umulig scenario, og gir bedre spillopplevelse ved å garantere at seier alltid er teoretisk mulig.

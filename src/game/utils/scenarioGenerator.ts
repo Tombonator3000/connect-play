@@ -1049,3 +1049,153 @@ export function generateScenarioPool(difficulty: 'Normal' | 'Hard' | 'Nightmare'
 
   return scenarios;
 }
+
+// ============================================================================
+// VALIDATED SCENARIO GENERATION
+// ============================================================================
+
+import {
+  validateScenarioWinnability,
+  autoFixScenario,
+  ValidationResult,
+  getValidationSummary
+} from './scenarioValidator';
+
+/**
+ * Generates a scenario and validates it is winnable.
+ * If the scenario has issues, it attempts to auto-fix them.
+ * Returns the scenario along with validation results.
+ */
+export function generateValidatedScenario(
+  difficulty: 'Normal' | 'Hard' | 'Nightmare',
+  maxAttempts: number = 5
+): {
+  scenario: Scenario;
+  validation: ValidationResult;
+  wasFixed: boolean;
+  fixChanges: string[];
+  attempts: number;
+} {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const scenario = generateRandomScenario(difficulty);
+    const validation = validateScenarioWinnability(scenario);
+
+    if (validation.isWinnable && validation.confidence >= 70) {
+      return {
+        scenario,
+        validation,
+        wasFixed: false,
+        fixChanges: [],
+        attempts: attempt
+      };
+    }
+
+    // Try auto-fixing
+    const { fixed, changes } = autoFixScenario(scenario);
+    const revalidation = validateScenarioWinnability(fixed);
+
+    if (revalidation.isWinnable) {
+      return {
+        scenario: fixed,
+        validation: revalidation,
+        wasFixed: true,
+        fixChanges: changes,
+        attempts: attempt
+      };
+    }
+  }
+
+  // Fallback: return the best attempt with fixes applied
+  const lastScenario = generateRandomScenario(difficulty);
+  const { fixed, changes } = autoFixScenario(lastScenario);
+  const validation = validateScenarioWinnability(fixed);
+
+  return {
+    scenario: fixed,
+    validation,
+    wasFixed: changes.length > 0,
+    fixChanges: changes,
+    attempts: maxAttempts
+  };
+}
+
+/**
+ * Quick check if a scenario is valid without full validation
+ * Useful for filtering in UI
+ */
+export function quickValidateScenario(scenario: Scenario): {
+  isValid: boolean;
+  reason?: string;
+} {
+  // Check survival missions
+  const survivalObj = scenario.objectives.find(o => o.type === 'survive' && !o.isOptional);
+  if (survivalObj && (survivalObj.targetAmount || 0) > scenario.startDoom) {
+    return {
+      isValid: false,
+      reason: `Survival requires ${survivalObj.targetAmount} rounds but doom is only ${scenario.startDoom}`
+    };
+  }
+
+  // Check assassination missions have boss
+  if (scenario.victoryType === 'assassination') {
+    const hasBossSpawn = scenario.doomEvents.some(e => e.type === 'spawn_boss');
+    const hasBossObjective = scenario.objectives.some(o => o.type === 'kill_boss');
+    if (hasBossObjective && !hasBossSpawn) {
+      return {
+        isValid: false,
+        reason: 'Assassination target never spawns'
+      };
+    }
+  }
+
+  // Check kill objectives have enough enemies
+  const killObj = scenario.objectives.find(o => o.type === 'kill_enemy' && !o.isOptional);
+  if (killObj && (killObj.targetAmount || 0) > 0) {
+    const totalEnemies = scenario.doomEvents
+      .filter(e => e.type === 'spawn_enemy')
+      .reduce((sum, e) => sum + (e.amount || 0), 0);
+
+    if (totalEnemies < (killObj.targetAmount || 0)) {
+      return {
+        isValid: false,
+        reason: `Need ${killObj.targetAmount} kills but only ${totalEnemies} enemies spawn`
+      };
+    }
+  }
+
+  // Check doom is reasonable for objective count
+  const requiredObjectives = scenario.objectives.filter(o => !o.isOptional).length;
+  if (scenario.startDoom < requiredObjectives * 2) {
+    return {
+      isValid: false,
+      reason: 'Not enough time to complete all objectives'
+    };
+  }
+
+  return { isValid: true };
+}
+
+/**
+ * Get validation summary for display in UI
+ */
+export function getScenarioValidationInfo(scenario: Scenario): {
+  isWinnable: boolean;
+  confidence: number;
+  summary: string;
+  warnings: string[];
+  errors: string[];
+} {
+  const validation = validateScenarioWinnability(scenario);
+
+  return {
+    isWinnable: validation.isWinnable,
+    confidence: validation.confidence,
+    summary: getValidationSummary(validation),
+    warnings: validation.issues
+      .filter(i => i.severity === 'warning')
+      .map(i => i.message),
+    errors: validation.issues
+      .filter(i => i.severity === 'error')
+      .map(i => i.message)
+  };
+}
