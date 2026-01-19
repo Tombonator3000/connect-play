@@ -687,3 +687,34 @@ Systemet genererer nå dynamisk unike scenarier ved å kombinere:
 - Doom events (3 waves per scenario)
 
 Dette gir 100+ unike scenario-kombinasjoner, og hver gang du klikker "New Case" får du et helt nytt oppdrag med unik historie og mål. "Generate New Case" knappen lar deg re-rulle hvis du vil ha et annet oppdrag.
+
+---
+
+## 2026-01-19: Bug Fix - Create Hero Screen Crashes
+
+### Problem
+When clicking "Create Hero" in the Hero Archive, the game crashed with a black screen and the error:
+```
+TypeError: CHARACTERS.map is not a function
+```
+
+### Root Cause
+In `HeroArchivePanel.tsx`, the `renderCreateHero()` function was calling `CHARACTERS.map()` directly. However, `CHARACTERS` is defined as a `Record<CharacterType, Character>` (an object), not an array. Objects don't have a `.map()` method.
+
+### Fix Applied
+Changed line 327 in `HeroArchivePanel.tsx`:
+```tsx
+// Before (broken):
+{CHARACTERS.map(char => (
+
+// After (fixed):
+{Object.values(CHARACTERS).map(char => (
+```
+
+`Object.values()` converts the object's values into an array, which can then be iterated with `.map()`.
+
+### Files Modified
+- `src/game/components/HeroArchivePanel.tsx` (FIXED)
+
+### Result
+The Create Hero screen now works correctly, displaying all character classes for selection.
