@@ -37,6 +37,7 @@ interface HeroArchivePanelProps {
   onCreateHero: (hero: LegacyHero) => void;
   onUpdateHero: (hero: LegacyHero) => void;
   onBack: () => void;
+  onStartNewGame?: () => void;
   maxHeroesSelectable: number;
   selectedHeroIds: string[];
 }
@@ -49,6 +50,7 @@ export const HeroArchivePanel: React.FC<HeroArchivePanelProps> = ({
   onCreateHero,
   onUpdateHero,
   onBack,
+  onStartNewGame,
   maxHeroesSelectable,
   selectedHeroIds
 }) => {
@@ -302,14 +304,22 @@ export const HeroArchivePanel: React.FC<HeroArchivePanelProps> = ({
         </div>
       )}
 
-      {/* Back button */}
-      <div className="flex justify-center pt-4">
+      {/* Action buttons */}
+      <div className="flex justify-center gap-4 pt-4">
         <button
           className="px-6 py-2 bg-stone-700 hover:bg-stone-600 rounded transition-colors"
           onClick={onBack}
         >
           Back to Menu
         </button>
+        {selectedHeroIds.length > 0 && onStartNewGame && (
+          <button
+            className="px-8 py-2 bg-amber-700 hover:bg-amber-600 text-amber-100 rounded transition-colors font-bold"
+            onClick={onStartNewGame}
+          >
+            Start New Game ({selectedHeroIds.length} hero{selectedHeroIds.length > 1 ? 'es' : ''})
+          </button>
+        )}
       </div>
     </div>
   );

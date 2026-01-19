@@ -2078,6 +2078,12 @@ const ShadowsGame: React.FC = () => {
           onCreateHero={handleCreateLegacyHero}
           onUpdateHero={handleUpdateLegacyHero}
           onBack={() => setMainMenuView('title')}
+          onStartNewGame={() => {
+            // Navigate to scenario selection with selected heroes
+            setMainMenuView('title');
+            setState(prev => ({ ...prev, phase: GamePhase.SETUP, activeScenario: null }));
+            setIsMainMenuOpen(false);
+          }}
           maxHeroesSelectable={4}
           selectedHeroIds={selectedLegacyHeroIds}
         />
