@@ -38,6 +38,7 @@ import {
   addGoldToHero,
   createDefaultLegacyData
 } from './utils/legacyManager';
+import { generateRandomScenario } from './utils/scenarioGenerator';
 
 const STORAGE_KEY = 'shadows_1920s_save';
 const SETTINGS_KEY = 'shadows_1920s_settings';
@@ -106,11 +107,10 @@ const ShadowsGame: React.FC = () => {
   // Difficulty selection for random scenario
   const [selectedDifficulty, setSelectedDifficulty] = useState<'Normal' | 'Hard' | 'Nightmare' | null>(null);
 
-  // Get random scenario based on difficulty
+  // Generate random scenario based on difficulty using dynamic generator
   const getRandomScenario = useCallback((difficulty: 'Normal' | 'Hard' | 'Nightmare'): Scenario => {
-    const filteredScenarios = SCENARIOS.filter(s => s.difficulty === difficulty);
-    const randomIndex = Math.floor(Math.random() * filteredScenarios.length);
-    return filteredScenarios[randomIndex];
+    // Use the new dynamic scenario generator that combines elements from pools
+    return generateRandomScenario(difficulty);
   }, []);
 
   // Game settings with localStorage persistence
@@ -1474,7 +1474,7 @@ const ShadowsGame: React.FC = () => {
                       Standard difficulty. Good for learning the game mechanics.
                     </p>
                     <div className="text-xs text-emerald-500 font-mono">
-                      {SCENARIOS.filter(s => s.difficulty === 'Normal').length} scenarios available
+                      9 mission types &times; endless combinations
                     </div>
                   </button>
 
@@ -1493,7 +1493,7 @@ const ShadowsGame: React.FC = () => {
                       Challenging scenarios. Requires strategic thinking and teamwork.
                     </p>
                     <div className="text-xs text-amber-500 font-mono">
-                      {SCENARIOS.filter(s => s.difficulty === 'Hard').length} scenarios available
+                      Stronger enemies &amp; tougher bosses
                     </div>
                   </button>
 
@@ -1512,7 +1512,7 @@ const ShadowsGame: React.FC = () => {
                       Brutal difficulty. Only for experienced investigators.
                     </p>
                     <div className="text-xs text-red-500 font-mono">
-                      {SCENARIOS.filter(s => s.difficulty === 'Nightmare').length} scenarios available
+                      Cosmic horrors await
                     </div>
                   </button>
                 </div>
@@ -1521,9 +1521,9 @@ const ShadowsGame: React.FC = () => {
               {/* Scenario Pool Info */}
               <div className="border-t border-border pt-6">
                 <p className="text-xs text-muted-foreground italic">
-                  A random scenario will be selected based on your chosen difficulty.
+                  Each case is dynamically generated from element pools.
                   <br />
-                  Total scenarios in pool: {SCENARIOS.length}
+                  9 mission types &bull; 23 locations &bull; 100+ unique combinations
                 </p>
               </div>
             </div>
@@ -1539,7 +1539,7 @@ const ShadowsGame: React.FC = () => {
 
               {/* Show selected difficulty and scenario info */}
               <div className="mb-6 p-4 bg-background/50 border border-border rounded-lg">
-                <div className="flex items-center justify-center gap-4 text-sm">
+                <div className="flex items-center justify-center gap-4 text-sm mb-3">
                   <span className={`px-3 py-1 rounded-full border ${
                     selectedDifficulty === 'Normal' ? 'border-emerald-500 text-emerald-400' :
                     selectedDifficulty === 'Hard' ? 'border-amber-500 text-amber-400' :
@@ -1549,7 +1549,34 @@ const ShadowsGame: React.FC = () => {
                     {selectedDifficulty || state.activeScenario.difficulty}
                   </span>
                   <span className="text-muted-foreground">|</span>
-                  <span className="text-xs text-muted-foreground italic">{state.activeScenario.description.substring(0, 80)}...</span>
+                  <span className={`px-3 py-1 rounded-full border border-primary/50 text-primary`}>
+                    {state.activeScenario.victoryType.replace('_', ' ').toUpperCase()}
+                  </span>
+                </div>
+                <div className="text-center mb-3">
+                  <p className="text-xs text-muted-foreground italic">{state.activeScenario.description}</p>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <span>Start: {state.activeScenario.startLocation}</span>
+                  <span className="text-primary">|</span>
+                  <span>Doom: {state.activeScenario.startDoom}</span>
+                  <span className="text-primary">|</span>
+                  <span>{state.activeScenario.estimatedTime}</span>
+                </div>
+                {/* Re-roll button */}
+                <div className="mt-4 flex justify-center">
+                  <button
+                    onClick={() => {
+                      if (selectedDifficulty) {
+                        const newScenario = getRandomScenario(selectedDifficulty);
+                        setState(prev => ({ ...prev, activeScenario: newScenario, players: [] }));
+                      }
+                    }}
+                    className="px-4 py-2 text-xs uppercase tracking-wider border border-primary/50 rounded-lg text-primary hover:bg-primary/10 transition-colors flex items-center gap-2"
+                  >
+                    <RotateCcw size={14} />
+                    Generate New Case
+                  </button>
                 </div>
               </div>
 
