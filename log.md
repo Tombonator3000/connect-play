@@ -545,88 +545,145 @@ The Legacy system is now fully implemented:
 
 ---
 
-## 2026-01-19: Random Scenario Selection System
+## 2026-01-19: Dynamic Scenario Generation System
 
 ### Oppgave
-Implementer system der "New Case" starter et tilfeldig scenario basert på valgt vanskelighetsgrad, i stedet for manuelt scenario-valg.
+Implementer et fullstendig dynamisk scenario-genereringssystem der "New Case" genererer et unikt scenario fra element-pools, i stedet for å velge fra ferdiglagde scenarier. Dette gir 100+ unike scenario-kombinasjoner.
+
+### Flyt
+1. Klikk "New Case"
+2. Velg vanskelighetsgrad (Normal/Hard/Nightmare)
+3. System GENERERER tilfeldig scenario satt sammen fra pools
+4. Character selection viser scenario-info
+5. "Generate New Case" knapp for å re-rulle
+6. Briefing popup vises før spillet starter
 
 ### Implementation
 
-#### 1. Expanded Scenario Pool (constants.ts)
-Added 12 new scenarios to the existing 3, for a total of **15 scenarios**:
+#### 1. Scenario Generator (utils/scenarioGenerator.ts) - NY FIL
+Opprettet en komplett scenario-generator med følgende element-pools:
 
-| ID | Navn | Type | Vanskelighet |
-|----|------|------|--------------|
-| s1 | Escape from Blackwood Manor | escape | Normal |
-| s2 | The High Priest Must Die | assassination | Hard |
-| s3 | The Siege of Arkham | survival | Nightmare |
-| s4 | Forbidden Knowledge | collection | Normal |
-| s5 | The Missing Professor | rescue | Normal |
-| s6 | Seal the Gate | seal_portal | Hard |
-| s7 | The Innsmouth Conspiracy | investigation | Normal |
-| s8 | Cleanse the Crypt | purge | Hard |
-| s9 | The Ritual of Binding | ritual | Nightmare |
-| s10 | Mansion of Madness | multi_objective | Hard |
-| s11 | The Deep One Raid | survival | Normal |
-| s12 | The Lost Artifact | collection | Normal |
-| s13 | Arkham Asylum Breakout | rescue | Hard |
-| s14 | The Witch's Curse | ritual | Normal |
-| s15 | The Final Gate | seal_portal | Nightmare |
+**Mission Types (9 typer):**
+| ID | Navn | Victory Type | TileSet |
+|----|------|-------------|---------|
+| escape_manor | Escape | escape | indoor |
+| assassination | Assassination | assassination | mixed |
+| survival | Siege | survival | mixed |
+| collection | Relic Hunt | collection | mixed |
+| rescue | Rescue | escape | indoor |
+| investigation | Investigation | investigation | mixed |
+| ritual | Counter-Ritual | ritual | indoor |
+| seal_portal | Seal the Gate | ritual | mixed |
+| purge | Purge | assassination | indoor |
 
-**Distribution by difficulty:**
-- Normal: 7 scenarios (s1, s4, s5, s7, s11, s12, s14)
-- Hard: 5 scenarios (s2, s6, s8, s10, s13)
-- Nightmare: 3 scenarios (s3, s9, s15)
+**Location Pools (23 lokasjoner):**
+- Indoor Start Locations (10): Blackwood Manor, Arkham Asylum, Miskatonic Library, etc.
+- Outdoor Start Locations (8): Town Square, Old Cemetery, Arkham Harbor, etc.
+- Mixed Start Locations (5): Police Station, Merchant District, etc.
 
-Each scenario includes:
-- Unique briefing narrative (Lovecraftian atmosphere)
-- Multiple objectives (primary and bonus)
-- Victory/defeat conditions
-- Doom events that trigger at specific thresholds
-- Estimated time and recommended players
+**Enemy Pools (per vanskelighetsgrad):**
+- Normal: Cultists (2-3), Ghouls (1-2)
+- Hard: Cultists (2-3), Ghouls (2-3), Deep Ones (1-2)
+- Nightmare: Cultists (3-4), Ghouls (2-3), Deep Ones (2-3), Mi-Go (1-2)
 
-#### 2. Difficulty Selection UI (ShadowsGame.tsx)
-Replaced direct scenario selection with difficulty-based random selection:
+**Boss Pool:**
+- Shoggoth (Normal+)
+- Dark Young of Shub-Niggurath (Hard+)
+- Star Spawn of Cthulhu (Nightmare)
+- Hunting Horror (Nightmare)
 
-**New UI Flow:**
-1. Click "New Case" on Main Menu
-2. **Choose Difficulty** screen appears with 3 options:
-   - **Normal** (emerald green) - Standard difficulty, 7 scenarios
-   - **Hard** (amber) - Challenging, 5 scenarios
-   - **Nightmare** (red) - Brutal difficulty, 3 scenarios
-3. Random scenario selected from chosen difficulty pool
-4. Character selection screen shows selected scenario info
-5. Scenario briefing popup before game starts
+**Narrative Elements:**
+- 8 briefing openings
+- 7 middle narratives per mission type
+- 3 closing narratives per difficulty
+- 7 target names (for assassination)
+- 7 victim names (for rescue)
+- 6 mystery names (for investigation)
+- 6 collectible item types
 
-**New State & Functions:**
+**Objective Templates:**
+- Primary objectives per mission type (2-3 per type)
+- Bonus objectives pool (4 types)
+- Hidden objectives that reveal based on progress
+
+**Doom Event Generation:**
+- Early wave (70% doom threshold)
+- Mid wave (50% doom threshold)
+- Boss wave (20% doom threshold)
+- Difficulty-appropriate enemy selection
+
+#### 2. Title Generation
+Dynamiske titler basert på mission type:
 ```typescript
-// New state for tracking selected difficulty
-const [selectedDifficulty, setSelectedDifficulty] = useState<'Normal' | 'Hard' | 'Nightmare' | null>(null);
-
-// Function to get random scenario based on difficulty
-const getRandomScenario = useCallback((difficulty: 'Normal' | 'Hard' | 'Nightmare'): Scenario => {
-  const filteredScenarios = SCENARIOS.filter(s => s.difficulty === difficulty);
-  const randomIndex = Math.floor(Math.random() * filteredScenarios.length);
-  return filteredScenarios[randomIndex];
-}, []);
+TITLE_TEMPLATES = {
+  escape: ['Escape from {location}', 'The {location} Trap', 'No Exit at {location}'],
+  assassination: ['The {target} Must Die', 'Death to the {target}', 'Hunt for the {target}'],
+  survival: ['The Siege of {location}', 'Last Stand at {location}', 'Night of Terror'],
+  // ... etc
+}
 ```
 
-**UI Features:**
-- Star ratings to visually indicate difficulty
-- Color-coded buttons (emerald/amber/red)
-- Hover glow effects
-- Shows number of available scenarios per difficulty
-- Displays selected scenario info before starting
+#### 3. UI Updates (ShadowsGame.tsx)
+- Oppdatert `getRandomScenario()` til å bruke `generateRandomScenario()`
+- La til "Generate New Case" re-roll knapp
+- Viser mission type, start location, doom, og estimert tid
+- Oppdatert info-tekst: "9 mission types × endless combinations"
+
+### Tekniske Detaljer
+
+**generateRandomScenario() algoritme:**
+1. Velg tilfeldig mission type fra pool
+2. Velg lokasjon basert på tileset (indoor/outdoor/mixed)
+3. Generer kontekstuelle elementer (target, victim, mystery, collectibles)
+4. Bygg objectives fra templates med dynamiske verdier
+5. Legg til 1-2 tilfeldige bonus objectives
+6. Generer doom events med riktige terskler
+7. Bygg tittel og briefing fra fragmenter
+8. Assembler komplett Scenario objekt
+
+**Variabilitet:**
+- 9 mission types
+- 23 locations
+- 7+ targets/victims
+- 6 collectible types
+- Tilfeldige mengder (targetAmount ranges)
+- Tilfeldige boss-valg per difficulty
+- ~100+ unike kombinasjoner
+
+### Files Created
+- `src/game/utils/scenarioGenerator.ts` (NY) - Komplett generator med alle pools
 
 ### Files Modified
-- `src/game/constants.ts` - Added 12 new scenarios (s4-s15)
-- `src/game/ShadowsGame.tsx` - Replaced scenario grid with difficulty selection
+- `src/game/ShadowsGame.tsx` - Oppdatert til å bruke generator, la til re-roll knapp
+
+### Eksempel på Generert Scenario
+```
+Tittel: "Escape from Arkham Asylum"
+Type: Escape
+Vanskelighetsgrad: Hard
+Start: Arkham Asylum
+Doom: 10
+Mål: "Find the cursed_key and escape from Arkham Asylum."
+
+Objectives:
+1. Find the Cursed Key
+2. Find the Exit (hidden, revealed by #1)
+3. Escape (hidden, revealed by #2)
+4. [BONUS] Find Journals (0/3)
+
+Doom Events:
+- Doom 7: Cultists emerge from the shadows! (2-3 cultists)
+- Doom 5: A ghoul pack attacks! (2-3 ghouls)
+- Doom 2: A Dark Young crashes through! (boss)
+```
 
 ### Summary
-The "New Case" feature now works as follows:
-1. User selects a difficulty level (Normal/Hard/Nightmare)
-2. System randomly selects a scenario from that difficulty pool
-3. Selected scenario is shown with briefing popup
-4. Game begins with the randomly selected scenario
+Systemet genererer nå dynamisk unike scenarier ved å kombinere:
+- Mission types (9 typer)
+- Locations (23 steder)
+- Enemies & bosses (difficulty-balanced)
+- Narrative elements (briefings, titles)
+- Objectives (primary + bonus)
+- Doom events (3 waves per scenario)
 
-This adds replayability and variety to the game, as players can experience different scenarios each time they play at the same difficulty level.
+Dette gir 100+ unike scenario-kombinasjoner, og hver gang du klikker "New Case" får du et helt nytt oppdrag med unik historie og mål. "Generate New Case" knappen lar deg re-rulle hvis du vil ha et annet oppdrag.
