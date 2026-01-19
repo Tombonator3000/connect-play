@@ -10,6 +10,8 @@ import ActionBar from './components/ActionBar';
 import DiceRoller from './components/DiceRoller';
 import MainMenu from './components/MainMenu';
 import OptionsMenu, { GameSettings, DEFAULT_SETTINGS } from './components/OptionsMenu';
+import GameOverOverlay, { GameOverType } from './components/GameOverOverlay';
+import MythosPhaseOverlay from './components/MythosPhaseOverlay';
 import { performAttack, performHorrorCheck, calculateEnemyDamage, hasRangedWeapon, canAttackEnemy } from './utils/combatUtils';
 import { processEnemyTurn, selectRandomEnemy, createEnemy, shouldSpawnMonster } from './utils/monsterAI';
 
@@ -56,6 +58,8 @@ const ShadowsGame: React.FC = () => {
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [showLeftPanel, setShowLeftPanel] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(false);
+  const [showMythosOverlay, setShowMythosOverlay] = useState(false);
+  const [gameOverType, setGameOverType] = useState<GameOverType | null>(null);
 
   // Game settings with localStorage persistence
   const [settings, setSettings] = useState<GameSettings>(() => {
@@ -133,6 +137,22 @@ const ShadowsGame: React.FC = () => {
 
         // Check for doom events
         checkDoomEvents(state.doom - 1);
+
+        // Check for game over after enemy attacks
+        const allDead = updatedPlayers.every(p => p.isDead);
+        if (allDead) {
+          setTimeout(() => {
+            addToLog("All investigators have fallen. The darkness claims victory.");
+            setGameOverType('defeat_death');
+            setState(prev => ({
+              ...prev,
+              enemies: updatedEnemies.filter(e => e.hp > 0),
+              phase: GamePhase.GAME_OVER,
+              players: updatedPlayers
+            }));
+          }, 1200);
+          return;
+        }
 
         // Transition back to investigator phase after a delay
         setTimeout(() => {
@@ -220,6 +240,28 @@ const ShadowsGame: React.FC = () => {
     }
     return player;
   };
+
+  // Check for game over conditions
+  const checkGameOver = useCallback((players: Player[], doom: number) => {
+    // Check if all players are dead
+    const allPlayersDead = players.length > 0 && players.every(p => p.isDead);
+    if (allPlayersDead) {
+      addToLog("All investigators have fallen. The darkness claims victory.");
+      setGameOverType('defeat_death');
+      setState(prev => ({ ...prev, phase: GamePhase.GAME_OVER }));
+      return true;
+    }
+
+    // Check if doom has reached 0
+    if (doom <= 0) {
+      addToLog("The doom counter has reached zero. The Old Ones stir...");
+      setGameOverType('defeat_doom');
+      setState(prev => ({ ...prev, phase: GamePhase.GAME_OVER }));
+      return true;
+    }
+
+    return false;
+  }, []);
 
   const spawnEnemy = useCallback((type: EnemyType, q: number, r: number) => {
     const bestiary = BESTIARY[type];
@@ -499,14 +541,36 @@ const ShadowsGame: React.FC = () => {
   };
 
   const handleNextTurn = () => {
-    setState(prev => {
-      const nextIndex = prev.activePlayerIndex + 1;
-      const isEndOfRound = nextIndex >= prev.players.length;
-      if (isEndOfRound) {
-        return { ...prev, phase: GamePhase.MYTHOS, activePlayerIndex: 0, doom: prev.doom - 1, round: prev.round + 1, activeSpell: null };
+    const nextIndex = state.activePlayerIndex + 1;
+    const isEndOfRound = nextIndex >= state.players.length;
+
+    if (isEndOfRound) {
+      // Check if game should end before transitioning
+      const newDoom = state.doom - 1;
+      if (newDoom <= 0) {
+        addToLog("The doom counter has reached zero. The Old Ones stir...");
+        setGameOverType('defeat_doom');
+        setState(prev => ({ ...prev, phase: GamePhase.GAME_OVER, doom: 0 }));
+        return;
       }
-      return { ...prev, activePlayerIndex: nextIndex, activeSpell: null };
-    });
+
+      // Show Mythos phase overlay
+      setShowMythosOverlay(true);
+    } else {
+      setState(prev => ({ ...prev, activePlayerIndex: nextIndex, activeSpell: null }));
+    }
+  };
+
+  const handleMythosOverlayComplete = () => {
+    setShowMythosOverlay(false);
+    setState(prev => ({
+      ...prev,
+      phase: GamePhase.MYTHOS,
+      activePlayerIndex: 0,
+      doom: prev.doom - 1,
+      round: prev.round + 1,
+      activeSpell: null
+    }));
   };
 
   const activePlayer = state.players[state.activePlayerIndex] || null;
@@ -514,6 +578,21 @@ const ShadowsGame: React.FC = () => {
 
   const handleResetData = () => {
     localStorage.removeItem(STORAGE_KEY);
+    setState(DEFAULT_STATE);
+    setIsMainMenuOpen(true);
+  };
+
+  const handleGameOverRestart = () => {
+    setGameOverType(null);
+    setState(prev => ({
+      ...DEFAULT_STATE,
+      activeScenario: prev.activeScenario,
+      phase: GamePhase.SETUP
+    }));
+  };
+
+  const handleGameOverMainMenu = () => {
+    setGameOverType(null);
     setState(DEFAULT_STATE);
     setIsMainMenuOpen(true);
   };
@@ -663,6 +742,23 @@ const ShadowsGame: React.FC = () => {
       )}
 
       {state.lastDiceRoll && <DiceRoller values={state.lastDiceRoll} onComplete={resolveDiceResult} />}
+
+      {/* Mythos Phase Overlay */}
+      <MythosPhaseOverlay
+        isVisible={showMythosOverlay}
+        onComplete={handleMythosOverlayComplete}
+      />
+
+      {/* Game Over Overlay */}
+      {gameOverType && (
+        <GameOverOverlay
+          type={gameOverType}
+          scenarioTitle={state.activeScenario?.title}
+          round={state.round}
+          onRestart={handleGameOverRestart}
+          onMainMenu={handleGameOverMainMenu}
+        />
+      )}
     </div>
   );
 };
