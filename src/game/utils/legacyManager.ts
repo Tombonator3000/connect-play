@@ -108,7 +108,7 @@ function generateHeroId(): string {
  * Get base attributes for a character class
  */
 export function getBaseAttributesForClass(characterClass: CharacterType): CharacterAttributes {
-  const character = CHARACTERS.find(c => c.id === characterClass);
+  const character = CHARACTERS[characterClass];
   if (character) {
     return { ...character.attributes };
   }
@@ -120,7 +120,7 @@ export function getBaseAttributesForClass(characterClass: CharacterType): Charac
  * Get base HP for a character class
  */
 export function getBaseHpForClass(characterClass: CharacterType): number {
-  const character = CHARACTERS.find(c => c.id === characterClass);
+  const character = CHARACTERS[characterClass];
   return character?.maxHp || 6;
 }
 
@@ -128,7 +128,7 @@ export function getBaseHpForClass(characterClass: CharacterType): number {
  * Get base Sanity for a character class
  */
 export function getBaseSanityForClass(characterClass: CharacterType): number {
-  const character = CHARACTERS.find(c => c.id === characterClass);
+  const character = CHARACTERS[characterClass];
   return character?.maxSanity || 6;
 }
 
@@ -550,7 +550,7 @@ export function processScenarioCompletion(
  * Convert a LegacyHero to a Player for in-game use
  */
 export function legacyHeroToPlayer(hero: LegacyHero): Player {
-  const character = CHARACTERS.find(c => c.id === hero.characterClass);
+  const character = CHARACTERS[hero.characterClass];
 
   const effectiveAttributes: CharacterAttributes = {
     strength: hero.baseAttributes.strength + hero.bonusAttributes.strength,
