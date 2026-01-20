@@ -5,7 +5,7 @@ import {
   BookOpen, Anchor, Church, MapPin, Building, ShoppingBag, Fish, PawPrint, Biohazard, Ghost, Bug, Search,
   Trees, AlertTriangle, Fence, Cloud, Archive, Radio, ToggleLeft, Sparkles, Moon, Package, CircleSlash
 } from 'lucide-react';
-import { EnemyTooltip } from './ItemTooltip';
+import { EnemyTooltip, TileObjectTooltip, EdgeFeatureTooltip } from './ItemTooltip';
 import WeatherOverlay from './WeatherOverlay';
 import { calculateWeatherVision, weatherHidesEnemy, getDarkRoomDisplayState } from '../constants';
 import { Flashlight } from 'lucide-react';
@@ -949,84 +949,86 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 )}
 
                 {tile.object && isVisible && (
-                  <div className="absolute inset-0 flex items-center justify-center z-20 animate-in zoom-in duration-300">
-                    {/* Fire - pulsing orange flame */}
-                    {tile.object.type === 'fire' && <Flame className="text-orange-500 animate-pulse drop-shadow-[0_0_10px_rgba(249,115,22,0.8)]" size={40} />}
+                  <TileObjectTooltip object={tile.object}>
+                    <div className="absolute inset-0 flex items-center justify-center z-20 animate-in zoom-in duration-300 cursor-help">
+                      {/* Fire - pulsing orange flame */}
+                      {tile.object.type === 'fire' && <Flame className="text-orange-500 animate-pulse drop-shadow-[0_0_10px_rgba(249,115,22,0.8)]" size={40} />}
 
-                    {/* Locked Door - accent colored lock */}
-                    {tile.object.type === 'locked_door' && (
-                      <div className="flex flex-col items-center">
-                        <Lock className={`text-accent ${tile.object.blocking ? 'opacity-100' : 'opacity-30'}`} size={32} />
-                        <span className="text-[10px] font-bold text-accent uppercase tracking-widest mt-1">Locked</span>
-                      </div>
-                    )}
+                      {/* Locked Door - accent colored lock */}
+                      {tile.object.type === 'locked_door' && (
+                        <div className="flex flex-col items-center">
+                          <Lock className={`text-accent ${tile.object.blocking ? 'opacity-100' : 'opacity-30'}`} size={32} />
+                          <span className="text-[10px] font-bold text-accent uppercase tracking-widest mt-1">Locked</span>
+                        </div>
+                      )}
 
-                    {/* Rubble - stone colored hammer */}
-                    {tile.object.type === 'rubble' && <Hammer className="text-stone-500 rotate-12 drop-shadow-md" size={32} />}
+                      {/* Rubble - stone colored hammer */}
+                      {tile.object.type === 'rubble' && <Hammer className="text-stone-500 rotate-12 drop-shadow-md" size={32} />}
 
-                    {/* Trap - warning triangle with red glow */}
-                    {tile.object.type === 'trap' && (
-                      <div className="flex flex-col items-center">
-                        <AlertTriangle className="text-red-500 animate-pulse drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]" size={32} />
-                        <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest mt-1">Trap</span>
-                      </div>
-                    )}
+                      {/* Trap - warning triangle with red glow */}
+                      {tile.object.type === 'trap' && (
+                        <div className="flex flex-col items-center">
+                          <AlertTriangle className="text-red-500 animate-pulse drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]" size={32} />
+                          <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest mt-1">Trap</span>
+                        </div>
+                      )}
 
-                    {/* Gate - iron fence */}
-                    {tile.object.type === 'gate' && (
-                      <div className="flex flex-col items-center">
-                        <Fence className={`text-gray-400 ${tile.object.blocking ? 'opacity-100' : 'opacity-40'}`} size={32} />
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Gate</span>
-                      </div>
-                    )}
+                      {/* Gate - iron fence */}
+                      {tile.object.type === 'gate' && (
+                        <div className="flex flex-col items-center">
+                          <Fence className={`text-gray-400 ${tile.object.blocking ? 'opacity-100' : 'opacity-40'}`} size={32} />
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Gate</span>
+                        </div>
+                      )}
 
-                    {/* Fog Wall - ethereal cloud */}
-                    {tile.object.type === 'fog_wall' && (
-                      <div className="flex flex-col items-center animate-pulse">
-                        <Cloud className="text-purple-400/80 drop-shadow-[0_0_12px_rgba(168,85,247,0.5)]" size={36} />
-                        <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mt-1">Fog</span>
-                      </div>
-                    )}
+                      {/* Fog Wall - ethereal cloud */}
+                      {tile.object.type === 'fog_wall' && (
+                        <div className="flex flex-col items-center animate-pulse">
+                          <Cloud className="text-purple-400/80 drop-shadow-[0_0_12px_rgba(168,85,247,0.5)]" size={36} />
+                          <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mt-1">Fog</span>
+                        </div>
+                      )}
 
-                    {/* Altar - mystical sparkles */}
-                    {tile.object.type === 'altar' && (
-                      <div className="flex flex-col items-center">
-                        <Sparkles className="text-purple-500 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]" size={32} />
-                        <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mt-1">Altar</span>
-                      </div>
-                    )}
+                      {/* Altar - mystical sparkles */}
+                      {tile.object.type === 'altar' && (
+                        <div className="flex flex-col items-center">
+                          <Sparkles className="text-purple-500 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]" size={32} />
+                          <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mt-1">Altar</span>
+                        </div>
+                      )}
 
-                    {/* Bookshelf - book icon */}
-                    {tile.object.type === 'bookshelf' && <BookOpen className="text-amber-700 drop-shadow-md" size={28} />}
+                      {/* Bookshelf - book icon */}
+                      {tile.object.type === 'bookshelf' && <BookOpen className="text-amber-700 drop-shadow-md" size={28} />}
 
-                    {/* Container types - archive/package */}
-                    {(tile.object.type === 'crate' || tile.object.type === 'chest' || tile.object.type === 'cabinet') && (
-                      <Package className={`text-amber-600 ${tile.object.searched ? 'opacity-40' : 'opacity-100'}`} size={28} />
-                    )}
+                      {/* Container types - archive/package */}
+                      {(tile.object.type === 'crate' || tile.object.type === 'chest' || tile.object.type === 'cabinet') && (
+                        <Package className={`text-amber-600 ${tile.object.searched ? 'opacity-40' : 'opacity-100'}`} size={28} />
+                      )}
 
-                    {/* Barricade - crossed planks */}
-                    {tile.object.type === 'barricade' && <Hammer className="text-amber-800 rotate-45 drop-shadow-md" size={32} />}
+                      {/* Barricade - crossed planks */}
+                      {tile.object.type === 'barricade' && <Hammer className="text-amber-800 rotate-45 drop-shadow-md" size={32} />}
 
-                    {/* Mirror - moon reflection */}
-                    {tile.object.type === 'mirror' && <Moon className="text-slate-300 drop-shadow-[0_0_6px_rgba(148,163,184,0.5)]" size={28} />}
+                      {/* Mirror - moon reflection */}
+                      {tile.object.type === 'mirror' && <Moon className="text-slate-300 drop-shadow-[0_0_6px_rgba(148,163,184,0.5)]" size={28} />}
 
-                    {/* Radio - communication */}
-                    {tile.object.type === 'radio' && <Radio className="text-green-500 animate-pulse" size={28} />}
+                      {/* Radio - communication */}
+                      {tile.object.type === 'radio' && <Radio className="text-green-500 animate-pulse" size={28} />}
 
-                    {/* Switch - toggle */}
-                    {tile.object.type === 'switch' && <ToggleLeft className="text-yellow-500" size={28} />}
+                      {/* Switch - toggle */}
+                      {tile.object.type === 'switch' && <ToggleLeft className="text-yellow-500" size={28} />}
 
-                    {/* Statue - skull (ominous) */}
-                    {tile.object.type === 'statue' && <Skull className="text-stone-400 drop-shadow-md" size={32} />}
+                      {/* Statue - skull (ominous) */}
+                      {tile.object.type === 'statue' && <Skull className="text-stone-400 drop-shadow-md" size={32} />}
 
-                    {/* Exit Door - escape route */}
-                    {tile.object.type === 'exit_door' && (
-                      <div className="flex flex-col items-center animate-pulse">
-                        <DoorOpen className="text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.6)]" size={36} />
-                        <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mt-1">Exit</span>
-                      </div>
-                    )}
-                  </div>
+                      {/* Exit Door - escape route */}
+                      {tile.object.type === 'exit_door' && (
+                        <div className="flex flex-col items-center animate-pulse">
+                          <DoorOpen className="text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.6)]" size={36} />
+                          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mt-1">Exit</span>
+                        </div>
+                      )}
+                    </div>
+                  </TileObjectTooltip>
                 )}
 
                 {/* Dead-end indicator - shows when tile has only one exit */}
@@ -1280,6 +1282,38 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   );
                 })}
               </svg>
+
+              {/* Edge tooltip triggers - hoverable areas over edge indicators */}
+              {isVisible && tile.edges && tile.edges.map((edge: EdgeData, edgeIndex: number) => {
+                const points = HEX_EDGE_POINTS[edgeIndex];
+                if (!points) return null;
+
+                const edgeType = edge?.type?.toLowerCase() || '';
+
+                // Skip open/empty edges - no tooltip needed
+                if (!edgeType || edgeType === 'open') return null;
+
+                // Calculate midpoint position (in percentage for positioning)
+                const midX = ((points.x1 + points.x2) / 2);
+                const midY = ((points.y1 + points.y2) / 2);
+
+                return (
+                  <EdgeFeatureTooltip key={`edge-tooltip-${edgeIndex}`} edge={edge}>
+                    <div
+                      className="absolute z-25 cursor-help opacity-0 hover:opacity-100 transition-opacity"
+                      style={{
+                        left: `${midX}%`,
+                        top: `${midY}%`,
+                        transform: 'translate(-50%, -50%)',
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        background: 'rgba(255,255,255,0.1)',
+                      }}
+                    />
+                  </EdgeFeatureTooltip>
+                );
+              })}
             </div>
           );
         })}

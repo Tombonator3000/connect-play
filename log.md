@@ -1,5 +1,58 @@
 # Development Log
 
+## 2026-01-20: Implementert hover tooltips for hex-tile objekter og kanter
+
+### Oppgave
+Lage info tooltips ved hover som forklarer hva objekter på en hex-tile er (dør, låst dør, rubble, brann, etc.) så spillere kan lett se hva som er på en hex tile.
+
+### Løsning
+Lagt til to nye tooltip-komponenter i `src/game/components/ItemTooltip.tsx`:
+
+#### TileObjectTooltip
+Viser informasjon når spilleren hovrer over objekter på tiles:
+- **Brann (fire)**: "Flammene danser med en nesten bevisst intensitet. Varmen er uutholdelig."
+- **Låst dør (locked_door)**: "En solid dør med en gammel lås. Noen ville ikke at du skulle komme inn."
+- **Ruiner (rubble)**: "Sammenraste murstein og tømmer blokkerer veien."
+- **Felle (trap)**: "En mekanisme skjult i skyggen. Noen forventet ubudne gjester."
+- **Port (gate)**: "Jernstenger som har stått her i generasjoner."
+- **Tåkevegg (fog_wall)**: "Unaturlig tåke som ikke beveger seg med vinden."
+- **Alter (altar)**: "Et gammelt alter flekkete av år med ritualer."
+- **Bokhylle (bookshelf)**: "Støvete bøker på ukjente språk."
+- **Kasse/Kiste/Skap (crate/chest/cabinet)**: Søkbare beholdere
+- **Barrikade (barricade)**: "Planker og møbler stablet i hast."
+- **Speil (mirror)**: "Et gammelt speil. Refleksjonen din virker... forsinket."
+- **Radio (radio)**: "En knitrende radio. Stemmer fra... hvor?"
+- **Bryter (switch)**: "En mekanisk bryter. Hva styrer den?"
+- **Statue (statue)**: "En forvitret statue. Øynene ser ut til å følge deg."
+- **Utgangsdør (exit_door)**: "Veien ut. Friheten venter på den andre siden."
+
+#### EdgeFeatureTooltip
+Viser informasjon når spilleren hovrer over edge-features:
+- **Dører**: Åpen, lukket, låst, barrikadert, knust, forseglet, puzzle-dør
+- **Blokkerte kanter**: Ruiner, tung ruiner, kollapset, brann, barrikade, låst port, åndesperre, magisk vern, avgrunn, oversvømt
+- **Trapper**: Trapp opp/ned med atmosfæriske beskrivelser
+- **Vinduer**: "Glasset er skittent, men du kan se gjennom."
+- **Hemmelige dører**: Viser om de er oppdaget eller ikke
+- **Vegger**: "Solid murstein. Kanskje det er noe bak?"
+
+Hver tooltip inkluderer:
+- Atmosfærisk Lovecraft-inspirert beskrivelse
+- Handling/interaksjon instruksjoner
+- DC (Difficulty Class) krav hvis relevant
+- Skill-krav hvis relevant
+
+### Filer Endret
+- `src/game/components/ItemTooltip.tsx` - Lagt til TileObjectTooltip og EdgeFeatureTooltip komponenter
+- `src/game/components/GameBoard.tsx` - Integrert tooltips for objekter og edge-features
+
+### Resultat
+- ✅ Hover over objekter viser tooltip med beskrivelse og handlingsinstruksjoner
+- ✅ Hover over edge-features (dører, trapper, etc.) viser tooltip med info
+- ✅ Atmosfæriske beskrivelser i Lovecraft-stil
+- ✅ Build vellykket uten feil
+
+---
+
 ## 2026-01-20: Implementert 30 nye tiles
 
 ### Oppgave
