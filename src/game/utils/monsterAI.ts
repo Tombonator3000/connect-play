@@ -5,7 +5,11 @@
  * Added: Weather effects on monster behavior
  */
 
-import { Enemy, EnemyType, Player, Tile, TileCategory, TileObjectType, WeatherState, WeatherCondition } from '../types';
+import {
+  Enemy, EnemyType, EnemyWithAI, Player, Tile, TileCategory, TileObjectType,
+  WeatherState, WeatherCondition, MonsterPersonality, MonsterSpecialAbility,
+  MonsterCombatStyle, MonsterAIState
+} from '../types';
 import { BESTIARY, getWeatherEffect, getIntensityModifier, weatherHidesEnemy } from '../constants';
 import { hexDistance, findPath, getHexNeighbors, hasLineOfSight } from '../hexUtils';
 
@@ -874,11 +878,459 @@ export const MONSTER_BEHAVIORS: Record<EnemyType, MonsterBehavior> = {
   moon_beast: 'ranged'
 };
 
+// ============================================================================
+// MONSTER PERSONALITY SYSTEM - Unique behaviors per monster type
+// ============================================================================
+
+/**
+ * Each monster type has a unique personality that affects their behavior
+ * This makes combat more varied and tactical
+ */
+export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
+  cultist: {
+    aggressionLevel: 70,
+    cowardiceThreshold: 30,      // Flees at 30% HP
+    packMentality: true,          // Seeks other cultists
+    territorialRange: 8,
+    preferredTerrain: ['crypt', 'room'],
+    combatStyle: 'tactical',
+    specialAbilities: ['charge'],
+    callForHelpChance: 60        // Often calls for backup
+  },
+
+  deepone: {
+    aggressionLevel: 80,
+    cowardiceThreshold: 20,
+    packMentality: true,
+    territorialRange: 6,
+    preferredTerrain: ['basement', 'nature'],
+    combatStyle: 'berserker',
+    specialAbilities: ['drag_under'],
+    callForHelpChance: 40
+  },
+
+  ghoul: {
+    aggressionLevel: 50,          // Cautious, waits for opportunity
+    cowardiceThreshold: 40,
+    packMentality: true,
+    territorialRange: 4,
+    preferredTerrain: ['crypt', 'basement'],
+    avoidsTerrain: ['urban', 'street'],
+    combatStyle: 'ambush',
+    specialAbilities: ['pack_tactics'],
+    callForHelpChance: 80         // Always hunting in groups
+  },
+
+  shoggoth: {
+    aggressionLevel: 100,         // Never retreats
+    cowardiceThreshold: 0,
+    packMentality: false,
+    territorialRange: 255,        // Unlimited range
+    combatStyle: 'berserker',
+    specialAbilities: ['enrage'],
+    callForHelpChance: 0          // Solitary horror
+  },
+
+  boss: {
+    aggressionLevel: 90,
+    cowardiceThreshold: 0,
+    packMentality: false,
+    territorialRange: 255,
+    combatStyle: 'berserker',
+    specialAbilities: ['devour', 'cosmic_presence'],
+    callForHelpChance: 30         // May summon minions
+  },
+
+  sniper: {
+    aggressionLevel: 40,
+    cowardiceThreshold: 50,       // Very cautious
+    packMentality: false,
+    territorialRange: 10,
+    preferredTerrain: ['room', 'corridor'],
+    combatStyle: 'siege',
+    specialAbilities: ['snipe'],
+    callForHelpChance: 70
+  },
+
+  priest: {
+    aggressionLevel: 30,
+    cowardiceThreshold: 60,
+    packMentality: false,
+    territorialRange: 3,          // Stays near altar
+    preferredTerrain: ['crypt', 'room'],
+    combatStyle: 'cautious',
+    specialAbilities: ['summon', 'ritual'],
+    callForHelpChance: 100        // Always calls for help
+  },
+
+  'mi-go': {
+    aggressionLevel: 60,
+    cowardiceThreshold: 40,
+    packMentality: true,
+    territorialRange: 8,
+    preferredTerrain: ['nature', 'basement'],
+    combatStyle: 'hit_and_run',
+    specialAbilities: ['ranged_shot'],
+    callForHelpChance: 50
+  },
+
+  nightgaunt: {
+    aggressionLevel: 55,
+    cowardiceThreshold: 25,
+    packMentality: false,
+    territorialRange: 12,
+    combatStyle: 'ambush',
+    specialAbilities: ['phasing', 'terrify'],
+    callForHelpChance: 0          // Silent hunters
+  },
+
+  hound: {
+    aggressionLevel: 95,
+    cowardiceThreshold: 10,
+    packMentality: false,
+    territorialRange: 255,        // Hunts across dimensions
+    combatStyle: 'berserker',
+    specialAbilities: ['teleport'],
+    callForHelpChance: 0
+  },
+
+  dark_young: {
+    aggressionLevel: 85,
+    cowardiceThreshold: 15,
+    packMentality: false,
+    territorialRange: 6,
+    preferredTerrain: ['nature', 'crypt'],
+    combatStyle: 'berserker',
+    specialAbilities: ['ritual'],
+    callForHelpChance: 20
+  },
+
+  byakhee: {
+    aggressionLevel: 75,
+    cowardiceThreshold: 35,
+    packMentality: true,
+    territorialRange: 15,
+    combatStyle: 'hit_and_run',
+    specialAbilities: ['swoop'],
+    callForHelpChance: 60
+  },
+
+  star_spawn: {
+    aggressionLevel: 85,
+    cowardiceThreshold: 5,
+    packMentality: false,
+    territorialRange: 10,
+    preferredTerrain: ['crypt'],
+    combatStyle: 'berserker',
+    specialAbilities: ['cosmic_presence', 'terrify'],
+    callForHelpChance: 0
+  },
+
+  formless_spawn: {
+    aggressionLevel: 65,
+    cowardiceThreshold: 0,        // Can't really flee
+    packMentality: true,
+    territorialRange: 5,
+    preferredTerrain: ['basement', 'crypt'],
+    combatStyle: 'swarm',
+    specialAbilities: ['regenerate'],
+    callForHelpChance: 100
+  },
+
+  hunting_horror: {
+    aggressionLevel: 90,
+    cowardiceThreshold: 20,
+    packMentality: false,
+    territorialRange: 20,
+    combatStyle: 'hit_and_run',
+    specialAbilities: ['terrify', 'swoop'],
+    callForHelpChance: 0
+  },
+
+  moon_beast: {
+    aggressionLevel: 50,
+    cowardiceThreshold: 45,
+    packMentality: true,
+    territorialRange: 8,
+    combatStyle: 'siege',
+    specialAbilities: ['ranged_shot'],
+    callForHelpChance: 70
+  }
+};
+
+/**
+ * Get personality for an enemy type
+ */
+export function getMonsterPersonality(type: EnemyType): MonsterPersonality {
+  return MONSTER_PERSONALITIES[type];
+}
+
 /**
  * Get behavior for an enemy type
  */
 export function getMonsterBehavior(type: EnemyType): MonsterBehavior {
   return MONSTER_BEHAVIORS[type] || 'aggressive';
+}
+
+// ============================================================================
+// SPECIAL ABILITY EXECUTION
+// ============================================================================
+
+/**
+ * Check if monster can use a special ability this turn
+ */
+export function canUseSpecialAbility(
+  enemy: EnemyWithAI,
+  ability: MonsterSpecialAbility,
+  currentRound: number
+): boolean {
+  // Check if ability was used recently
+  if (enemy.aiState?.hasUsedSpecialAbility && enemy.aiState?.lastActionRound === currentRound) {
+    return false;
+  }
+
+  // Some abilities have HP thresholds
+  switch (ability) {
+    case 'enrage':
+      return enemy.hp <= enemy.maxHp * 0.5; // Only when hurt
+    case 'charge':
+      return enemy.hp > enemy.maxHp * 0.3;  // Need some health to charge
+    default:
+      return true;
+  }
+}
+
+/**
+ * Execute a special ability
+ */
+export function executeSpecialAbility(
+  enemy: EnemyWithAI,
+  ability: MonsterSpecialAbility,
+  target: Player | null,
+  allEnemies: Enemy[],
+  tiles: Tile[]
+): {
+  damage?: number;
+  sanityDamage?: number;
+  doomIncrease?: number;
+  healing?: number;
+  spawnedEnemies?: EnemyType[];
+  message: string;
+  bonusAttackDice?: number;
+} {
+  switch (ability) {
+    case 'charge':
+      return {
+        damage: 1, // Bonus damage
+        message: `${enemy.name} stormer fremover med et vilt angrep!`,
+        bonusAttackDice: 1
+      };
+
+    case 'pack_tactics':
+      const adjacentGhouls = allEnemies.filter(e =>
+        e.type === 'ghoul' &&
+        e.id !== enemy.id &&
+        hexDistance(e.position, enemy.position) <= 1
+      ).length;
+      return {
+        bonusAttackDice: adjacentGhouls,
+        message: adjacentGhouls > 0
+          ? `${enemy.name} koordinerer med ${adjacentGhouls} andre ghouls!`
+          : `${enemy.name} angriper alene...`
+      };
+
+    case 'drag_under':
+      if (target) {
+        const targetTile = tiles.find(t =>
+          t.q === target.position.q && t.r === target.position.r
+        );
+        if (targetTile?.hasWater) {
+          return {
+            damage: 1,
+            message: `${enemy.name} drar ${target.name} ned i vannet!`
+          };
+        }
+      }
+      return { message: `${enemy.name} prøver å dra ned, men finner ikke vann.` };
+
+    case 'enrage':
+      return {
+        bonusAttackDice: 2,
+        message: `${enemy.name} går BERSERK! Øynene gløder med raseri!`
+      };
+
+    case 'summon':
+      // Priests can summon 1-2 cultists
+      const summonCount = Math.random() < 0.5 ? 1 : 2;
+      return {
+        spawnedEnemies: Array(summonCount).fill('cultist' as EnemyType),
+        message: `${enemy.name} kaller på mørkets tjenere!`
+      };
+
+    case 'snipe':
+      return {
+        bonusAttackDice: 1,
+        message: `${enemy.name} tar nøye sikte...`
+      };
+
+    case 'swoop':
+      return {
+        bonusAttackDice: 1,
+        message: `${enemy.name} stuper ned fra luften!`
+      };
+
+    case 'regenerate':
+      return {
+        healing: 1,
+        message: `${enemy.name} regenererer skadet vev...`
+      };
+
+    case 'terrify':
+      return {
+        sanityDamage: 1,
+        message: `${enemy.name}s tilstedeværelse fyller deg med kosmisk redsel!`
+      };
+
+    case 'ritual':
+      return {
+        doomIncrease: 1,
+        message: `${enemy.name} utfører et mørkt ritual! Doom øker!`
+      };
+
+    case 'cosmic_presence':
+      return {
+        sanityDamage: 1,
+        message: `${enemy.name}s kosmiske tilstedeværelse tærer på sinnet ditt...`
+      };
+
+    case 'devour':
+      return {
+        damage: 3, // Massive damage on crit
+        message: `${enemy.name} forsøker å SLUKE sitt bytte!`
+      };
+
+    case 'ranged_shot':
+      return {
+        message: `${enemy.name} avfyrer et fremmed våpen!`
+      };
+
+    case 'phasing':
+    case 'teleport':
+      return {
+        message: `${enemy.name} beveger seg gjennom dimensjonene...`
+      };
+
+    default:
+      return { message: `${enemy.name} bruker en ukjent evne.` };
+  }
+}
+
+/**
+ * Check if monster should flee based on personality
+ */
+export function shouldMonsterFlee(enemy: EnemyWithAI): boolean {
+  const personality = getMonsterPersonality(enemy.type);
+  if (!personality) return false;
+
+  const hpPercent = (enemy.hp / enemy.maxHp) * 100;
+  return hpPercent <= personality.cowardiceThreshold;
+}
+
+/**
+ * Check if monster should call for help
+ */
+export function shouldCallForHelp(enemy: EnemyWithAI, hasSeenPlayer: boolean): boolean {
+  const personality = getMonsterPersonality(enemy.type);
+  if (!personality) return false;
+
+  if (!hasSeenPlayer) return false;
+
+  return Math.random() * 100 < personality.callForHelpChance;
+}
+
+/**
+ * Get combat style modifiers for an enemy
+ */
+export function getCombatStyleModifiers(style: MonsterCombatStyle): {
+  attackBonus: number;
+  defenseBonus: number;
+  retreatAfterAttack: boolean;
+  prefersFlanking: boolean;
+  staysAtRange: boolean;
+} {
+  switch (style) {
+    case 'berserker':
+      return {
+        attackBonus: 1,
+        defenseBonus: -1,
+        retreatAfterAttack: false,
+        prefersFlanking: false,
+        staysAtRange: false
+      };
+
+    case 'cautious':
+      return {
+        attackBonus: 0,
+        defenseBonus: 1,
+        retreatAfterAttack: false,
+        prefersFlanking: false,
+        staysAtRange: false
+      };
+
+    case 'tactical':
+      return {
+        attackBonus: 0,
+        defenseBonus: 0,
+        retreatAfterAttack: false,
+        prefersFlanking: true,
+        staysAtRange: false
+      };
+
+    case 'hit_and_run':
+      return {
+        attackBonus: 0,
+        defenseBonus: 0,
+        retreatAfterAttack: true,
+        prefersFlanking: false,
+        staysAtRange: false
+      };
+
+    case 'siege':
+      return {
+        attackBonus: 0,
+        defenseBonus: 0,
+        retreatAfterAttack: false,
+        prefersFlanking: false,
+        staysAtRange: true
+      };
+
+    case 'swarm':
+      return {
+        attackBonus: 0,
+        defenseBonus: 0,
+        retreatAfterAttack: false,
+        prefersFlanking: true,
+        staysAtRange: false
+      };
+
+    case 'ambush':
+      return {
+        attackBonus: 2, // Big bonus on first strike
+        defenseBonus: 0,
+        retreatAfterAttack: true,
+        prefersFlanking: false,
+        staysAtRange: false
+      };
+
+    default:
+      return {
+        attackBonus: 0,
+        defenseBonus: 0,
+        retreatAfterAttack: false,
+        prefersFlanking: false,
+        staysAtRange: false
+      };
+  }
 }
 
 /**
@@ -967,6 +1419,36 @@ export function createEnemy(
     attackRange: getMonsterAttackRange(type),
     attackType: getMonsterAttackType(type),
     traits: bestiary.traits
+  };
+}
+
+/**
+ * Create a new enemy with enhanced AI state and personality
+ */
+export function createEnemyWithAI(
+  type: EnemyType,
+  position: { q: number; r: number }
+): EnemyWithAI {
+  const baseEnemy = createEnemy(type, position);
+  const personality = getMonsterPersonality(type);
+
+  // Determine initial state based on personality
+  let initialState: MonsterAIState['state'] = 'idle';
+  if (personality.aggressionLevel >= 80) {
+    initialState = 'hunting';
+  } else if (personality.aggressionLevel >= 50) {
+    initialState = 'patrol';
+  }
+
+  return {
+    ...baseEnemy,
+    personality,
+    aiState: {
+      state: initialState,
+      alertLevel: personality.aggressionLevel > 70 ? 50 : 0,
+      consecutivePatrolMoves: 0,
+      hasUsedSpecialAbility: false
+    }
   };
 }
 
@@ -1221,22 +1703,39 @@ function getPatrolDestination(
 /**
  * Main AI decision function for a monster
  * Enhanced with smart targeting, special abilities, ranged attack logic,
- * and weather-based behavior modifications
+ * personality-based behavior, and weather modifications
  */
 export function getMonsterDecision(
   enemy: Enemy,
   players: Player[],
   enemies: Enemy[],
   tiles: Tile[],
-  weather?: WeatherCondition | null
+  weather?: WeatherCondition | null,
+  currentRound?: number
 ): AIDecision {
   const behavior = getMonsterBehavior(enemy.type);
+  const personality = getMonsterPersonality(enemy.type);
   const weatherMods = getWeatherMonsterModifiers(weather || null);
+  const combatStyle = getCombatStyleModifiers(personality.combatStyle);
+
+  // PERSONALITY-BASED FLEE CHECK
+  // Monsters with high cowardiceThreshold may flee when hurt
+  const hpPercent = (enemy.hp / enemy.maxHp) * 100;
+  if (hpPercent <= personality.cowardiceThreshold && personality.cowardiceThreshold > 0) {
+    const fleePos = findRetreatPosition(enemy, players[0], tiles, enemies);
+    if (fleePos) {
+      return {
+        action: 'move',
+        targetPosition: fleePos,
+        message: `${enemy.name} flykter i panikk!`
+      };
+    }
+  }
 
   // Use smart targeting to find best target (with weather consideration)
   const { target: targetPlayer, priority } = findSmartTarget(enemy, players, tiles, weather);
 
-  // No visible players - patrol or wait
+  // No visible players - behavior based on personality
   if (!targetPlayer) {
     // Check for special movement (Hound teleport to find prey)
     if (enemy.type === 'hound') {
@@ -1250,18 +1749,54 @@ export function getMonsterDecision(
       }
     }
 
-    // Ambushers wait in place
-    if (behavior === 'ambusher') {
-      return { action: 'wait', message: `${enemy.name} lurker i skyggen...` };
+    // Ambushers wait in place based on personality
+    if (behavior === 'ambusher' || personality.combatStyle === 'ambush') {
+      const waitMessages: Record<EnemyType, string> = {
+        ghoul: `${enemy.name} kryper sammen i mørket og venter...`,
+        nightgaunt: `${enemy.name} svever lydløst i skyggene...`,
+        cultist: `${enemy.name} patruljerer området...`,
+        deepone: `${enemy.name} holder seg skjult under overflaten...`,
+        shoggoth: `${enemy.name} bobler i stillhet...`,
+        boss: `${enemy.name} venter på sitt bytte...`,
+        sniper: `${enemy.name} holder siktet klart...`,
+        priest: `${enemy.name} fortsetter sine ritualer...`,
+        'mi-go': `${enemy.name} summerer i det fremmede språket...`,
+        hound: `${enemy.name} snuser etter byttet gjennom dimensjonene...`,
+        dark_young: `${enemy.name} står urørlig som et forvridd tre...`,
+        byakhee: `${enemy.name} kretser høyt over...`,
+        star_spawn: `${enemy.name} drømmer ondskapsfulle drømmer...`,
+        formless_spawn: `${enemy.name} flyter sakte i mørket...`,
+        hunting_horror: `${enemy.name} glir gjennom skyene...`,
+        moon_beast: `${enemy.name} forbereder sitt neste trekk...`
+      };
+      return { action: 'wait', message: waitMessages[enemy.type] || `${enemy.name} venter...` };
     }
 
-    // Others patrol
+    // Others patrol based on personality preferences
     const patrolDest = getPatrolDestination(enemy, tiles, enemies);
     if (patrolDest) {
+      const patrolMessages: Record<EnemyType, string> = {
+        cultist: `${enemy.name} patruljerer vaktsomt...`,
+        deepone: `${enemy.name} svømmer sakte rundt...`,
+        ghoul: `${enemy.name} snuser etter føde...`,
+        shoggoth: `${enemy.name} valser fremover...`,
+        boss: `${enemy.name} vandrer med mektig tilstedeværelse...`,
+        sniper: `${enemy.name} finner en ny posisjon...`,
+        priest: `${enemy.name} vandrer mot alteret...`,
+        'mi-go': `${enemy.name} flyr i sirkler...`,
+        nightgaunt: `${enemy.name} glir lydløst...`,
+        hound: `${enemy.name} søker gjennom vinklene...`,
+        dark_young: `${enemy.name} tramper tungt fremover...`,
+        byakhee: `${enemy.name} daler ned...`,
+        star_spawn: `${enemy.name} beveger seg med kosmisk tyngde...`,
+        formless_spawn: `${enemy.name} kryper sakte...`,
+        hunting_horror: `${enemy.name} jakter i mørket...`,
+        moon_beast: `${enemy.name} lister seg forsiktig...`
+      };
       return {
         action: 'move',
         targetPosition: patrolDest,
-        message: `${enemy.name} patruljerer...`
+        message: patrolMessages[enemy.type] || `${enemy.name} patruljerer...`
       };
     }
 
@@ -1272,13 +1807,22 @@ export function getMonsterDecision(
   const isFlying = enemy.traits?.includes('flying') ?? false;
   const isRanged = behavior === 'ranged' || enemy.traits?.includes('ranged');
 
+  // AGGRESSION CHECK - low aggression monsters may not attack immediately
+  const aggressionRoll = Math.random() * 100;
+  if (aggressionRoll > personality.aggressionLevel && distanceToPlayer > 1) {
+    // Monster hesitates - wait or patrol instead
+    return {
+      action: 'wait',
+      message: `${enemy.name} nøler og observerer...`
+    };
+  }
+
   // RANGED ATTACKERS - check line of sight and optimal positioning
-  if (isRanged && enemy.attackRange > 1) {
+  if ((isRanged || combatStyle.staysAtRange) && enemy.attackRange > 1) {
     const rangedCheck = canMakeRangedAttack(enemy, targetPlayer, tiles);
 
     // Can make ranged attack?
     if (rangedCheck.canAttack && distanceToPlayer <= enemy.attackRange) {
-      // Generate message based on cover
       const coverMsg = rangedCheck.coverPenalty > 0 ? ' (mot dekning)' : '';
       return {
         action: 'attack',
@@ -1294,19 +1838,19 @@ export function getMonsterDecision(
         return {
           action: 'move',
           targetPosition: optimalPos,
-          message: `${enemy.name} tar stilling for a skyte...`
+          message: `${enemy.name} tar stilling for å skyte...`
         };
       }
     }
 
-    // Too close - retreat
-    if (distanceToPlayer < 2) {
+    // Too close - retreat based on combat style
+    if (distanceToPlayer < 2 && (combatStyle.staysAtRange || personality.cowardiceThreshold > 30)) {
       const retreatPos = findRetreatPosition(enemy, targetPlayer, tiles, enemies);
       if (retreatPos) {
         return {
           action: 'move',
           targetPosition: retreatPos,
-          message: `${enemy.name} trekker seg tilbake for a sikte...`
+          message: `${enemy.name} trekker seg tilbake for å sikte...`
         };
       }
     }
@@ -1314,15 +1858,36 @@ export function getMonsterDecision(
 
   // MELEE ATTACKERS - can attack if in range
   if (distanceToPlayer <= enemy.attackRange) {
-    // Generate message based on priority factors
-    let attackMsg = `${enemy.name} angriper ${targetPlayer.name}!`;
+    // Generate message based on priority factors and monster type
+    const attackMessages: Record<EnemyType, string> = {
+      cultist: `${enemy.name} stormer mot ${targetPlayer.name} med offerkniven!`,
+      deepone: `${enemy.name} kaster seg mot ${targetPlayer.name} med klør!`,
+      ghoul: `${enemy.name} hugger mot ${targetPlayer.name} med skarpe tenner!`,
+      shoggoth: `${enemy.name} valser over ${targetPlayer.name} med pseudopoder!`,
+      boss: `${enemy.name} knuser mot ${targetPlayer.name} med kosmisk kraft!`,
+      sniper: `${enemy.name} trekker pistolen mot ${targetPlayer.name}!`,
+      priest: `${enemy.name} kaster en forbannelse mot ${targetPlayer.name}!`,
+      'mi-go': `${enemy.name} stikker med fremmed teknologi mot ${targetPlayer.name}!`,
+      nightgaunt: `${enemy.name} griper etter ${targetPlayer.name} med kalde klør!`,
+      hound: `${enemy.name} biter mot ${targetPlayer.name} gjennom dimensjonene!`,
+      dark_young: `${enemy.name} slår mot ${targetPlayer.name} med tentakler!`,
+      byakhee: `${enemy.name} stuper ned mot ${targetPlayer.name}!`,
+      star_spawn: `${enemy.name} knuser ned på ${targetPlayer.name}!`,
+      formless_spawn: `${enemy.name} sluker mot ${targetPlayer.name}!`,
+      hunting_horror: `${enemy.name} dykker ned mot ${targetPlayer.name}!`,
+      moon_beast: `${enemy.name} fyrer mot ${targetPlayer.name}!`
+    };
+
+    let attackMsg = attackMessages[enemy.type] || `${enemy.name} angriper ${targetPlayer.name}!`;
+
+    // Add context based on priority
     if (priority) {
       if (priority.factors.lowHp > 15) {
-        attackMsg = `${enemy.name} sanser svakhet og angriper ${targetPlayer.name}!`;
+        attackMsg = `${enemy.name} sanser svakhet! ` + attackMsg;
       } else if (priority.factors.isolated > 0) {
-        attackMsg = `${enemy.name} gar løs pa den isolerte ${targetPlayer.name}!`;
+        attackMsg = `${enemy.name} går løs på den isolerte! ` + attackMsg;
       } else if (priority.factors.lowSanity > 10) {
-        attackMsg = `${enemy.name} jakter pa den redde ${targetPlayer.name}!`;
+        attackMsg = `${enemy.name} jakter på redsel! ` + attackMsg;
       }
     }
 
@@ -1345,8 +1910,8 @@ export function getMonsterDecision(
     }
   }
 
-  // Defensive behavior - only chase if very close
-  if (behavior === 'defensive' && distanceToPlayer > 3) {
+  // Defensive behavior based on personality
+  if ((behavior === 'defensive' || personality.combatStyle === 'cautious') && distanceToPlayer > 3) {
     return { action: 'wait', message: `${enemy.name} vokter sin posisjon.` };
   }
 

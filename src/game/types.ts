@@ -1065,12 +1065,156 @@ export interface MonsterAIState {
   targetPlayerId?: string;
   lastKnownPlayerPos?: { q: number; r: number };
   alertLevel: number; // 0-100
+  // Enhanced AI state
+  lastActionRound?: number;
+  consecutivePatrolMoves?: number;
+  hasUsedSpecialAbility?: boolean;
+  packLeaderId?: string;           // For pack/herd behavior
+  fleeingFromPlayerId?: string;    // For fleeing behavior
+  ambushPosition?: { q: number; r: number };  // Where ambusher is waiting
+}
+
+// ============================================================================
+// ENHANCED MONSTER AI SYSTEM - Unique Behaviors Per Monster Type
+// ============================================================================
+
+/**
+ * Special abilities that monsters can use during combat or movement
+ */
+export type MonsterSpecialAbility =
+  | 'charge'          // Cultist: Rush attack for +1 damage
+  | 'pack_tactics'    // Ghoul: +1 attack die per adjacent ghoul
+  | 'drag_under'      // Deep One: Pull player into water
+  | 'phasing'         // Nightgaunt: Move through walls
+  | 'teleport'        // Hound: Teleport through angles
+  | 'enrage'          // Shoggoth: Double attack when HP < 50%
+  | 'summon'          // Priest: Summon 1-2 cultists
+  | 'snipe'           // Sniper: +1 attack die at max range
+  | 'swoop'           // Byakhee: Fly down, attack, fly up
+  | 'regenerate'      // Formless Spawn: Heal 1 HP per turn
+  | 'terrify'         // Hunting Horror: Force sanity check on sight
+  | 'ranged_shot'     // Mi-Go/Moon Beast: Ranged attack
+  | 'ritual'          // Dark Young: Increase doom by 1
+  | 'cosmic_presence' // Star Spawn: All players -1 sanity per turn in range
+  | 'devour';         // Boss: Instant kill on crit
+
+/**
+ * Monster combat style - how they approach fights
+ */
+export type MonsterCombatStyle =
+  | 'berserker'       // Always charges, never retreats
+  | 'cautious'        // Attacks when advantageous, retreats when hurt
+  | 'tactical'        // Uses cover, flanks, coordinates with allies
+  | 'hit_and_run'     // Attack then move away
+  | 'siege'           // Stays at range, bombards
+  | 'swarm'           // Coordinates with same type
+  | 'ambush';         // Waits for opportunity, then strikes hard
+
+/**
+ * Extended monster personality traits
+ */
+export interface MonsterPersonality {
+  aggressionLevel: number;        // 0-100: How likely to attack vs patrol
+  cowardiceThreshold: number;     // HP% at which monster considers fleeing
+  packMentality: boolean;         // Seeks out others of same type
+  territorialRange: number;       // Tiles from spawn point before returning
+  preferredTerrain?: TileCategory[];  // Tile types monster prefers
+  avoidsTerrain?: TileCategory[];     // Tile types monster avoids
+  combatStyle: MonsterCombatStyle;
+  specialAbilities: MonsterSpecialAbility[];
+  callForHelpChance: number;      // 0-100: Chance to alert nearby monsters
+}
+
+// ============================================================================
+// NPC SURVIVOR SYSTEM
+// ============================================================================
+
+/**
+ * Types of NPC survivors players can find and rescue
+ */
+export type SurvivorType =
+  | 'civilian'        // Regular person, no special abilities
+  | 'wounded'         // Needs medical attention, moves slowly
+  | 'researcher'      // Gives clue/insight when rescued
+  | 'cultist_defector'// Former cultist, knows enemy locations
+  | 'child'           // Vulnerable, bonus sanity if saved
+  | 'asylum_patient'  // Unstable, may help or hinder
+  | 'reporter'        // Documents events, bonus XP
+  | 'occultist_ally'; // Can cast protective spell
+
+/**
+ * Survivor state
+ */
+export type SurvivorState =
+  | 'hidden'          // Not yet discovered
+  | 'found'           // Discovered but not rescued
+  | 'following'       // Following a player
+  | 'rescued'         // Successfully evacuated
+  | 'dead'            // Killed by monsters
+  | 'captured';       // Taken by enemies
+
+/**
+ * NPC Survivor - Rescuable NPCs that provide benefits
+ */
+export interface Survivor {
+  id: string;
+  name: string;
+  type: SurvivorType;
+  state: SurvivorState;
+  position: { q: number; r: number };
+  hp: number;
+  maxHp: number;
+  followingPlayerId?: string;     // Which player they're following
+
+  // Behavior
+  speed: number;                  // Movement speed (1 = normal, 0 = can't move alone)
+  canDefendSelf: boolean;         // Can fight back against monsters
+  panicLevel: number;             // 0-100, affects behavior
+
+  // Rewards
+  insightReward: number;          // Insight gained when rescued
+  sanityReward: number;           // Sanity restored when rescued
+  goldReward: number;             // Gold reward for rescue
+  itemReward?: string;            // Specific item given on rescue
+  clueReward?: string;            // Clue revealed on rescue
+
+  // Special abilities
+  specialAbility?: SurvivorSpecialAbility;
+  abilityUsed?: boolean;
+
+  // Dialogue
+  foundDialogue: string;          // What they say when found
+  followDialogue: string;         // What they say when following
+  rescuedDialogue: string;        // What they say when rescued
+}
+
+/**
+ * Special abilities survivors can provide
+ */
+export type SurvivorSpecialAbility =
+  | 'heal_party'      // Heals 1 HP to all party members
+  | 'reveal_map'      // Reveals nearby hidden tiles
+  | 'ward'            // Creates protective barrier
+  | 'distraction'     // Draws enemy attention
+  | 'knowledge'       // Reveals enemy weaknesses
+  | 'calm_aura';      // Reduces sanity loss nearby
+
+/**
+ * Survivor spawn configuration
+ */
+export interface SurvivorSpawnConfig {
+  type: SurvivorType;
+  weight: number;                 // Spawn probability weight
+  minDoom: number;                // Minimum doom to spawn
+  maxDoom: number;                // Maximum doom to spawn
+  preferredTiles: TileCategory[]; // Where they're likely to be found
 }
 
 // Extended Enemy with AI state
 export interface EnemyWithAI extends Enemy {
   aiState?: MonsterAIState;
   lastMoveRound?: number;
+  personality?: MonsterPersonality;  // Enhanced personality traits
 }
 
 export interface GameState {
@@ -1101,6 +1245,8 @@ export interface GameState {
   exploredTiles: string[];
   pendingHorrorChecks: string[]; // Enemy IDs that need horror checks
   weatherState: WeatherState;    // Active weather conditions
+  survivors: Survivor[];         // NPC survivors on the map
+  rescuedSurvivors: string[];    // IDs of successfully rescued survivors
 }
 
 // ============================================================================
