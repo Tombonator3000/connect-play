@@ -1,272 +1,82 @@
 /**
  * Monster AI System for Shadows of the 1920s
  * Enhanced AI with pathfinding, target prioritization, and special abilities
- * Version 2.1 - January 2026
- * Added: Weather effects on monster behavior
+ * Version 3.0 - January 2026
+ *
+ * REFACTORED: Code split into modular components:
+ * - monsterWeatherBehavior.ts: Weather effects on monster behavior
+ * - monsterObstacles.ts: Obstacle passability logic
+ * - monsterConstants.ts: Spawn tables, behaviors, personalities
  */
 
 import {
-  Enemy, EnemyType, EnemyWithAI, Player, Tile, TileCategory, TileObjectType,
-  WeatherState, WeatherCondition, MonsterPersonality, MonsterSpecialAbility,
-  MonsterCombatStyle, MonsterAIState
+  Enemy, EnemyType, EnemyWithAI, Player, Tile, TileCategory,
+  WeatherCondition, MonsterPersonality, MonsterSpecialAbility,
+  MonsterAIState
 } from '../types';
-import { BESTIARY, getWeatherEffect, getIntensityModifier, weatherHidesEnemy } from '../constants';
+import { BESTIARY, weatherHidesEnemy } from '../constants';
 import { hexDistance, findPath, getHexNeighbors, hasLineOfSight } from '../hexUtils';
 
-// ============================================================================
-// WEATHER EFFECTS ON MONSTER BEHAVIOR
-// ============================================================================
+// Import from extracted modules
+import type { WeatherMonsterModifiers } from './monsterWeatherBehavior';
+import {
+  getWeatherMonsterModifiers,
+  monsterBenefitsFromWeather,
+  applyWeatherToVision,
+  getWeatherMonsterMessage
+} from './monsterWeatherBehavior';
 
-/**
- * Weather modifiers for monster AI behavior
- * Different weather types affect monster aggression, vision, and tactics
- */
-export interface WeatherMonsterModifiers {
-  visionModifier: number;        // Multiplier for vision range (0.5 = half)
-  aggressionModifier: number;    // Multiplier for aggression (1.5 = more aggressive)
-  speedModifier: number;         // Multiplier for movement speed
-  stealthBonus: boolean;         // Monsters get ambush advantage
-  prefersDarkness: boolean;      // Certain monsters become more active
-  prefersLight: boolean;         // Certain monsters become less active
-  horrorBonus: number;           // Extra horror dice in this weather
-}
+import type { PassabilityResult } from './monsterObstacles';
+import {
+  OBSTACLE_PASSABILITY,
+  canEnemyPassTile
+} from './monsterObstacles';
 
-/**
- * Get weather modifiers for monster behavior
- */
-export function getWeatherMonsterModifiers(weather: WeatherCondition | null): WeatherMonsterModifiers {
-  if (!weather || weather.type === 'clear') {
-    return {
-      visionModifier: 1,
-      aggressionModifier: 1,
-      speedModifier: 1,
-      stealthBonus: false,
-      prefersDarkness: false,
-      prefersLight: false,
-      horrorBonus: 0
-    };
-  }
+import type {
+  MonsterBehavior,
+  MonsterState,
+  SpecialMovement,
+  SpawnConfig,
+  TargetPreferences,
+  CombatStyleModifiers
+} from './monsterConstants';
+import {
+  SPAWN_TABLES,
+  MONSTER_BEHAVIORS,
+  MONSTER_PERSONALITIES,
+  ENEMY_TARGET_PREFERENCES,
+  getCombatStyleModifiers,
+  getMonsterBehavior,
+  getMonsterPersonality,
+  getTargetPreferences,
+  selectRandomEnemy
+} from './monsterConstants';
 
-  const effect = getWeatherEffect(weather.type);
-  const intensity = getIntensityModifier(weather.intensity);
-
-  switch (weather.type) {
-    case 'fog':
-      return {
-        visionModifier: 0.6,                    // Reduced vision for monsters too
-        aggressionModifier: 1.2 * intensity,    // More aggressive (hunting by scent/sound)
-        speedModifier: 1,
-        stealthBonus: true,                     // Monsters can ambush
-        prefersDarkness: false,
-        prefersLight: false,
-        horrorBonus: 1                          // Fog is scary
-      };
-
-    case 'rain':
-      return {
-        visionModifier: 0.8,
-        aggressionModifier: 0.9,                // Slightly less active in rain
-        speedModifier: 0.9,                     // Slower in rain
-        stealthBonus: false,
-        prefersDarkness: false,
-        prefersLight: false,
-        horrorBonus: 0
-      };
-
-    case 'miasma':
-      return {
-        visionModifier: 0.5,                    // Heavily reduced vision
-        aggressionModifier: 1.5 * intensity,    // Much more aggressive
-        speedModifier: 1.1,                     // Faster in supernatural fog
-        stealthBonus: true,
-        prefersDarkness: true,                  // Creatures of darkness thrive
-        prefersLight: false,
-        horrorBonus: 2                          // Very scary
-      };
-
-    case 'cosmic_static':
-      return {
-        visionModifier: 0.7,
-        aggressionModifier: 1.3 * intensity,
-        speedModifier: 0.8,                     // Reality distortion slows them too
-        stealthBonus: false,
-        prefersDarkness: true,
-        prefersLight: false,
-        horrorBonus: 2
-      };
-
-    case 'unnatural_glow':
-      return {
-        visionModifier: 1.3,                    // Better vision in the glow
-        aggressionModifier: 1.4 * intensity,    // Very aggressive
-        speedModifier: 1,
-        stealthBonus: false,                    // Can't hide in the light
-        prefersDarkness: false,
-        prefersLight: true,                     // Light-seekers become active
-        horrorBonus: 1
-      };
-
-    case 'darkness':
-      return {
-        visionModifier: 0.3,                    // Severely reduced vision
-        aggressionModifier: 1.6 * intensity,    // Very aggressive
-        speedModifier: 1.2,                     // Faster in darkness
-        stealthBonus: true,
-        prefersDarkness: true,                  // Darkness dwellers love this
-        prefersLight: false,
-        horrorBonus: 3                          // Terrifying
-      };
-
-    default:
-      return {
-        visionModifier: 1,
-        aggressionModifier: 1,
-        speedModifier: 1,
-        stealthBonus: false,
-        prefersDarkness: false,
-        prefersLight: false,
-        horrorBonus: 0
-      };
-  }
-}
-
-/**
- * Check if a monster type benefits from current weather
- */
-export function monsterBenefitsFromWeather(type: EnemyType, weather: WeatherCondition | null): boolean {
-  if (!weather || weather.type === 'clear') return false;
-
-  const modifiers = getWeatherMonsterModifiers(weather);
-
-  // Darkness-dwelling creatures
-  const darknessDwellers: EnemyType[] = ['ghoul', 'nightgaunt', 'hound', 'formless_spawn', 'hunting_horror'];
-  if (modifiers.prefersDarkness && darknessDwellers.includes(type)) {
-    return true;
-  }
-
-  // Light-attracted creatures (supernatural entities drawn to eldritch glow)
-  const lightSeekers: EnemyType[] = ['mi-go', 'star_spawn', 'byakhee'];
-  if (modifiers.prefersLight && lightSeekers.includes(type)) {
-    return true;
-  }
-
-  // Aquatic creatures in rain
-  if (weather.type === 'rain' && type === 'deepone') {
-    return true;
-  }
-
-  return false;
-}
-
-/**
- * Apply weather modifiers to monster vision range
- */
-export function applyWeatherToVision(baseVision: number, weather: WeatherCondition | null, type: EnemyType): number {
-  const modifiers = getWeatherMonsterModifiers(weather);
-  let effectiveVision = Math.floor(baseVision * modifiers.visionModifier);
-
-  // Some creatures see better in their preferred conditions
-  if (monsterBenefitsFromWeather(type, weather)) {
-    effectiveVision = Math.max(effectiveVision, baseVision); // At least normal vision
-  }
-
-  // Flying creatures less affected by ground-level fog
-  const bestiary = BESTIARY[type];
-  if (bestiary?.traits?.includes('flying') && weather?.type === 'fog') {
-    effectiveVision = Math.max(effectiveVision, baseVision - 1);
-  }
-
-  return Math.max(1, effectiveVision);
-}
-
-// ============================================================================
-// OBSTACLE HANDLING SYSTEM
-// ============================================================================
-
-/**
- * Obstacle types and how different monsters can interact with them
- */
-export const OBSTACLE_PASSABILITY: Record<TileObjectType, {
-  blocking: boolean;
-  flyingCanPass: boolean;
-  aquaticCanPass: boolean;
-  etherealCanPass: boolean; // For creatures like nightgaunts
-  massiveCanDestroy: boolean;
-  movementCost: number; // Extra movement cost to traverse (0 = impassable)
-}> = {
-  locked_door: { blocking: true, flyingCanPass: false, aquaticCanPass: false, etherealCanPass: false, massiveCanDestroy: true, movementCost: 0 },
-  rubble: { blocking: true, flyingCanPass: true, aquaticCanPass: false, etherealCanPass: true, massiveCanDestroy: true, movementCost: 0 },
-  fire: { blocking: false, flyingCanPass: true, aquaticCanPass: false, etherealCanPass: true, massiveCanDestroy: false, movementCost: 1 },
-  trap: { blocking: false, flyingCanPass: true, aquaticCanPass: false, etherealCanPass: true, massiveCanDestroy: false, movementCost: 0 },
-  fog_wall: { blocking: false, flyingCanPass: true, aquaticCanPass: true, etherealCanPass: true, massiveCanDestroy: false, movementCost: 1 },
-  gate: { blocking: true, flyingCanPass: true, aquaticCanPass: false, etherealCanPass: false, massiveCanDestroy: true, movementCost: 0 },
-  barricade: { blocking: true, flyingCanPass: true, aquaticCanPass: false, etherealCanPass: true, massiveCanDestroy: true, movementCost: 0 },
-  altar: { blocking: false, flyingCanPass: true, aquaticCanPass: false, etherealCanPass: true, massiveCanDestroy: false, movementCost: 0 },
-  bookshelf: { blocking: false, flyingCanPass: true, aquaticCanPass: false, etherealCanPass: true, massiveCanDestroy: true, movementCost: 0 },
-  crate: { blocking: false, flyingCanPass: true, aquaticCanPass: false, etherealCanPass: true, massiveCanDestroy: true, movementCost: 0 },
-  chest: { blocking: false, flyingCanPass: true, aquaticCanPass: false, etherealCanPass: true, massiveCanDestroy: true, movementCost: 0 },
-  cabinet: { blocking: false, flyingCanPass: true, aquaticCanPass: false, etherealCanPass: true, massiveCanDestroy: true, movementCost: 0 },
-  mirror: { blocking: false, flyingCanPass: true, aquaticCanPass: false, etherealCanPass: true, massiveCanDestroy: true, movementCost: 0 },
-  radio: { blocking: false, flyingCanPass: true, aquaticCanPass: false, etherealCanPass: true, massiveCanDestroy: true, movementCost: 0 },
-  switch: { blocking: false, flyingCanPass: true, aquaticCanPass: false, etherealCanPass: true, massiveCanDestroy: false, movementCost: 0 },
-  statue: { blocking: false, flyingCanPass: true, aquaticCanPass: false, etherealCanPass: true, massiveCanDestroy: true, movementCost: 0 },
-  exit_door: { blocking: false, flyingCanPass: true, aquaticCanPass: true, etherealCanPass: true, massiveCanDestroy: false, movementCost: 0 },
+// Re-export types for backwards compatibility
+export type {
+  WeatherMonsterModifiers,
+  MonsterBehavior,
+  MonsterState,
+  SpecialMovement,
+  SpawnConfig
 };
 
-/**
- * Check if an enemy can pass through a tile based on obstacles and traits
- */
-export function canEnemyPassTile(enemy: Enemy, tile: Tile): { canPass: boolean; movementCost: number } {
-  // Check main obstacle
-  if (tile.obstacle?.blocking) {
-    // Flying enemies can pass over most obstacles
-    if (enemy.traits?.includes('flying')) {
-      return { canPass: true, movementCost: 0 };
-    }
-    // Massive enemies can sometimes destroy obstacles
-    if (enemy.traits?.includes('massive')) {
-      return { canPass: false, movementCost: 0 }; // Will need to destroy first
-    }
-    return { canPass: false, movementCost: 0 };
-  }
-
-  // Check tile object
-  if (tile.object) {
-    const obstacleInfo = OBSTACLE_PASSABILITY[tile.object.type];
-    if (obstacleInfo) {
-      // Check explicit blocking flag on the object
-      if (tile.object.blocking) {
-        if (enemy.traits?.includes('flying') && obstacleInfo.flyingCanPass) {
-          return { canPass: true, movementCost: 0 };
-        }
-        if (enemy.traits?.includes('aquatic') && obstacleInfo.aquaticCanPass) {
-          return { canPass: true, movementCost: 0 };
-        }
-        if ((enemy.type === 'nightgaunt' || enemy.type === 'hunting_horror') && obstacleInfo.etherealCanPass) {
-          return { canPass: true, movementCost: 0 };
-        }
-        return { canPass: false, movementCost: 0 };
-      }
-
-      // Non-blocking obstacles may have movement cost
-      return { canPass: true, movementCost: obstacleInfo.movementCost };
-    }
-  }
-
-  // Water tiles - aquatic enemies get bonus, others may struggle
-  if (tile.hasWater) {
-    if (enemy.traits?.includes('aquatic')) {
-      return { canPass: true, movementCost: -1 }; // Bonus movement in water!
-    }
-    if (enemy.traits?.includes('flying')) {
-      return { canPass: true, movementCost: 0 };
-    }
-    // Ground-based enemies struggle in water
-    return { canPass: true, movementCost: 1 };
-  }
-
-  return { canPass: true, movementCost: 0 };
-}
+// Re-export values for backwards compatibility
+export {
+  getWeatherMonsterModifiers,
+  monsterBenefitsFromWeather,
+  applyWeatherToVision,
+  OBSTACLE_PASSABILITY,
+  canEnemyPassTile,
+  SPAWN_TABLES,
+  MONSTER_BEHAVIORS,
+  MONSTER_PERSONALITIES,
+  ENEMY_TARGET_PREFERENCES,
+  getCombatStyleModifiers,
+  getMonsterBehavior,
+  getMonsterPersonality,
+  selectRandomEnemy
+};
 
 // ============================================================================
 // TARGET PRIORITIZATION SYSTEM
@@ -288,34 +98,6 @@ export interface TargetPriority {
   };
 }
 
-/**
- * Enemy type-specific target preferences
- */
-export const ENEMY_TARGET_PREFERENCES: Record<EnemyType, {
-  preferLowHp: boolean;      // Targets wounded players
-  preferLowSanity: boolean;  // Targets mentally weak players
-  preferIsolated: boolean;   // Targets players alone
-  preferClass?: string[];    // Specific character classes to target
-  avoidClass?: string[];     // Classes to avoid
-  preferWater?: boolean;     // Prefers targets near water
-}> = {
-  cultist: { preferLowHp: false, preferLowSanity: false, preferIsolated: true },
-  deepone: { preferLowHp: false, preferLowSanity: false, preferIsolated: false, preferWater: true },
-  ghoul: { preferLowHp: true, preferLowSanity: false, preferIsolated: true }, // Scavengers target wounded
-  shoggoth: { preferLowHp: false, preferLowSanity: false, preferIsolated: false }, // Targets everything equally
-  boss: { preferLowHp: false, preferLowSanity: false, preferIsolated: false, preferClass: ['professor', 'occultist'] }, // Targets magic users
-  sniper: { preferLowHp: false, preferLowSanity: false, preferIsolated: true, avoidClass: ['veteran'] }, // Avoids tough targets
-  priest: { preferLowHp: false, preferLowSanity: true, preferIsolated: false, preferClass: ['occultist'] }, // Targets mentally weak
-  'mi-go': { preferLowHp: false, preferLowSanity: false, preferIsolated: true, preferClass: ['professor'] }, // Wants brains
-  nightgaunt: { preferLowHp: false, preferLowSanity: true, preferIsolated: true }, // Psychological terror
-  hound: { preferLowHp: true, preferLowSanity: false, preferIsolated: true }, // Hunter instinct
-  dark_young: { preferLowHp: false, preferLowSanity: false, preferIsolated: false }, // Rampages through all
-  byakhee: { preferLowHp: false, preferLowSanity: true, preferIsolated: true }, // Swoops down on weak minds
-  star_spawn: { preferLowHp: false, preferLowSanity: true, preferIsolated: false, preferClass: ['professor', 'occultist'] },
-  formless_spawn: { preferLowHp: true, preferLowSanity: false, preferIsolated: false }, // Engulfs wounded
-  hunting_horror: { preferLowHp: false, preferLowSanity: true, preferIsolated: true }, // Hunts the terrified
-  moon_beast: { preferLowHp: false, preferLowSanity: false, preferIsolated: true, avoidClass: ['veteran'] }, // Ranged, avoids melee fighters
-};
 
 /**
  * Calculate target priority for a player
@@ -326,11 +108,7 @@ export function calculateTargetPriority(
   allPlayers: Player[],
   tiles: Tile[]
 ): TargetPriority {
-  const preferences = ENEMY_TARGET_PREFERENCES[enemy.type] || {
-    preferLowHp: false,
-    preferLowSanity: false,
-    preferIsolated: false
-  };
+  const preferences = getTargetPreferences(enemy.type);
 
   const distance = hexDistance(enemy.position, player.position);
 
@@ -416,14 +194,6 @@ export function findBestTarget(
   return priorities[0].player;
 }
 
-// Monster behavior types
-export type MonsterBehavior = 'aggressive' | 'defensive' | 'ranged' | 'ambusher' | 'patrol' | 'swarm';
-
-// Monster state
-export type MonsterState = 'idle' | 'patrol' | 'alert' | 'hunting' | 'fleeing';
-
-// Special movement types
-export type SpecialMovement = 'teleport' | 'phase' | 'burrow' | 'swim' | 'fly';
 
 // ============================================================================
 // ENHANCED PATHFINDING SYSTEM
@@ -799,278 +569,7 @@ export interface AIDecision {
   message?: string;
 }
 
-// Spawn configuration
-export interface SpawnConfig {
-  type: EnemyType;
-  weight: number; // Higher = more likely
-  minDoom: number; // Minimum doom level to spawn
-  maxDoom: number; // Maximum doom level to spawn (255 = no limit)
-}
 
-// Spawn table by tile category
-export const SPAWN_TABLES: Record<TileCategory | 'default', SpawnConfig[]> = {
-  nature: [
-    { type: 'cultist', weight: 30, minDoom: 0, maxDoom: 255 },
-    { type: 'ghoul', weight: 20, minDoom: 0, maxDoom: 255 },
-    { type: 'dark_young', weight: 5, minDoom: 0, maxDoom: 6 },
-  ],
-  urban: [
-    { type: 'cultist', weight: 40, minDoom: 0, maxDoom: 255 },
-    { type: 'sniper', weight: 15, minDoom: 0, maxDoom: 255 },
-    { type: 'priest', weight: 10, minDoom: 0, maxDoom: 5 },
-  ],
-  street: [
-    { type: 'cultist', weight: 35, minDoom: 0, maxDoom: 255 },
-    { type: 'ghoul', weight: 15, minDoom: 0, maxDoom: 255 },
-    { type: 'hound', weight: 10, minDoom: 0, maxDoom: 5 },
-  ],
-  facade: [
-    { type: 'cultist', weight: 30, minDoom: 0, maxDoom: 255 },
-  ],
-  foyer: [
-    { type: 'cultist', weight: 30, minDoom: 0, maxDoom: 255 },
-    { type: 'ghoul', weight: 15, minDoom: 0, maxDoom: 255 },
-  ],
-  corridor: [
-    { type: 'ghoul', weight: 25, minDoom: 0, maxDoom: 255 },
-    { type: 'nightgaunt', weight: 10, minDoom: 0, maxDoom: 6 },
-  ],
-  room: [
-    { type: 'cultist', weight: 25, minDoom: 0, maxDoom: 255 },
-    { type: 'mi-go', weight: 10, minDoom: 0, maxDoom: 255 },
-  ],
-  stairs: [
-    { type: 'ghoul', weight: 20, minDoom: 0, maxDoom: 255 },
-  ],
-  basement: [
-    { type: 'ghoul', weight: 30, minDoom: 0, maxDoom: 255 },
-    { type: 'formless_spawn', weight: 15, minDoom: 0, maxDoom: 5 },
-  ],
-  crypt: [
-    { type: 'ghoul', weight: 25, minDoom: 0, maxDoom: 255 },
-    { type: 'shoggoth', weight: 5, minDoom: 0, maxDoom: 4 },
-    { type: 'star_spawn', weight: 2, minDoom: 0, maxDoom: 2 },
-  ],
-  default: [
-    { type: 'cultist', weight: 40, minDoom: 0, maxDoom: 255 },
-    { type: 'ghoul', weight: 20, minDoom: 0, maxDoom: 255 },
-    { type: 'deepone', weight: 15, minDoom: 0, maxDoom: 255 },
-  ]
-};
-
-// Monster behavior definitions
-export const MONSTER_BEHAVIORS: Record<EnemyType, MonsterBehavior> = {
-  cultist: 'aggressive',
-  deepone: 'aggressive',
-  ghoul: 'ambusher',
-  shoggoth: 'aggressive',
-  boss: 'aggressive',
-  sniper: 'ranged',
-  priest: 'defensive',
-  'mi-go': 'ranged',
-  nightgaunt: 'ambusher',
-  hound: 'aggressive',
-  dark_young: 'aggressive',
-  byakhee: 'aggressive',
-  star_spawn: 'aggressive',
-  formless_spawn: 'swarm',
-  hunting_horror: 'aggressive',
-  moon_beast: 'ranged'
-};
-
-// ============================================================================
-// MONSTER PERSONALITY SYSTEM - Unique behaviors per monster type
-// ============================================================================
-
-/**
- * Each monster type has a unique personality that affects their behavior
- * This makes combat more varied and tactical
- */
-export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
-  cultist: {
-    aggressionLevel: 70,
-    cowardiceThreshold: 30,      // Flees at 30% HP
-    packMentality: true,          // Seeks other cultists
-    territorialRange: 8,
-    preferredTerrain: ['crypt', 'room'],
-    combatStyle: 'tactical',
-    specialAbilities: ['charge'],
-    callForHelpChance: 60        // Often calls for backup
-  },
-
-  deepone: {
-    aggressionLevel: 80,
-    cowardiceThreshold: 20,
-    packMentality: true,
-    territorialRange: 6,
-    preferredTerrain: ['basement', 'nature'],
-    combatStyle: 'berserker',
-    specialAbilities: ['drag_under'],
-    callForHelpChance: 40
-  },
-
-  ghoul: {
-    aggressionLevel: 50,          // Cautious, waits for opportunity
-    cowardiceThreshold: 40,
-    packMentality: true,
-    territorialRange: 4,
-    preferredTerrain: ['crypt', 'basement'],
-    avoidsTerrain: ['urban', 'street'],
-    combatStyle: 'ambush',
-    specialAbilities: ['pack_tactics'],
-    callForHelpChance: 80         // Always hunting in groups
-  },
-
-  shoggoth: {
-    aggressionLevel: 100,         // Never retreats
-    cowardiceThreshold: 0,
-    packMentality: false,
-    territorialRange: 255,        // Unlimited range
-    combatStyle: 'berserker',
-    specialAbilities: ['enrage'],
-    callForHelpChance: 0          // Solitary horror
-  },
-
-  boss: {
-    aggressionLevel: 90,
-    cowardiceThreshold: 0,
-    packMentality: false,
-    territorialRange: 255,
-    combatStyle: 'berserker',
-    specialAbilities: ['devour', 'cosmic_presence'],
-    callForHelpChance: 30         // May summon minions
-  },
-
-  sniper: {
-    aggressionLevel: 40,
-    cowardiceThreshold: 50,       // Very cautious
-    packMentality: false,
-    territorialRange: 10,
-    preferredTerrain: ['room', 'corridor'],
-    combatStyle: 'siege',
-    specialAbilities: ['snipe'],
-    callForHelpChance: 70
-  },
-
-  priest: {
-    aggressionLevel: 30,
-    cowardiceThreshold: 60,
-    packMentality: false,
-    territorialRange: 3,          // Stays near altar
-    preferredTerrain: ['crypt', 'room'],
-    combatStyle: 'cautious',
-    specialAbilities: ['summon', 'ritual'],
-    callForHelpChance: 100        // Always calls for help
-  },
-
-  'mi-go': {
-    aggressionLevel: 60,
-    cowardiceThreshold: 40,
-    packMentality: true,
-    territorialRange: 8,
-    preferredTerrain: ['nature', 'basement'],
-    combatStyle: 'hit_and_run',
-    specialAbilities: ['ranged_shot'],
-    callForHelpChance: 50
-  },
-
-  nightgaunt: {
-    aggressionLevel: 55,
-    cowardiceThreshold: 25,
-    packMentality: false,
-    territorialRange: 12,
-    combatStyle: 'ambush',
-    specialAbilities: ['phasing', 'terrify'],
-    callForHelpChance: 0          // Silent hunters
-  },
-
-  hound: {
-    aggressionLevel: 95,
-    cowardiceThreshold: 10,
-    packMentality: false,
-    territorialRange: 255,        // Hunts across dimensions
-    combatStyle: 'berserker',
-    specialAbilities: ['teleport'],
-    callForHelpChance: 0
-  },
-
-  dark_young: {
-    aggressionLevel: 85,
-    cowardiceThreshold: 15,
-    packMentality: false,
-    territorialRange: 6,
-    preferredTerrain: ['nature', 'crypt'],
-    combatStyle: 'berserker',
-    specialAbilities: ['ritual'],
-    callForHelpChance: 20
-  },
-
-  byakhee: {
-    aggressionLevel: 75,
-    cowardiceThreshold: 35,
-    packMentality: true,
-    territorialRange: 15,
-    combatStyle: 'hit_and_run',
-    specialAbilities: ['swoop'],
-    callForHelpChance: 60
-  },
-
-  star_spawn: {
-    aggressionLevel: 85,
-    cowardiceThreshold: 5,
-    packMentality: false,
-    territorialRange: 10,
-    preferredTerrain: ['crypt'],
-    combatStyle: 'berserker',
-    specialAbilities: ['cosmic_presence', 'terrify'],
-    callForHelpChance: 0
-  },
-
-  formless_spawn: {
-    aggressionLevel: 65,
-    cowardiceThreshold: 0,        // Can't really flee
-    packMentality: true,
-    territorialRange: 5,
-    preferredTerrain: ['basement', 'crypt'],
-    combatStyle: 'swarm',
-    specialAbilities: ['regenerate'],
-    callForHelpChance: 100
-  },
-
-  hunting_horror: {
-    aggressionLevel: 90,
-    cowardiceThreshold: 20,
-    packMentality: false,
-    territorialRange: 20,
-    combatStyle: 'hit_and_run',
-    specialAbilities: ['terrify', 'swoop'],
-    callForHelpChance: 0
-  },
-
-  moon_beast: {
-    aggressionLevel: 50,
-    cowardiceThreshold: 45,
-    packMentality: true,
-    territorialRange: 8,
-    combatStyle: 'siege',
-    specialAbilities: ['ranged_shot'],
-    callForHelpChance: 70
-  }
-};
-
-/**
- * Get personality for an enemy type
- */
-export function getMonsterPersonality(type: EnemyType): MonsterPersonality {
-  return MONSTER_PERSONALITIES[type];
-}
-
-/**
- * Get behavior for an enemy type
- */
-export function getMonsterBehavior(type: EnemyType): MonsterBehavior {
-  return MONSTER_BEHAVIORS[type] || 'aggressive';
-}
 
 // ============================================================================
 // SPECIAL ABILITY EXECUTION
@@ -1248,120 +747,7 @@ export function shouldCallForHelp(enemy: EnemyWithAI, hasSeenPlayer: boolean): b
   return Math.random() * 100 < personality.callForHelpChance;
 }
 
-/**
- * Get combat style modifiers for an enemy
- */
-export function getCombatStyleModifiers(style: MonsterCombatStyle): {
-  attackBonus: number;
-  defenseBonus: number;
-  retreatAfterAttack: boolean;
-  prefersFlanking: boolean;
-  staysAtRange: boolean;
-} {
-  switch (style) {
-    case 'berserker':
-      return {
-        attackBonus: 1,
-        defenseBonus: -1,
-        retreatAfterAttack: false,
-        prefersFlanking: false,
-        staysAtRange: false
-      };
 
-    case 'cautious':
-      return {
-        attackBonus: 0,
-        defenseBonus: 1,
-        retreatAfterAttack: false,
-        prefersFlanking: false,
-        staysAtRange: false
-      };
-
-    case 'tactical':
-      return {
-        attackBonus: 0,
-        defenseBonus: 0,
-        retreatAfterAttack: false,
-        prefersFlanking: true,
-        staysAtRange: false
-      };
-
-    case 'hit_and_run':
-      return {
-        attackBonus: 0,
-        defenseBonus: 0,
-        retreatAfterAttack: true,
-        prefersFlanking: false,
-        staysAtRange: false
-      };
-
-    case 'siege':
-      return {
-        attackBonus: 0,
-        defenseBonus: 0,
-        retreatAfterAttack: false,
-        prefersFlanking: false,
-        staysAtRange: true
-      };
-
-    case 'swarm':
-      return {
-        attackBonus: 0,
-        defenseBonus: 0,
-        retreatAfterAttack: false,
-        prefersFlanking: true,
-        staysAtRange: false
-      };
-
-    case 'ambush':
-      return {
-        attackBonus: 2, // Big bonus on first strike
-        defenseBonus: 0,
-        retreatAfterAttack: true,
-        prefersFlanking: false,
-        staysAtRange: false
-      };
-
-    default:
-      return {
-        attackBonus: 0,
-        defenseBonus: 0,
-        retreatAfterAttack: false,
-        prefersFlanking: false,
-        staysAtRange: false
-      };
-  }
-}
-
-/**
- * Select random enemy type from spawn table
- */
-export function selectRandomEnemy(
-  category: TileCategory | undefined,
-  currentDoom: number
-): EnemyType | null {
-  const table = SPAWN_TABLES[category || 'default'] || SPAWN_TABLES.default;
-
-  // Filter by doom level
-  const validSpawns = table.filter(
-    config => currentDoom <= config.maxDoom && currentDoom >= config.minDoom
-  );
-
-  if (validSpawns.length === 0) return null;
-
-  // Weighted random selection
-  const totalWeight = validSpawns.reduce((sum, config) => sum + config.weight, 0);
-  let random = Math.random() * totalWeight;
-
-  for (const config of validSpawns) {
-    random -= config.weight;
-    if (random <= 0) {
-      return config.type;
-    }
-  }
-
-  return validSpawns[0].type;
-}
 
 /**
  * Check if a monster should spawn on entering a tile
@@ -2094,18 +1480,10 @@ export function processEnemyTurn(
     description: string;
   }> = [];
 
-  // Add weather-specific messages
-  if (weather && weatherMods.aggressionModifier > 1.2) {
-    const weatherDescriptions: Record<string, string> = {
-      fog: 'Monstre rører seg i tåken...',
-      miasma: 'Vesener næres av den mørke miasmaen!',
-      darkness: 'Mørket vekker ting som burde sove...',
-      unnatural_glow: 'Det unaturlige lyset tiltrekker seg ondsinnede øyne!',
-      cosmic_static: 'Virkelighetsforvrengningen styrker vesenene!'
-    };
-    if (weatherDescriptions[weather.type]) {
-      messages.push(weatherDescriptions[weather.type]);
-    }
+  // Add weather-specific messages using extracted helper
+  const weatherMessage = getWeatherMonsterMessage(weather || null);
+  if (weatherMessage) {
+    messages.push(weatherMessage);
   }
 
   // Process enemies in order (faster enemies might act first in future enhancement)

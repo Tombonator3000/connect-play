@@ -1,5 +1,88 @@
 # Development Log
 
+## 2026-01-20: Monster AI Code Refactoring
+
+### Oppgave
+Refaktorere kompleks kode i `monsterAI.ts` (2250 linjer) for bedre lesbarhet og vedlikeholdbarhet, samtidig som oppførselen forblir uendret.
+
+### Problem
+`monsterAI.ts` var en monolittisk fil med flere uavhengige systemer blandet sammen:
+- Væreffekter på monster-oppførsel
+- Hindringshåndtering (obstacle passability)
+- Monster spawn-tabeller og konstanter
+- Personlighets- og oppførselskonfigurasjoner
+- Målprioriteringssystem
+- Spesialevner og kamp-logikk
+
+Dette gjorde koden vanskelig å navigere, teste og vedlikeholde.
+
+### Løsning
+
+#### 1. Ny fil: `src/game/utils/monsterWeatherBehavior.ts`
+Ekstrahert væreffekt-system (180 linjer):
+
+**Innhold:**
+- `WeatherMonsterModifiers` interface
+- `DARKNESS_DWELLERS` og `LIGHT_SEEKERS` konstanter
+- `getWeatherMonsterModifiers()` - Henter værmodifikatorer
+- `monsterBenefitsFromWeather()` - Sjekker om monster drar nytte av vær
+- `applyWeatherToVision()` - Anvendervær på synsrekkevidde
+- `getWeatherMonsterMessage()` - Henter værbeskjeder for monster-tur
+
+#### 2. Ny fil: `src/game/utils/monsterObstacles.ts`
+Ekstrahert hindringshåndtering (175 linjer):
+
+**Innhold:**
+- `ObstaclePassability` og `PassabilityResult` interfaces
+- `OBSTACLE_PASSABILITY` tabell (15+ objekttyper)
+- `canEnemyPassTile()` - Sjekker om fiende kan passere en tile
+- `canMassiveDestroy()` - Sjekker om massive skapninger kan ødelegge hindring
+- `getMovementCostModifier()` - Beregner bevegelseskostnad
+
+#### 3. Ny fil: `src/game/utils/monsterConstants.ts`
+Ekstrahert konstanter og konfigurasjoner (300+ linjer):
+
+**Innhold:**
+- Type-definisjoner: `MonsterBehavior`, `MonsterState`, `SpecialMovement`
+- `SpawnConfig`, `TargetPreferences`, `CombatStyleModifiers` interfaces
+- `SPAWN_TABLES` - Spawn-tabeller per tile-kategori
+- `MONSTER_BEHAVIORS` - Oppførselskart for alle monstertyper
+- `MONSTER_PERSONALITIES` - Personlighetskonfigurasjoner
+- `ENEMY_TARGET_PREFERENCES` - Målpreferanser
+- Hjelpefunksjoner: `getCombatStyleModifiers()`, `getMonsterBehavior()`, etc.
+
+#### 4. Oppdatert: `src/game/utils/monsterAI.ts`
+Refaktorert hovedfil (nå ~1600 linjer, ned fra 2250):
+
+**Endringer:**
+- Importerer fra nye moduler
+- Re-eksporterer alt for bakoverkompatibilitet
+- Bruker `import type` for type-importer (rollup-kompatibilitet)
+- Oppdatert `processEnemyTurn()` til å bruke `getWeatherMonsterMessage()`
+- Oppdatert `calculateTargetPriority()` til å bruke `getTargetPreferences()`
+
+### Filer Endret/Opprettet
+- `src/game/utils/monsterWeatherBehavior.ts` - **NY** (180 linjer)
+- `src/game/utils/monsterObstacles.ts` - **NY** (175 linjer)
+- `src/game/utils/monsterConstants.ts` - **NY** (310 linjer)
+- `src/game/utils/monsterAI.ts` - **OPPDATERT** (redusert med ~650 linjer)
+
+### Resultat
+- ✅ Kode splittet i logiske moduler
+- ✅ Bedre separation of concerns
+- ✅ Lettere å teste individuelle systemer
+- ✅ Bakoverkompatibilitet beholdt (re-eksporter)
+- ✅ Build vellykket
+- ✅ Ingen oppførselsendringer
+
+### Tekniske detaljer
+- **Før**: 1 fil à 2250 linjer
+- **Etter**: 4 filer med gjennomsnittlig ~540 linjer
+- **Linjereduksjon i monsterAI.ts**: ~29%
+- **Total kodebase**: Uendret (kun omorganisert)
+
+---
+
 ## 2026-01-20: Multi-Character Hex Tile Positioning
 
 ### Oppgave
