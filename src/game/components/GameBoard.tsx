@@ -3,7 +3,8 @@ import { Tile, Player, Enemy, FloatingText, SpellParticle, EnemyType, ScenarioMo
 import {
   User, Skull, DoorOpen, Lock, Flame, Hammer, Brain,
   BookOpen, Anchor, Church, MapPin, Building, ShoppingBag, Fish, PawPrint, Biohazard, Ghost, Bug, Search,
-  Trees, AlertTriangle, Fence, Cloud, Archive, Radio, ToggleLeft, Sparkles, Moon, Package, CircleSlash
+  Trees, AlertTriangle, Fence, Cloud, Archive, Radio, ToggleLeft, Sparkles, Moon, Package, CircleSlash,
+  Zap, Droplet
 } from 'lucide-react';
 import { EnemyTooltip, TileObjectTooltip, EdgeFeatureTooltip } from './ItemTooltip';
 import WeatherOverlay from './WeatherOverlay';
@@ -917,6 +918,9 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
           const tileImage = getTileImage(tile.name);
 
+          // Determine 3D depth class based on zone level
+          const depthClass = tile.zoneLevel < 0 ? 'hex-3d-depth-sunken' : tile.zoneLevel > 0 ? 'hex-3d-depth-elevated' : 'hex-3d-depth';
+
           return (
             <div
               key={tile.id}
@@ -924,8 +928,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
               style={{ width: `${HEX_SIZE * 2}px`, height: `${HEX_SIZE * 1.732}px`, left: `${x - HEX_SIZE}px`, top: `${y - HEX_SIZE * 0.866}px` }}
               onClick={() => { if (!hasDragged.current) onTileClick(tile.q, tile.r); }}
             >
-              {/* Board game tile with AI-generated oil painting texture */}
-              <div className={`absolute inset-0 hex-clip transition-all duration-500 ${visual.floorClass} ${visual.glowClass} overflow-hidden group`}>
+              {/* Board game tile with AI-generated oil painting texture and 3D depth */}
+              <div className={`absolute inset-0 hex-clip transition-all duration-500 ${visual.floorClass} ${visual.glowClass} ${isVisible ? depthClass : ''} overflow-hidden group`}>
                 {/* AI-generated tile image - MUST be on top with z-index */}
                 {tileImage ? (
                   <img 
@@ -940,7 +944,31 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 
                 {/* Oil painting texture - subtle */}
                 <div className="absolute inset-0 z-[3] oil-texture pointer-events-none opacity-30" />
-                
+
+                {/* 3D edge lighting effect */}
+                <div className="absolute inset-0 z-[4] hex-3d-edge-light pointer-events-none opacity-50" />
+
+                {/* Blood stains - visual indicator of combat */}
+                {tile.bloodstains && tile.bloodstains.count > 0 && isVisible && (
+                  <div className="absolute inset-0 z-[5] pointer-events-none">
+                    {tile.bloodstains.positions.slice(0, Math.min(tile.bloodstains.count, 5)).map((pos, i) => (
+                      <div
+                        key={`blood-${i}`}
+                        className="absolute blood-stain animate-blood-splatter"
+                        style={{
+                          left: `${pos.x}%`,
+                          top: `${pos.y}%`,
+                          width: `${pos.size}px`,
+                          height: `${pos.size}px`,
+                          transform: `translate(-50%, -50%) rotate(${pos.rotation}deg)`,
+                          '--rotation': `${pos.rotation}deg`,
+                          opacity: Math.max(0.5, 1 - (tile.bloodstains.fadeTime || 0) * 0.1)
+                        } as React.CSSProperties}
+                      />
+                    ))}
+                  </div>
+                )}
+
                 {/* Tile icon - only show if no image */}
                 {!tileImage && (
                   <div className={`relative z-10 flex flex-col items-center justify-center h-full pointer-events-none transition-opacity ${isVisible ? 'opacity-30 group-hover:opacity-50' : 'opacity-10'}`}>
@@ -997,8 +1025,22 @@ const GameBoard: React.FC<GameBoardProps> = ({
                         </div>
                       )}
 
-                      {/* Bookshelf - book icon */}
-                      {tile.object.type === 'bookshelf' && <BookOpen className="text-amber-700 drop-shadow-md" size={28} />}
+                      {/* Bookshelf - book icon with search state */}
+                      {tile.object.type === 'bookshelf' && (
+                        <div className={`flex flex-col items-center ${!tile.object.searched ? 'animate-bookshelf-glow' : ''}`}>
+                          <BookOpen
+                            className={`drop-shadow-md transition-all duration-300 ${
+                              tile.object.searched
+                                ? 'text-amber-900/60'
+                                : 'text-amber-600 drop-shadow-[0_0_8px_rgba(200,160,80,0.4)]'
+                            }`}
+                            size={28}
+                          />
+                          {!tile.object.searched && (
+                            <span className="text-[8px] font-bold text-amber-400 uppercase tracking-widest mt-1 animate-pulse">Search</span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Container types - archive/package */}
                       {(tile.object.type === 'crate' || tile.object.type === 'chest' || tile.object.type === 'cabinet') && (
@@ -1025,6 +1067,28 @@ const GameBoard: React.FC<GameBoardProps> = ({
                         <div className="flex flex-col items-center animate-pulse">
                           <DoorOpen className="text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.6)]" size={36} />
                           <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mt-1">Exit</span>
+                        </div>
+                      )}
+
+                      {/* Eldritch Portal - glowing purple gateway that spawns enemies */}
+                      {tile.object.type === 'eldritch_portal' && (
+                        <div className="relative flex flex-col items-center">
+                          {/* Outer glow ring */}
+                          <div className="absolute inset-0 -m-4 rounded-full eldritch-portal-glow animate-portal-pulse" />
+                          {/* Swirling energy effect */}
+                          <div className="absolute inset-0 -m-2 rounded-full animate-portal-swirl opacity-60" style={{
+                            background: 'conic-gradient(from 0deg, rgba(128,0,255,0.4), rgba(200,100,255,0.2), rgba(128,0,255,0.4), rgba(150,50,200,0.3), rgba(128,0,255,0.4))'
+                          }} />
+                          {/* Portal icon */}
+                          <Zap
+                            className="text-purple-400 animate-portal-energy drop-shadow-[0_0_15px_rgba(168,85,247,0.8)]"
+                            size={36}
+                          />
+                          <span className="text-[9px] font-bold text-purple-300 uppercase tracking-widest mt-1 drop-shadow-[0_0_4px_rgba(128,0,255,0.6)]">
+                            {tile.object.portalActive ? 'PORTAL' : 'Dormant'}
+                          </span>
+                          {/* Occasional energy flare */}
+                          <div className="absolute inset-0 -m-6 rounded-full animate-portal-flare bg-purple-500/30" />
                         </div>
                       )}
                     </div>
@@ -1055,13 +1119,83 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   }}
                 />
                 
-                {/* Unexplored overlay with mysterious effect */}
+                {/* Unexplored overlay with animated shadow mist effect */}
                 {!isExplored && !isVisible && (
-                  <div className="absolute inset-0 z-40 pointer-events-none">
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/90 via-slate-900/95 to-black/90" />
-                    <div className="absolute inset-0 opacity-20" style={{
-                      backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\' opacity=\'0.4\'/%3E%3C/svg%3E")',
+                  <div className="absolute inset-0 z-40 pointer-events-none overflow-hidden">
+                    {/* Base dark layer */}
+                    <div className="absolute inset-0 fog-of-war-unexplored" />
+                    {/* Animated mist layer 1 - slow drift */}
+                    <div className="absolute inset-0 animate-fog-mist-drift opacity-70" style={{
+                      background: 'radial-gradient(ellipse at 40% 30%, rgba(40, 30, 60, 0.8) 0%, transparent 60%)',
                     }} />
+                    {/* Animated mist layer 2 - swirl */}
+                    <div className="absolute inset-0 animate-fog-mist-swirl opacity-60" style={{
+                      background: 'radial-gradient(ellipse at 60% 70%, rgba(30, 25, 50, 0.7) 0%, transparent 55%)',
+                    }} />
+                    {/* Tendrils effect */}
+                    <div className="absolute inset-0 animate-fog-tendril opacity-50" style={{
+                      background: 'linear-gradient(180deg, rgba(20,15,35,0.9) 0%, transparent 40%, transparent 60%, rgba(20,15,35,0.9) 100%)',
+                    }} />
+                    {/* Noise texture */}
+                    <div className="absolute inset-0 opacity-25" style={{
+                      backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.6\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\' opacity=\'0.5\'/%3E%3C/svg%3E")',
+                    }} />
+                  </div>
+                )}
+
+                {/* Fog reveal flicker animation - plays when tile transitions from unexplored to visible */}
+                {tile.fogRevealAnimation === 'revealing' && (
+                  <div className="absolute inset-0 z-45 pointer-events-none">
+                    <div className="absolute inset-0 animate-fog-reveal-flicker fog-of-war-unexplored" />
+                    <div className="absolute inset-0 fog-reveal-shimmer" />
+                  </div>
+                )}
+
+                {/* Local Weather Effects - Rain/Fog particles on specific tiles */}
+                {tile.localWeather && isVisible && (
+                  <div className="absolute inset-0 z-[6] pointer-events-none overflow-hidden">
+                    {/* Local Fog Effect */}
+                    {tile.localWeather.type === 'fog' && (
+                      <>
+                        <div className="absolute inset-0 local-fog-overlay animate-local-fog-pulse" />
+                        <div className="absolute inset-0 animate-local-fog-drift opacity-60" style={{
+                          background: `radial-gradient(ellipse at ${30 + Math.random() * 40}% ${30 + Math.random() * 40}%, rgba(180, 190, 210, 0.4) 0%, transparent 60%)`
+                        }} />
+                      </>
+                    )}
+
+                    {/* Local Rain Effect */}
+                    {tile.localWeather.type === 'rain' && (
+                      <>
+                        <div className="absolute inset-0 local-rain-overlay" />
+                        {/* Rain drops */}
+                        {Array.from({ length: Math.min(tile.localWeather.intensity === 'heavy' ? 12 : tile.localWeather.intensity === 'moderate' ? 8 : 4, 12) }).map((_, i) => (
+                          <div
+                            key={`rain-${i}`}
+                            className="absolute w-[2px] h-[10px] bg-gradient-to-b from-transparent via-blue-300/40 to-blue-400/60 animate-rain-drop"
+                            style={{
+                              left: `${10 + (i * 8) % 80}%`,
+                              top: '-10px',
+                              '--duration': `${0.4 + Math.random() * 0.3}s`,
+                              '--delay': `${Math.random() * 0.5}s`,
+                              animationDelay: `${Math.random() * 0.5}s`
+                            } as React.CSSProperties}
+                          />
+                        ))}
+                      </>
+                    )}
+
+                    {/* Local Miasma Effect */}
+                    {tile.localWeather.type === 'miasma' && (
+                      <>
+                        <div className="absolute inset-0 animate-miasma-float opacity-70" style={{
+                          background: 'radial-gradient(ellipse at center, rgba(100, 80, 150, 0.3) 0%, rgba(80, 100, 80, 0.2) 50%, transparent 100%)'
+                        }} />
+                        <div className="absolute inset-0 animate-miasma-skull opacity-30">
+                          <Skull className="absolute text-purple-300/20" size={24} style={{ left: '40%', top: '30%' }} />
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 

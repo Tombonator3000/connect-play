@@ -792,6 +792,43 @@ export const TILE_OBJECT_ACTIONS: Record<string, (ActionConfig | DynamicActionCo
       }
     }
   ],
+  eldritch_portal: [
+    {
+      id: 'examine_portal',
+      label: 'Undersøk Portal',
+      icon: 'search',
+      apCost: 1,
+      successMessage: 'Du stirrer inn i det lilla lyset. Noe stirrer tilbake.',
+      consequences: {
+        success: { type: 'lose_sanity', value: 1, message: 'Synet av det hinsidige brenner i sinnet.' }
+      }
+    },
+    {
+      id: 'seal_portal',
+      label: 'Forsegle Portal (Elder Sign)',
+      icon: 'ritual',
+      apCost: 2,
+      itemRequired: 'elder_sign',
+      successMessage: 'Elder Sign lyser med eldgammelt lys - portalen lukkes!',
+      getEnabled: (ctx) => ctx.hasItem('elder_sign'),
+      getReason: (ctx) => ctx.hasItem('elder_sign') ? undefined : 'Du trenger et Elder Sign for å forsegle portalen',
+      consequences: {
+        success: { type: 'remove_obstacle', message: 'Portalen kollapser inn i seg selv.' }
+      }
+    },
+    {
+      id: 'attempt_close_portal',
+      label: 'Prøv å Lukke (Wil 6)',
+      icon: 'willpower',
+      apCost: 2,
+      skillCheck: { skill: 'willpower', dc: 6 },
+      successMessage: 'Din vilje tvinger riftet delvis lukket!',
+      failureMessage: 'Portalen motstår dine forsøk.',
+      consequences: {
+        failure: { type: 'lose_sanity', value: 2, message: 'Noe strekker seg ut fra riftet...' }
+      }
+    }
+  ],
   locked_door: []
 };
 

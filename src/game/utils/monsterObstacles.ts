@@ -173,6 +173,14 @@ export const OBSTACLE_PASSABILITY: Record<TileObjectType, ObstaclePassability> =
     massiveCanDestroy: false,
     movementCost: 0
   },
+  eldritch_portal: {
+    blocking: false,        // Portals don't block movement
+    flyingCanPass: true,
+    aquaticCanPass: true,
+    etherealCanPass: true,
+    massiveCanDestroy: false, // Portals cannot be destroyed by massive creatures
+    movementCost: 0
+  },
 };
 
 // ============================================================================

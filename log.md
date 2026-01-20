@@ -1,5 +1,180 @@
 # Development Log
 
+## 2026-01-20: Interaktive Objekter, Fog of War, 3D Hex-effekter og Miljøeffekter
+
+### Oppgave
+Implementere visuelle forbedringer og nye interaktive elementer:
+1. **Interaktive Objekter**: Forbedrede bokhyller og nye Eldritch Portaler
+2. **Fog of War**: Animert skygge-tåke effekt med flimmer-reveal ved dør-åpning
+3. **3D Hex Depth**: Brettspill-lignende tykkelse med CSS-skygger og transformasjoner
+4. **Miljøeffekter**: Regn/tåke partikkeleffekter og blodspor ved skade
+
+### Løsning
+
+#### 1. Eldritch Portal - Ny Interaktiv Objekt Type
+Lagt til ny `eldritch_portal` TileObjectType som spawner fiender i Mythos-fasen:
+
+**Visual rendering (GameBoard.tsx):**
+- Animert lilla glød med `animate-portal-pulse`
+- Svirvlende energi-effekt med `conic-gradient`
+- Portal flare-animasjon med `animate-portal-flare`
+- Zap-ikon med energi-animasjon
+
+**Spawn-logikk (ShadowsGame.tsx):**
+```typescript
+// I Mythos-fasen: Sjekker alle aktive portaler
+// Spawn-sjanse basert på portalSpawnChance (default 50%)
+// Spawner tilfeldige fiender fra portalSpawnTypes
+```
+
+**Context Actions (contextActionDefinitions.ts):**
+- "Undersøk Portal" (1 AP, -1 Sanity)
+- "Forsegle Portal (Elder Sign)" (2 AP, krever Elder Sign)
+- "Prøv å Lukke (Wil 6)" (2 AP, skill check)
+
+#### 2. Forbedret Bokhylle-visning
+- Animert glød for usøkte bokhyller (`animate-bookshelf-glow`)
+- "Search" label som pulserer
+- Dimmet visning for søkte bokhyller
+
+#### 3. Fog of War System
+**Animert skygge-tåke for uutforskede områder:**
+- Flere lag med animerte tåke-drifts (`animate-fog-mist-drift`, `animate-fog-mist-swirl`)
+- Tendrils-effekt med `animate-fog-tendril`
+- Noise texture overlay
+- `fog-of-war-unexplored` klasse med gradient bakgrunn
+
+**Flimmer-reveal ved dør-åpning:**
+- `animate-fog-reveal-flicker` - 1.2s flicker-animasjon
+- `fog-reveal-shimmer` - shimmer overlay effekt
+- Trigges automatisk på tilstøtende tiles når dør åpnes
+- Tile får `fogRevealAnimation: 'revealing'` state
+
+#### 4. 3D Hex Tykkelse (Brettspill-effekt)
+**CSS-klasser for dybde:**
+- `hex-3d-depth` - Standard tile dybde
+- `hex-3d-depth-elevated` - Forhøyede tiles (zoneLevel > 0)
+- `hex-3d-depth-sunken` - Senket tiles (zoneLevel < 0, kjeller/krypt)
+
+**Teknikk:**
+- Stacked box-shadows for å simulere pappflis-tykkelse
+- Inset shadows for kantbelysning
+- `hex-3d-edge-light` gradient overlay
+
+#### 5. Blodspor System
+**Tile type-utvidelse:**
+```typescript
+bloodstains?: {
+  count: number;              // Antall flekker (maks 8)
+  positions: Array<{x, y, rotation, size}>; // Random posisjoner
+  fadeTime?: number;          // Runder til fading (valgfritt)
+}
+```
+
+**Spawn-logikk:**
+- `addBloodstains(q, r, damageAmount)` funksjon
+- Genererer 1-4 blodflekker basert på skade
+- Trigges ved:
+  - Fiende angriper spiller
+  - Spiller angriper fiende
+  - Trylleformel-skade
+
+**CSS-animasjoner:**
+- `animate-blood-splatter` - Splatter appear effect
+- `blood-stain` klasse med radial gradient
+
+#### 6. Lokal Vær Partikkeleffekter
+**Støttet værttyper på individuelle tiles:**
+- **Tåke**: `local-fog-overlay`, `animate-local-fog-pulse`, `animate-local-fog-drift`
+- **Regn**: Fallende dråper med `animate-rain-drop`, intensitetsbasert antall
+- **Miasma**: Svirvlende giftig tåke med hodeskalle-overlay
+
+### Endrede Filer
+
+#### types.ts
+- Lagt til `eldritch_portal` i `TileObjectType`
+- Utvidet `TileObject` med portal-properties:
+  - `portalActive?: boolean`
+  - `portalSpawnTypes?: EnemyType[]`
+  - `portalSpawnChance?: number`
+- Lagt til `bloodstains` og `fogRevealAnimation` på `Tile`
+
+#### index.css
+Lagt til ~520 linjer med nye animasjoner og klasser:
+- FOG OF WAR SYSTEM (linjer 1450-1607)
+- 3D HEX DEPTH (linjer 1609-1664)
+- ELDRITCH PORTAL (linjer 1666-1753)
+- BLOOD TRAILS (linjer 1755-1843)
+- RAIN & LOCAL FOG (linjer 1845-1917)
+- BOOKSHELF SEARCH (linjer 1919-1972)
+
+#### GameBoard.tsx
+- Import av `Zap`, `Droplet` ikoner
+- 3D depth klasse basert på `zoneLevel`
+- Blood stain rendering med animasjon
+- Forbedret bookshelf visning med søk-state
+- Eldritch portal rendering med alle effekter
+- Forbedret fog of war med animert tåke
+- Fog reveal flicker animasjon
+- Local weather effects rendering (regn, tåke, miasma)
+
+#### ShadowsGame.tsx
+- Portal spawn-logikk i Mythos-fasen
+- `addBloodstains()` helper funksjon
+- `triggerFogReveal()` helper funksjon
+- Bloodstain trigges ved all skade (fiende→spiller, spiller→fiende, spells)
+- Fog reveal trigges ved dør-åpning
+
+#### ItemTooltip.tsx
+- Lagt til `eldritch_portal` i `TILE_OBJECT_INFO`
+
+#### contextActionDefinitions.ts
+- Lagt til `eldritch_portal` context actions
+
+#### monsterObstacles.ts
+- Lagt til `eldritch_portal` i `OBSTACLE_PASSABILITY`
+
+### Tekniske Detaljer
+
+**Fog Reveal Flow:**
+1. Spiller åpner dør (open_door/use_key/lockpick)
+2. System finner tilstøtende tile basert på edge index
+3. `triggerFogReveal(q, r)` kalles
+4. Tile får `fogRevealAnimation: 'revealing'`
+5. Animasjon kjører (1.2s flicker + shimmer)
+6. Timeout setter `fogRevealAnimation: 'revealed'` og `explored: true`
+
+**Blood Stain Positioning:**
+```typescript
+const positions = Array.from({ length: stainCount }, () => ({
+  x: 20 + Math.random() * 60,  // 20-80% av tile bredde
+  y: 20 + Math.random() * 60,  // 20-80% av tile høyde
+  rotation: Math.random() * 360,
+  size: 15 + Math.random() * 20  // 15-35px
+}));
+```
+
+**Portal Spawn Logic:**
+```typescript
+// I MYTHOS fase:
+for (const portal of activePortals) {
+  if (Math.random() * 100 < portal.portalSpawnChance) {
+    const enemyType = random(portal.portalSpawnTypes);
+    spawnEnemy(enemyType, portal.q, portal.r);
+  }
+}
+```
+
+### Testing
+- TypeScript kompilerer uten feil
+- Alle nye CSS-animasjoner fungerer i browser
+- Portal rendering vises korrekt
+- Fog of war har smooth animasjon
+- Blood stains vises ved skade
+- 3D depth effekt synlig på tiles
+
+---
+
 ## 2026-01-20: Forbedret Scenarios, Win States, Tile-tema og Doom Counter Balansering
 
 ### Oppgave
