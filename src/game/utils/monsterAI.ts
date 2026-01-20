@@ -1,12 +1,14 @@
 /**
  * Monster AI System for Shadows of the 1920s
  * Enhanced AI with pathfinding, target prioritization, and special abilities
- * Version 3.0 - January 2026
+ * Version 4.0 - January 2026
  *
  * REFACTORED: Code split into modular components:
  * - monsterWeatherBehavior.ts: Weather effects on monster behavior
  * - monsterObstacles.ts: Obstacle passability logic
  * - monsterConstants.ts: Spawn tables, behaviors, personalities
+ * - monsterMessages.ts: All localized monster messages
+ * - monsterDecisionHelpers.ts: Decision-making helper functions
  */
 
 import {
@@ -16,6 +18,23 @@ import {
 } from '../types';
 import { BESTIARY, weatherHidesEnemy } from '../constants';
 import { hexDistance, findPath, getHexNeighbors, hasLineOfSight } from '../hexUtils';
+
+// Import from decision helpers module
+import {
+  buildDecisionContext,
+  tryFleeDecision,
+  handleNoTargetBehavior,
+  tryHesitationDecision,
+  tryRangedAttackDecision,
+  tryMeleeAttackDecision,
+  trySpecialMovementDecision,
+  tryDefensiveDecision,
+  tryChaseDecision,
+  tryBasicChaseDecision
+} from './monsterDecisionHelpers';
+
+// Import from messages module
+import { getGenericWaitMessage } from './monsterMessages';
 
 // Import from extracted modules
 import type { WeatherMonsterModifiers } from './monsterWeatherBehavior';
@@ -1090,6 +1109,10 @@ function getPatrolDestination(
  * Main AI decision function for a monster
  * Enhanced with smart targeting, special abilities, ranged attack logic,
  * personality-based behavior, and weather modifications
+ *
+ * REFACTORED: This function now delegates to smaller helper functions
+ * in monsterDecisionHelpers.ts for better maintainability and testability.
+ * Each decision type (flee, ranged, melee, chase) is handled by its own function.
  */
 export function getMonsterDecision(
   enemy: Enemy,
@@ -1099,284 +1122,60 @@ export function getMonsterDecision(
   weather?: WeatherCondition | null,
   currentRound?: number
 ): AIDecision {
-  const behavior = getMonsterBehavior(enemy.type);
-  const personality = getMonsterPersonality(enemy.type);
-  const weatherMods = getWeatherMonsterModifiers(weather || null);
-  const combatStyle = getCombatStyleModifiers(personality.combatStyle);
+  // Build decision context once (centralizes all context gathering)
+  const ctx = buildDecisionContext(enemy, players, enemies, tiles, weather, currentRound);
 
-  // PERSONALITY-BASED FLEE CHECK
-  // Monsters with high cowardiceThreshold may flee when hurt
-  const hpPercent = (enemy.hp / enemy.maxHp) * 100;
-  if (hpPercent <= personality.cowardiceThreshold && personality.cowardiceThreshold > 0) {
-    const fleePos = findRetreatPosition(enemy, players[0], tiles, enemies);
-    if (fleePos) {
-      return {
-        action: 'move',
-        targetPosition: fleePos,
-        message: `${enemy.name} flykter i panikk!`
-      };
-    }
-  }
+  // 1. FLEE CHECK - Monsters may flee when hurt
+  const fleeDecision = tryFleeDecision(ctx, findRetreatPosition);
+  if (fleeDecision) return fleeDecision;
 
-  // Use smart targeting to find best target (with weather consideration)
+  // 2. FIND TARGET - Use smart targeting with weather consideration
   const { target: targetPlayer, priority } = findSmartTarget(enemy, players, tiles, weather);
 
-  // No visible players - behavior based on personality
+  // 3. NO TARGET - Handle waiting, patrolling, or special movement
   if (!targetPlayer) {
-    // Check for special movement (Hound teleport to find prey)
-    if (enemy.type === 'hound') {
-      const teleportResult = executeSpecialMovement(enemy, tiles, players, enemies);
-      if (teleportResult) {
-        return {
-          action: 'special',
-          targetPosition: teleportResult.newPosition,
-          message: teleportResult.message
-        };
-      }
-    }
-
-    // Ambushers wait in place based on personality
-    if (behavior === 'ambusher' || personality.combatStyle === 'ambush') {
-      const waitMessages: Record<EnemyType, string> = {
-        ghoul: `${enemy.name} kryper sammen i mørket og venter...`,
-        nightgaunt: `${enemy.name} svever lydløst i skyggene...`,
-        cultist: `${enemy.name} patruljerer området...`,
-        deepone: `${enemy.name} holder seg skjult under overflaten...`,
-        shoggoth: `${enemy.name} bobler i stillhet...`,
-        boss: `${enemy.name} venter på sitt bytte...`,
-        sniper: `${enemy.name} holder siktet klart...`,
-        priest: `${enemy.name} fortsetter sine ritualer...`,
-        'mi-go': `${enemy.name} summerer i det fremmede språket...`,
-        hound: `${enemy.name} snuser etter byttet gjennom dimensjonene...`,
-        dark_young: `${enemy.name} står urørlig som et forvridd tre...`,
-        byakhee: `${enemy.name} kretser høyt over...`,
-        star_spawn: `${enemy.name} drømmer ondskapsfulle drømmer...`,
-        formless_spawn: `${enemy.name} flyter sakte i mørket...`,
-        hunting_horror: `${enemy.name} glir gjennom skyene...`,
-        moon_beast: `${enemy.name} forbereder sitt neste trekk...`
-      };
-      return { action: 'wait', message: waitMessages[enemy.type] || `${enemy.name} venter...` };
-    }
-
-    // Others patrol based on personality preferences
-    const patrolDest = getPatrolDestination(enemy, tiles, enemies);
-    if (patrolDest) {
-      const patrolMessages: Record<EnemyType, string> = {
-        cultist: `${enemy.name} patruljerer vaktsomt...`,
-        deepone: `${enemy.name} svømmer sakte rundt...`,
-        ghoul: `${enemy.name} snuser etter føde...`,
-        shoggoth: `${enemy.name} valser fremover...`,
-        boss: `${enemy.name} vandrer med mektig tilstedeværelse...`,
-        sniper: `${enemy.name} finner en ny posisjon...`,
-        priest: `${enemy.name} vandrer mot alteret...`,
-        'mi-go': `${enemy.name} flyr i sirkler...`,
-        nightgaunt: `${enemy.name} glir lydløst...`,
-        hound: `${enemy.name} søker gjennom vinklene...`,
-        dark_young: `${enemy.name} tramper tungt fremover...`,
-        byakhee: `${enemy.name} daler ned...`,
-        star_spawn: `${enemy.name} beveger seg med kosmisk tyngde...`,
-        formless_spawn: `${enemy.name} kryper sakte...`,
-        hunting_horror: `${enemy.name} jakter i mørket...`,
-        moon_beast: `${enemy.name} lister seg forsiktig...`
-      };
-      return {
-        action: 'move',
-        targetPosition: patrolDest,
-        message: patrolMessages[enemy.type] || `${enemy.name} patruljerer...`
-      };
-    }
-
-    return { action: 'wait' };
+    return handleNoTargetBehavior(ctx, executeSpecialMovement, getPatrolDestination);
   }
 
   const distanceToPlayer = hexDistance(enemy.position, targetPlayer.position);
-  const isFlying = enemy.traits?.includes('flying') ?? false;
-  const isRanged = behavior === 'ranged' || enemy.traits?.includes('ranged');
 
-  // AGGRESSION CHECK - low aggression monsters may not attack immediately
-  const aggressionRoll = Math.random() * 100;
-  if (aggressionRoll > personality.aggressionLevel && distanceToPlayer > 1) {
-    // Monster hesitates - wait or patrol instead
-    return {
-      action: 'wait',
-      message: `${enemy.name} nøler og observerer...`
-    };
-  }
+  // 4. AGGRESSION CHECK - Low aggression monsters may hesitate
+  const hesitationDecision = tryHesitationDecision(ctx, distanceToPlayer);
+  if (hesitationDecision) return hesitationDecision;
 
-  // RANGED ATTACKERS - check line of sight and optimal positioning
-  if ((isRanged || combatStyle.staysAtRange) && enemy.attackRange > 1) {
-    const rangedCheck = canMakeRangedAttack(enemy, targetPlayer, tiles);
-
-    // Can make ranged attack?
-    if (rangedCheck.canAttack && distanceToPlayer <= enemy.attackRange) {
-      const coverMsg = rangedCheck.coverPenalty > 0 ? ' (mot dekning)' : '';
-      return {
-        action: 'attack',
-        targetPlayerId: targetPlayer.id,
-        message: `${enemy.name} avfyrer mot ${targetPlayer.name}${coverMsg}!`
-      };
-    }
-
-    // Find optimal position for ranged attack
-    if (!rangedCheck.canAttack || distanceToPlayer > enemy.attackRange) {
-      const optimalPos = findOptimalRangedPosition(enemy, targetPlayer, tiles, enemies);
-      if (optimalPos) {
-        return {
-          action: 'move',
-          targetPosition: optimalPos,
-          message: `${enemy.name} tar stilling for å skyte...`
-        };
-      }
-    }
-
-    // Too close - retreat based on combat style
-    if (distanceToPlayer < 2 && (combatStyle.staysAtRange || personality.cowardiceThreshold > 30)) {
-      const retreatPos = findRetreatPosition(enemy, targetPlayer, tiles, enemies);
-      if (retreatPos) {
-        return {
-          action: 'move',
-          targetPosition: retreatPos,
-          message: `${enemy.name} trekker seg tilbake for å sikte...`
-        };
-      }
-    }
-  }
-
-  // MELEE ATTACKERS - can attack if in range
-  if (distanceToPlayer <= enemy.attackRange) {
-    // Generate message based on priority factors and monster type
-    const attackMessages: Record<EnemyType, string> = {
-      cultist: `${enemy.name} stormer mot ${targetPlayer.name} med offerkniven!`,
-      deepone: `${enemy.name} kaster seg mot ${targetPlayer.name} med klør!`,
-      ghoul: `${enemy.name} hugger mot ${targetPlayer.name} med skarpe tenner!`,
-      shoggoth: `${enemy.name} valser over ${targetPlayer.name} med pseudopoder!`,
-      boss: `${enemy.name} knuser mot ${targetPlayer.name} med kosmisk kraft!`,
-      sniper: `${enemy.name} trekker pistolen mot ${targetPlayer.name}!`,
-      priest: `${enemy.name} kaster en forbannelse mot ${targetPlayer.name}!`,
-      'mi-go': `${enemy.name} stikker med fremmed teknologi mot ${targetPlayer.name}!`,
-      nightgaunt: `${enemy.name} griper etter ${targetPlayer.name} med kalde klør!`,
-      hound: `${enemy.name} biter mot ${targetPlayer.name} gjennom dimensjonene!`,
-      dark_young: `${enemy.name} slår mot ${targetPlayer.name} med tentakler!`,
-      byakhee: `${enemy.name} stuper ned mot ${targetPlayer.name}!`,
-      star_spawn: `${enemy.name} knuser ned på ${targetPlayer.name}!`,
-      formless_spawn: `${enemy.name} sluker mot ${targetPlayer.name}!`,
-      hunting_horror: `${enemy.name} dykker ned mot ${targetPlayer.name}!`,
-      moon_beast: `${enemy.name} fyrer mot ${targetPlayer.name}!`
-    };
-
-    let attackMsg = attackMessages[enemy.type] || `${enemy.name} angriper ${targetPlayer.name}!`;
-
-    // Add context based on priority
-    if (priority) {
-      if (priority.factors.lowHp > 15) {
-        attackMsg = `${enemy.name} sanser svakhet! ` + attackMsg;
-      } else if (priority.factors.isolated > 0) {
-        attackMsg = `${enemy.name} går løs på den isolerte! ` + attackMsg;
-      } else if (priority.factors.lowSanity > 10) {
-        attackMsg = `${enemy.name} jakter på redsel! ` + attackMsg;
-      }
-    }
-
-    return {
-      action: 'attack',
-      targetPlayerId: targetPlayer.id,
-      message: attackMsg
-    };
-  }
-
-  // SPECIAL MOVEMENT - Hound teleportation
-  if (enemy.type === 'hound' && distanceToPlayer > 3) {
-    const teleportResult = executeSpecialMovement(enemy, tiles, players, enemies);
-    if (teleportResult) {
-      return {
-        action: 'special',
-        targetPosition: teleportResult.newPosition,
-        message: teleportResult.message
-      };
-    }
-  }
-
-  // Defensive behavior based on personality
-  if ((behavior === 'defensive' || personality.combatStyle === 'cautious') && distanceToPlayer > 3) {
-    return { action: 'wait', message: `${enemy.name} vokter sin posisjon.` };
-  }
-
-  // CHASE - use enhanced pathfinding
-  const otherEnemyPositions = new Set(
-    enemies
-      .filter(e => e.id !== enemy.id)
-      .map(e => `${e.position.q},${e.position.r}`)
+  // 5. RANGED ATTACK - Check if ranged attack is possible/preferred
+  const rangedDecision = tryRangedAttackDecision(
+    ctx,
+    targetPlayer,
+    distanceToPlayer,
+    canMakeRangedAttack,
+    findOptimalRangedPosition,
+    findRetreatPosition
   );
+  if (rangedDecision) return rangedDecision;
 
-  // Use enhanced pathfinding that considers obstacles and enemy abilities
-  const pathResult = findEnhancedPath(
-    enemy,
-    enemy.position,
-    [targetPlayer.position],
-    tiles,
-    otherEnemyPositions
-  );
+  // 6. MELEE ATTACK - Attack if in range
+  const meleeDecision = tryMeleeAttackDecision(ctx, targetPlayer, distanceToPlayer, priority);
+  if (meleeDecision) return meleeDecision;
 
-  if (pathResult && pathResult.path.length > 1) {
-    // Calculate how far we can move based on speed and path cost
-    let movementBudget = enemy.speed;
-    let moveIndex = 0;
+  // 7. SPECIAL MOVEMENT - Hound teleportation, etc.
+  const specialDecision = trySpecialMovementDecision(ctx, distanceToPlayer, executeSpecialMovement);
+  if (specialDecision) return specialDecision;
 
-    for (let i = 1; i < pathResult.path.length && movementBudget > 0; i++) {
-      const tile = tiles.find(t => t.q === pathResult.path[i].q && t.r === pathResult.path[i].r);
-      if (tile) {
-        const cost = canEnemyPassTile(enemy, tile);
-        const tileCost = 1 + Math.max(0, cost.movementCost);
-        if (movementBudget >= tileCost) {
-          movementBudget -= tileCost;
-          moveIndex = i;
-        } else {
-          break;
-        }
-      }
-    }
+  // 8. DEFENSIVE WAIT - Some monsters hold position
+  const defensiveDecision = tryDefensiveDecision(ctx, distanceToPlayer);
+  if (defensiveDecision) return defensiveDecision;
 
-    if (moveIndex > 0) {
-      // Generate chase message based on movement type
-      let chaseMsg = `${enemy.name} jakter pa ${targetPlayer.name}!`;
-      if (isFlying) {
-        chaseMsg = `${enemy.name} daler ned mot ${targetPlayer.name}!`;
-      } else if (enemy.traits?.includes('aquatic')) {
-        const targetTile = tiles.find(t =>
-          t.q === pathResult.path[moveIndex].q && t.r === pathResult.path[moveIndex].r
-        );
-        if (targetTile?.hasWater) {
-          chaseMsg = `${enemy.name} glir gjennom vannet mot ${targetPlayer.name}!`;
-        }
-      }
+  // 9. CHASE - Use enhanced pathfinding to pursue target
+  const chaseDecision = tryChaseDecision(ctx, targetPlayer, findEnhancedPath);
+  if (chaseDecision) return chaseDecision;
 
-      return {
-        action: 'move',
-        targetPosition: pathResult.path[moveIndex],
-        message: chaseMsg
-      };
-    }
-  }
+  // 10. BASIC CHASE - Fallback to simple pathfinding
+  const basicChaseDecision = tryBasicChaseDecision(ctx, targetPlayer);
+  if (basicChaseDecision) return basicChaseDecision;
 
-  // Fallback to basic pathfinding if enhanced fails
-  const basicPath = findPath(
-    enemy.position,
-    [targetPlayer.position],
-    tiles,
-    otherEnemyPositions,
-    isFlying
-  );
-
-  if (basicPath && basicPath.length > 1) {
-    const moveIndex = Math.min(enemy.speed, basicPath.length - 1);
-    return {
-      action: 'move',
-      targetPosition: basicPath[moveIndex],
-      message: `${enemy.name} nærmer seg ${targetPlayer.name}...`
-    };
-  }
-
-  return { action: 'wait', message: `${enemy.name} venter...` };
+  // 11. WAIT - Default fallback
+  return { action: 'wait', message: getGenericWaitMessage(enemy) };
 }
 
 /**
