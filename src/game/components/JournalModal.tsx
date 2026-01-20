@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { BestiaryEntry, EnemyType } from '../types';
 import { BESTIARY } from '../constants';
-import { X, Book, Skull, HelpCircle, AlertTriangle } from 'lucide-react';
+import { X, Book, Skull, HelpCircle, AlertTriangle, Swords, Shield, Heart, Brain, Eye } from 'lucide-react';
 
 interface JournalModalProps {
   unlockedIds: string[]; // List of enemy types encountered
@@ -87,46 +87,113 @@ const JournalModal: React.FC<JournalModalProps> = ({ unlockedIds, onClose }) => 
             <div className="flex-1 p-8 overflow-y-auto bg-[#1a120b]/50">
                 {selectedEnemy ? (
                     <div className="animate-in slide-in-from-right-4 duration-300">
+                        {/* Header with name and classification */}
                         <div className="border-b-2 border-amber-900/50 pb-4 mb-6">
                             <h3 className="text-4xl font-display text-amber-100">{selectedEnemy.name}</h3>
-                            <span className="text-xs font-bold text-amber-600 uppercase tracking-[0.2em]">Class: {selectedEnemy.type}</span>
+                            <span className="text-xs font-bold text-amber-600 uppercase tracking-[0.2em]">Classification: {selectedEnemy.type}</span>
                         </div>
 
-                        <div className="flex gap-4 mb-8">
-                             <div className="bg-black/30 p-4 rounded border border-amber-900/30 flex-1 text-center">
-                                 <div className="text-2xl font-bold text-red-500">{selectedEnemy.hp}</div>
-                                 <div className="text-[9px] uppercase text-amber-500/50">Vitality</div>
+                        {/* Combat Stats - Color coded */}
+                        <div className="grid grid-cols-5 gap-3 mb-8">
+                             {/* Vitality - Red */}
+                             <div className="bg-red-950/40 p-4 rounded-lg border border-red-900/50 text-center">
+                                 <Heart className="mx-auto mb-1 text-red-400" size={18} />
+                                 <div className="text-2xl font-bold text-red-400">{selectedEnemy.hp}</div>
+                                 <div className="text-[9px] uppercase text-red-500/70 font-bold">Vitality</div>
                              </div>
-                             <div className="bg-black/30 p-4 rounded border border-amber-900/30 flex-1 text-center">
-                                 <div className="text-2xl font-bold text-orange-500">{selectedEnemy.damage}</div>
-                                 <div className="text-[9px] uppercase text-amber-500/50">Damage</div>
+                             {/* Attack Dice - Orange */}
+                             <div className="bg-orange-950/40 p-4 rounded-lg border border-orange-900/50 text-center">
+                                 <Swords className="mx-auto mb-1 text-orange-400" size={18} />
+                                 <div className="text-2xl font-bold text-orange-400">{selectedEnemy.attackDice}</div>
+                                 <div className="text-[9px] uppercase text-orange-500/70 font-bold">Attack</div>
                              </div>
-                             <div className="bg-black/30 p-4 rounded border border-amber-900/30 flex-1 text-center">
-                                 <div className="text-2xl font-bold text-purple-500">{selectedEnemy.horror}</div>
-                                 <div className="text-[9px] uppercase text-amber-500/50">Horror</div>
+                             {/* Defense Dice - Blue */}
+                             <div className="bg-blue-950/40 p-4 rounded-lg border border-blue-900/50 text-center">
+                                 <Shield className="mx-auto mb-1 text-blue-400" size={18} />
+                                 <div className="text-2xl font-bold text-blue-400">{selectedEnemy.defenseDice}</div>
+                                 <div className="text-[9px] uppercase text-blue-500/70 font-bold">Defense</div>
+                             </div>
+                             {/* Damage - Yellow */}
+                             <div className="bg-yellow-950/40 p-4 rounded-lg border border-yellow-900/50 text-center">
+                                 <Skull className="mx-auto mb-1 text-yellow-400" size={18} />
+                                 <div className="text-2xl font-bold text-yellow-400">{selectedEnemy.damage}</div>
+                                 <div className="text-[9px] uppercase text-yellow-500/70 font-bold">Damage</div>
+                             </div>
+                             {/* Horror - Purple */}
+                             <div className="bg-purple-950/40 p-4 rounded-lg border border-purple-900/50 text-center">
+                                 <Brain className="mx-auto mb-1 text-purple-400" size={18} />
+                                 <div className="text-2xl font-bold text-purple-400">{selectedEnemy.horror}</div>
+                                 <div className="text-[9px] uppercase text-purple-500/70 font-bold">Horror</div>
                              </div>
                         </div>
 
-                        <div className="prose prose-invert prose-amber max-w-none">
-                            <p className="text-lg italic text-amber-200/80 mb-6 border-l-4 border-amber-700 pl-4">
+                        {/* Description - Amber/Gold quote style */}
+                        <div className="mb-6">
+                            <h4 className="text-sm font-bold uppercase text-amber-500 mb-2 flex items-center gap-2">
+                                <Eye size={14} className="text-amber-500" />
+                                Field Observation
+                            </h4>
+                            <p className="text-lg italic text-amber-200/90 border-l-4 border-amber-600 pl-4 bg-amber-950/20 py-3 rounded-r">
                                 "{selectedEnemy.description}"
                             </p>
+                        </div>
 
-                            <h4 className="text-sm font-bold uppercase text-amber-500 mb-2 border-b border-amber-900/30 pb-1">Arkham Research Notes</h4>
-                            <p className="text-sm text-slate-300 leading-relaxed font-serif">
+                        {/* Lore/Research Notes - Cyan/Teal */}
+                        <div className="mb-6">
+                            <h4 className="text-sm font-bold uppercase text-cyan-400 mb-2 flex items-center gap-2">
+                                <Book size={14} className="text-cyan-400" />
+                                Arkham Research Notes
+                            </h4>
+                            <p className="text-sm text-cyan-100/80 leading-relaxed font-serif bg-cyan-950/20 p-4 rounded-lg border border-cyan-900/30">
                                 {selectedEnemy.lore}
                             </p>
                         </div>
 
+                        {/* Defeat Flavor - Gray/muted */}
+                        {selectedEnemy.defeatFlavor && (
+                            <div className="mb-6">
+                                <h4 className="text-sm font-bold uppercase text-slate-400 mb-2 flex items-center gap-2">
+                                    <Skull size={14} className="text-slate-400" />
+                                    Upon Defeat
+                                </h4>
+                                <p className="text-sm italic text-slate-400/80 leading-relaxed bg-slate-900/30 p-3 rounded border-l-2 border-slate-600">
+                                    {selectedEnemy.defeatFlavor}
+                                </p>
+                            </div>
+                        )}
+
+                        {/* Traits - Color coded badges */}
                         {selectedEnemy.traits && selectedEnemy.traits.length > 0 && (
-                             <div className="mt-8 pt-6 border-t border-amber-900/30">
-                                 <h4 className="text-sm font-bold uppercase text-amber-500 mb-3 flex items-center gap-2"><AlertTriangle size={14}/> Observed Traits</h4>
+                             <div className="mt-6 pt-6 border-t border-amber-900/30">
+                                 <h4 className="text-sm font-bold uppercase text-rose-400 mb-3 flex items-center gap-2">
+                                     <AlertTriangle size={14} className="text-rose-400" />
+                                     Observed Traits
+                                 </h4>
                                  <div className="flex gap-2 flex-wrap">
-                                     {selectedEnemy.traits.map(trait => (
-                                         <span key={trait} className="px-3 py-1 bg-amber-900/30 text-amber-300 text-xs font-bold uppercase rounded border border-amber-800/50">
-                                             {trait}
-                                         </span>
-                                     ))}
+                                     {selectedEnemy.traits.map(trait => {
+                                         // Color code traits based on type
+                                         const getTraitClasses = (t: string) => {
+                                             if (['Flying', 'Fast', 'Aquatic'].includes(t)) {
+                                                 return 'bg-sky-900/40 text-sky-300 border-sky-700/50';
+                                             } else if (['Massive', 'Elite', 'Slow'].includes(t)) {
+                                                 return 'bg-violet-900/40 text-violet-300 border-violet-700/50';
+                                             } else if (['Regenerate', 'Ambusher', 'Ranged'].includes(t)) {
+                                                 return 'bg-rose-900/40 text-rose-300 border-rose-700/50';
+                                             } else if (['Scavenger'].includes(t)) {
+                                                 return 'bg-lime-900/40 text-lime-300 border-lime-700/50';
+                                             }
+                                             return 'bg-amber-900/40 text-amber-300 border-amber-700/50';
+                                         };
+
+                                         return (
+                                             <span
+                                                 key={trait}
+                                                 className={`px-3 py-1.5 text-xs font-bold uppercase rounded-lg border shadow-sm ${getTraitClasses(trait)}`}
+                                             >
+                                                 {trait}
+                                             </span>
+                                         );
+                                     })}
                                  </div>
                              </div>
                         )}

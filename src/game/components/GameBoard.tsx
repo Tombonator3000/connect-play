@@ -780,7 +780,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
       if (lastTouchDistance.current && lastTouchDistance.current > 0) {
         const scaleDelta = newDistance / lastTouchDistance.current;
-        setScale(prev => Math.min(Math.max(prev * scaleDelta, 0.3), 1.5));
+        setScale(prev => Math.min(Math.max(prev * scaleDelta, 0.3), 2.5));
         hasDragged.current = true;
       }
 
@@ -876,7 +876,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
       onMouseMove={handleMouseMove}
       onMouseUp={() => setIsDragging(false)}
       onMouseLeave={() => setIsDragging(false)}
-      onWheel={(e) => setScale(prev => Math.min(Math.max(prev + (e.deltaY > 0 ? -0.1 : 0.1), 0.3), 1.5))}
+      onWheel={(e) => setScale(prev => Math.min(Math.max(prev + (e.deltaY > 0 ? -0.1 : 0.1), 0.3), 2.5))}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}

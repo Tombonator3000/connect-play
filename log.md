@@ -1,5 +1,97 @@
 # Development Log
 
+## 2026-01-20: Options-forbedringer, Field Journal-farger og Økt Zoom
+
+### Oppgave
+Forbedre brukeropplevelsen med nye innstillinger og visuelle forbedringer:
+1. **Options**: Legge til oppløsning og UI-skalering
+2. **Field Journal**: Fargekode tekst basert på type (stats, beskrivelser, lore, etc.)
+3. **Zoom**: Øke maksimum zoom-nivå for bedre detaljvisning
+
+### Løsning
+
+#### 1. Options - Oppløsning og UI-skalering
+
+**Nye GameSettings:**
+```typescript
+resolution: 'auto' | '720p' | '1080p' | '1440p' | '4k';
+uiScale: number; // 50-150 percent
+```
+
+**Display-tab oppdatert med:**
+- **Resolution picker**: 5 valg (Auto, 720p, 1080p, 1440p, 4K) med radio-button stil
+- **UI Scale slider**: 50%-150% med 10% steg for å justere størrelse på menyer og tekst
+
+**Nye ikoner importert:**
+- `Maximize` for oppløsning
+- `ZoomIn` for UI-skalering
+
+#### 2. Field Journal - Fargekodede Teksttyper
+
+Fullstendig redesign av monster-detaljer med distinkte farger:
+
+**Combat Stats (5-kolonners grid):**
+| Stat | Farge | Ikon |
+|------|-------|------|
+| Vitality (HP) | Rød (`red-400`) | Heart |
+| Attack Dice | Oransje (`orange-400`) | Swords |
+| Defense Dice | Blå (`blue-400`) | Shield |
+| Damage | Gul (`yellow-400`) | Skull |
+| Horror | Lilla (`purple-400`) | Brain |
+
+**Tekstseksjoner:**
+| Seksjon | Farge | Stil |
+|---------|-------|------|
+| Field Observation (beskrivelse) | Amber/gull | Kursiv sitat med venstre border |
+| Arkham Research Notes (lore) | Cyan | Serif font i boks |
+| Upon Defeat | Grå | Dempet kursiv |
+| Traits | Fargekodede badges | Basert på trait-type |
+
+**Trait-farger:**
+- **Bevegelse** (Flying, Fast, Aquatic): Himmelblå (`sky-300`)
+- **Størrelse** (Massive, Elite, Slow): Fiolett (`violet-300`)
+- **Evner** (Regenerate, Ambusher, Ranged): Rosa (`rose-300`)
+- **Annet** (Scavenger): Lime (`lime-300`)
+- **Default**: Amber (`amber-300`)
+
+#### 3. Økt Zoom-nivå
+
+**GameBoard.tsx endringer:**
+- Maksimum zoom økt fra `1.5` til `2.5`
+- Gjelder både scroll-wheel og pinch-to-zoom på touch
+
+```typescript
+// Før
+setScale(prev => Math.min(Math.max(prev * scaleDelta, 0.3), 1.5));
+
+// Etter
+setScale(prev => Math.min(Math.max(prev * scaleDelta, 0.3), 2.5));
+```
+
+### Endrede Filer
+
+#### OptionsMenu.tsx
+- Import av `useEffect`, `Maximize`, `ZoomIn`
+- Utvidet `GameSettings` interface med `resolution` og `uiScale`
+- Oppdatert `DEFAULT_SETTINGS` med nye verdier
+- Ny `renderDisplayTab()` med resolution-picker og UI-scale slider
+
+#### JournalModal.tsx
+- Import av nye ikoner: `Swords`, `Shield`, `Heart`, `Brain`, `Eye`
+- Fullstendig redesign av monster-detaljer med fargekodede stats
+- Nye seksjoner: Field Observation, Research Notes, Upon Defeat
+- Fargekodede trait-badges basert på trait-type
+
+#### GameBoard.tsx
+- Endret MAX_ZOOM fra 1.5 til 2.5 (linje 783 og 879)
+
+### Testing
+- TypeScript kompilerer uten feil
+- Build fullført uten errors
+- Alle nye UI-elementer rendres korrekt
+
+---
+
 ## 2026-01-20: Interaktive Objekter, Fog of War, 3D Hex-effekter og Miljøeffekter
 
 ### Oppgave
