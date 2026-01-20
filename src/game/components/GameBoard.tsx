@@ -12,6 +12,7 @@ import { Flashlight } from 'lucide-react';
 import { getCharacterPortrait } from '../utils/characterAssets';
 import { getMonsterPortrait } from '../utils/monsterAssets';
 import { getEdgeIconInfo, getEdgeIconPosition } from './EdgeIcons';
+import { calculateCombinedOffset } from '../utils/entityPositioning';
 
 // Import AI-generated tile images
 import tileLibrary from '@/assets/tiles/tile-library.png';
@@ -1330,12 +1331,29 @@ const GameBoard: React.FC<GameBoardProps> = ({
           );
         })}
 
-        {players.map(player => {
+        {players.map((player, playerIndex) => {
           if (player.isDead) return null;
           const { x, y } = hexToPixel(player.position.q, player.position.r);
           const portraitUrl = getCharacterPortrait(player.id as CharacterType);
+
+          // Calculate offset for multiple entities on same tile
+          const alivePlayers = players.filter(p => !p.isDead);
+          const playersAtSamePos = alivePlayers.filter(
+            p => p.position.q === player.position.q && p.position.r === player.position.r
+          );
+          const enemiesAtSamePos = enemies.filter(
+            e => e.position.q === player.position.q && e.position.r === player.position.r
+          );
+          const playerIndexAtPos = playersAtSamePos.findIndex(p => p.id === player.id);
+          const offset = calculateCombinedOffset(
+            'player',
+            playerIndexAtPos,
+            playersAtSamePos.length,
+            enemiesAtSamePos.length
+          );
+
           return (
-            <div key={player.id} className="absolute w-12 h-12 rounded-full border-2 border-foreground shadow-[0_0_25px_rgba(255,255,255,0.4)] flex items-center justify-center bg-card z-30 transition-all duration-500 overflow-hidden" style={{ left: `${x - 24}px`, top: `${y - 24}px` }}>
+            <div key={player.id} className="absolute w-12 h-12 rounded-full border-2 border-foreground shadow-[0_0_25px_rgba(255,255,255,0.4)] flex items-center justify-center bg-card z-30 transition-all duration-500 overflow-hidden" style={{ left: `${x - 24 + offset.x}px`, top: `${y - 24 + offset.y}px` }}>
               <img 
                 src={portraitUrl} 
                 alt={player.name}
@@ -1356,14 +1374,30 @@ const GameBoard: React.FC<GameBoardProps> = ({
           );
         })}
 
-        {enemies.map(enemy => {
+        {enemies.map((enemy, enemyIndex) => {
           if (!visibleTiles.has(`${enemy.position.q},${enemy.position.r}`)) return null;
           const { x, y } = hexToPixel(enemy.position.q, enemy.position.r);
           const monsterPortrait = getMonsterPortrait(enemy.type);
           const isSelected = selectedEnemyId === enemy.id;
 
+          // Calculate offset for multiple entities on same tile
+          const alivePlayers = players.filter(p => !p.isDead);
+          const playersAtSamePos = alivePlayers.filter(
+            p => p.position.q === enemy.position.q && p.position.r === enemy.position.r
+          );
+          const enemiesAtSamePos = enemies.filter(
+            e => e.position.q === enemy.position.q && e.position.r === enemy.position.r
+          );
+          const enemyIndexAtPos = enemiesAtSamePos.findIndex(e => e.id === enemy.id);
+          const offset = calculateCombinedOffset(
+            'enemy',
+            enemyIndexAtPos,
+            playersAtSamePos.length,
+            enemiesAtSamePos.length
+          );
+
           // Calculate distance from nearest player for weather hiding
-          const distanceFromPlayers = players.filter(p => !p.isDead).map(p =>
+          const distanceFromPlayers = alivePlayers.map(p =>
             hexDistance(p.position.q, p.position.r, enemy.position.q, enemy.position.r)
           );
           const minDistance = Math.min(...distanceFromPlayers);
@@ -1375,8 +1409,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
               <div
                 className="absolute w-14 h-14 transition-all duration-500 z-40 cursor-pointer"
                 style={{
-                  left: `${x - 28}px`,
-                  top: `${y - 28}px`,
+                  left: `${x - 28 + offset.x}px`,
+                  top: `${y - 28 + offset.y}px`,
                   transform: isSelected ? 'scale(1.2)' : 'scale(1)',
                   opacity: weatherOpacity,
                   filter: isHiddenByWeather ? 'blur(2px)' : 'none'
