@@ -1,5 +1,181 @@
 # Development Log
 
+## 2026-01-20: Monster AI Refactoring - getMonsterDecision() Clarity Improvement
+
+### Oppsummering
+
+Refaktorert `getMonsterDecision()`-funksjonen i monsterAI.ts for bedre lesbarhet og vedlikeholdbarhet. Funksjonen var på 286 linjer med dyp nesting og tre store hardkodede message-tabeller. Nå er den redusert til 62 linjer med klare, navngitte steg.
+
+---
+
+### PROBLEMER IDENTIFISERT 🔴
+
+#### 1. For Lang Funksjon (286 linjer)
+**Problem:** `getMonsterDecision()` var 3x over anbefalt 100-linjer grense
+- Vanskelig å forstå hele funksjonens logikk
+- Vanskelig å teste individuelle deler
+- Høy kognitiv belastning ved vedlikehold
+
+#### 2. Hardkodede Message-Tabeller (3 stykker × 16 entries)
+**Problem:** Tre store Record<EnemyType, string> tabeller var inline i funksjonen:
+- `waitMessages` (linje 1140-1157)
+- `patrolMessages` (linje 1164-1181)
+- `attackMessages` (linje 1248-1265)
+
+**Resultat:** Koden var oppblåst og vanskelig å vedlikeholde når man ville legge til nye monster-typer.
+
+#### 3. Dyp Nesting (4-5 nivåer)
+**Problem:** Flere if-else-kjeder med nested logikk for:
+- Flukt-sjekk
+- Målvalg
+- Ranged vs melee
+- Spesiell bevegelse
+- Patruljering
+
+#### 4. For Mange Ansvar
+**Problem:** Én funksjon håndterte:
+- Personlighets-evaluering
+- Atferdsvalg
+- Angrepsbeslutningstaking
+- Meldingsgenerering
+- Sti-finning
+
+---
+
+### LØSNING IMPLEMENTERT ✅
+
+#### 1. Ny fil: `monsterMessages.ts`
+**Fil:** `src/game/utils/monsterMessages.ts`
+
+Ekstraherte alle meldinger til en dedikert konfigurasjonsfil:
+- `WAIT_MESSAGES` - Meldinger når monster venter/ligger i bakhold
+- `PATROL_MESSAGES` - Meldinger når monster patruljerer
+- `ATTACK_MESSAGES` - Meldinger når monster angriper (med target name interpolation)
+
+**Hjelpefunksjoner:**
+- `getWaitMessage(enemy)` - Henter ventemelding
+- `getPatrolMessage(enemy)` - Henter patruljmelding
+- `getAttackMessage(enemy, target)` - Henter angrepsmelding
+- `getAttackMessageWithContext(enemy, target, priority)` - Melding med prioritets-kontekst
+- `getChaseMessage(enemy, target, isInWater)` - Forfølgelsesmelding
+- `getFleeMessage(enemy)` - Fluktmelding
+- `getRangedAttackMessage(enemy, target, hasCover)` - Ranged angrepsmelding
+
+#### 2. Ny fil: `monsterDecisionHelpers.ts`
+**Fil:** `src/game/utils/monsterDecisionHelpers.ts`
+
+Delte opp beslutningslogikken i fokuserte hjelpefunksjoner:
+
+| Funksjon | Ansvar |
+|----------|--------|
+| `buildDecisionContext()` | Samler all kontekst (enemy, players, tiles, weather, etc.) |
+| `tryFleeDecision()` | Sjekker om monster bør flykte basert på HP% og cowardiceThreshold |
+| `handleNoTargetBehavior()` | Håndterer venting, patruljering, spesiell bevegelse |
+| `tryHesitationDecision()` | Sjekker aggresjonsnivå for å avgjøre nøling |
+| `tryRangedAttackDecision()` | Håndterer ranged angrepslogikk og posisjonering |
+| `tryMeleeAttackDecision()` | Håndterer melee angrep når i rekkevidde |
+| `trySpecialMovementDecision()` | Håndterer spesiell bevegelse (Hound teleportasjon) |
+| `tryDefensiveDecision()` | Sjekker om monster skal forsvare posisjon |
+| `tryChaseDecision()` | Forfølgelse med enhanced pathfinding |
+| `tryBasicChaseDecision()` | Fallback til enkel pathfinding |
+
+#### 3. Refaktorert `getMonsterDecision()`
+**Fil:** `src/game/utils/monsterAI.ts:1117-1179`
+
+**FØR (286 linjer):**
+```typescript
+export function getMonsterDecision(...): AIDecision {
+  // 286 linjer med nested if-else, inline message-tabeller,
+  // og blandet logikk for alle beslutningstyper
+}
+```
+
+**ETTER (62 linjer):**
+```typescript
+export function getMonsterDecision(...): AIDecision {
+  // 1. Build context
+  const ctx = buildDecisionContext(...);
+
+  // 2. Try flee
+  const fleeDecision = tryFleeDecision(ctx, findRetreatPosition);
+  if (fleeDecision) return fleeDecision;
+
+  // 3. Find target
+  const { target, priority } = findSmartTarget(...);
+
+  // 4. No target - wait/patrol
+  if (!target) return handleNoTargetBehavior(...);
+
+  // 5-11. Try each decision type in priority order
+  // ...clear, numbered steps...
+
+  // 12. Default wait
+  return { action: 'wait', message: getGenericWaitMessage(enemy) };
+}
+```
+
+---
+
+### ARKITEKTUR FORBEDRINGER
+
+```
+FØR:                                    ETTER:
+┌─────────────────────────────┐        ┌─────────────────────────────┐
+│ getMonsterDecision()        │        │ monsterMessages.ts          │
+│ (286 linjer, alt inline)    │        │ ├─ WAIT_MESSAGES            │
+│ ├─ Flee logic               │        │ ├─ PATROL_MESSAGES          │
+│ ├─ waitMessages (16 entries)│        │ ├─ ATTACK_MESSAGES          │
+│ ├─ patrolMessages (16)      │        │ └─ Helper functions         │
+│ ├─ Ranged attack logic      │        └─────────────────────────────┘
+│ ├─ attackMessages (16)      │        ┌─────────────────────────────┐
+│ ├─ Melee attack logic       │        │ monsterDecisionHelpers.ts   │
+│ ├─ Special movement         │        │ ├─ buildDecisionContext()   │
+│ ├─ Chase logic              │        │ ├─ tryFleeDecision()        │
+│ └─ Fallback logic           │        │ ├─ handleNoTargetBehavior() │
+└─────────────────────────────┘        │ ├─ tryRangedAttackDecision()│
+                                       │ ├─ tryMeleeAttackDecision() │
+                                       │ ├─ tryChaseDecision()       │
+                                       │ └─ ... (8 more functions)   │
+                                       └─────────────────────────────┘
+                                       ┌─────────────────────────────┐
+                                       │ monsterAI.ts                │
+                                       │ └─ getMonsterDecision()     │
+                                       │    (62 linjer, delegerer)   │
+                                       └─────────────────────────────┘
+```
+
+---
+
+### FILER ENDRET/OPPRETTET
+
+| Fil | Status | Beskrivelse |
+|-----|--------|-------------|
+| `src/game/utils/monsterMessages.ts` | **NY** | Alle monster-meldinger og hjelpefunksjoner |
+| `src/game/utils/monsterDecisionHelpers.ts` | **NY** | Beslutningslogikk hjelpefunksjoner |
+| `src/game/utils/monsterAI.ts` | ENDRET | Oppdatert imports, refaktorert getMonsterDecision() |
+
+---
+
+### RESULTATER
+
+| Metrikk | Før | Etter | Forbedring |
+|---------|-----|-------|------------|
+| Linjer i getMonsterDecision() | 286 | 62 | **-78%** |
+| Nesting-dybde | 5 | 2 | **-60%** |
+| Antall filer | 1 | 3 | Bedre separasjon |
+| Testbarhet | Lav | Høy | Individuelle funksjoner kan testes |
+| Lesbarhet | Lav | Høy | Klare, navngitte steg |
+
+---
+
+### ATFERD UENDRET ✅
+
+- Alle beslutningstyper (flee, attack, chase, wait, patrol) fungerer identisk
+- Meldingene er identiske (bare flyttet til egen fil)
+- Build vellykket (913KB bundle)
+
+---
+
 ## 2026-01-20: Mobile Touch Controls Improvement - Bedre Tap-to-Move
 
 ### Oppsummering
