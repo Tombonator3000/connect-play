@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { 
+import {
   X, Volume2, Monitor, Gamepad2, Palette, HardDrive,
-  Contrast, Sparkles, Grid3X3, Zap, Download, RefreshCw
+  Contrast, Sparkles, Grid3X3, Zap
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
+import AssetStudioPanel from './AssetStudioPanel';
 
 export interface GameSettings {
   // Audio
@@ -39,9 +40,6 @@ interface OptionsMenuProps {
   settings: GameSettings;
   onSettingsChange: (settings: GameSettings) => void;
   onResetData: () => void;
-  assetCount?: { generated: number; total: number };
-  onGenerateAssets?: () => void;
-  onExportAssets?: () => void;
 }
 
 const OptionsMenu: React.FC<OptionsMenuProps> = ({
@@ -50,9 +48,6 @@ const OptionsMenu: React.FC<OptionsMenuProps> = ({
   settings,
   onSettingsChange,
   onResetData,
-  assetCount = { generated: 0, total: 152 },
-  onGenerateAssets,
-  onExportAssets,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('audio');
   const [confirmReset, setConfirmReset] = useState(false);
@@ -250,39 +245,7 @@ const OptionsMenu: React.FC<OptionsMenuProps> = ({
   );
 
   const renderAssetsTab = () => (
-    <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-display text-gold uppercase tracking-wider">
-          Generative Art Pipeline
-        </h2>
-        <span className="text-muted-foreground text-sm">
-          {assetCount.generated} / {assetCount.total} Assets
-        </span>
-      </div>
-
-      <div className="bg-card/50 p-6 rounded-xl border border-border space-y-4">
-        <p className="text-muted-foreground text-sm italic text-center">
-          Indexing Lokasjoner, Monstre og Karakterer. Assets lagres i nettleserens cache.
-        </p>
-
-        <div className="flex gap-4 justify-center">
-          <button
-            onClick={onGenerateAssets}
-            className="px-6 py-3 bg-accent hover:bg-accent/80 text-accent-foreground font-bold uppercase tracking-wider rounded-lg flex items-center gap-2 transition-colors"
-          >
-            <RefreshCw size={18} />
-            Generate {assetCount.total - assetCount.generated} Missing
-          </button>
-          <button
-            onClick={onExportAssets}
-            className="px-6 py-3 bg-muted hover:bg-muted/80 text-foreground font-bold uppercase tracking-wider rounded-lg flex items-center gap-2 transition-colors border border-border"
-          >
-            <Download size={18} />
-            Export JSON
-          </button>
-        </div>
-      </div>
-    </div>
+    <AssetStudioPanel onClose={onClose} />
   );
 
   const renderSystemTab = () => (
