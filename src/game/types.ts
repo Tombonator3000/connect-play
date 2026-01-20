@@ -680,6 +680,7 @@ export interface Tile {
   q: number;
   r: number;
   name: string;
+  description?: string;  // Atmospheric Lovecraftian description shown when entering tile
   type: 'building' | 'room' | 'street';
   category?: TileCategory;
   zoneLevel: ZoneLevel;

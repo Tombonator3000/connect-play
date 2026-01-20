@@ -1,5 +1,76 @@
 # Development Log
 
+## 2026-01-20: Hex Tile Beskrivelser og Field Journal Forbedring
+
+### Oppgave
+Fikse at Lovecraftian tile-beskrivelser vises i Field Journal når spilleren beveger seg til en tile, og gjøre Field Journal-teksten lettere å lese med større font.
+
+### Problem
+- Tile-beskrivelser (150+ detaljerte beskrivelser i Lovecraftian stil) vistes bare når en NY tile ble generert
+- Hvis spilleren gikk tilbake til en allerede utforsket tile, vistes ingen beskrivelse
+- Field Journal brukte `text-xs` (veldig liten font), vanskelig å lese
+
+### Implementasjon
+
+#### 1. Lagt til `description` felt i Tile interface (`src/game/types.ts`)
+
+```typescript
+export interface Tile {
+  // ...
+  description?: string;  // Atmospheric Lovecraftian description shown when entering tile
+  // ...
+}
+```
+
+#### 2. Kopiere beskrivelse fra TileTemplate til Tile (`src/game/tileConnectionSystem.ts`)
+
+```typescript
+const baseTile: Tile = {
+  // ...
+  description: template.description,  // Include atmospheric description from template
+  // ...
+};
+```
+
+#### 3. Logge beskrivelse ved bevegelse til eksisterende tiles (`src/game/ShadowsGame.tsx`)
+
+```typescript
+// Log atmospheric description when entering a tile (for already explored tiles)
+// New tiles log their description during generation, but revisited tiles need to show it again
+if (enteredTile && enteredTile.explored) {
+  const description = enteredTile.description || LOCATION_DESCRIPTIONS[enteredTile.name];
+  if (description) {
+    addToLog(description);
+  }
+}
+```
+
+#### 4. Økt fontstørrelse i Field Journal (`src/game/ShadowsGame.tsx`)
+
+**Før:**
+```tsx
+className="text-xs font-serif italic text-muted-foreground leading-relaxed border-b border-border/30 pb-2"
+```
+
+**Etter:**
+```tsx
+className="text-sm font-serif italic text-muted-foreground leading-relaxed border-b border-border/30 pb-2"
+```
+
+Endret for både mobil- og desktop-versjon av Field Journal.
+
+### Resultat
+- Spillere ser nå atmosfæriske beskrivelser hver gang de går inn på en tile
+- Beskrivelser bruker først `tile.description` (fra template), deretter fallback til `LOCATION_DESCRIPTIONS`
+- Field Journal er nå lettere å lese med `text-sm` i stedet for `text-xs`
+
+### Filer endret
+- `src/game/types.ts` - Lagt til description felt i Tile interface
+- `src/game/tileConnectionSystem.ts` - Kopiere beskrivelse fra template til tile
+- `src/game/ShadowsGame.tsx` - Logge beskrivelse ved bevegelse + økt fontstørrelse
+
+---
+
 ## 2026-01-20: Bestiary Panel Enhancement - "Notes on the Horrors"
 
 ### Oppgave
