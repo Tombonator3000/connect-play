@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   X, Volume2, Monitor, Gamepad2, Palette, HardDrive,
-  Contrast, Sparkles, Grid3X3, Zap
+  Contrast, Sparkles, Grid3X3, Zap, Maximize, ZoomIn
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -16,6 +16,8 @@ export interface GameSettings {
   highContrast: boolean;
   reduceMotion: boolean;
   particles: boolean;
+  resolution: 'auto' | '720p' | '1080p' | '1440p' | '4k';
+  uiScale: number; // 50-150 percent
   // Gameplay
   showGrid: boolean;
   fastMode: boolean;
@@ -30,6 +32,8 @@ const DEFAULT_SETTINGS: GameSettings = {
   highContrast: false,
   reduceMotion: false,
   particles: true,
+  resolution: 'auto',
+  uiScale: 100,
   showGrid: true,
   fastMode: false,
   useGeneratedAssets: false,
@@ -136,11 +140,81 @@ const OptionsMenu: React.FC<OptionsMenuProps> = ({
     </div>
   );
 
-  const renderDisplayTab = () => (
+  const renderDisplayTab = () => {
+    const resolutionOptions: { value: GameSettings['resolution']; label: string }[] = [
+      { value: 'auto', label: 'Auto (Native)' },
+      { value: '720p', label: '1280×720 (HD)' },
+      { value: '1080p', label: '1920×1080 (Full HD)' },
+      { value: '1440p', label: '2560×1440 (QHD)' },
+      { value: '4k', label: '3840×2160 (4K)' },
+    ];
+
+    return (
     <div className="space-y-8">
       <h2 className="text-2xl font-display text-foreground">Display & Visuals</h2>
 
       <div className="space-y-4">
+        {/* Resolution */}
+        <div className="bg-card/50 p-4 rounded-xl border border-border">
+          <div className="flex items-center gap-4 mb-4">
+            <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+              <Maximize className="text-primary" size={20} />
+            </div>
+            <div>
+              <div className="font-bold uppercase tracking-wider text-sm">Resolution</div>
+              <div className="text-xs text-muted-foreground italic">
+                Set the game rendering resolution. Lower for better performance.
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-5 gap-2">
+            {resolutionOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => updateSetting('resolution', option.value)}
+                className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                  settings.resolution === option.value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+                }`}
+              >
+                {option.value === 'auto' ? 'Auto' : option.value.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* UI Scale */}
+        <div className="bg-card/50 p-4 rounded-xl border border-border">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                <ZoomIn className="text-primary" size={20} />
+              </div>
+              <div>
+                <div className="font-bold uppercase tracking-wider text-sm">UI Scale</div>
+                <div className="text-xs text-muted-foreground italic">
+                  Adjust the size of menus, buttons, and text.
+                </div>
+              </div>
+            </div>
+            <span className="text-primary font-bold">{settings.uiScale}%</span>
+          </div>
+          <Slider
+            value={[settings.uiScale]}
+            onValueChange={([val]) => updateSetting('uiScale', val)}
+            min={50}
+            max={150}
+            step={10}
+            className="w-full"
+          />
+          <div className="flex justify-between text-xs text-muted-foreground mt-2">
+            <span>50%</span>
+            <span>100%</span>
+            <span>150%</span>
+          </div>
+        </div>
+
         {/* High Contrast */}
         <div className="flex items-center justify-between bg-card/50 p-4 rounded-xl border border-border">
           <div className="flex items-center gap-4">
@@ -199,7 +273,7 @@ const OptionsMenu: React.FC<OptionsMenuProps> = ({
         </div>
       </div>
     </div>
-  );
+  );};
 
   const renderGameplayTab = () => (
     <div className="space-y-8">
