@@ -1617,7 +1617,7 @@
   }
 
   .hex-3d-depth {
-    position: relative;
+    /* Note: position is handled by parent's absolute positioning */
     box-shadow:
       /* Main tile shadow - creates depth illusion */
       0 4px 0 0 hsl(25, 30%, 8%),

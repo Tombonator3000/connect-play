@@ -1,5 +1,64 @@
 # Development Log
 
+## 2026-01-20: Restore Tile Graphics - Fix CSS Stacking Issue
+
+### Problemet
+All tile-grafikk var borte fra spillet. Tile-bildene (PNG-filene) viste ikke, og bare bakgrunnsfarger/overlays var synlige.
+
+### Årsak
+To problemer ble identifisert:
+
+1. **CSS `position: relative` konflikt i `hex-3d-depth` klassen:**
+   - `hex-3d-depth` klassen (som gir 3D-dybdeeffekt til tiles) hadde `position: relative`
+   - Parent-elementet bruker Tailwind's `absolute` klasse
+   - Når custom CSS lastes etter Tailwind, overskrev `position: relative` Tailwind's `position: absolute`
+   - Dette skapte problemer med stacking context og z-index
+
+2. **For høy opacity på overlay-lag:**
+   - Chiaroscuro overlay (40% opacity), oil texture (30%), og edge light (50%) overlays kombinert ble for mørke
+   - Med stacking context-problemet ble bildene helt dekket av disse overlay-lagene
+
+### Løsning
+
+#### 1. Fjernet `position: relative` fra CSS (`src/index.css`)
+```css
+/* Før */
+.hex-3d-depth {
+  position: relative;
+  box-shadow: ...
+}
+
+/* Etter */
+.hex-3d-depth {
+  /* Note: position is handled by parent's absolute positioning */
+  box-shadow: ...
+}
+```
+
+#### 2. Redusert opacity på overlay-lag (`src/game/components/GameBoard.tsx`)
+```tsx
+/* Før */
+<div className="... opacity-40" />  // Chiaroscuro
+<div className="... opacity-30" />  // Oil texture
+<div className="... opacity-50" />  // Edge light
+
+/* Etter */
+<div className="... opacity-20" />  // Chiaroscuro
+<div className="... opacity-15" />  // Oil texture
+<div className="... opacity-30" />  // Edge light
+```
+
+### Tekniske detaljer
+- Z-index strukturen for tile-rendering: z-[1] bilde, z-[2-4] overlay-effekter, z-[5] blood stains, z-[6] local weather, z-[10] tile icon, z-[20] objects, z-[30] fog of war, z-[35] dark room, z-[40] unexplored
+- Mix-blend-mode på overlays (multiply, overlay) blander med elementer under dem i stacking order
+- Parent-elementets `hex-clip` klasse klipper alt innhold til hexagon-form
+
+### Filer endret
+- `src/index.css` - Fjernet `position: relative` fra `.hex-3d-depth`
+- `src/game/components/GameBoard.tsx` - Redusert opacity på overlay-lag
+
+---
+
 ## 2026-01-20: Guaranteed Quest Item/NPC Spawn System
 
 ### Problemet

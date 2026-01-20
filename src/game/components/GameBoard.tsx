@@ -939,14 +939,14 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   />
                 ) : null}
                 
-                {/* Chiaroscuro lighting overlay - semi-transparent */}
-                <div className="absolute inset-0 z-[2] chiaroscuro-overlay pointer-events-none opacity-40" />
-                
-                {/* Oil painting texture - subtle */}
-                <div className="absolute inset-0 z-[3] oil-texture pointer-events-none opacity-30" />
+                {/* Chiaroscuro lighting overlay - very subtle for visibility */}
+                <div className="absolute inset-0 z-[2] chiaroscuro-overlay pointer-events-none opacity-20" />
 
-                {/* 3D edge lighting effect */}
-                <div className="absolute inset-0 z-[4] hex-3d-edge-light pointer-events-none opacity-50" />
+                {/* Oil painting texture - minimal for visibility */}
+                <div className="absolute inset-0 z-[3] oil-texture pointer-events-none opacity-15" />
+
+                {/* 3D edge lighting effect - subtle */}
+                <div className="absolute inset-0 z-[4] hex-3d-edge-light pointer-events-none opacity-30" />
 
                 {/* Blood stains - visual indicator of combat */}
                 {tile.bloodstains && tile.bloodstains.count > 0 && isVisible && (
