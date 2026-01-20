@@ -1,5 +1,148 @@
 # Development Log
 
+## 2026-01-19: Mobile UI & Touch Controls Optimization - "Touch the Darkness"
+
+### Oppgave
+Optimalisere UI og touch-kontroller for mobil enheter. Gjøre spillet fullstendig spillbart på mobil med intuitive touch-interaksjoner.
+
+### Problemanalyse
+1. **GameBoard**: Kun mouse-events for pan/zoom - mangler touch-støtte
+2. **ActionBar**: Knapper for små for touch (under 44x44px anbefalt minimum)
+3. **ContextActionBar**: Hardkodet bredde (400px) - for bred for mobil skjermer
+4. **Sidepaneler**: Fixed posisjonering fungerer dårlig på små skjermer
+5. **Header/Footer**: Overlap og for stor på mobil
+
+### Implementasjon
+
+#### 1. Touch-events i GameBoard (`components/GameBoard.tsx`)
+
+**Nye touch-handlers:**
+- `handleTouchStart()` - Starter drag (1 finger) eller forbereder pinch-zoom (2 fingre)
+- `handleTouchMove()` - Håndterer panning og pinch-to-zoom
+- `handleTouchEnd()` - Rydder opp touch-state
+
+**Pinch-to-zoom funksjonalitet:**
+```typescript
+const getTouchDistance = (touches: React.TouchList) => {
+  if (touches.length < 2) return 0;
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.hypot(dx, dy);
+};
+
+// I handleTouchMove:
+const scaleDelta = newDistance / lastTouchDistance.current;
+setScale(prev => Math.min(Math.max(prev * scaleDelta, 0.3), 1.5));
+```
+
+**Touch-events på container:**
+```tsx
+<div
+  onTouchStart={handleTouchStart}
+  onTouchMove={handleTouchMove}
+  onTouchEnd={handleTouchEnd}
+  onTouchCancel={handleTouchEnd}
+  className="... touch-none select-none"
+>
+```
+
+#### 2. Responsiv ActionBar (`components/ActionBar.tsx`)
+
+**Endringer:**
+- Importert `useIsMobile` hook
+- Dynamiske knappstørrelser basert på enhet:
+  - Mobil: `w-12 h-12` (48x48px - god touch target)
+  - Desktop: `w-14 h-14 md:w-20 md:h-20`
+- Fjernet tekst-labels på mobil (kun ikoner)
+- Lagt til `active:scale-95` for touch-feedback
+- Kompaktere gaps og margins på mobil
+
+**Kode-eksempel:**
+```typescript
+const buttonSize = isMobile ? 'w-12 h-12' : 'w-14 h-14 md:w-20 md:h-20';
+const iconSize = isMobile ? 18 : 20;
+```
+
+#### 3. Responsiv ContextActionBar (`components/ContextActionBar.tsx`)
+
+**Endringer:**
+- Importert `useIsMobile` hook
+- Posisjonering:
+  - Mobil: `left-2 right-2 bottom-24` (full bredde med padding)
+  - Desktop: `left-1/2 -translate-x-1/2 bottom-28` (sentrert)
+- Grid layout:
+  - Mobil: 1 kolonne (lettere å trykke)
+  - Desktop: 2 kolonner
+- Kompaktere padding og tekststørrelser på mobil
+
+#### 4. Fullskjerm Modaler på Mobil (`ShadowsGame.tsx`)
+
+**CharacterPanel og Journal/EnemyPanel:**
+- Mobil: Fullskjerm modal med sticky header og close-knapp
+- Desktop: Slide-in sidepaneler som før
+
+**Kode-struktur:**
+```tsx
+{showLeftPanel && (
+  isMobile ? (
+    <div className="fixed inset-0 z-50 bg-background/95">
+      <div className="sticky top-0 ... ">
+        <button onClick={() => setShowLeftPanel(false)}>
+          <X size={20} />
+        </button>
+      </div>
+      <CharacterPanel ... />
+    </div>
+  ) : (
+    // Desktop slide-in panel
+  )
+)}
+```
+
+#### 5. Responsiv Header (`ShadowsGame.tsx`)
+
+**Endringer:**
+- Mobil: Kompakt header nær toppen (`top-2`)
+- Forkortet tekst: "R:" i stedet for "ROUND:", "D:" i stedet for "DOOM:"
+- Mindre padding og ikonstørrelser
+- Mindre settings-knapp
+
+#### 6. Responsiv Footer (`ShadowsGame.tsx`)
+
+**Endringer:**
+- Mobil: Mindre høyde (`h-20` vs `h-24`)
+- Kompakt "Next Turn"-knapp:
+  - Mobil: "Next" / "End"
+  - Desktop: "Next Turn" / "End Round"
+- Mindre gaps og padding
+
+### Filer endret
+- `src/game/components/GameBoard.tsx` - Touch-events for pan og pinch-zoom
+- `src/game/components/ActionBar.tsx` - Responsiv knappstørrelser
+- `src/game/components/ContextActionBar.tsx` - Responsiv layout
+- `src/game/ShadowsGame.tsx` - Fullskjerm modaler, responsiv header/footer
+
+### Touch-interaksjoner (Sammendrag)
+
+| Gest | Funksjon |
+|------|----------|
+| **1 finger drag** | Pan/flytt kart |
+| **2 finger pinch** | Zoom inn/ut |
+| **Tap på tile** | Velg/flytt til tile |
+| **Tap på fiende** | Velg fiende |
+| **Tap på knapp** | Utfør handling |
+
+### UI Størrelser (Mobile)
+
+| Element | Størrelse | Touch Target |
+|---------|-----------|--------------|
+| Action buttons | 48x48px | God (≥44px) |
+| Settings button | 36x36px | Akseptabel |
+| Close buttons | 40x40px | God |
+| Next/End button | ~64x48px | Utmerket |
+
+---
+
 ## 2026-01-19: Edge Blocking System - "No Passage Through"
 
 ### Oppgave
