@@ -1,5 +1,214 @@
 # Development Log
 
+## 2026-01-20: Mobile Touch Hero Movement Enhancement
+
+### Oppsummering
+
+Forbedret touch-basert hero-bevegelse for mobil. Lagt til visuell indikasjon av gyldige bevegelser, long-press preview-funksjonalitet, og forbedret touch-feedback på tiles spilleren kan flytte til.
+
+---
+
+### PROBLEMER IDENTIFISERT 🔴
+
+#### 1. Manglende Visuell Feedback på Gyldige Bevegelser
+**Problem:** På mobil var det vanskelig å se hvilke tiles helten kunne flytte til. Ingen tydelig markering av nabo-tiles.
+
+#### 2. Tap-to-move Presisjon
+**Problem:** Brukere måtte treffe tiles presist for å flytte. Ingen feedback før man faktisk trykket.
+
+#### 3. Begrenset Touch Feedback
+**Problem:** Kun grunnleggende brightness-endring ved touch. Ingen long-press preview eller haptic feedback.
+
+---
+
+### LØSNING IMPLEMENTERT ✅
+
+#### 1. Gyldige Bevegelser Highlighting (`validMoves`)
+
+**Fil:** `src/game/components/GameBoard.tsx`
+
+Lagt til beregning av gyldige bevegelser basert på aktiv spillers posisjon:
+
+```typescript
+// Calculate valid move tiles for the active player (adjacent tiles they can move to)
+const validMoves = useMemo(() => {
+  const activePlayer = players[activePlayerIndex];
+  if (!activePlayer || activePlayer.isDead) return new Set<string>();
+
+  const validSet = new Set<string>();
+  const playerPos = activePlayer.position;
+
+  // Get all adjacent tiles (neighbors)
+  HEX_NEIGHBORS.forEach(dir => {
+    const neighborQ = playerPos.q + dir.q;
+    const neighborR = playerPos.r + dir.r;
+    const key = `${neighborQ},${neighborR}`;
+    // Add existing and possible moves
+    if (existingTile || isPossibleMove) validSet.add(key);
+  });
+
+  return validSet;
+}, [players, activePlayerIndex, tiles, possibleMoves]);
+```
+
+#### 2. Long-Press Preview System
+
+**Ny funksjonalitet:**
+- `LONG_PRESS_THRESHOLD = 400ms` - tid for å trigge preview
+- `longPressTile` state - holder posisjon for forhåndsvisning
+- `selectedMoveTarget` state - valgt bevegelsesmål
+- Haptic feedback via `navigator.vibrate(50)` ved long-press
+
+```typescript
+const handleTileLongPressStart = (q: number, r: number) => {
+  longPressTimer.current = setTimeout(() => {
+    const key = `${q},${r}`;
+    if (validMoves.has(key)) {
+      setLongPressTile({ q, r });
+      setSelectedMoveTarget({ q, r });
+      // Haptic feedback if available
+      if (navigator.vibrate) navigator.vibrate(50);
+    }
+  }, LONG_PRESS_THRESHOLD);
+};
+```
+
+#### 3. CSS Animasjoner for Touch Feedback
+
+**Fil:** `src/index.css`
+
+Nye CSS-klasser for visuell feedback:
+
+| Klasse | Effekt |
+|--------|--------|
+| `.valid-move-tile` | Pulserende grønn glød på gyldige bevegelser |
+| `.selected-move-target` | Gyllen glød på valgt bevegelsesmål |
+| `.long-press-preview` | Blå fylle-animasjon ved long-press |
+| `.explore-tile-adjacent` | Forbedret synlighet på utforsk-tiles nær spiller |
+| `.move-arrow-indicator` | Hoppende animasjon på bevegelsesikoner |
+
+```css
+/* Valid move tile - shows where player can move */
+@keyframes valid-move-pulse {
+  0%, 100% { box-shadow: inset 0 0 12px 2px hsla(120, 70%, 50%, 0.15); }
+  50% { box-shadow: inset 0 0 20px 4px hsla(120, 70%, 50%, 0.3); }
+}
+
+.valid-move-tile::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  border: 2px solid hsla(120, 60%, 50%, 0.4);
+  animation: valid-move-pulse 2s ease-in-out infinite;
+  z-index: 50;
+}
+```
+
+#### 4. Forbedret Touch Handlers på Tiles
+
+**Tiles og PossibleMoves nå inkluderer:**
+- Touch start med long-press timer
+- Touch end med cleanup
+- Touch cancel håndtering
+- Visual feedback klasser basert på touch-state
+
+```tsx
+<div
+  onTouchStart={() => {
+    setTouchedTileKey(tileKey);
+    handleTileLongPressStart(tile.q, tile.r);
+  }}
+  onTouchEnd={() => {
+    setTouchedTileKey(null);
+    handleTileLongPressEnd();
+  }}
+  onTouchCancel={() => {
+    setTouchedTileKey(null);
+    handleTileLongPressEnd();
+  }}
+>
+```
+
+#### 5. Props Oppdatering
+
+**GameBoard Props:**
+```typescript
+interface GameBoardProps {
+  // ... existing props
+  activePlayerIndex?: number; // NEW: For highlighting valid moves
+}
+```
+
+**ShadowsGame.tsx:**
+```tsx
+<GameBoard
+  // ... existing props
+  activePlayerIndex={state.activePlayerIndex}
+/>
+```
+
+---
+
+### NYE KONSTANTER
+
+```typescript
+const LONG_PRESS_THRESHOLD = 400; // ms - tid for long-press preview
+const HEX_NEIGHBORS = [
+  { q: 1, r: 0 },   // East
+  { q: 0, r: 1 },   // Southeast
+  { q: -1, r: 1 },  // Southwest
+  { q: -1, r: 0 },  // West
+  { q: 0, r: -1 },  // Northwest
+  { q: 1, r: -1 },  // Northeast
+];
+```
+
+---
+
+### FILER MODIFISERT
+
+1. **src/game/components/GameBoard.tsx**
+   - Ny prop: `activePlayerIndex`
+   - Nye state: `longPressTile`, `selectedMoveTarget`
+   - Ny useMemo: `validMoves` beregning
+   - Nye funksjoner: `handleTileLongPressStart`, `handleTileLongPressEnd`
+   - Forbedret tile-rendering med touch-klasser
+   - Forbedret possibleMoves-rendering med touch-handlers
+
+2. **src/game/ShadowsGame.tsx**
+   - Lagt til `activePlayerIndex` prop til GameBoard
+
+3. **src/index.css**
+   - Nye CSS-klasser: `.valid-move-tile`, `.selected-move-target`, `.long-press-preview`, `.explore-tile-adjacent`, `.move-arrow-indicator`
+   - Nye animasjoner: `valid-move-pulse`, `selected-target-glow`, `long-press-fill`, `move-arrow-bounce`, `explore-pulse`
+
+---
+
+### BRUKEROPPLEVELSE FORBEDRINGER
+
+| Før | Etter |
+|-----|-------|
+| Ingen visuell indikasjon på gyldige trekk | Grønn pulserende kant på tiles spilleren kan flytte til |
+| Tap måtte være presis | Større touch-targets med bedre visuell feedback |
+| Ingen forhåndsvisning | Long-press (400ms) viser bevegelsesmål med gyllen glød |
+| Ingen haptic feedback | Vibrasjon ved long-press på mobile enheter |
+| Statisk utforsk-tiles | Animerte ikoner og forbedret synlighet |
+
+---
+
+### RESULTAT
+
+- ✅ Visuell indikasjon på gyldige bevegelser (grønn kant)
+- ✅ Long-press preview med gyllen glød (400ms)
+- ✅ Haptic feedback på mobile enheter
+- ✅ Forbedret touch-feedback på tiles
+- ✅ Animerte ikoner på utforsk-tiles
+- ✅ TypeScript kompilerer uten feil
+- ✅ Build vellykket (916KB bundle)
+
+---
+
 ## 2026-01-20: Room Spawn Refactoring - spawnRoom() Clarity Improvement
 
 ### Oppsummering
