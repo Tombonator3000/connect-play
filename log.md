@@ -1,5 +1,108 @@
 # Development Log
 
+## 2026-01-20: Cast Spell Action - "The Arcane Arts"
+
+### Oppgave
+Implementere en "Cast Spell" action i action bar for hero-karakterer som kan bruke magi (Occultist). Denne handlingen lar spillere velge en spell fra karakterens spell-liste, forbruke nødvendig Insight-kostnad, og anvende spell-effekten.
+
+### Implementasjon
+
+#### 1. Cast Action Handler (`src/game/ShadowsGame.tsx`)
+
+**Endring:** Lagt til `case 'cast':` og `case 'cancel_cast':` i handleAction switch.
+
+**Spell Casting Logikk:**
+- Sjekker at spilleren har nok Insight for å caste
+- For damage/banish spells: Krever valgt fiende-target
+- Sjekker at target er innenfor spell range
+- Utfører effekt basert på effectType:
+  - `damage`: Gjør direkte skade til valgt fiende
+  - `heal`: Healer caster
+  - `reveal`: Avslører tiles innen range og gir Insight
+  - `banish`: Bannlyser svake fiender (HP <= spell.value)
+
+**Target Selection Flow:**
+- Hvis ingen fiende er valgt for damage/banish spell, setter `activeSpell` state
+- ActionBar viser "Cancel" knapp når activeSpell er satt
+- Klikk på fiende med activeSpell triggerer casting
+- `cancel_cast` action avbryter spell-valget
+
+```typescript
+case 'cast':
+  const spell = payload;
+
+  // Check Insight cost
+  if (activePlayer.insight < spell.cost) {
+    addToLog(`Not enough Insight to cast ${spell.name}.`);
+    return;
+  }
+
+  // For damage spells, need target
+  if (spell.effectType === 'damage' || spell.effectType === 'banish') {
+    const spellTarget = state.enemies.find(e => e.id === state.selectedEnemyId);
+    if (!spellTarget) {
+      setState(prev => ({ ...prev, activeSpell: spell }));
+      addToLog(`Select a target for ${spell.name}. Range: ${spell.range} tiles.`);
+      return;
+    }
+    // Check range and apply damage...
+  }
+```
+
+#### 2. Occultist Gets All Spells (`src/game/ShadowsGame.tsx`)
+
+**Endring:** Occultist får nå alle tilgjengelige spells (4 stykker) i stedet for bare én.
+
+```typescript
+// Før:
+spells: (type === 'occultist' ? [SPELLS[0]] : [])
+
+// Etter:
+spells: (type === 'occultist' ? SPELLS : [])
+```
+
+### Tilgjengelige Spells (fra constants.ts)
+
+| Spell | Insight Cost | Effect | Range | Description |
+|-------|--------------|--------|-------|-------------|
+| **Wither** | 2 | 2 damage | 3 | Drains life force from a target |
+| **Mend Flesh** | 2 | Heal 2 HP | 1 | Knits wounds together |
+| **True Sight** | 1 | Reveal + 1 Insight | 0 | Reveals hidden clues |
+| **Banish** | 4 | Destroy (HP ≤5) | 2 | Banish weak enemies to the void |
+
+### Filer Endret
+
+| Fil | Handling | Beskrivelse |
+|-----|----------|-------------|
+| `src/game/ShadowsGame.tsx` | ENDRET | Lagt til `case 'cast':` og `case 'cancel_cast':` i handleAction |
+| `src/game/ShadowsGame.tsx` | ENDRET | Occultist får nå alle SPELLS i stedet for bare én |
+
+### UI/UX Flow
+
+1. **Spell-menyen**: Klikk på ⚡ (Cast) knappen for å åpne spell-menyen
+2. **Velg spell**: Klikk på en spell for å velge den (viser Insight-kostnad)
+3. **Target selection**: For damage/banish spells, klikk på en fiende
+4. **Casting**: Spell utføres, Insight trekkes, AP brukes
+5. **Feedback**: Floating text viser effekt, log oppdateres
+
+### Spillmekanikk
+
+| Handling | AP Cost | Insight Cost | Krav |
+|----------|---------|--------------|------|
+| Cast Damage Spell | 1 | Spell.cost | Valgt fiende innen range |
+| Cast Heal Spell | 1 | Spell.cost | Caster må ikke være på full HP |
+| Cast Reveal Spell | 1 | Spell.cost | Ingen |
+| Cast Banish Spell | 1 | Spell.cost | Fiende HP ≤ spell.value |
+
+### Fremtidige Forbedringer
+
+- Spell selection for scenario start (velg 3 av tilgjengelige)
+- Professor med begrenset spell-tilgang
+- OccultistSpell system (Hero Quest-stil med uses per scenario)
+- Sanity cost for visse spells
+
+---
+
 ## 2026-01-20: Legacy Hero Permadeath Option - "Death's Final Embrace"
 
 ### Oppgave
