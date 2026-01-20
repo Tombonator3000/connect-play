@@ -573,6 +573,137 @@ export const NecronomiconIcon: React.FC<ItemIconProps> = ({ size = 24, className
   </svg>
 );
 
+// ===== QUEST ITEMS =====
+
+export const QuestKeyIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Glow effect */}
+    <circle cx="12" cy="12" r="10" fill="url(#key-glow)" opacity="0.4"/>
+    {/* Key head (ornate) */}
+    <circle cx="8" cy="8" r="5" fill="none" stroke="url(#key-metal)" strokeWidth="2"/>
+    <circle cx="8" cy="8" r="2" fill="#D4AF37"/>
+    {/* Key shaft */}
+    <rect x="11" y="7" width="10" height="2" fill="url(#key-metal)"/>
+    {/* Key teeth */}
+    <rect x="17" y="9" width="2" height="3" fill="#D4AF37"/>
+    <rect x="19" y="9" width="2" height="2" fill="#D4AF37"/>
+    {/* Sparkle */}
+    <circle cx="6" cy="6" r="1" fill="white" opacity="0.8"/>
+    <defs>
+      <radialGradient id="key-glow" cx="12" cy="12" r="10">
+        <stop stopColor="#FBBF24"/>
+        <stop offset="1" stopColor="#FBBF24" stopOpacity="0"/>
+      </radialGradient>
+      <linearGradient id="key-metal" x1="4" y1="4" x2="21" y2="12">
+        <stop stopColor="#FDE68A"/>
+        <stop offset="0.5" stopColor="#D4AF37"/>
+        <stop offset="1" stopColor="#B45309"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+export const QuestClueIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Glow effect */}
+    <circle cx="12" cy="12" r="10" fill="url(#clue-glow)" opacity="0.3"/>
+    {/* Paper/document */}
+    <path d="M6 3H15L18 6V21H6V3Z" fill="#FEF3C7"/>
+    <path d="M15 3V6H18" fill="none" stroke="#D4AF37" strokeWidth="1"/>
+    {/* Text lines */}
+    <rect x="8" y="8" width="8" height="1" fill="#92400E"/>
+    <rect x="8" y="11" width="6" height="1" fill="#92400E"/>
+    <rect x="8" y="14" width="7" height="1" fill="#92400E"/>
+    <rect x="8" y="17" width="5" height="1" fill="#92400E"/>
+    {/* Magnifying glass overlay */}
+    <circle cx="16" cy="17" r="4" fill="none" stroke="#3B82F6" strokeWidth="1.5"/>
+    <line x1="19" y1="20" x2="22" y2="23" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round"/>
+    <defs>
+      <radialGradient id="clue-glow" cx="12" cy="12" r="10">
+        <stop stopColor="#3B82F6"/>
+        <stop offset="1" stopColor="#3B82F6" stopOpacity="0"/>
+      </radialGradient>
+    </defs>
+  </svg>
+);
+
+export const QuestArtifactIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Glow effect */}
+    <circle cx="12" cy="12" r="10" fill="url(#artifact-glow)" opacity="0.4"/>
+    {/* Crystal/gem shape */}
+    <path d="M12 2L20 10L12 22L4 10L12 2Z" fill="url(#artifact-crystal)"/>
+    {/* Facets */}
+    <path d="M12 2L12 22" stroke="#E9D5FF" strokeWidth="0.5" opacity="0.5"/>
+    <path d="M4 10L20 10" stroke="#E9D5FF" strokeWidth="0.5" opacity="0.5"/>
+    <path d="M12 2L4 10L12 12L20 10L12 2Z" fill="#A855F7" opacity="0.4"/>
+    {/* Sparkles */}
+    <circle cx="10" cy="8" r="1" fill="white" opacity="0.9"/>
+    <circle cx="14" cy="14" r="0.5" fill="white" opacity="0.7"/>
+    <defs>
+      <radialGradient id="artifact-glow" cx="12" cy="12" r="10">
+        <stop stopColor="#A855F7"/>
+        <stop offset="1" stopColor="#A855F7" stopOpacity="0"/>
+      </radialGradient>
+      <linearGradient id="artifact-crystal" x1="4" y1="2" x2="20" y2="22">
+        <stop stopColor="#E9D5FF"/>
+        <stop offset="0.5" stopColor="#A855F7"/>
+        <stop offset="1" stopColor="#7C3AED"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+export const QuestCollectibleIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Glow effect */}
+    <circle cx="12" cy="12" r="10" fill="url(#collect-glow)" opacity="0.3"/>
+    {/* Star shape */}
+    <path d="M12 2L14.5 9H22L16 14L18.5 21L12 17L5.5 21L8 14L2 9H9.5L12 2Z"
+          fill="url(#collect-star)" stroke="#FDE68A" strokeWidth="0.5"/>
+    {/* Center shine */}
+    <circle cx="12" cy="12" r="2" fill="#FEF3C7"/>
+    <defs>
+      <radialGradient id="collect-glow" cx="12" cy="12" r="10">
+        <stop stopColor="#FBBF24"/>
+        <stop offset="1" stopColor="#FBBF24" stopOpacity="0"/>
+      </radialGradient>
+      <linearGradient id="collect-star" x1="2" y1="2" x2="22" y2="22">
+        <stop stopColor="#FDE68A"/>
+        <stop offset="0.5" stopColor="#FBBF24"/>
+        <stop offset="1" stopColor="#D97706"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+export const QuestComponentIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Glow effect */}
+    <circle cx="12" cy="12" r="10" fill="url(#comp-glow)" opacity="0.3"/>
+    {/* Gear shape */}
+    <path d="M12 4L14 6L18 6L18 10L20 12L18 14L18 18L14 18L12 20L10 18L6 18L6 14L4 12L6 10L6 6L10 6L12 4Z"
+          fill="url(#comp-metal)"/>
+    {/* Center hole */}
+    <circle cx="12" cy="12" r="3" fill="#1F2937"/>
+    {/* Inner detail */}
+    <circle cx="12" cy="12" r="1.5" fill="none" stroke="#22D3EE" strokeWidth="0.5"/>
+    {/* Sparkle */}
+    <circle cx="9" cy="9" r="0.8" fill="white" opacity="0.7"/>
+    <defs>
+      <radialGradient id="comp-glow" cx="12" cy="12" r="10">
+        <stop stopColor="#22D3EE"/>
+        <stop offset="1" stopColor="#22D3EE" stopOpacity="0"/>
+      </radialGradient>
+      <linearGradient id="comp-metal" x1="4" y1="4" x2="20" y2="20">
+        <stop stopColor="#67E8F9"/>
+        <stop offset="0.5" stopColor="#22D3EE"/>
+        <stop offset="1" stopColor="#0891B2"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
 // ===== ITEM ICON MAPPING =====
 
 export type ItemIconId =
@@ -581,7 +712,8 @@ export type ItemIconId =
   | 'leather_jacket' | 'trench_coat' | 'armored_vest'
   | 'flash' | 'lantern' | 'lockpick' | 'crowbar'
   | 'med' | 'whiskey' | 'bandages' | 'sedatives'
-  | 'elder_sign' | 'protective_ward' | 'book';
+  | 'elder_sign' | 'protective_ward' | 'book'
+  | 'quest_key' | 'quest_clue' | 'quest_artifact' | 'quest_collectible' | 'quest_component' | 'quest_item';
 
 export const ITEM_ICONS: Record<ItemIconId, React.FC<ItemIconProps>> = {
   // Melee weapons
@@ -612,10 +744,38 @@ export const ITEM_ICONS: Record<ItemIconId, React.FC<ItemIconProps>> = {
   elder_sign: ElderSignIcon,
   protective_ward: ProtectiveWardIcon,
   book: NecronomiconIcon,
+  // Quest items
+  quest_key: QuestKeyIcon,
+  quest_clue: QuestClueIcon,
+  quest_artifact: QuestArtifactIcon,
+  quest_collectible: QuestCollectibleIcon,
+  quest_component: QuestComponentIcon,
+  quest_item: QuestCollectibleIcon, // Default quest item icon
 };
 
-// Helper function to get item icon by ID
-export function getItemIcon(itemId: string): React.FC<ItemIconProps> | null {
+// Helper function to get item icon by ID or type
+export function getItemIcon(itemId: string, itemType?: string, questItemType?: string): React.FC<ItemIconProps> | null {
+  // Handle quest items by their questItemType
+  if (itemType === 'quest_item' && questItemType) {
+    switch (questItemType) {
+      case 'key': return QuestKeyIcon;
+      case 'clue': return QuestClueIcon;
+      case 'artifact': return QuestArtifactIcon;
+      case 'collectible': return QuestCollectibleIcon;
+      case 'component': return QuestComponentIcon;
+    }
+  }
+
+  // Handle key type items
+  if (itemType === 'key') {
+    return QuestKeyIcon;
+  }
+
+  // Handle clue type items
+  if (itemType === 'clue') {
+    return QuestClueIcon;
+  }
+
   const normalizedId = itemId.toLowerCase().replace(/[^a-z0-9_]/g, '_');
   return ITEM_ICONS[normalizedId as ItemIconId] || null;
 }

@@ -193,7 +193,7 @@ function checkSingleVictoryCondition(
 
   switch (condition.type) {
     case 'escape':
-      typeCheckPassed = checkEscapeVictory(gameState);
+      typeCheckPassed = checkEscapeVictory(gameState, scenario);
       break;
     case 'assassination':
       typeCheckPassed = checkAssassinationVictory(scenario, gameState);
@@ -225,21 +225,62 @@ function checkSingleVictoryCondition(
 
 /**
  * Check escape victory - player must be on exit tile with required items
+ * UPDATED: Now properly checks that required quest items (keys, artifacts) are collected
  */
-function checkEscapeVictory(gameState: {
-  players: Player[];
-  board: Tile[];
-  questItemsCollected: string[];
-}): boolean {
+function checkEscapeVictory(
+  gameState: {
+    players: Player[];
+    board: Tile[];
+    questItemsCollected: string[];
+  },
+  scenario?: Scenario
+): boolean {
   // Check if any living player is on an exit tile
   const alivePlayers = gameState.players.filter(p => !p.isDead);
-  const exitTile = gameState.board.find(t => t.name.toLowerCase().includes('exit') || t.isGate);
+
+  // Find exit tile - check for exit_door object type first, then fallback to name/isGate
+  const exitTile = gameState.board.find(t =>
+    t.object?.type === 'exit_door' ||
+    t.name.toLowerCase().includes('exit') ||
+    t.isGate
+  );
 
   if (!exitTile) return false;
 
-  return alivePlayers.some(p =>
+  // Check if player is on exit tile
+  const playerOnExit = alivePlayers.some(p =>
     p.position.q === exitTile.q && p.position.r === exitTile.r
   );
+
+  if (!playerOnExit) return false;
+
+  // If scenario is provided, check that required quest items are collected
+  if (scenario) {
+    // Find all required find_item objectives that must be completed before escape
+    const requiredItemObjectives = scenario.objectives.filter(obj =>
+      obj.type === 'find_item' &&
+      !obj.isOptional &&
+      !obj.isHidden // Only check visible objectives
+    );
+
+    // Check if all required item objectives are completed
+    const allRequiredItemsFound = requiredItemObjectives.every(obj => obj.completed);
+
+    if (!allRequiredItemsFound) {
+      // Player is on exit but hasn't collected required items
+      return false;
+    }
+
+    // Also check that the escape objective itself exists and is not hidden
+    const escapeObjective = scenario.objectives.find(obj => obj.type === 'escape');
+    if (escapeObjective?.isHidden) {
+      // Escape objective is still hidden (prerequisites not met)
+      return false;
+    }
+  }
+
+  // All checks passed - player can escape
+  return true;
 }
 
 /**

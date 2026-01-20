@@ -1540,6 +1540,7 @@ const ShadowsGame: React.FC = () => {
           let updatedObjectiveSpawnState = prev.objectiveSpawnState;
           let updatedScenario = prev.activeScenario;
           let updatedQuestItemsCollected = prev.questItemsCollected;
+          let updatedPlayers = prev.players;
 
           if (questItem && prev.activeScenario) {
             // Found a quest item! Collect it.
@@ -1566,10 +1567,43 @@ const ShadowsGame: React.FC = () => {
             }
 
             updatedQuestItemsCollected = [...prev.questItemsCollected, questItem.id];
+
+            // ADD QUEST ITEM TO PLAYER'S INVENTORY
+            // Create a proper Item from the quest item data
+            const questItemForInventory: Item = {
+              id: `quest_${questItem.id}`,
+              name: questItem.name,
+              description: questItem.description,
+              type: 'quest_item',
+              isQuestItem: true,
+              questItemType: questItem.type as 'key' | 'clue' | 'collectible' | 'artifact' | 'component',
+              objectiveId: questItem.objectiveId,
+              slotType: 'bag', // Quest items go in bag
+              category: 'special'
+            };
+
+            // Add to active player's inventory
+            const activePlayer = prev.players[prev.activePlayerIndex];
+            if (activePlayer) {
+              const equipResult = equipItem(activePlayer.inventory, questItemForInventory);
+              if (equipResult.success) {
+                updatedPlayers = prev.players.map((p, idx) => {
+                  if (idx === prev.activePlayerIndex) {
+                    return { ...p, inventory: equipResult.inventory };
+                  }
+                  return p;
+                });
+                addToLog(`${activePlayer.name} tar med seg ${questItem.name}.`);
+                addFloatingText(activePlayer.position.q, activePlayer.position.r, questItem.name, "text-yellow-400");
+              } else {
+                addToLog(`⚠️ Inventory full! Quest item ${questItem.name} is tracked but not stored.`);
+              }
+            }
           }
 
           return {
             ...prev,
+            players: updatedPlayers,
             board: prev.board.map(t => {
               if (t.id === tile.id) {
                 // Remove collected quest item from tile's items array
