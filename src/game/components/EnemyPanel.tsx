@@ -2,6 +2,7 @@ import React from 'react';
 import { Enemy } from '../types';
 import { BESTIARY } from '../constants';
 import { Skull, Swords, Brain, Activity, BookOpen, X, Shield } from 'lucide-react';
+import { getMonsterPortrait, getMonsterDisplayName } from '../utils/monsterAssets';
 
 interface EnemyPanelProps {
   enemy: Enemy;
@@ -11,13 +12,27 @@ interface EnemyPanelProps {
 const EnemyPanel: React.FC<EnemyPanelProps> = ({ enemy, onClose }) => {
   const hpPercent = (enemy.hp / enemy.maxHp) * 100;
   const info = BESTIARY[enemy.type];
+  const portraitUrl = getMonsterPortrait(enemy.type);
 
   return (
     <div className="bg-red-950/95 backdrop-blur-2xl border-2 border-primary rounded-2xl shadow-[var(--shadow-doom)] overflow-hidden animate-in slide-in-from-right duration-300 w-full h-full flex flex-col">
       <div className="bg-red-900/20 p-4 border-b border-primary/30 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
-          <Skull className="text-primary" size={20} />
-          <h2 className="text-xl font-display text-foreground italic tracking-tight uppercase">{enemy.name}</h2>
+          <div className="w-10 h-10 rounded-full border-2 border-primary overflow-hidden bg-background shrink-0">
+            <img 
+              src={portraitUrl} 
+              alt={enemy.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+              }}
+            />
+          </div>
+          <div>
+            <h2 className="text-xl font-display text-foreground italic tracking-tight uppercase">{enemy.name}</h2>
+            <div className="text-[9px] text-primary uppercase tracking-widest">{getMonsterDisplayName(enemy.type)}</div>
+          </div>
         </div>
         {onClose && (
           <button onClick={onClose} className="text-primary hover:text-foreground transition-colors p-1">
@@ -30,6 +45,17 @@ const EnemyPanel: React.FC<EnemyPanelProps> = ({ enemy, onClose }) => {
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/leather.png')] opacity-10 pointer-events-none"></div>
 
         <div className="p-6 space-y-6 relative z-10">
+          {/* Monster Portrait */}
+          <div className="flex justify-center">
+            <div className="w-24 h-24 rounded-xl border-4 border-red-900 shadow-[var(--shadow-doom)] overflow-hidden">
+              <img 
+                src={portraitUrl} 
+                alt={enemy.name}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          </div>
+
           <div>
             <div className="flex justify-between items-center mb-1 text-[10px] font-bold text-primary uppercase tracking-widest">
               <span className="flex items-center gap-1"><Activity size={12} /> HP</span>
