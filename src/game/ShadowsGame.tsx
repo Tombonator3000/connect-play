@@ -1837,8 +1837,90 @@ const ShadowsGame: React.FC = () => {
         // Could spawn random item here
         addToLog(`You search carefully but find nothing of value.`);
         break;
+
+      // =====================================================================
+      // OBJECTIVE COMPLETION ACTIONS - Critical for winning scenarios
+      // =====================================================================
+
+      // Perform ritual at altar - completes ritual/interact objectives
+      case 'perform_ritual':
+      case 'seal_portal':
+      case 'flip_switch':
+        if (state.activeScenario) {
+          // Find matching ritual or interact objective
+          const interactObjective = state.activeScenario.objectives.find(
+            obj => (obj.type === 'ritual' || obj.type === 'interact') && !obj.completed && !obj.isHidden
+          );
+          if (interactObjective) {
+            const newAmount = (interactObjective.currentAmount || 0) + 1;
+            const targetAmount = interactObjective.targetAmount || 1;
+            const isComplete = newAmount >= targetAmount;
+
+            setState(prev => ({
+              ...prev,
+              activeScenario: prev.activeScenario ? {
+                ...prev.activeScenario,
+                objectives: prev.activeScenario.objectives.map(obj => {
+                  if (obj.id === interactObjective.id) {
+                    const updatedObj = { ...obj, currentAmount: newAmount, completed: isComplete };
+                    // Update shortDescription with progress
+                    if (targetAmount > 1) {
+                      updatedObj.shortDescription = obj.shortDescription.replace(
+                        /\(\d+\/\d+\)/, `(${newAmount}/${targetAmount})`
+                      );
+                    }
+                    return updatedObj;
+                  }
+                  // Reveal hidden objectives when their prerequisite is completed
+                  if (obj.isHidden && obj.revealedBy === interactObjective.id && isComplete) {
+                    return { ...obj, isHidden: false };
+                  }
+                  return obj;
+                })
+              } : null
+            }));
+
+            if (isComplete) {
+              addToLog(`OBJECTIVE COMPLETE: ${interactObjective.shortDescription}`);
+              addFloatingText(tile.q, tile.r, "OBJECTIVE COMPLETE!", "text-purple-400");
+            } else {
+              addToLog(`Objective progress: ${interactObjective.shortDescription} (${newAmount}/${targetAmount})`);
+              addFloatingText(tile.q, tile.r, `${newAmount}/${targetAmount}`, "text-yellow-400");
+            }
+          }
+        }
+        break;
+
+      // Escape action - completes escape objectives and triggers victory
+      case 'escape':
+        if (state.activeScenario) {
+          const escapeObjective = state.activeScenario.objectives.find(
+            obj => obj.type === 'escape' && !obj.completed
+          );
+          if (escapeObjective) {
+            setState(prev => ({
+              ...prev,
+              activeScenario: prev.activeScenario ? {
+                ...prev.activeScenario,
+                objectives: prev.activeScenario.objectives.map(obj =>
+                  obj.id === escapeObjective.id
+                    ? { ...obj, completed: true }
+                    : obj
+                )
+              } : null
+            }));
+            addToLog(`OBJECTIVE COMPLETE: ${escapeObjective.shortDescription}`);
+            addToLog(`You have escaped!`);
+            addFloatingText(tile.q, tile.r, "ESCAPED!", "text-green-400");
+          } else {
+            // No escape objective, but we're on exit - still log escape
+            addToLog(`You have escaped the horrors within!`);
+            addFloatingText(tile.q, tile.r, "ESCAPED!", "text-green-400");
+          }
+        }
+        break;
     }
-  }, [activeContextTarget, state.board]);
+  }, [activeContextTarget, state.board, state.activeScenario]);
 
   // Handle puzzle completion (from PuzzleModal)
   // Now supports cost parameter for blood_ritual puzzles

@@ -1,5 +1,103 @@
 # Development Log
 
+## 2026-01-20: Scenario Win Conditions Audit & Fix - ALL Scenario Types Now Winnable!
+
+### Oppsummering
+
+Deep audit av alle scenario victory conditions avdekket KRITISKE problemer som gjorde flere scenario-typer UMULIGE å vinne. Fixet nå slik at alle 6 scenario-typer kan vinnes.
+
+---
+
+### KRITISKE PROBLEMER FUNNET 🔴
+
+#### 1. `escape` Objective Type - ALDRI COMPLETABLE
+**Problem:** Escape scenarios hadde `obj_escape` objectives som ALDRI ble marked som completed.
+- `victoryConditions` krevde at `obj_escape` var completed
+- Men det fantes ingen handling som markerte denne som complete
+- **Resultat:** Escape scenarios var UMUIGE å vinne!
+
+#### 2. `ritual` Objective Type - ALDRI COMPLETABLE
+**Problem:** Ritual scenarios hadde `ritual` objectives som ALDRI ble marked som completed.
+- `perform_ritual` action eksisterte på altar objects
+- Men `handleContextActionEffect` hadde INGEN case for `perform_ritual`
+- **Resultat:** Ritual scenarios var UMULIGE å vinne!
+
+#### 3. `interact` Objective Type - ALDRI COMPLETABLE
+**Problem:** Mange scenarios brukte `interact` objectives (place elder signs, confront truth, etc.)
+- Ingen handling completerte disse objectives
+- **Resultat:** Seal Portal og Investigation scenarios var UMULIGE å vinne!
+
+#### 4. Exit/Altar Tiles Mangler Object Type
+**Problem:** Når exit/altar tiles ble spawnet, fikk de ikke riktig `object.type`
+- Exit tiles fikk bare `isGate: true` og `name: 'Exit Door'`
+- Men de fikk IKKE `object: { type: 'exit_door' }` som trengs for escape action
+- **Resultat:** Spilleren kunne ikke se eller bruke escape action!
+
+---
+
+### IMPLEMENTERT FIX ✅
+
+#### 1. objectiveSpawner.ts - Exit/Altar Object Types
+**Filer:** `src/game/utils/objectiveSpawner.ts:454-470, 800-815`
+
+- Exit tiles får nå `object: { type: 'exit_door', searched: false }`
+- Altar tiles får nå `object: { type: 'altar', searched: false }`
+- Gjelder både `onTileExplored()` og `executeGuaranteedSpawns()`
+
+#### 2. ShadowsGame.tsx - Objective Completion Actions
+**Fil:** `src/game/ShadowsGame.tsx:1845-1920`
+
+Lagt til cases i `handleContextActionEffect` for:
+
+```javascript
+// Ritual/Interact objectives
+case 'perform_ritual':
+case 'seal_portal':
+case 'flip_switch':
+  // Finner ritual/interact objective og marker som complete
+  // Støtter targetAmount for progressive objectives (0/3, 1/3, etc.)
+
+// Escape objectives
+case 'escape':
+  // Finner escape objective og marker som complete
+  // Trigger victory check via useEffect
+```
+
+---
+
+### SCENARIO TYPES VICTORY FLOW
+
+| Type | Victory Condition | Required Objectives | Status |
+|------|------------------|---------------------|--------|
+| **Escape** | Spiller på exit tile + required items | `obj_find_key`, `obj_find_exit`, `obj_escape` | ✅ FIXED |
+| **Assassination** | Boss drept | `obj_kill_target` | ✅ OK (fungerte) |
+| **Survival** | Overlev X runder | `obj_survive` | ✅ OK (fungerte) |
+| **Collection** | Samle alle items | `obj_collect` | ✅ OK (fungerte) |
+| **Ritual** | Utfør ritual ved altar | `obj_gather_components`, `obj_find_altar`, `obj_perform_ritual` | ✅ FIXED |
+| **Investigation** | Finn alle clues | `obj_find_clues`, `obj_confront_truth` | ✅ FIXED |
+
+---
+
+### TEKNISK DETALJ: Victory Check Flow
+
+1. Spiller utfører handling (escape, perform_ritual, etc.)
+2. `handleContextActionEffect` matcher action.id og finner relevant objective
+3. Objective markeres som `completed: true`
+4. `useEffect` i ShadowsGame kjører `checkVictoryConditions()` når objectives endres
+5. `checkVictoryConditions` sjekker:
+   - Alle `requiredObjectives` completed
+   - Type-spesifikk check (escape on tile, boss dead, rounds survived, etc.)
+6. Hvis alle checks passerer → Victory!
+
+---
+
+### FILER ENDRET
+
+1. `src/game/utils/objectiveSpawner.ts` - Exit/altar object type setup
+2. `src/game/ShadowsGame.tsx` - Action handling for objective completion
+
+---
+
 ## 2026-01-20: Sanity System Implementation - Complete Madness Mechanics
 
 ### Oppsummering
