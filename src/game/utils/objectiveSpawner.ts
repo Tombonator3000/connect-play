@@ -456,12 +456,16 @@ export function onTileExplored(
         name: 'Exit Door',
         description: 'The way out! But can you make it in time?',
         isGate: true,
+        // CRITICAL: Set exit_door object type so player can use Escape action
+        object: { type: 'exit_door', searched: false },
       };
     } else if (spawnedQuestTile.type === 'altar') {
       tileModifications = {
         name: 'Ritual Altar',
         description: 'An ancient altar for dark rituals. You can perform the ritual here.',
         floorType: 'ritual',
+        // CRITICAL: Set altar object type so player can use Perform Ritual action
+        object: { type: 'altar', searched: false },
       };
     }
   }
@@ -798,12 +802,16 @@ export function executeGuaranteedSpawns(
           name: 'Exit Door',
           description: 'The way out! But can you make it in time?',
           isGate: true,
+          // CRITICAL: Set exit_door object type so player can use Escape action
+          object: { type: 'exit_door', searched: false },
         };
       } else if (questTile.type === 'altar' || questTile.type === 'ritual_point') {
         modifications = {
           name: 'Ritual Altar',
           description: 'An ancient altar for dark rituals. You can perform the ritual here.',
           floorType: 'ritual',
+          // CRITICAL: Set altar object type so player can use Perform Ritual action
+          object: { type: 'altar', searched: false },
         };
       } else if (questTile.type === 'boss_room') {
         modifications = {
