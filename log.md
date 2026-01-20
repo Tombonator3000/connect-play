@@ -1,5 +1,137 @@
 # Development Log
 
+## 2026-01-20: Room Spawn Refactoring - spawnRoom() Clarity Improvement
+
+### Oppsummering
+
+Refaktorert `spawnRoom()`-funksjonen i ShadowsGame.tsx for bedre lesbarhet og vedlikeholdbarhet. Funksjonen var på 294 linjer med flere inline-funksjoner og blandede ansvar. Ekstraherte logikk til gjenbrukbare hjelpefunksjoner i ny fil `roomSpawnHelpers.ts`, reduserte funksjonen fra 294 til ~200 linjer.
+
+---
+
+### PROBLEMER IDENTIFISERT 🔴
+
+#### 1. Inline Hjelpefunksjoner (3 stk)
+**Problem:** `spawnRoom()` inneholdt tre inline-funksjoner som økte kompleksiteten:
+- `getCategoryPool()` - 14 linjer switch-statement
+- `getFloorType()` - 10 linjer switch-statement
+- `createFallbackEdges()` - 34 linjer med edge-generering
+
+#### 2. Gjentatt Spawn-posisjon Logikk
+**Problem:** Beregning av enemy spawn-posisjon ble duplisert på to steder med identisk kode:
+```typescript
+const spawnQ = startQ + (Math.random() > 0.5 ? 1 : -1);
+const spawnR = startR + (Math.random() > 0.5 ? 1 : 0);
+```
+
+#### 3. Inline Tile Set Filtering
+**Problem:** Tileset-filtrering brukte inline array-sjekker i stedet for gjenbrukbar logikk.
+
+---
+
+### LØSNING IMPLEMENTERT ✅
+
+#### 1. Ny fil: `roomSpawnHelpers.ts`
+**Fil:** `src/game/utils/roomSpawnHelpers.ts`
+
+Opprettet ny hjelpefil med følgende funksjoner:
+
+| Funksjon | Ansvar |
+|----------|--------|
+| `getCategoryTilePool()` | Returnerer location names for en kategori |
+| `getFloorTypeForCategory()` | Bestemmer floor type basert på kategori |
+| `createFallbackEdges()` | Genererer edges for fallback tiles |
+| `createFallbackTile()` | Oppretter komplett fallback tile |
+| `selectRandomRoomName()` | Velger tilfeldig romnavn fra kategori-pool |
+| `categoryMatchesTileSet()` | Sjekker om kategori matcher tileset filter |
+| `processQuestItemOnNewTile()` | Håndterer quest item spawning |
+| `calculateEnemySpawnPosition()` | Beregner spawn-posisjon for fiender |
+
+**Typede interfaces:**
+```typescript
+interface FallbackTileConfig {
+  startQ: number;
+  startR: number;
+  newCategory: TileCategory;
+  roomName: string;
+  roomId: string;
+  boardMap: Map<string, Tile>;
+}
+
+interface QuestItemSpawnResult {
+  finalTile: Tile;
+  updatedObjectiveSpawnState: any;
+  logMessages: string[];
+}
+```
+
+#### 2. Refaktorert `spawnRoom()`
+**Fil:** `src/game/ShadowsGame.tsx`
+
+**FØR (294 linjer):**
+```typescript
+const spawnRoom = useCallback((startQ, startR, tileSet) => {
+  // 294 linjer med inline funksjoner, duplisert logikk
+  const getCategoryPool = (cat) => { /* 14 linjer */ };
+  const getFloorType = (cat) => { /* 10 linjer */ };
+  const createFallbackEdges = () => { /* 34 linjer */ };
+  // ...
+});
+```
+
+**ETTER (~200 linjer, bruker helpers):**
+```typescript
+const spawnRoom = useCallback((startQ, startR, tileSet) => {
+  // 1. Build board map and validation
+  // 2. Gather constraints and find templates
+  // 3. Filter by tile set using categoryMatchesTileSet()
+  // 4. Fallback using createFallbackTile()
+  // 5. Room cluster handling
+  // 6. Quest item processing
+  // 7. Enemy spawning using calculateEnemySpawnPosition()
+});
+```
+
+---
+
+### ARKITEKTUR FORBEDRINGER
+
+| Før | Etter |
+|-----|-------|
+| 3 inline funksjoner | 8 gjenbrukbare helpers |
+| Duplisert spawn-logikk | Enkelt calculateEnemySpawnPosition() kall |
+| Inline array-sjekker | categoryMatchesTileSet() helper |
+| 294 linjer i én funksjon | ~200 linjer + helpers |
+
+---
+
+### FILER OPPRETTET
+
+1. **src/game/utils/roomSpawnHelpers.ts** (280 linjer)
+   - Hjelpefunksjoner for rom-spawning
+   - Typede interfaces for config og resultater
+   - Konstanter for edge-retninger
+
+### FILER MODIFISERT
+
+1. **src/game/ShadowsGame.tsx**
+   - Lagt til import av nye helpers
+   - Erstattet inline fallback-logikk med `createFallbackTile()`
+   - Erstattet tileset-filter med `categoryMatchesTileSet()`
+   - Erstattet enemy spawn-posisjon med `calculateEnemySpawnPosition()`
+
+---
+
+### RESULTAT
+
+- ✅ `spawnRoom()` redusert fra 294 til ~200 linjer (~32% reduksjon)
+- ✅ 3 inline funksjoner fjernet og erstattet med gjenbrukbare helpers
+- ✅ Duplisert spawn-logikk eliminert
+- ✅ TypeScript kompilerer uten feil
+- ✅ Build vellykket (914KB bundle)
+- ✅ Samme funksjonalitet bevart
+
+---
+
 ## 2026-01-20: Mythos Phase Refactoring - handleMythosOverlayComplete() Clarity Improvement
 
 ### Oppsummering
