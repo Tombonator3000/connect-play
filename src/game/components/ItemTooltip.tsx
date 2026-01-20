@@ -1,8 +1,12 @@
 import React from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Item, Spell, Enemy, EnemyType } from '../types';
+import { Item, Spell, Enemy, EnemyType, TileObject, TileObjectType, EdgeData, DoorState, EdgeBlockingType } from '../types';
 import { BESTIARY } from '../constants';
-import { Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, Eye, Skull, Brain, Swords, BookOpen } from 'lucide-react';
+import {
+  Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, Eye, Skull, Brain, Swords, BookOpen,
+  Flame, Lock, Hammer, AlertTriangle, Fence, Cloud, Sparkles, Package, Moon, Radio, ToggleLeft,
+  DoorOpen, DoorClosed, KeyRound, Ban, ArrowUpRight, ArrowDownRight, Square, Minus, Info
+} from 'lucide-react';
 import { getItemIcon as getSpecificItemIcon } from './ItemIcons';
 
 interface ItemTooltipProps {
@@ -209,4 +213,651 @@ export const EnemyTooltip: React.FC<EnemyTooltipProps> = ({ enemy, children }) =
       </Tooltip>
     </TooltipProvider>
   );
+};
+
+// ============================================================================
+// TILE OBJECT TOOLTIP - For objects on hex tiles
+// ============================================================================
+
+// Object information database with Lovecraftian descriptions
+const TILE_OBJECT_INFO: Record<TileObjectType, {
+  name: string;
+  description: string;
+  interaction?: string;
+  icon: React.ComponentType<{ size?: number; className?: string }>;
+  color: string;
+  bgColor: string;
+  borderColor: string;
+}> = {
+  fire: {
+    name: 'Brann',
+    description: 'Flammene danser med en nesten bevisst intensitet. Varmen er uutholdelig.',
+    interaction: 'Kan hoppes over (Agility DC 4, tar 1 skade) eller slukkes med brannslukker.',
+    icon: Flame,
+    color: 'text-orange-400',
+    bgColor: 'bg-orange-950/95',
+    borderColor: 'border-orange-500/50'
+  },
+  locked_door: {
+    name: 'Låst dør',
+    description: 'En solid dør med en gammel lås. Noen ville ikke at du skulle komme inn.',
+    interaction: 'Bruk nøkkel, dirk (Agility DC 4), eller bryt opp (Strength DC 5).',
+    icon: Lock,
+    color: 'text-amber-400',
+    bgColor: 'bg-amber-950/95',
+    borderColor: 'border-amber-500/50'
+  },
+  rubble: {
+    name: 'Ruiner',
+    description: 'Sammenraste murstein og tømmer blokkerer veien. Noe har forårsaket dette.',
+    interaction: 'Rydd vekk (Strength DC 4, 2 AP).',
+    icon: Hammer,
+    color: 'text-stone-400',
+    bgColor: 'bg-stone-900/95',
+    borderColor: 'border-stone-500/50'
+  },
+  trap: {
+    name: 'Felle',
+    description: 'En mekanisme skjult i skyggen. Noen forventet ubudne gjester.',
+    interaction: 'Deaktiver (Agility DC 4) eller utløs (tar skade).',
+    icon: AlertTriangle,
+    color: 'text-red-400',
+    bgColor: 'bg-red-950/95',
+    borderColor: 'border-red-500/50'
+  },
+  gate: {
+    name: 'Port',
+    description: 'Jernstenger som har stått her i generasjoner. Rusten forteller historier.',
+    interaction: 'Åpne eller lås opp avhengig av tilstand.',
+    icon: Fence,
+    color: 'text-gray-400',
+    bgColor: 'bg-gray-900/95',
+    borderColor: 'border-gray-500/50'
+  },
+  fog_wall: {
+    name: 'Tåkevegg',
+    description: 'Unaturlig tåke som ikke beveger seg med vinden. Den virker... bevisst.',
+    interaction: 'Krever spesiell gjenstand eller ritual for å passere.',
+    icon: Cloud,
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-950/95',
+    borderColor: 'border-purple-500/50'
+  },
+  altar: {
+    name: 'Alter',
+    description: 'Et gammelt alter flekkete av år med ritualer. Luften vibrerer rundt det.',
+    interaction: 'Undersøk for ledetråder eller utfør ritualer (Occultist).',
+    icon: Sparkles,
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-950/95',
+    borderColor: 'border-purple-500/50'
+  },
+  bookshelf: {
+    name: 'Bokhylle',
+    description: 'Støvete bøker på ukjente språk. Noen av titlene får deg til å føle deg uvel.',
+    interaction: 'Søk etter ledetråder eller okkulte tekster (+1 Insight, -1 Sanity).',
+    icon: BookOpen,
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-950/95',
+    borderColor: 'border-amber-600/50'
+  },
+  crate: {
+    name: 'Kasse',
+    description: 'En gammel trekasse. Innholdet er ukjent.',
+    interaction: 'Søk (1 AP) for å finne gjenstander.',
+    icon: Package,
+    color: 'text-amber-500',
+    bgColor: 'bg-amber-950/95',
+    borderColor: 'border-amber-500/50'
+  },
+  chest: {
+    name: 'Kiste',
+    description: 'En gammel kiste. Kanskje låst, kanskje ikke.',
+    interaction: 'Søk (1 AP) for å finne gjenstander. Kan være låst.',
+    icon: Package,
+    color: 'text-amber-500',
+    bgColor: 'bg-amber-950/95',
+    borderColor: 'border-amber-500/50'
+  },
+  cabinet: {
+    name: 'Skap',
+    description: 'Et mørkt skap. Dørene står på gløtt.',
+    interaction: 'Søk (1 AP) for å finne gjenstander.',
+    icon: Package,
+    color: 'text-amber-500',
+    bgColor: 'bg-amber-950/95',
+    borderColor: 'border-amber-500/50'
+  },
+  barricade: {
+    name: 'Barrikade',
+    description: 'Planker og møbler stablet i hast. Noen prøvde å holde noe ute.',
+    interaction: 'Bryt ned (Strength DC 4, 2 AP). Lager støy!',
+    icon: Hammer,
+    color: 'text-amber-700',
+    bgColor: 'bg-amber-950/95',
+    borderColor: 'border-amber-700/50'
+  },
+  mirror: {
+    name: 'Speil',
+    description: 'Et gammelt speil. Refleksjonen din virker... forsinket.',
+    interaction: 'Undersøk forsiktig. Kan avsløre skjulte ting.',
+    icon: Moon,
+    color: 'text-slate-300',
+    bgColor: 'bg-slate-900/95',
+    borderColor: 'border-slate-400/50'
+  },
+  radio: {
+    name: 'Radio',
+    description: 'En knitrende radio. Stemmer fra... hvor?',
+    interaction: 'Lytt for informasjon eller kontakt.',
+    icon: Radio,
+    color: 'text-green-500',
+    bgColor: 'bg-green-950/95',
+    borderColor: 'border-green-500/50'
+  },
+  switch: {
+    name: 'Bryter',
+    description: 'En mekanisk bryter. Hva styrer den?',
+    interaction: 'Aktiver for å utløse mekanisme.',
+    icon: ToggleLeft,
+    color: 'text-yellow-500',
+    bgColor: 'bg-yellow-950/95',
+    borderColor: 'border-yellow-500/50'
+  },
+  statue: {
+    name: 'Statue',
+    description: 'En forvitret statue. Ansiktet er fortært av tid, men øynene ser ut til å følge deg.',
+    interaction: 'Undersøk for skjulte rom eller mekanismer.',
+    icon: Skull,
+    color: 'text-stone-400',
+    bgColor: 'bg-stone-900/95',
+    borderColor: 'border-stone-500/50'
+  },
+  exit_door: {
+    name: 'Utgangsdør',
+    description: 'Veien ut. Friheten venter på den andre siden.',
+    interaction: 'Gå gjennom for å rømme (må ha nødvendige gjenstander).',
+    icon: DoorOpen,
+    color: 'text-emerald-400',
+    bgColor: 'bg-emerald-950/95',
+    borderColor: 'border-emerald-500/50'
+  }
+};
+
+interface TileObjectTooltipProps {
+  object: TileObject;
+  children: React.ReactNode;
+}
+
+export const TileObjectTooltip: React.FC<TileObjectTooltipProps> = ({ object, children }) => {
+  const info = TILE_OBJECT_INFO[object.type];
+  if (!info) return <>{children}</>;
+
+  const IconComponent = info.icon;
+
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {children}
+        </TooltipTrigger>
+        <TooltipContent
+          side="top"
+          className={`max-w-72 ${info.bgColor} border-2 ${info.borderColor} p-0 shadow-[var(--shadow-doom)]`}
+        >
+          <div className={`${info.bgColor} px-3 py-2 border-b ${info.borderColor.replace('border-', 'border-')}/30`}>
+            <div className="flex items-center gap-2">
+              <IconComponent size={14} className={info.color} />
+              <span className="font-bold text-sm text-foreground uppercase tracking-wide">{info.name}</span>
+            </div>
+            {object.blocking && (
+              <div className="text-[10px] text-red-400 uppercase tracking-wider mt-0.5">
+                Blokkerer passasje
+              </div>
+            )}
+            {object.searched && (
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">
+                Allerede undersøkt
+              </div>
+            )}
+          </div>
+          <div className="p-3 space-y-2">
+            <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+              "{info.description}"
+            </p>
+            {info.interaction && (
+              <div className="pt-2 border-t border-white/10">
+                <div className="flex items-center gap-1 text-[9px] text-amber-400 uppercase tracking-wider mb-1">
+                  <Info size={10} />
+                  <span>Handling</span>
+                </div>
+                <p className="text-[10px] text-foreground/80">
+                  {info.interaction}
+                </p>
+              </div>
+            )}
+            {object.difficulty && (
+              <div className="flex gap-2 text-[10px]">
+                <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded border border-red-500/30">
+                  DC {object.difficulty}
+                </span>
+                {object.reqSkill && (
+                  <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30">
+                    {object.reqSkill.charAt(0).toUpperCase() + object.reqSkill.slice(1)}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+};
+
+// ============================================================================
+// EDGE FEATURE TOOLTIP - For edges on hex tiles (doors, stairs, etc.)
+// ============================================================================
+
+// Door state information
+const DOOR_STATE_INFO: Record<DoorState, {
+  name: string;
+  description: string;
+  interaction: string;
+  color: string;
+}> = {
+  open: {
+    name: 'Åpen dør',
+    description: 'Døren står åpen. Hva som åpnet den er uvisst.',
+    interaction: 'Fri passasje.',
+    color: 'text-green-400'
+  },
+  closed: {
+    name: 'Lukket dør',
+    description: 'En lukket dør. Hvem vet hva som venter på andre siden.',
+    interaction: 'Åpne (1 AP) for å passere.',
+    color: 'text-gray-400'
+  },
+  locked: {
+    name: 'Låst dør',
+    description: 'Solid låst. Noen ville ikke at du skulle komme inn.',
+    interaction: 'Bruk nøkkel, dirk (Agility DC 4), eller bryt opp (Strength DC 5).',
+    color: 'text-amber-400'
+  },
+  barricaded: {
+    name: 'Barrikadert dør',
+    description: 'Blokkert fra innsiden. Noen prøvde desperat å holde noe ute.',
+    interaction: 'Bryt ned (Strength DC 4, 2 AP). Lager støy!',
+    color: 'text-amber-600'
+  },
+  broken: {
+    name: 'Knust dør',
+    description: 'Døren er ødelagt. Noe kom seg gjennom.',
+    interaction: 'Fri passasje. Gir ingen dekning.',
+    color: 'text-red-400'
+  },
+  sealed: {
+    name: 'Forseglet dør',
+    description: 'Glødende symboler holder døren lukket. Ikke av denne verden.',
+    interaction: 'Occult check (Willpower DC 5) eller bruk Elder Sign.',
+    color: 'text-purple-400'
+  },
+  puzzle: {
+    name: 'Puzzle-dør',
+    description: 'Mystiske symboler dekker overflaten. En gåte må løses.',
+    interaction: 'Løs puslespillet for å åpne.',
+    color: 'text-cyan-400'
+  }
+};
+
+// Edge blocking type information
+const EDGE_BLOCKING_INFO: Record<EdgeBlockingType, {
+  name: string;
+  description: string;
+  interaction: string;
+  color: string;
+}> = {
+  rubble: {
+    name: 'Ruiner',
+    description: 'Sammenraste murstein blokkerer passasjen.',
+    interaction: 'Rydd (Strength DC 4, 2 AP).',
+    color: 'text-stone-400'
+  },
+  heavy_rubble: {
+    name: 'Tung ruiner',
+    description: 'Massive steinblokker. Nesten umulig å flytte.',
+    interaction: 'Rydd (Strength DC 5, 3 AP).',
+    color: 'text-stone-500'
+  },
+  collapsed: {
+    name: 'Kollapset',
+    description: 'Fullstendig sammenrast. Ingen vei gjennom.',
+    interaction: 'Kan ikke passeres.',
+    color: 'text-gray-500'
+  },
+  fire: {
+    name: 'Brann',
+    description: 'Flammer blokkerer veien. Varmen er intens.',
+    interaction: 'Hopp over (Agility DC 4, tar 1 skade) eller slukk.',
+    color: 'text-orange-400'
+  },
+  barricade: {
+    name: 'Barrikade',
+    description: 'Provisorisk sperring av møbler og planker.',
+    interaction: 'Bryt ned (Strength DC 4).',
+    color: 'text-amber-600'
+  },
+  locked_gate: {
+    name: 'Låst port',
+    description: 'Jernstenger holder deg ute. Eller holder noe inne.',
+    interaction: 'Lås opp eller tving åpen (Strength DC 5).',
+    color: 'text-gray-400'
+  },
+  spirit_barrier: {
+    name: 'Åndesperre',
+    description: 'Gjennomskinnelige skikkelser blokkerer veien.',
+    interaction: 'Elder Sign eller Willpower DC 5. -1 Sanity per forsøk.',
+    color: 'text-purple-400'
+  },
+  ward: {
+    name: 'Magisk vern',
+    description: 'Glødende runer i luften. Eldgammel beskyttelse.',
+    interaction: 'Dispel (Willpower DC 5) eller kryss (-1 Sanity).',
+    color: 'text-blue-400'
+  },
+  chasm: {
+    name: 'Avgrunn',
+    description: 'Et dypt gap. Bunnen er ikke synlig.',
+    interaction: 'Kan ikke krysses uten spesialutstyr.',
+    color: 'text-gray-600'
+  },
+  flooded: {
+    name: 'Oversvømt',
+    description: 'Vann fyller passasjen. Mørkt og kaldt.',
+    interaction: 'Vad gjennom (+1 AP). Kan skjule farer.',
+    color: 'text-blue-500'
+  }
+};
+
+interface EdgeFeatureTooltipProps {
+  edge: EdgeData;
+  children: React.ReactNode;
+}
+
+export const EdgeFeatureTooltip: React.FC<EdgeFeatureTooltipProps> = ({ edge, children }) => {
+  // Determine what type of feature this edge has
+  const edgeType = edge.type?.toLowerCase();
+
+  // Handle doors
+  if (edgeType === 'door' && edge.doorState) {
+    const doorInfo = DOOR_STATE_INFO[edge.doorState];
+    if (!doorInfo) return <>{children}</>;
+
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {children}
+          </TooltipTrigger>
+          <TooltipContent
+            side="top"
+            className="max-w-64 bg-secondary border-2 border-amber-500/50 p-0 shadow-[var(--shadow-doom)]"
+          >
+            <div className="bg-amber-900/30 px-3 py-2 border-b border-amber-500/30">
+              <div className="flex items-center gap-2">
+                {edge.doorState === 'open' || edge.doorState === 'broken' ? (
+                  <DoorOpen size={14} className={doorInfo.color} />
+                ) : edge.doorState === 'locked' || edge.doorState === 'sealed' ? (
+                  <Lock size={14} className={doorInfo.color} />
+                ) : (
+                  <DoorClosed size={14} className={doorInfo.color} />
+                )}
+                <span className="font-bold text-sm text-foreground uppercase tracking-wide">{doorInfo.name}</span>
+              </div>
+              {edge.lockType && (
+                <div className="text-[10px] text-amber-400 uppercase tracking-wider mt-0.5">
+                  {edge.lockType} lås
+                </div>
+              )}
+            </div>
+            <div className="p-3 space-y-2">
+              <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+                "{doorInfo.description}"
+              </p>
+              <div className="pt-2 border-t border-white/10">
+                <div className="flex items-center gap-1 text-[9px] text-amber-400 uppercase tracking-wider mb-1">
+                  <Info size={10} />
+                  <span>Handling</span>
+                </div>
+                <p className="text-[10px] text-foreground/80">
+                  {doorInfo.interaction}
+                </p>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  // Handle blocked edges
+  if (edgeType === 'blocked' && edge.blockingType) {
+    const blockInfo = EDGE_BLOCKING_INFO[edge.blockingType];
+    if (!blockInfo) return <>{children}</>;
+
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {children}
+          </TooltipTrigger>
+          <TooltipContent
+            side="top"
+            className="max-w-64 bg-secondary border-2 border-red-500/50 p-0 shadow-[var(--shadow-doom)]"
+          >
+            <div className="bg-red-900/30 px-3 py-2 border-b border-red-500/30">
+              <div className="flex items-center gap-2">
+                <Ban size={14} className={blockInfo.color} />
+                <span className="font-bold text-sm text-foreground uppercase tracking-wide">{blockInfo.name}</span>
+              </div>
+              <div className="text-[10px] text-red-400 uppercase tracking-wider mt-0.5">
+                Blokkert passasje
+              </div>
+            </div>
+            <div className="p-3 space-y-2">
+              <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+                "{blockInfo.description}"
+              </p>
+              <div className="pt-2 border-t border-white/10">
+                <div className="flex items-center gap-1 text-[9px] text-amber-400 uppercase tracking-wider mb-1">
+                  <Info size={10} />
+                  <span>Handling</span>
+                </div>
+                <p className="text-[10px] text-foreground/80">
+                  {blockInfo.interaction}
+                </p>
+              </div>
+              {edge.blockingDC && (
+                <div className="flex gap-2 text-[10px]">
+                  <span className="bg-red-500/20 text-red-400 px-2 py-0.5 rounded border border-red-500/30">
+                    DC {edge.blockingDC}
+                  </span>
+                  {edge.blockingSkill && (
+                    <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30">
+                      {edge.blockingSkill.charAt(0).toUpperCase() + edge.blockingSkill.slice(1)}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  // Handle stairs
+  if (edgeType === 'stairs_up' || edgeType === 'stairs_down') {
+    const isUp = edgeType === 'stairs_up';
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {children}
+          </TooltipTrigger>
+          <TooltipContent
+            side="top"
+            className="max-w-64 bg-secondary border-2 border-cyan-500/50 p-0 shadow-[var(--shadow-doom)]"
+          >
+            <div className="bg-cyan-900/30 px-3 py-2 border-b border-cyan-500/30">
+              <div className="flex items-center gap-2">
+                {isUp ? (
+                  <ArrowUpRight size={14} className="text-cyan-400" />
+                ) : (
+                  <ArrowDownRight size={14} className="text-cyan-400" />
+                )}
+                <span className="font-bold text-sm text-foreground uppercase tracking-wide">
+                  {isUp ? 'Trapp opp' : 'Trapp ned'}
+                </span>
+              </div>
+            </div>
+            <div className="p-3 space-y-2">
+              <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+                "{isUp ? 'Trinnene fører oppover. Hva venter i etasjen over?' : 'Trinnene forsvinner ned i mørket. Dypere. Alltid dypere.'}"
+              </p>
+              <div className="pt-2 border-t border-white/10">
+                <div className="flex items-center gap-1 text-[9px] text-amber-400 uppercase tracking-wider mb-1">
+                  <Info size={10} />
+                  <span>Handling</span>
+                </div>
+                <p className="text-[10px] text-foreground/80">
+                  Bruk trapp (2 AP) for å skifte etasje.
+                </p>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  // Handle windows
+  if (edgeType === 'window') {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {children}
+          </TooltipTrigger>
+          <TooltipContent
+            side="top"
+            className="max-w-64 bg-secondary border-2 border-blue-500/50 p-0 shadow-[var(--shadow-doom)]"
+          >
+            <div className="bg-blue-900/30 px-3 py-2 border-b border-blue-500/30">
+              <div className="flex items-center gap-2">
+                <Square size={14} className="text-blue-400" />
+                <span className="font-bold text-sm text-foreground uppercase tracking-wide">Vindu</span>
+              </div>
+            </div>
+            <div className="p-3 space-y-2">
+              <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+                "Glasset er skittent, men du kan se gjennom. Kanskje du også kan klatre?"
+              </p>
+              <div className="pt-2 border-t border-white/10">
+                <div className="flex items-center gap-1 text-[9px] text-amber-400 uppercase tracking-wider mb-1">
+                  <Info size={10} />
+                  <span>Handling</span>
+                </div>
+                <p className="text-[10px] text-foreground/80">
+                  Se gjennom (gratis) eller klatre gjennom (Agility DC 4).
+                </p>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  // Handle secret doors
+  if (edgeType === 'secret') {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {children}
+          </TooltipTrigger>
+          <TooltipContent
+            side="top"
+            className="max-w-64 bg-secondary border-2 border-purple-500/50 p-0 shadow-[var(--shadow-doom)]"
+          >
+            <div className="bg-purple-900/30 px-3 py-2 border-b border-purple-500/30">
+              <div className="flex items-center gap-2">
+                <Eye size={14} className="text-purple-400" />
+                <span className="font-bold text-sm text-foreground uppercase tracking-wide">
+                  {edge.isDiscovered ? 'Hemmelig passasje' : 'Skjult passasje'}
+                </span>
+              </div>
+            </div>
+            <div className="p-3 space-y-2">
+              <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+                "{edge.isDiscovered
+                  ? 'En skjult passasje, nå avslørt. Hvem bygde denne, og hvorfor?'
+                  : 'Veggen virker solid, men noe stemmer ikke...'}"
+              </p>
+              <div className="pt-2 border-t border-white/10">
+                <div className="flex items-center gap-1 text-[9px] text-amber-400 uppercase tracking-wider mb-1">
+                  <Info size={10} />
+                  <span>Handling</span>
+                </div>
+                <p className="text-[10px] text-foreground/80">
+                  {edge.isDiscovered
+                    ? 'Passér gjennom den skjulte passasjen.'
+                    : 'Undersøk (Investigate DC 5) for å oppdage.'}
+                </p>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  // Handle walls
+  if (edgeType === 'wall') {
+    return (
+      <TooltipProvider delayDuration={200}>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            {children}
+          </TooltipTrigger>
+          <TooltipContent
+            side="top"
+            className="max-w-64 bg-secondary border-2 border-gray-500/50 p-0 shadow-[var(--shadow-doom)]"
+          >
+            <div className="bg-gray-800/30 px-3 py-2 border-b border-gray-500/30">
+              <div className="flex items-center gap-2">
+                <Minus size={14} className="text-gray-400" />
+                <span className="font-bold text-sm text-foreground uppercase tracking-wide">Vegg</span>
+              </div>
+            </div>
+            <div className="p-3 space-y-2">
+              <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+                "Solid murstein. Kanskje det er noe bak?"
+              </p>
+              <div className="pt-2 border-t border-white/10">
+                <div className="flex items-center gap-1 text-[9px] text-gray-400 uppercase tracking-wider mb-1">
+                  <Ban size={10} />
+                  <span>Ikke passerbar</span>
+                </div>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  }
+
+  // Default - no tooltip
+  return <>{children}</>;
 };
