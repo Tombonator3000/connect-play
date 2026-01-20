@@ -19,8 +19,130 @@ import {
   DoomEvent,
   VictoryCondition,
   DefeatCondition,
-  EnemyType
+  EnemyType,
+  ScenarioTheme
 } from '../types';
+
+// ============================================================================
+// THEME MAPPING
+// ============================================================================
+
+/**
+ * Maps location atmosphere to scenario theme.
+ * The theme determines which tile visuals and descriptions are used.
+ */
+function getThemeFromLocation(locationName: string, atmosphere: string): ScenarioTheme {
+  const nameLower = locationName.toLowerCase();
+
+  // Name-based mapping takes priority
+  if (nameLower.includes('manor') || nameLower.includes('mansion') || nameLower.includes('house') || nameLower.includes('hotel')) {
+    return 'manor';
+  }
+  if (nameLower.includes('church') || nameLower.includes('chapel')) {
+    return 'church';
+  }
+  if (nameLower.includes('asylum') || nameLower.includes('hospital')) {
+    return 'asylum';
+  }
+  if (nameLower.includes('warehouse') || nameLower.includes('factory') || nameLower.includes('industrial')) {
+    return 'warehouse';
+  }
+  if (nameLower.includes('forest') || nameLower.includes('woods') || nameLower.includes('marsh')) {
+    return 'forest';
+  }
+  if (nameLower.includes('library') || nameLower.includes('university') || nameLower.includes('campus')) {
+    return 'academic';
+  }
+  if (nameLower.includes('harbor') || nameLower.includes('coast') || nameLower.includes('cliff') || nameLower.includes('dock')) {
+    return 'coastal';
+  }
+  if (nameLower.includes('crypt') || nameLower.includes('cave') || nameLower.includes('catacomb') || nameLower.includes('sewer')) {
+    return 'underground';
+  }
+
+  // Fall back to atmosphere-based mapping
+  switch (atmosphere) {
+    case 'creepy': return 'manor';
+    case 'urban': return 'urban';
+    case 'wilderness': return 'forest';
+    case 'academic': return 'academic';
+    case 'industrial': return 'warehouse';
+    default: return 'manor';
+  }
+}
+
+/**
+ * Gets preferred tile names for a given theme.
+ * Used by tile generation to select thematically appropriate tiles.
+ */
+export function getThemedTilePreferences(theme: ScenarioTheme): {
+  preferredNames: string[];
+  avoidNames: string[];
+  floorPreference: string;
+} {
+  switch (theme) {
+    case 'manor':
+      return {
+        preferredNames: ['manor', 'mansion', 'study', 'library', 'bedroom', 'dining', 'gallery', 'parlor', 'foyer', 'cellar', 'wine'],
+        avoidNames: ['sewer', 'harbor', 'industrial', 'factory', 'asylum', 'cell'],
+        floorPreference: 'wood'
+      };
+    case 'church':
+      return {
+        preferredNames: ['church', 'chapel', 'altar', 'crypt', 'vestibule', 'bell', 'sanctum', 'tomb'],
+        avoidNames: ['kitchen', 'bedroom', 'factory', 'harbor', 'sewer'],
+        floorPreference: 'stone'
+      };
+    case 'asylum':
+      return {
+        preferredNames: ['asylum', 'hospital', 'cell', 'ward', 'corridor', 'reception', 'padded', 'dissection', 'records'],
+        avoidNames: ['manor', 'mansion', 'forest', 'harbor', 'wine'],
+        floorPreference: 'tile'
+      };
+    case 'warehouse':
+      return {
+        preferredNames: ['warehouse', 'storage', 'factory', 'industrial', 'boiler', 'loading', 'crate', 'dock'],
+        avoidNames: ['manor', 'mansion', 'church', 'bedroom', 'parlor', 'forest'],
+        floorPreference: 'stone'
+      };
+    case 'forest':
+      return {
+        preferredNames: ['forest', 'clearing', 'marsh', 'path', 'grove', 'stones', 'ruins', 'cabin', 'hollow'],
+        avoidNames: ['asylum', 'factory', 'warehouse', 'hospital', 'cell'],
+        floorPreference: 'dirt'
+      };
+    case 'urban':
+      return {
+        preferredNames: ['street', 'alley', 'square', 'market', 'station', 'bridge', 'plaza', 'precinct'],
+        avoidNames: ['forest', 'marsh', 'cave', 'crypt', 'manor'],
+        floorPreference: 'cobblestone'
+      };
+    case 'coastal':
+      return {
+        preferredNames: ['harbor', 'dock', 'wharf', 'lighthouse', 'coastal', 'cliff', 'boat', 'pier', 'fishmarket'],
+        avoidNames: ['forest', 'manor', 'asylum', 'church'],
+        floorPreference: 'cobblestone'
+      };
+    case 'underground':
+      return {
+        preferredNames: ['crypt', 'catacomb', 'cave', 'tunnel', 'sewer', 'cellar', 'tomb', 'pit', 'altar', 'portal'],
+        avoidNames: ['street', 'square', 'market', 'forest', 'harbor'],
+        floorPreference: 'stone'
+      };
+    case 'academic':
+      return {
+        preferredNames: ['library', 'university', 'campus', 'study', 'laboratory', 'lecture', 'museum', 'archive', 'office'],
+        avoidNames: ['sewer', 'marsh', 'harbor', 'factory', 'asylum'],
+        floorPreference: 'wood'
+      };
+    default:
+      return {
+        preferredNames: [],
+        avoidNames: [],
+        floorPreference: 'wood'
+      };
+  }
+}
 
 // ============================================================================
 // ELEMENT POOLS
@@ -106,7 +228,7 @@ export const MISSION_TYPES: MissionType[] = [
     goalTemplate: 'Find the {item} and escape from {location}.',
     specialRuleTemplate: 'Exit spawns after key is found.',
     tileSet: 'indoor',
-    baseDoom: { Normal: 12, Hard: 10, Nightmare: 8 },
+    baseDoom: { Normal: 16, Hard: 14, Nightmare: 12 },  // Increased for realistic exploration time
     objectiveTemplates: [
       {
         id: 'find_key',
@@ -154,7 +276,7 @@ export const MISSION_TYPES: MissionType[] = [
     goalTemplate: 'Find and kill the {target} before the ritual is complete.',
     specialRuleTemplate: 'Boss spawns when found. Enemies are alerted.',
     tileSet: 'mixed',
-    baseDoom: { Normal: 10, Hard: 8, Nightmare: 6 },
+    baseDoom: { Normal: 14, Hard: 12, Nightmare: 10 },  // Increased for intel gathering + combat
     objectiveTemplates: [
       {
         id: 'gather_intel',
@@ -203,7 +325,7 @@ export const MISSION_TYPES: MissionType[] = [
     goalTemplate: 'Survive for {rounds} rounds against waves of enemies.',
     specialRuleTemplate: 'Enemies spawn in waves. Barricades available.',
     tileSet: 'mixed',
-    baseDoom: { Normal: 12, Hard: 15, Nightmare: 18 },
+    baseDoom: { Normal: 14, Hard: 18, Nightmare: 22 },  // Higher doom for survival = more rounds to survive
     objectiveTemplates: [
       {
         id: 'survive_half',
@@ -241,7 +363,7 @@ export const MISSION_TYPES: MissionType[] = [
     goalTemplate: 'Collect {count} {items} before the enemy.',
     specialRuleTemplate: 'Items spawn at random explored locations.',
     tileSet: 'mixed',
-    baseDoom: { Normal: 12, Hard: 10, Nightmare: 8 },
+    baseDoom: { Normal: 16, Hard: 14, Nightmare: 12 },  // Increased for exploration + collecting
     objectiveTemplates: [
       {
         id: 'collect_items',
@@ -270,7 +392,7 @@ export const MISSION_TYPES: MissionType[] = [
     goalTemplate: 'Find {victim} and escort them to safety.',
     specialRuleTemplate: 'Victim has limited HP and must survive.',
     tileSet: 'indoor',
-    baseDoom: { Normal: 12, Hard: 10, Nightmare: 8 },
+    baseDoom: { Normal: 16, Hard: 14, Nightmare: 12 },  // Increased for find + escort
     objectiveTemplates: [
       {
         id: 'find_entrance',
@@ -318,7 +440,7 @@ export const MISSION_TYPES: MissionType[] = [
     goalTemplate: 'Uncover the truth about {mystery}.',
     specialRuleTemplate: 'Clues reveal the final confrontation.',
     tileSet: 'mixed',
-    baseDoom: { Normal: 14, Hard: 12, Nightmare: 10 },
+    baseDoom: { Normal: 18, Hard: 16, Nightmare: 14 },  // More time for thorough investigation
     objectiveTemplates: [
       {
         id: 'gather_clues',
@@ -357,7 +479,7 @@ export const MISSION_TYPES: MissionType[] = [
     goalTemplate: 'Perform the banishment ritual at {location}.',
     specialRuleTemplate: 'Ritual requires 3 components. Each component attracts enemies.',
     tileSet: 'indoor',
-    baseDoom: { Normal: 10, Hard: 8, Nightmare: 6 },
+    baseDoom: { Normal: 14, Hard: 12, Nightmare: 10 },  // Time for components + ritual
     objectiveTemplates: [
       {
         id: 'gather_components',
@@ -405,7 +527,7 @@ export const MISSION_TYPES: MissionType[] = [
     goalTemplate: 'Place Elder Signs at {count} ritual points to seal the portal.',
     specialRuleTemplate: 'Each placement triggers enemy spawn.',
     tileSet: 'mixed',
-    baseDoom: { Normal: 10, Hard: 8, Nightmare: 6 },
+    baseDoom: { Normal: 14, Hard: 12, Nightmare: 10 },  // Time to find and place signs
     objectiveTemplates: [
       {
         id: 'find_points',
@@ -445,7 +567,7 @@ export const MISSION_TYPES: MissionType[] = [
     goalTemplate: 'Cleanse {location} by destroying all {enemies}.',
     specialRuleTemplate: 'All enemies must be eliminated. No reinforcements.',
     tileSet: 'indoor',
-    baseDoom: { Normal: 12, Hard: 10, Nightmare: 8 },
+    baseDoom: { Normal: 16, Hard: 14, Nightmare: 12 },  // Time to find and kill all enemies
     objectiveTemplates: [
       {
         id: 'kill_enemies',
@@ -895,14 +1017,18 @@ export function generateRandomScenario(difficulty: 'Normal' | 'Hard' | 'Nightmar
   }
 
   // 6. Generate doom events
+  // Thresholds adjusted to give players more time before encounters
+  // Early: 55% = roughly 7 rounds into a 16-doom scenario
+  // Mid: 35% = roughly 10 rounds in
+  // Late/Boss: 15% = near the end for dramatic finale
   const baseDoom = missionType.baseDoom[difficulty];
   const enemyPool = ENEMY_POOLS[difficulty];
   const doomEvents: DoomEvent[] = [];
 
-  // Early wave
+  // Early wave - gives player time to explore before first combat
   const earlyEnemy = randomElement(enemyPool);
   doomEvents.push({
-    threshold: Math.ceil(baseDoom * 0.7),
+    threshold: Math.ceil(baseDoom * 0.55),  // Changed from 0.7 for more exploration time
     triggered: false,
     type: 'spawn_enemy',
     targetId: earlyEnemy.type,
@@ -910,10 +1036,10 @@ export function generateRandomScenario(difficulty: 'Normal' | 'Hard' | 'Nightmar
     message: earlyEnemy.message
   });
 
-  // Mid wave
+  // Mid wave - pressure builds
   const midEnemy = randomElement(enemyPool);
   doomEvents.push({
-    threshold: Math.ceil(baseDoom * 0.5),
+    threshold: Math.ceil(baseDoom * 0.35),  // Changed from 0.5
     triggered: false,
     type: 'spawn_enemy',
     targetId: midEnemy.type,
@@ -921,7 +1047,7 @@ export function generateRandomScenario(difficulty: 'Normal' | 'Hard' | 'Nightmar
     message: midEnemy.message
   });
 
-  // Late wave - boss
+  // Late wave - boss appears near finale
   const availableBosses = BOSS_POOL.filter(b =>
     difficulty === 'Nightmare' ||
     (difficulty === 'Hard' && b.difficulty !== 'Nightmare') ||
@@ -929,7 +1055,7 @@ export function generateRandomScenario(difficulty: 'Normal' | 'Hard' | 'Nightmar
   );
   const boss = randomElement(availableBosses);
   doomEvents.push({
-    threshold: Math.ceil(baseDoom * 0.2),
+    threshold: Math.ceil(baseDoom * 0.15),  // Changed from 0.2 for more dramatic finale
     triggered: false,
     type: 'spawn_boss',
     targetId: boss.type,
@@ -1001,7 +1127,10 @@ Objective: ${goal}`;
     });
   }
 
-  // 13. Assemble scenario
+  // 13. Determine theme from location
+  const theme = getThemeFromLocation(location.name, location.atmosphere);
+
+  // 14. Assemble scenario
   const scenario: Scenario = {
     id: generateId(),
     title,
@@ -1012,6 +1141,7 @@ Objective: ${goal}`;
     specialRule: missionType.specialRuleTemplate,
     difficulty,
     tileSet: missionType.tileSet,
+    theme,  // Theme for tile selection
     goal,
     victoryType: missionType.victoryType,
     steps: [], // Legacy field
