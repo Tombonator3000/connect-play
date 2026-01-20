@@ -808,3 +808,221 @@ export function purchaseShopItem(
     message: `Purchased ${shopItem.item.name} for ${shopItem.goldCost} gold`
   };
 }
+
+// ============================================================================
+// SELL SYSTEM - The Fence buys items at reduced prices
+// ============================================================================
+
+/**
+ * Sell price modifier - The Fence pays 50% of shop value
+ * This is standard for roguelite games - you buy high, sell low
+ */
+const SELL_PRICE_MODIFIER = 0.5;
+
+/**
+ * Base prices for items (matches shop prices)
+ * Used to calculate sell value for both shop items and loot
+ */
+const ITEM_BASE_PRICES: Record<string, number> = {
+  // Weapons
+  'shop_revolver': 30,
+  'shop_shotgun': 50,
+  'shop_tommy': 100,
+  'shop_knife': 15,
+  'revolver': 30,
+  'shotgun': 50,
+  'tommy_gun': 100,
+  'knife': 15,
+  'derringer': 20,
+  'rifle': 60,
+  'machete': 25,
+
+  // Tools
+  'shop_flashlight': 10,
+  'shop_lockpick': 20,
+  'shop_crowbar': 15,
+  'shop_lantern': 25,
+  'flashlight': 10,
+  'lockpick': 20,
+  'crowbar': 15,
+  'lantern': 25,
+  'rope': 10,
+
+  // Armor
+  'shop_leather': 35,
+  'shop_trench': 25,
+  'shop_vest': 75,
+  'leather_jacket': 35,
+  'trench_coat': 25,
+  'armored_vest': 75,
+
+  // Consumables
+  'shop_medkit': 20,
+  'shop_whiskey': 10,
+  'shop_bandage': 5,
+  'shop_sedative': 15,
+  'medkit': 20,
+  'first_aid': 20,
+  'whiskey': 10,
+  'bandage': 5,
+  'bandages': 5,
+  'sedative': 15,
+  'sedatives': 15,
+
+  // Relics
+  'shop_elder_sign': 150,
+  'shop_ward': 60,
+  'shop_compass': 80,
+  'elder_sign': 150,
+  'protective_ward': 60,
+  'eldritch_compass': 80,
+  'necronomicon': 100,
+  'ritual_candles': 15,
+
+  // Keys (low value - common items)
+  'key': 2,
+  'common_key': 2,
+  'specific_key': 5,
+  'master_key': 25
+};
+
+/**
+ * Default prices by item type for items not in the price list
+ */
+const DEFAULT_PRICES_BY_TYPE: Record<string, number> = {
+  'weapon': 20,
+  'tool': 10,
+  'armor': 30,
+  'consumable': 8,
+  'relic': 50,
+  'key': 2,
+  'clue': 5,
+  'artifact': 40
+};
+
+/**
+ * Get the base price for an item (what Fence would normally sell it for)
+ */
+export function getItemBasePrice(item: Item): number {
+  // First check by exact ID
+  if (ITEM_BASE_PRICES[item.id]) {
+    return ITEM_BASE_PRICES[item.id];
+  }
+
+  // Check by lowercase ID
+  const lowerId = item.id.toLowerCase();
+  if (ITEM_BASE_PRICES[lowerId]) {
+    return ITEM_BASE_PRICES[lowerId];
+  }
+
+  // Check by name (lowercase, replace spaces with underscores)
+  const nameKey = item.name.toLowerCase().replace(/\s+/g, '_');
+  if (ITEM_BASE_PRICES[nameKey]) {
+    return ITEM_BASE_PRICES[nameKey];
+  }
+
+  // Fall back to type-based pricing
+  if (item.type && DEFAULT_PRICES_BY_TYPE[item.type]) {
+    return DEFAULT_PRICES_BY_TYPE[item.type];
+  }
+
+  // Ultimate fallback
+  return 5;
+}
+
+/**
+ * Get the sell price for an item (what The Fence will pay)
+ * Returns 50% of base price, minimum 1 gold
+ */
+export function getItemSellPrice(item: Item): number {
+  const basePrice = getItemBasePrice(item);
+  const sellPrice = Math.floor(basePrice * SELL_PRICE_MODIFIER);
+  return Math.max(1, sellPrice); // Minimum 1 gold
+}
+
+/**
+ * Sell an item to The Fence
+ * Removes item from hero inventory and adds gold
+ */
+export function sellItemToFence(
+  hero: LegacyHero,
+  item: Item
+): { hero: LegacyHero; success: boolean; goldEarned: number; message: string } {
+  const sellPrice = getItemSellPrice(item);
+
+  // Remove item from hero equipment
+  const newEquipment = { ...hero.equipment, bag: [...hero.equipment.bag] };
+  let itemRemoved = false;
+
+  if (newEquipment.leftHand?.id === item.id) {
+    newEquipment.leftHand = null;
+    itemRemoved = true;
+  } else if (newEquipment.rightHand?.id === item.id) {
+    newEquipment.rightHand = null;
+    itemRemoved = true;
+  } else if (newEquipment.body?.id === item.id) {
+    newEquipment.body = null;
+    itemRemoved = true;
+  } else {
+    const bagIdx = newEquipment.bag.findIndex(i => i?.id === item.id);
+    if (bagIdx !== -1) {
+      newEquipment.bag[bagIdx] = null;
+      itemRemoved = true;
+    }
+  }
+
+  if (!itemRemoved) {
+    return {
+      hero,
+      success: false,
+      goldEarned: 0,
+      message: `Could not find ${item.name} in inventory`
+    };
+  }
+
+  // Add gold to hero
+  const updatedHero: LegacyHero = {
+    ...hero,
+    equipment: newEquipment,
+    gold: hero.gold + sellPrice
+  };
+
+  return {
+    hero: updatedHero,
+    success: true,
+    goldEarned: sellPrice,
+    message: `Sold ${item.name} for ${sellPrice} gold`
+  };
+}
+
+/**
+ * Sell an item from the stash
+ * Removes item from stash and returns gold value
+ */
+export function sellStashItem(
+  stash: EquipmentStash,
+  itemIndex: number
+): { stash: EquipmentStash; success: boolean; goldEarned: number; message: string } {
+  if (itemIndex < 0 || itemIndex >= stash.items.length) {
+    return {
+      stash,
+      success: false,
+      goldEarned: 0,
+      message: 'Item not found in stash'
+    };
+  }
+
+  const item = stash.items[itemIndex];
+  const sellPrice = getItemSellPrice(item);
+
+  // Remove item from stash
+  const newItems = [...stash.items];
+  newItems.splice(itemIndex, 1);
+
+  return {
+    stash: { ...stash, items: newItems },
+    success: true,
+    goldEarned: sellPrice,
+    message: `Sold ${item.name} for ${sellPrice} gold`
+  };
+}
