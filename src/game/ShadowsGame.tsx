@@ -2586,7 +2586,11 @@ const ShadowsGame: React.FC = () => {
 
       case 'cast_occultist':
         // Cast Occultist spell - Hero Quest style with attack dice and limited uses
-        const occSpell = payload as OccultistSpell;
+        // Handle both direct spell selection and target selection (from enemy_click)
+        const payloadData = payload as OccultistSpell | { spell: OccultistSpell; targetEnemyId: string };
+        const occSpell = payloadData && 'spell' in payloadData ? payloadData.spell : payloadData as OccultistSpell;
+        const targetEnemyId = payloadData && 'targetEnemyId' in payloadData ? payloadData.targetEnemyId : state.selectedEnemyId;
+
         if (!occSpell) {
           addToLog(`No spell selected.`);
           return;
@@ -2604,7 +2608,7 @@ const ShadowsGame: React.FC = () => {
         // Handle different spell effects
         if (occSpell.effect === 'attack' || occSpell.effect === 'attack_horror' || occSpell.effect === 'banish') {
           // These spells need a target
-          const occTarget = state.enemies.find(e => e.id === state.selectedEnemyId);
+          const occTarget = state.enemies.find(e => e.id === targetEnemyId);
           if (!occTarget) {
             // Set active spell and wait for target selection
             setState(prev => ({ ...prev, activeOccultistSpell: occSpell }));
@@ -2815,12 +2819,15 @@ const ShadowsGame: React.FC = () => {
       case 'enemy_click':
         // If we have an active spell that needs a target, cast it on this enemy
         if (state.activeSpell) {
+          // Set selectedEnemyId first, then cast
+          setState(prev => ({ ...prev, selectedEnemyId: payload.id }));
           handleAction('cast', state.activeSpell);
           return;
         }
         // If we have an active occultist spell that needs a target, cast it on this enemy
         if (state.activeOccultistSpell) {
-          handleAction('cast_occultist', state.activeOccultistSpell);
+          // Pass enemy ID directly with the spell to avoid state timing issues
+          handleAction('cast_occultist', { spell: state.activeOccultistSpell, targetEnemyId: payload.id });
           return;
         }
         setState(prev => ({ ...prev, selectedEnemyId: payload.id }));

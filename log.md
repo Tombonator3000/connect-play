@@ -1,5 +1,48 @@
 # Development Log
 
+## 2026-01-20: Fix Occultist Spell Casting - Target Selection Bug
+
+### Problemet
+Når brukeren trykket "Cast"-knappen og valgte en spell (f.eks. Eldritch Bolt, Mind Blast, Banish), skjedde ingenting når de klikket på en fiende for å caste spellet.
+
+### Årsak
+Det var en timing-bug i spell targeting-logikken. Når en fiende ble klikket:
+1. `enemy_click` action sendte `handleAction('cast_occultist', spell)` uten å inkludere hvilken fiende som ble klikket
+2. I `cast_occultist`-caset ble `state.selectedEnemyId` sjekket, men denne var aldri satt fordi `enemy_click` bare videresendte spellet direkte
+
+### Løsning
+Endret `enemy_click` til å sende enemy ID direkte med spell-payload:
+```typescript
+// Før (bugget)
+if (state.activeOccultistSpell) {
+  handleAction('cast_occultist', state.activeOccultistSpell);
+  return;
+}
+
+// Etter (fikset)
+if (state.activeOccultistSpell) {
+  handleAction('cast_occultist', { spell: state.activeOccultistSpell, targetEnemyId: payload.id });
+  return;
+}
+```
+
+Og oppdatert `cast_occultist` til å håndtere begge payload-strukturer:
+```typescript
+const payloadData = payload as OccultistSpell | { spell: OccultistSpell; targetEnemyId: string };
+const occSpell = payloadData && 'spell' in payloadData ? payloadData.spell : payloadData as OccultistSpell;
+const targetEnemyId = payloadData && 'targetEnemyId' in payloadData ? payloadData.targetEnemyId : state.selectedEnemyId;
+```
+
+### Endrede Filer
+- `src/game/ShadowsGame.tsx` - Linje 2587-2592 og 2815-2830
+
+### Testing
+- TypeScript kompilerer uten feil
+- Build fullført uten errors
+- Nå fungerer alle Occultist spells korrekt med targeting
+
+---
+
 ## 2026-01-20: Options-forbedringer, Field Journal-farger og Økt Zoom
 
 ### Oppgave
