@@ -7584,3 +7584,134 @@ Occultist (Ritual Master) velger nå 3 av 5 tilgjengelige spells før scenario s
 - ✅ Auto-save funksjonalitet
 - ✅ TypeScript kompilerer uten feil
 - ✅ Build vellykket (800KB bundle)
+
+---
+
+## 2026-01-20: Refactor executeSpecialAbility - Config-Based Pattern
+
+### Oppgave
+Refaktorere kompleks kode: Finne en funksjon som er for kompleks og refaktorere den for klarhet mens oppførselen opprettholdes.
+
+### Analyse
+Etter å ha søkt gjennom kodebasen ble `executeSpecialAbility()` i `monsterAI.ts` identifisert som den beste kandidaten:
+- **105 linjer** med en stor switch statement
+- **15 cases** som håndterer forskjellige monster-abilities
+- Mye gjentatt struktur med lignende objekter
+- Kun 3 cases hadde faktisk kompleks logikk
+
+### Refaktoreringsløsning
+
+#### 1. Ny `SIMPLE_ABILITY_EFFECTS` Config (12 abilities)
+
+Opprettet et deklarativt konfigurasjonsobjekt for abilities med enkle, forutsigbare effekter:
+
+```typescript
+const SIMPLE_ABILITY_EFFECTS: Partial<Record<MonsterSpecialAbility, SimpleAbilityConfig>> = {
+  charge: {
+    damage: 1,
+    bonusAttackDice: 1,
+    messageTemplate: '{name} stormer fremover med et vilt angrep!'
+  },
+  enrage: {
+    bonusAttackDice: 2,
+    messageTemplate: '{name} går BERSERK! Øynene gløder med raseri!'
+  },
+  // ... 10 flere abilities
+};
+```
+
+**Inkluderte abilities:**
+- `charge`, `enrage`, `snipe`, `swoop`
+- `regenerate`, `terrify`, `ritual`, `cosmic_presence`
+- `devour`, `ranged_shot`, `phasing`, `teleport`
+
+#### 2. Dedikerte Handler-Funksjoner (3 komplekse abilities)
+
+Abilities som krever game state logikk ble ekstrahert til egne funksjoner:
+
+**`executePackTactics(enemy, allEnemies)`**
+- Teller tilstøtende ghouls for bonus attack dice
+- Returnerer dynamisk melding basert på antall
+
+**`executeDragUnder(enemy, target, tiles)`**
+- Sjekker om target står i vann
+- Betinget skade basert på tile-type
+
+**`executeSummon(enemy)`**
+- Spawner 1-2 cultists med random valg
+
+#### 3. Refaktorert `canUseSpecialAbility()`
+
+Flyttet HP-terskel logikk til config:
+
+```typescript
+const ABILITY_HP_THRESHOLDS: Partial<Record<MonsterSpecialAbility, { above?: number; below?: number }>> = {
+  enrage: { below: 0.5 },   // Kun når HP <= 50%
+  charge: { above: 0.3 }    // Kun når HP > 30%
+};
+```
+
+#### 4. Forenklet Hovedfunksjon
+
+**Før:** 105 linjer med switch statement og 15 cases
+
+**Etter:** 25 linjer med klar struktur:
+```typescript
+export function executeSpecialAbility(...): SpecialAbilityResult {
+  // 1. Handle complex abilities with dedicated handlers
+  switch (ability) {
+    case 'pack_tactics': return executePackTactics(enemy, allEnemies);
+    case 'drag_under': return executeDragUnder(enemy, target, tiles);
+    case 'summon': return executeSummon(enemy);
+  }
+
+  // 2. Handle simple abilities from config
+  const config = SIMPLE_ABILITY_EFFECTS[ability];
+  if (config) {
+    return buildSimpleAbilityResult(config, enemy.name);
+  }
+
+  // 3. Unknown ability fallback
+  return { message: `${enemy.name} bruker en ukjent evne.` };
+}
+```
+
+### Fordeler med Refaktoreringen
+
+| Aspekt | Før | Etter |
+|--------|-----|-------|
+| **Linjer i hovedfunksjon** | 105 | 25 |
+| **Switch cases** | 15 | 3 |
+| **Duplisert kode** | Høy (objektliteraler) | Ingen (config lookup) |
+| **Å legge til ny ability** | Copy-paste case | Legg til i config |
+| **Testing** | Vanskelig | Handler-funksjoner kan testes isolert |
+| **Lesbarhet** | Lav (lang switch) | Høy (klar separasjon) |
+
+### Nye Typer Eksportert
+
+```typescript
+export interface SpecialAbilityResult {
+  damage?: number;
+  sanityDamage?: number;
+  doomIncrease?: number;
+  healing?: number;
+  spawnedEnemies?: EnemyType[];
+  message: string;
+  bonusAttackDice?: number;
+}
+```
+
+### Fil Modifisert
+- `src/game/utils/monsterAI.ts` - Linjer 593-820
+
+### Build Status
+✅ Kompilerer uten feil
+✅ Alle abilities opprettholder samme oppførsel
+✅ Ingen breaking changes - eksporterer samme funksjoner
+
+### Prinsipper Anvendt
+1. **Configuration over Code** - Enkle abilities definert som data, ikke logikk
+2. **Single Responsibility** - Komplekse abilities har egne handler-funksjoner
+3. **DRY (Don't Repeat Yourself)** - `buildSimpleAbilityResult()` eliminerer duplisert objektbygging
+4. **Open/Closed** - Lett å legge til nye abilities uten å endre hovedfunksjonen
+

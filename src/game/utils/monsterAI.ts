@@ -595,6 +595,94 @@ export interface AIDecision {
 // ============================================================================
 
 /**
+ * Result type for special ability execution
+ */
+export interface SpecialAbilityResult {
+  damage?: number;
+  sanityDamage?: number;
+  doomIncrease?: number;
+  healing?: number;
+  spawnedEnemies?: EnemyType[];
+  message: string;
+  bonusAttackDice?: number;
+}
+
+/**
+ * Configuration for simple abilities (no complex logic needed).
+ * Message template uses {name} placeholder for enemy name.
+ */
+interface SimpleAbilityConfig {
+  damage?: number;
+  sanityDamage?: number;
+  doomIncrease?: number;
+  healing?: number;
+  bonusAttackDice?: number;
+  messageTemplate: string;
+}
+
+/**
+ * Static configuration for abilities with simple, predictable effects.
+ * Complex abilities (pack_tactics, drag_under, summon) are handled separately.
+ */
+const SIMPLE_ABILITY_EFFECTS: Partial<Record<MonsterSpecialAbility, SimpleAbilityConfig>> = {
+  charge: {
+    damage: 1,
+    bonusAttackDice: 1,
+    messageTemplate: '{name} stormer fremover med et vilt angrep!'
+  },
+  enrage: {
+    bonusAttackDice: 2,
+    messageTemplate: '{name} går BERSERK! Øynene gløder med raseri!'
+  },
+  snipe: {
+    bonusAttackDice: 1,
+    messageTemplate: '{name} tar nøye sikte...'
+  },
+  swoop: {
+    bonusAttackDice: 1,
+    messageTemplate: '{name} stuper ned fra luften!'
+  },
+  regenerate: {
+    healing: 1,
+    messageTemplate: '{name} regenererer skadet vev...'
+  },
+  terrify: {
+    sanityDamage: 1,
+    messageTemplate: '{name}s tilstedeværelse fyller deg med kosmisk redsel!'
+  },
+  ritual: {
+    doomIncrease: 1,
+    messageTemplate: '{name} utfører et mørkt ritual! Doom øker!'
+  },
+  cosmic_presence: {
+    sanityDamage: 1,
+    messageTemplate: '{name}s kosmiske tilstedeværelse tærer på sinnet ditt...'
+  },
+  devour: {
+    damage: 3,
+    messageTemplate: '{name} forsøker å SLUKE sitt bytte!'
+  },
+  ranged_shot: {
+    messageTemplate: '{name} avfyrer et fremmed våpen!'
+  },
+  phasing: {
+    messageTemplate: '{name} beveger seg gjennom dimensjonene...'
+  },
+  teleport: {
+    messageTemplate: '{name} beveger seg gjennom dimensjonene...'
+  }
+};
+
+/**
+ * HP thresholds for ability usage.
+ * Returns { canUse, requiresAbove?, requiresBelow? }
+ */
+const ABILITY_HP_THRESHOLDS: Partial<Record<MonsterSpecialAbility, { above?: number; below?: number }>> = {
+  enrage: { below: 0.5 },   // Only when HP <= 50%
+  charge: { above: 0.3 }    // Only when HP > 30%
+};
+
+/**
  * Check if monster can use a special ability this turn
  */
 export function canUseSpecialAbility(
@@ -607,19 +695,102 @@ export function canUseSpecialAbility(
     return false;
   }
 
-  // Some abilities have HP thresholds
-  switch (ability) {
-    case 'enrage':
-      return enemy.hp <= enemy.maxHp * 0.5; // Only when hurt
-    case 'charge':
-      return enemy.hp > enemy.maxHp * 0.3;  // Need some health to charge
-    default:
-      return true;
+  // Check HP thresholds from config
+  const threshold = ABILITY_HP_THRESHOLDS[ability];
+  if (threshold) {
+    const hpRatio = enemy.hp / enemy.maxHp;
+    if (threshold.below !== undefined && hpRatio > threshold.below) return false;
+    if (threshold.above !== undefined && hpRatio <= threshold.above) return false;
   }
+
+  return true;
+}
+
+// ============================================================================
+// COMPLEX ABILITY HANDLERS
+// Abilities that require game state logic beyond simple config
+// ============================================================================
+
+/**
+ * Handle pack_tactics: +1 attack die per adjacent ghoul
+ */
+function executePackTactics(enemy: EnemyWithAI, allEnemies: Enemy[]): SpecialAbilityResult {
+  const adjacentGhouls = allEnemies.filter(e =>
+    e.type === 'ghoul' &&
+    e.id !== enemy.id &&
+    hexDistance(e.position, enemy.position) <= 1
+  ).length;
+
+  return {
+    bonusAttackDice: adjacentGhouls,
+    message: adjacentGhouls > 0
+      ? `${enemy.name} koordinerer med ${adjacentGhouls} andre ghouls!`
+      : `${enemy.name} angriper alene...`
+  };
 }
 
 /**
- * Execute a special ability
+ * Handle drag_under: Pull player into water for bonus damage
+ */
+function executeDragUnder(enemy: EnemyWithAI, target: Player | null, tiles: Tile[]): SpecialAbilityResult {
+  if (!target) {
+    return { message: `${enemy.name} prøver å dra ned, men finner ikke vann.` };
+  }
+
+  const targetTile = tiles.find(t =>
+    t.q === target.position.q && t.r === target.position.r
+  );
+
+  if (targetTile?.hasWater) {
+    return {
+      damage: 1,
+      message: `${enemy.name} drar ${target.name} ned i vannet!`
+    };
+  }
+
+  return { message: `${enemy.name} prøver å dra ned, men finner ikke vann.` };
+}
+
+/**
+ * Handle summon: Spawn 1-2 cultists
+ */
+function executeSummon(enemy: EnemyWithAI): SpecialAbilityResult {
+  const summonCount = Math.random() < 0.5 ? 1 : 2;
+  return {
+    spawnedEnemies: Array(summonCount).fill('cultist' as EnemyType),
+    message: `${enemy.name} kaller på mørkets tjenere!`
+  };
+}
+
+/**
+ * Build result from simple config
+ */
+function buildSimpleAbilityResult(config: SimpleAbilityConfig, enemyName: string): SpecialAbilityResult {
+  return {
+    damage: config.damage,
+    sanityDamage: config.sanityDamage,
+    doomIncrease: config.doomIncrease,
+    healing: config.healing,
+    bonusAttackDice: config.bonusAttackDice,
+    message: config.messageTemplate.replace('{name}', enemyName)
+  };
+}
+
+/**
+ * Execute a special ability.
+ *
+ * REFACTORED: Previously 105-line switch statement with repeated object literals.
+ * Now uses:
+ * - SIMPLE_ABILITY_EFFECTS config for 12 simple abilities
+ * - Dedicated handler functions for 3 complex abilities (pack_tactics, drag_under, summon)
+ * - Single lookup + fallback pattern for cleaner control flow
+ *
+ * @param enemy - The enemy using the ability
+ * @param ability - Which ability to execute
+ * @param target - Target player (if applicable)
+ * @param allEnemies - All enemies (for pack_tactics)
+ * @param tiles - Game tiles (for drag_under water check)
+ * @returns Effect result with damage, healing, spawns, and message
  */
 export function executeSpecialAbility(
   enemy: EnemyWithAI,
@@ -627,120 +798,25 @@ export function executeSpecialAbility(
   target: Player | null,
   allEnemies: Enemy[],
   tiles: Tile[]
-): {
-  damage?: number;
-  sanityDamage?: number;
-  doomIncrease?: number;
-  healing?: number;
-  spawnedEnemies?: EnemyType[];
-  message: string;
-  bonusAttackDice?: number;
-} {
+): SpecialAbilityResult {
+  // Handle complex abilities with dedicated handlers
   switch (ability) {
-    case 'charge':
-      return {
-        damage: 1, // Bonus damage
-        message: `${enemy.name} stormer fremover med et vilt angrep!`,
-        bonusAttackDice: 1
-      };
-
     case 'pack_tactics':
-      const adjacentGhouls = allEnemies.filter(e =>
-        e.type === 'ghoul' &&
-        e.id !== enemy.id &&
-        hexDistance(e.position, enemy.position) <= 1
-      ).length;
-      return {
-        bonusAttackDice: adjacentGhouls,
-        message: adjacentGhouls > 0
-          ? `${enemy.name} koordinerer med ${adjacentGhouls} andre ghouls!`
-          : `${enemy.name} angriper alene...`
-      };
-
+      return executePackTactics(enemy, allEnemies);
     case 'drag_under':
-      if (target) {
-        const targetTile = tiles.find(t =>
-          t.q === target.position.q && t.r === target.position.r
-        );
-        if (targetTile?.hasWater) {
-          return {
-            damage: 1,
-            message: `${enemy.name} drar ${target.name} ned i vannet!`
-          };
-        }
-      }
-      return { message: `${enemy.name} prøver å dra ned, men finner ikke vann.` };
-
-    case 'enrage':
-      return {
-        bonusAttackDice: 2,
-        message: `${enemy.name} går BERSERK! Øynene gløder med raseri!`
-      };
-
+      return executeDragUnder(enemy, target, tiles);
     case 'summon':
-      // Priests can summon 1-2 cultists
-      const summonCount = Math.random() < 0.5 ? 1 : 2;
-      return {
-        spawnedEnemies: Array(summonCount).fill('cultist' as EnemyType),
-        message: `${enemy.name} kaller på mørkets tjenere!`
-      };
-
-    case 'snipe':
-      return {
-        bonusAttackDice: 1,
-        message: `${enemy.name} tar nøye sikte...`
-      };
-
-    case 'swoop':
-      return {
-        bonusAttackDice: 1,
-        message: `${enemy.name} stuper ned fra luften!`
-      };
-
-    case 'regenerate':
-      return {
-        healing: 1,
-        message: `${enemy.name} regenererer skadet vev...`
-      };
-
-    case 'terrify':
-      return {
-        sanityDamage: 1,
-        message: `${enemy.name}s tilstedeværelse fyller deg med kosmisk redsel!`
-      };
-
-    case 'ritual':
-      return {
-        doomIncrease: 1,
-        message: `${enemy.name} utfører et mørkt ritual! Doom øker!`
-      };
-
-    case 'cosmic_presence':
-      return {
-        sanityDamage: 1,
-        message: `${enemy.name}s kosmiske tilstedeværelse tærer på sinnet ditt...`
-      };
-
-    case 'devour':
-      return {
-        damage: 3, // Massive damage on crit
-        message: `${enemy.name} forsøker å SLUKE sitt bytte!`
-      };
-
-    case 'ranged_shot':
-      return {
-        message: `${enemy.name} avfyrer et fremmed våpen!`
-      };
-
-    case 'phasing':
-    case 'teleport':
-      return {
-        message: `${enemy.name} beveger seg gjennom dimensjonene...`
-      };
-
-    default:
-      return { message: `${enemy.name} bruker en ukjent evne.` };
+      return executeSummon(enemy);
   }
+
+  // Handle simple abilities from config
+  const config = SIMPLE_ABILITY_EFFECTS[ability];
+  if (config) {
+    return buildSimpleAbilityResult(config, enemy.name);
+  }
+
+  // Unknown ability fallback
+  return { message: `${enemy.name} bruker en ukjent evne.` };
 }
 
 /**
