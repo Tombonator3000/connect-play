@@ -1,5 +1,132 @@
 # Development Log
 
+## 2026-01-20: Forbedret Scenarios, Win States, Tile-tema og Doom Counter Balansering
+
+### Oppgave
+Forbedre spillet på tre hovedområder:
+1. **Scenarios og Win States**: Klare faktiske muligheter til å vinne scenario
+2. **Tile-tema Matching**: System som velger tiles som passer til type scenario (skog tiles til skog scenario etc)
+3. **Doom Counter Balansering**: Doom var for streng - gikk ofte til 0 før man kunne fullføre objectives
+
+### Problemanalyse
+
+#### Problem 1: Items spawnet ikke
+Scenarios genererte objectives som "Find the Iron Key", men itemene spawnet ALDRI faktisk i spillet. Det var ingen kobling mellom scenario objectives og tile-generering.
+
+#### Problem 2: Ingen tematisk tile matching
+Scenarios hadde `tileSet: indoor/outdoor/mixed` og `atmosphere: creepy/urban/wilderness`, men alle tiles brukte samme generiske pool uansett scenario-tema.
+
+#### Problem 3: Doom for streng
+- Base doom verdier var for lave (f.eks. 12 for escape scenarios)
+- Doom events spawnet fiender for tidlig (ved 70%/50%/20% av doom)
+- Med 3 AP per runde og flere tiles å utforske var det knapt tid til objectives
+
+### Løsning
+
+#### 1. Nytt Objective Spawning System (`objectiveSpawner.ts`)
+Ny fil med komplett system for quest items og tiles:
+
+```typescript
+// Key features:
+- initializeObjectiveSpawns(scenario) - Oppretter liste av quest items og tiles
+- onTileExplored() - Sjekker om quest items skal spawne på nye tiles
+- collectQuestItem() - Håndterer item-samling og objective progress
+- shouldSpawnQuestTile() - Spawner exit/altar tiles når betingelser møtes
+```
+
+**Quest Items**: Keys, clues, collectibles, artifacts, components
+**Quest Tiles**: Exit doors, altars, ritual points, boss rooms
+
+Items spawner progressivt basert på:
+- Exploration progress (flere tiles utforsket = høyere spawn-sjanse)
+- Room type bonuses (studier/biblioteker har høyere sjanse for items)
+- Objective priority (required items spawner før optional)
+
+#### 2. Tile-tema Matching System
+Lagt til `ScenarioTheme` type og tema-mapping:
+
+```typescript
+export type ScenarioTheme = 'manor' | 'church' | 'asylum' | 'warehouse' |
+  'forest' | 'urban' | 'coastal' | 'underground' | 'academic';
+```
+
+**getThemedTilePreferences(theme)** returnerer:
+- `preferredNames`: Tiles som passer til tema
+- `avoidNames`: Tiles som skal unngås
+- `floorPreference`: Foretrukket gulvtype
+
+Eksempel for 'forest' tema:
+- Preferred: forest, clearing, marsh, path, grove, stones, ruins, cabin
+- Avoid: asylum, factory, warehouse, hospital, cell
+- Floor: dirt
+
+#### 3. Doom Counter Balansering
+**Økte base doom verdier:**
+| Mission Type | Før (Normal) | Etter (Normal) |
+|-------------|--------------|----------------|
+| escape_manor | 12 | 16 |
+| assassination | 10 | 14 |
+| survival | 12 | 14 |
+| collection | 12 | 16 |
+| rescue | 12 | 16 |
+| investigation | 14 | 18 |
+| ritual | 10 | 14 |
+| seal_portal | 10 | 14 |
+| purge | 12 | 16 |
+
+**Justerte doom event thresholds:**
+- Early wave: 70% → 55% (gir ~7 runder før første wave)
+- Mid wave: 50% → 35% (mer tid mellom waves)
+- Boss spawn: 20% → 15% (dramatisk finale nær slutten)
+
+### Endrede Filer
+
+#### Nye Filer
+- `src/game/utils/objectiveSpawner.ts` - Quest item/tile spawning system
+
+#### Modifiserte Filer
+- `src/game/types.ts`:
+  - Lagt til `ScenarioTheme` type
+  - Lagt til `theme` field i Scenario interface
+  - Lagt til `objectiveSpawnState` i GameState
+
+- `src/game/utils/scenarioGenerator.ts`:
+  - Lagt til tema-mapping funksjoner
+  - Eksporterer `getThemedTilePreferences()`
+  - Økte alle doom base verdier
+  - Justerte doom event thresholds
+
+- `src/game/ShadowsGame.tsx`:
+  - Importerer objectiveSpawner funksjoner
+  - Initialiserer objectiveSpawnState ved scenario start
+  - Integrerer quest item spawning i spawnRoom()
+  - Oppdatert search_tile for å gi quest items
+
+### Tekniske Detaljer
+
+**Spawn Timing:**
+- Items begynner å spawne etter 20% exploration
+- Alle items skal være tilgjengelige ved 80% exploration
+- "Behind schedule" bonus øker spawn-sjanse hvis få items har spawnet
+
+**Quest Item Types:**
+```typescript
+type: 'key' | 'clue' | 'collectible' | 'artifact' | 'component'
+```
+
+**Quest Tile Types:**
+```typescript
+type: 'exit' | 'altar' | 'ritual_point' | 'npc_location' | 'boss_room'
+```
+
+### Testing
+- TypeScript kompilerer uten feil (`npx tsc --noEmit`)
+- Scenarios genererer nå med tema
+- Quest items spawner på tiles og kan samles
+- Objectives oppdateres når items samles
+
+---
+
 ## 2026-01-20: Implementert klientside-system for autogenerering av spill-grafikk
 
 ### Oppgave

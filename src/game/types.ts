@@ -775,6 +775,8 @@ export interface DefeatCondition {
   objectiveId?: string;  // For objective_failed type
 }
 
+export type ScenarioTheme = 'manor' | 'church' | 'asylum' | 'warehouse' | 'forest' | 'urban' | 'coastal' | 'underground' | 'academic';
+
 export interface Scenario {
   id: string;
   title: string;
@@ -785,6 +787,7 @@ export interface Scenario {
   specialRule: string;
   difficulty: 'Normal' | 'Hard' | 'Nightmare';
   tileSet: 'indoor' | 'outdoor' | 'mixed';
+  theme?: ScenarioTheme;         // Theme determines which tiles spawn (forest, manor, church, etc.)
   goal: string;
   victoryType: VictoryType;
   steps: ScenarioStep[];         // Legacy - for backward compatibility
@@ -1249,6 +1252,31 @@ export interface GameState {
   weatherState: WeatherState;    // Active weather conditions
   survivors: Survivor[];         // NPC survivors on the map
   rescuedSurvivors: string[];    // IDs of successfully rescued survivors
+  // Quest item spawning state - tracks which items need to spawn and where
+  objectiveSpawnState?: {
+    questItems: {
+      id: string;
+      objectiveId: string;
+      type: 'key' | 'clue' | 'collectible' | 'artifact' | 'component';
+      name: string;
+      description: string;
+      spawned: boolean;
+      spawnedOnTileId?: string;
+      collected: boolean;
+    }[];
+    questTiles: {
+      id: string;
+      objectiveId: string;
+      type: 'exit' | 'altar' | 'ritual_point' | 'npc_location' | 'boss_room';
+      name: string;
+      spawned: boolean;
+      revealed: boolean;
+      revealCondition?: 'objective_complete' | 'item_found' | 'doom_threshold';
+      revealObjectiveId?: string;
+    }[];
+    tilesExplored: number;
+    itemsCollected: number;
+  };
 }
 
 // ============================================================================

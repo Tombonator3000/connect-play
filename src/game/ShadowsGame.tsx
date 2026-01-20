@@ -62,6 +62,17 @@ import {
   ConnectionEdgeType,
   rotateEdges
 } from './tileConnectionSystem';
+import {
+  initializeObjectiveSpawns,
+  shouldSpawnQuestItem,
+  shouldRevealQuestTile,
+  shouldSpawnQuestTile,
+  collectQuestItem,
+  onTileExplored,
+  QUEST_ITEM_NAMES,
+  ObjectiveSpawnState
+} from './utils/objectiveSpawner';
+import { getThemedTilePreferences } from './utils/scenarioGenerator';
 
 const STORAGE_KEY = 'shadows_1920s_save';
 const SETTINGS_KEY = 'shadows_1920s_settings';
@@ -1330,20 +1341,60 @@ const ShadowsGame: React.FC = () => {
       case 'search_rubble':
       case 'search_water':
       case 'search_statue':
-        // Mark as searched and potentially give item
-        setState(prev => ({
-          ...prev,
-          board: prev.board.map(t => {
-            if (t.id === tile.id) {
-              if (t.object) {
-                return { ...t, searched: true, object: { ...t.object, searched: true } };
+        // Mark as searched and check for quest items
+        setState(prev => {
+          // Check if there's a quest item spawned on this tile
+          const questItem = prev.objectiveSpawnState?.questItems.find(
+            qi => qi.spawned && qi.spawnedOnTileId === tile.id && !qi.collected
+          );
+
+          let updatedObjectiveSpawnState = prev.objectiveSpawnState;
+          let updatedScenario = prev.activeScenario;
+          let updatedQuestItemsCollected = prev.questItemsCollected;
+
+          if (questItem && prev.activeScenario) {
+            // Found a quest item! Collect it.
+            const result = collectQuestItem(prev.objectiveSpawnState!, questItem, prev.activeScenario);
+            updatedObjectiveSpawnState = result.updatedState;
+
+            if (result.updatedObjective) {
+              // Update the objective in scenario
+              updatedScenario = {
+                ...prev.activeScenario,
+                objectives: prev.activeScenario.objectives.map(o =>
+                  o.id === result.updatedObjective!.id ? result.updatedObjective! : o
+                )
+              };
+
+              addToLog(`QUEST ITEM FOUND: ${questItem.name}`);
+              addToLog(questItem.description);
+
+              if (result.objectiveCompleted) {
+                addToLog(`OBJECTIVE COMPLETE: ${result.updatedObjective.shortDescription}`);
+              } else {
+                addToLog(`Progress: ${result.updatedObjective.shortDescription}`);
               }
-              return { ...t, searched: true };
             }
-            return t;
-          })
-        }));
-        // Could add random item here
+
+            updatedQuestItemsCollected = [...prev.questItemsCollected, questItem.id];
+          }
+
+          return {
+            ...prev,
+            board: prev.board.map(t => {
+              if (t.id === tile.id) {
+                if (t.object) {
+                  return { ...t, searched: true, object: { ...t.object, searched: true } };
+                }
+                return { ...t, searched: true };
+              }
+              return t;
+            }),
+            objectiveSpawnState: updatedObjectiveSpawnState,
+            activeScenario: updatedScenario,
+            questItemsCollected: updatedQuestItemsCollected
+          };
+        });
         break;
 
       // Handle gate/trap/fog_wall object removal
@@ -1746,14 +1797,48 @@ const ShadowsGame: React.FC = () => {
 
     const newTiles: Tile[] = [newTile];
 
-    setState(prev => ({ ...prev, board: [...prev.board, ...newTiles] }));
-    addToLog(`UTFORSKET: ${newTile.name}. [${newTile.category?.toUpperCase() || 'UNKNOWN'}]`);
+    // Check for quest item/tile spawning on new tile
+    let updatedObjectiveSpawnState = state.objectiveSpawnState;
+    let finalTile = newTile;
+
+    if (state.objectiveSpawnState && state.activeScenario) {
+      const completedObjectiveIds = state.activeScenario.objectives
+        .filter(o => o.completed)
+        .map(o => o.id);
+
+      const exploreResult = onTileExplored(
+        state.objectiveSpawnState,
+        newTile,
+        state.activeScenario,
+        completedObjectiveIds
+      );
+
+      updatedObjectiveSpawnState = exploreResult.updatedState;
+
+      // If a quest item spawned, mark the tile
+      if (exploreResult.spawnedItem) {
+        addToLog(`Something important is hidden in ${newTile.name}... Search carefully!`);
+      }
+
+      // If a quest tile spawned, modify the tile
+      if (exploreResult.spawnedQuestTile && exploreResult.tileModifications) {
+        finalTile = { ...newTile, ...exploreResult.tileModifications };
+        addToLog(`IMPORTANT LOCATION: ${exploreResult.spawnedQuestTile.name} found!`);
+      }
+    }
+
+    setState(prev => ({
+      ...prev,
+      board: [...prev.board, finalTile],
+      objectiveSpawnState: updatedObjectiveSpawnState
+    }));
+    addToLog(`UTFORSKET: ${finalTile.name}. [${finalTile.category?.toUpperCase() || 'UNKNOWN'}]`);
 
     // Show atmospheric description from template or location descriptions
     if (selected.template.description) {
       addToLog(selected.template.description);
     } else {
-      const locationDescription = LOCATION_DESCRIPTIONS[newTile.name];
+      const locationDescription = LOCATION_DESCRIPTIONS[finalTile.name];
       if (locationDescription) {
         addToLog(locationDescription);
       }
@@ -1761,7 +1846,7 @@ const ShadowsGame: React.FC = () => {
 
     // Check explore objectives
     if (state.activeScenario) {
-      const exploreCheck = checkExploreObjectives(state.activeScenario, newTile.name, newTile.id);
+      const exploreCheck = checkExploreObjectives(state.activeScenario, finalTile.name, finalTile.id);
       if (exploreCheck.objective) {
         const updatedScenario = exploreCheck.shouldComplete
           ? completeObjective(state.activeScenario, exploreCheck.objective.id)
@@ -1793,7 +1878,7 @@ const ShadowsGame: React.FC = () => {
         spawnEnemy(enemyType, spawnQ, spawnR);
       }
     }
-  }, [state.board, state.doom, state.enemies, state.activeScenario, spawnEnemy]);
+  }, [state.board, state.doom, state.enemies, state.activeScenario, state.objectiveSpawnState, spawnEnemy]);
 
   /**
    * Instantiate a room cluster at the given world position
@@ -3370,14 +3455,21 @@ const ShadowsGame: React.FC = () => {
           playerCount={state.players.length}
           onBegin={() => {
             setShowBriefing(false);
+            // Initialize objective spawn state for quest items and tiles
+            const objectiveSpawnState = initializeObjectiveSpawns(state.activeScenario!);
             setState(prev => ({
               ...prev,
               phase: GamePhase.INVESTIGATOR,
-              doom: prev.activeScenario?.startDoom || 12
+              doom: prev.activeScenario?.startDoom || 12,
+              objectiveSpawnState  // Track quest items and tiles
             }));
             addToLog("The investigation begins.");
             addToLog(`SCENARIO: ${state.activeScenario?.title}`);
             addToLog(`GOAL: ${state.activeScenario?.goal}`);
+            // Log info about quest items to find
+            if (objectiveSpawnState.questItems.length > 0) {
+              addToLog(`Hints: ${objectiveSpawnState.questItems.length} key items must be found to complete your objectives.`);
+            }
             spawnEnemy('cultist', 1, 0);
           }}
         />
