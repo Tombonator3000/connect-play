@@ -138,7 +138,8 @@ export function getBaseSanityForClass(characterClass: CharacterType): number {
 export function createLegacyHero(
   name: string,
   characterClass: CharacterType,
-  portraitIndex: number = 0
+  portraitIndex: number = 0,
+  hasPermadeath: boolean = false
 ): LegacyHero {
   const baseAttributes = getBaseAttributesForClass(characterClass);
   const now = new Date().toISOString();
@@ -164,7 +165,8 @@ export function createLegacyHero(
     dateCreated: now,
     lastPlayed: now,
     isRetired: false,
-    isDead: false
+    isDead: false,
+    hasPermadeath
   };
 }
 
@@ -220,11 +222,13 @@ export function deleteHero(data: LegacyData, heroId: string): LegacyData {
 }
 
 // ============================================================================
-// PERMADEATH
+// DEATH AND PERMADEATH
 // ============================================================================
 
 /**
- * Mark a hero as dead (permadeath)
+ * Handle hero death - behavior depends on hasPermadeath flag
+ * - hasPermadeath = true: Hero is permanently dead (goes to memorial)
+ * - hasPermadeath = false: Hero loses equipment but can continue playing
  */
 export function killHero(
   data: LegacyData,
@@ -235,23 +239,40 @@ export function killHero(
   const hero = getHeroById(data, heroId);
   if (!hero) return data;
 
-  const deadHero: LegacyHero = {
-    ...hero,
-    isDead: true,
-    deathScenario: scenarioId,
-    deathCause,
-    lastPlayed: new Date().toISOString()
-  };
-
-  // Move any equipped items to stash before death
+  // Move any equipped items to stash regardless of permadeath
   const itemsFromHero = getAllEquippedItems(hero.equipment);
   const updatedStash = addItemsToStash(data.stash, itemsFromHero);
 
-  return {
-    ...data,
-    heroes: data.heroes.map(h => h.id === heroId ? { ...deadHero, equipment: createEmptyInventory() } : h),
-    stash: updatedStash
-  };
+  if (hero.hasPermadeath) {
+    // Permadeath hero - permanently dead, goes to memorial
+    const deadHero: LegacyHero = {
+      ...hero,
+      isDead: true,
+      deathScenario: scenarioId,
+      deathCause,
+      equipment: createEmptyInventory(),
+      lastPlayed: new Date().toISOString()
+    };
+
+    return {
+      ...data,
+      heroes: data.heroes.map(h => h.id === heroId ? deadHero : h),
+      stash: updatedStash
+    };
+  } else {
+    // Non-permadeath hero - loses equipment but survives
+    const survivedHero: LegacyHero = {
+      ...hero,
+      equipment: createEmptyInventory(),
+      lastPlayed: new Date().toISOString()
+    };
+
+    return {
+      ...data,
+      heroes: data.heroes.map(h => h.id === heroId ? survivedHero : h),
+      stash: updatedStash
+    };
+  }
 }
 
 /**
@@ -588,6 +609,8 @@ export function legacyHeroToPlayer(hero: LegacyHero): Player {
 
 /**
  * Update a LegacyHero from Player state after scenario
+ * If hero has permadeath enabled and didn't survive, they are permanently dead (isDead: true)
+ * If hero doesn't have permadeath and didn't survive, they lose their equipment but can continue playing
  */
 export function updateLegacyHeroFromPlayer(
   hero: LegacyHero,
@@ -595,7 +618,22 @@ export function updateLegacyHeroFromPlayer(
   survived: boolean
 ): LegacyHero {
   if (!survived) {
-    return { ...hero, isDead: true };
+    if (hero.hasPermadeath) {
+      // Permadeath hero dies permanently - goes to memorial
+      return {
+        ...hero,
+        isDead: true,
+        lastPlayed: new Date().toISOString()
+      };
+    } else {
+      // Non-permadeath hero loses their equipped items but survives
+      // They keep their stats, XP, gold, etc.
+      return {
+        ...hero,
+        equipment: createEmptyInventory(), // Lose all equipment
+        lastPlayed: new Date().toISOString()
+      };
+    }
   }
 
   return {
