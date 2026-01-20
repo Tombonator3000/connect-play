@@ -1,5 +1,93 @@
 # Development Log
 
+## 2026-01-20: Context Actions Code Refactoring
+
+### Oppgave
+Refaktorere kompleks kode i `contextActions.ts` (1253 linjer) for bedre lesbarhet og vedlikeholdbarhet, samtidig som oppførselen forblir uendret.
+
+### Problem
+`contextActions.ts` var en monolittisk fil med fire store switch statements (49 case statements totalt) som alle fulgte samme mønster:
+- `getDoorActions()` - 7 door states med forskjellige actions
+- `getBlockedEdgeActions()` - 10 blocking types med repetitive action-opprettelse
+- `getObstacleActions()` - 14 obstacle types
+- `getTileObjectActions()` - 16 object types
+
+Hver case i switch statements pushet actions til en array med nesten identisk struktur, noe som førte til mye kode-duplisering og gjorde det vanskelig å:
+- Legge til nye action-typer
+- Forstå hvilke actions som finnes
+- Teste individuelle action-konfigurasjoner
+- Vedlikeholde konsistent oppførsel
+
+### Løsning
+
+#### 1. Ny fil: `src/game/utils/contextActionDefinitions.ts`
+Ekstrahert alle action-konfigurasjoner til deklarative objekter (~700 linjer):
+
+**Innhold:**
+- `ActionConfig` og `DynamicActionConfig` interfaces for type-sikkerhet
+- `ActionContext` interface for kontekstavhengige verdier
+- `DOOR_STATE_ACTIONS` - Statiske actions for open/closed/puzzle/broken dører
+- `LOCKED_DOOR_ACTIONS` - Dynamiske actions med DC basert på lock type
+- `BARRICADED_DOOR_ACTIONS` og `SEALED_DOOR_ACTIONS`
+- `BLOCKED_EDGE_ACTIONS` - Record<string, ActionConfig[]> for alle edge typer
+- `FIRE_EDGE_ACTIONS`, `LOCKED_GATE_EDGE_ACTIONS`, `SPIRIT_BARRIER_EDGE_ACTIONS`, `WARD_EDGE_ACTIONS` - Dynamiske edge actions
+- `OBSTACLE_ACTIONS` - Statiske obstacle actions
+- `FIRE_OBSTACLE_ACTIONS`, `GAS_POISON_ACTIONS`, `DARKNESS_OBSTACLE_ACTIONS`, `SPIRIT_BARRIER_OBSTACLE_ACTIONS` - Dynamiske obstacle actions
+- `TILE_OBJECT_ACTIONS` - Alle tile object actions
+- `TRAP_ACTIONS`, `GATE_ACTIONS`, `WINDOW_EDGE_ACTIONS`
+- `CANCEL_ACTION` - Gjenbrukbar cancel-handling
+
+#### 2. Ny fil: `src/game/utils/contextActionBuilder.ts`
+Ekstrahert action-bygge-logikk (~230 linjer):
+
+**Innhold:**
+- `createActionContext()` - Lager kontekst fra spiller og edge/obstacle data
+- `buildStaticAction()` - Bygger ContextAction fra statisk config
+- `buildDynamicAction()` - Bygger ContextAction fra dynamisk config med kontekst
+- `buildActionsFromConfigs()` - Bygger flere actions fra config-array
+- `inferSkillType()` - Utleder skill type fra action id/icon
+- `withCancelAction()` - Legger til cancel-handling til action-liste
+- `buildLockedDoorActions()` - Spesialisert builder for låste dører
+- `buildSealedDoorActions()` - Spesialisert builder for forseglede dører
+- `buildBlockedEdgeActions()` - Spesialisert builder for blokkerte edges
+- `buildSearchableActions()` - Builder for søkbare containere
+- `buildBookshelfActions()` - Builder for bokhyller
+- `buildStatueActions()` - Builder for statuer
+
+#### 3. Oppdatert: `src/game/utils/contextActions.ts`
+Refaktorert hovedfil (nå ~410 linjer, ned fra 1253):
+
+**Endringer:**
+- Importerer definisjoner og builders fra nye moduler
+- Erstatter store switch statements med config-lookups og builder-kall
+- Beholder samme public API for bakoverkompatibilitet
+- Re-eksporterer typer og hjelpefunksjoner for konsumenter
+
+### Filer Endret/Opprettet
+- `src/game/utils/contextActionDefinitions.ts` - **NY** (~700 linjer)
+- `src/game/utils/contextActionBuilder.ts` - **NY** (~230 linjer)
+- `src/game/utils/contextActions.ts` - **OPPDATERT** (redusert med ~840 linjer)
+
+### Resultat
+- ✅ Kode splittet i logiske moduler (definisjoner, builders, orchestration)
+- ✅ Separasjon av data (hva actions gjør) fra logikk (hvordan de bygges)
+- ✅ Lettere å legge til nye action-typer (bare legg til i definitions)
+- ✅ Bedre type-sikkerhet med ActionConfig interfaces
+- ✅ Bakoverkompatibilitet beholdt (re-eksporter)
+- ✅ Build vellykket uten feil
+- ✅ Ingen oppførselsendringer
+
+### Tekniske detaljer
+- **Før**: 1 fil à 1253 linjer med 49 case statements
+- **Etter**: 3 filer med klarere ansvarsfordeling
+  - `contextActionDefinitions.ts`: ~700 linjer (kun data)
+  - `contextActionBuilder.ts`: ~230 linjer (kun logikk)
+  - `contextActions.ts`: ~410 linjer (orchestration)
+- **Linjereduksjon i contextActions.ts**: ~67%
+- **Mønster brukt**: Configuration-driven architecture med builder pattern
+
+---
+
 ## 2026-01-20: Monster AI Code Refactoring
 
 ### Oppgave
