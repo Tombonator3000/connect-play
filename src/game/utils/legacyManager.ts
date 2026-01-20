@@ -664,23 +664,23 @@ export function getDefaultShopInventory(): ShopInventory {
   return {
     weapons: [
       {
-        item: { id: 'shop_revolver', name: 'Revolver', type: 'weapon', effect: '+2 combat damage', bonus: 2, slotType: 'hand' },
+        item: { id: 'shop_revolver', name: 'Revolver', type: 'weapon', effect: '3 attack dice, range 3', attackDice: 3, weaponType: 'ranged', range: 3, ammo: 6, slotType: 'hand' },
         goldCost: 30,
         stock: -1
       },
       {
-        item: { id: 'shop_shotgun', name: 'Shotgun', type: 'weapon', effect: '+3 combat damage, short range', bonus: 3, slotType: 'hand' },
+        item: { id: 'shop_shotgun', name: 'Shotgun', type: 'weapon', effect: '4 attack dice, range 2', attackDice: 4, weaponType: 'ranged', range: 2, ammo: 2, slotType: 'hand' },
         goldCost: 50,
         stock: 2
       },
       {
-        item: { id: 'shop_tommy', name: 'Tommy Gun', type: 'weapon', effect: '+4 combat damage, automatic', bonus: 4, slotType: 'hand' },
+        item: { id: 'shop_tommy', name: 'Tommy Gun', type: 'weapon', effect: '5 attack dice, range 3', attackDice: 5, weaponType: 'ranged', range: 3, ammo: 20, slotType: 'hand' },
         goldCost: 100,
         stock: 1,
         requiredLevel: 3
       },
       {
-        item: { id: 'shop_knife', name: 'Combat Knife', type: 'weapon', effect: '+1 combat damage, silent', bonus: 1, slotType: 'hand' },
+        item: { id: 'shop_knife', name: 'Combat Knife', type: 'weapon', effect: '2 attack dice, silent', attackDice: 2, weaponType: 'melee', ammo: -1, silent: true, slotType: 'hand' },
         goldCost: 15,
         stock: -1
       }
@@ -709,17 +709,17 @@ export function getDefaultShopInventory(): ShopInventory {
     ],
     armor: [
       {
-        item: { id: 'shop_leather', name: 'Leather Jacket', type: 'armor', effect: '-1 damage from physical attacks', slotType: 'body' },
+        item: { id: 'shop_leather', name: 'Leather Jacket', type: 'armor', effect: '+1 defense die', defenseDice: 1, slotType: 'body' },
         goldCost: 35,
         stock: -1
       },
       {
-        item: { id: 'shop_trench', name: 'Trench Coat', type: 'armor', effect: '+1 bag slot equivalent', slotType: 'body' },
+        item: { id: 'shop_trench', name: 'Trench Coat', type: 'armor', effect: '+1 defense die, conceals weapons', defenseDice: 1, slotType: 'body' },
         goldCost: 25,
         stock: -1
       },
       {
-        item: { id: 'shop_vest', name: 'Armored Vest', type: 'armor', effect: '-2 damage from physical attacks', slotType: 'body' },
+        item: { id: 'shop_vest', name: 'Armored Vest', type: 'armor', effect: '+2 defense dice', defenseDice: 2, slotType: 'body' },
         goldCost: 75,
         stock: 1,
         requiredLevel: 2

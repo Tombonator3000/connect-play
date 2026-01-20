@@ -7877,3 +7877,70 @@ export interface SpecialAbilityResult {
 3. **DRY (Don't Repeat Yourself)** - `buildSimpleAbilityResult()` eliminerer duplisert objektbygging
 4. **Open/Closed** - Lett å legge til nye abilities uten å endre hovedfunksjonen
 
+---
+
+## 2026-01-20: Bug Fix - Shop Weapons/Armor Not Working in Combat
+
+### Problem
+Shop-vapen og rustning fra Legacy-systemet fungerte ikke i kamp. Spillere som kjopte vapen i shop'en kjempet som om de var ubevapnede.
+
+### Root Cause
+Kampsystemet ble oppdatert til Hero Quest-stil i en tidligere sesjon. Det nye systemet bruker:
+- `attackDice` - antall terninger vapenet gir
+- `defenseDice` - antall forsvarsterninger rustningen gir
+
+Shop-items i `legacyManager.ts` brukte fortsatt det gamle systemet:
+- `bonus` - en generell bonus-verdi som ikke lenger ble brukt
+
+Koden i `combatUtils.ts` sjekker eksplisitt for `attackDice`:
+```typescript
+if (item.type === 'weapon' && item.attackDice) {
+  // Bruk vapenet
+}
+```
+
+Siden shop-vapen ikke hadde `attackDice`, ble de ignorert og spilleren kjempet som ubevapnet (1 terning).
+
+### Fix Applied
+Oppdaterte `getDefaultShopInventory()` i `legacyManager.ts`:
+
+**Vapen - La til attackDice, weaponType, range, ammo:**
+| Vapen | attackDice | weaponType | range | ammo |
+|-------|------------|------------|-------|------|
+| Combat Knife | 2 | melee | 1 | -1 |
+| Revolver | 3 | ranged | 3 | 6 |
+| Shotgun | 4 | ranged | 2 | 2 |
+| Tommy Gun | 5 | ranged | 3 | 20 |
+
+**Rustning - La til defenseDice:**
+| Rustning | defenseDice |
+|----------|-------------|
+| Leather Jacket | 1 |
+| Trench Coat | 1 |
+| Armored Vest | 2 |
+
+### Code Changes
+
+**Before:**
+```typescript
+{ id: 'shop_revolver', name: 'Revolver', type: 'weapon', effect: '+2 combat damage', bonus: 2, slotType: 'hand' }
+```
+
+**After:**
+```typescript
+{ id: 'shop_revolver', name: 'Revolver', type: 'weapon', effect: '3 attack dice, range 3', attackDice: 3, weaponType: 'ranged', range: 3, ammo: 6, slotType: 'hand' }
+```
+
+### Files Modified
+- `src/game/utils/legacyManager.ts` - Oppdatert alle vapen og rustning i `getDefaultShopInventory()`
+
+### Impact
+- Shop-vapen fungerer na korrekt i kamp
+- Shop-rustning gir na forsvarsterninger
+- Verdiene er konsistente med WEAPON_STATS i constants.ts
+- Legacy-mode er na fullt spillbart
+
+### Verification
+- TypeScript kompilerer uten feil
+- Verdiene matcher WEAPON_STATS og REGELBOK.MD spesifikasjonene
+
