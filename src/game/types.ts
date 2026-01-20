@@ -831,8 +831,10 @@ export interface ContextAction {
 }
 
 export interface ContextActionEffect {
-  type: 'open_door' | 'break_door' | 'remove_obstacle' | 'trigger_alarm' | 'take_damage' | 'lose_sanity' | 'gain_item' | 'reveal_secret';
+  type: 'open_door' | 'break_door' | 'remove_obstacle' | 'trigger_alarm' | 'take_damage' | 'lose_sanity' | 'gain_item' | 'reveal_secret' | 'clear_edge' | 'pass_through';
   value?: number;
+  damage?: number;           // For effects that cause damage
+  sanityCost?: number;       // For effects that cost sanity
   targetId?: string;
   message?: string;
 }

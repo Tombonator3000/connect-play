@@ -352,10 +352,10 @@ export function calculateTargetPriority(
 
   // Type preference bonus (0-15 points)
   let typePreferenceScore = 0;
-  if (preferences.preferClass?.includes(player.characterClass)) {
+  if (preferences.preferClass?.includes(player.id)) {
     typePreferenceScore = 15;
   }
-  if (preferences.avoidClass?.includes(player.characterClass)) {
+  if (preferences.avoidClass?.includes(player.id)) {
     typePreferenceScore = -20; // Penalty for avoided classes
   }
 

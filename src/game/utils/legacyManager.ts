@@ -33,6 +33,9 @@ import {
 } from '../types';
 import { CHARACTERS } from '../constants';
 
+// Re-export for external consumers
+export { createDefaultLegacyData };
+
 // ============================================================================
 // STORAGE KEYS
 // ============================================================================
@@ -582,8 +585,8 @@ export function legacyHeroToPlayer(hero: LegacyHero): Player {
   };
 
   return {
-    id: hero.id,  // Use unique hero ID, not class type
-    heroId: hero.id,  // Also store in dedicated field for clarity
+    id: hero.characterClass,  // Use character class as the id (CharacterType)
+    heroId: hero.id,  // Store unique hero ID for tracking
     name: hero.name,
     hp: hero.maxHp,
     maxHp: hero.maxHp,

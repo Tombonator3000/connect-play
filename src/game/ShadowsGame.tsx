@@ -1928,7 +1928,7 @@ const ShadowsGame: React.FC = () => {
         if (darkRoomEffects.enemySpawn) {
           const { type, count } = darkRoomEffects.enemySpawn;
           for (let i = 0; i < count; i++) {
-            const newEnemy = createEnemy(type, q, r, `dark_ambush_${Date.now()}_${i}`);
+            const newEnemy = createEnemy(type, { q, r });
             setState(prev => ({
               ...prev,
               enemies: [...prev.enemies, newEnemy]
@@ -1989,7 +1989,7 @@ const ShadowsGame: React.FC = () => {
 
         // Check if can attack
         const isRanged = hasRangedWeapon(activePlayer);
-        const { canAttack, reason } = canAttackEnemy(activePlayer, targetEnemy, isRanged);
+        const { canAttack, reason } = canAttackEnemy(activePlayer, targetEnemy);
         if (!canAttack) {
           addToLog(reason);
           return;

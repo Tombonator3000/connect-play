@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { Player, Item, countInventoryItems, InventorySlotName } from '../types';
+import { Player, Item, countInventoryItems, InventorySlotName, CharacterType } from '../types';
 import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User, Hand, Shirt, Key, X, ArrowRight, Trash2, Pill } from 'lucide-react';
 import { ItemTooltip } from './ItemTooltip';
-
+import { getCharacterPortrait, getCharacterDisplayName } from '../utils/characterAssets';
 interface CharacterPanelProps {
   player: Player | null;
   onUseItem?: (item: Item, slotName: InventorySlotName) => void;
@@ -123,11 +123,20 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       <div className="p-6 pb-4 border-b-2 border-border relative z-10 shrink-0">
         <div className="flex gap-4 items-start">
           <div className="w-20 h-20 rounded-xl border-4 border-leather shadow-lg overflow-hidden bg-background shrink-0">
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground"><User size={40} /></div>
+            <img 
+              src={getCharacterPortrait(player.id as CharacterType)} 
+              alt={player.name}
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                target.style.display = 'none';
+                target.parentElement!.innerHTML = '<div class="w-full h-full flex items-center justify-center text-muted-foreground"><svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></div>';
+              }}
+            />
           </div>
           <div className="flex-1 min-w-0 pt-1">
             <h2 className="text-2xl font-display italic text-parchment tracking-wide leading-none truncate">{player.name}</h2>
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mt-2">{player.id}</div>
+            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mt-2">{getCharacterDisplayName(player.id as CharacterType)}</div>
           </div>
         </div>
       </div>

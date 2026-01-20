@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { Tile, Player, Enemy, FloatingText, EnemyType, ScenarioModifier, WeatherState, EdgeData } from '../types';
+import { Tile, Player, Enemy, FloatingText, EnemyType, ScenarioModifier, WeatherState, EdgeData, CharacterType } from '../types';
 import {
   User, Skull, DoorOpen, Lock, Flame, Hammer, Brain,
   BookOpen, Anchor, Church, MapPin, Building, ShoppingBag, Fish, PawPrint, Biohazard, Ghost, Bug, Search,
@@ -9,6 +9,7 @@ import { EnemyTooltip } from './ItemTooltip';
 import WeatherOverlay from './WeatherOverlay';
 import { calculateWeatherVision, weatherHidesEnemy, getDarkRoomDisplayState } from '../constants';
 import { Flashlight } from 'lucide-react';
+import { getCharacterPortrait } from '../utils/characterAssets';
 
 // Import AI-generated tile images
 import tileLibrary from '@/assets/tiles/tile-library.png';
@@ -1229,9 +1230,19 @@ const GameBoard: React.FC<GameBoardProps> = ({
         {players.map(player => {
           if (player.isDead) return null;
           const { x, y } = hexToPixel(player.position.q, player.position.r);
+          const portraitUrl = getCharacterPortrait(player.id as CharacterType);
           return (
-            <div key={player.id} className="absolute w-12 h-12 rounded-full border-2 border-foreground shadow-[0_0_25px_rgba(255,255,255,0.4)] flex items-center justify-center bg-card z-30 transition-all duration-500" style={{ left: `${x - 24}px`, top: `${y - 24}px` }}>
-              <User className="text-foreground" size={20} />
+            <div key={player.id} className="absolute w-12 h-12 rounded-full border-2 border-foreground shadow-[0_0_25px_rgba(255,255,255,0.4)] flex items-center justify-center bg-card z-30 transition-all duration-500 overflow-hidden" style={{ left: `${x - 24}px`, top: `${y - 24}px` }}>
+              <img 
+                src={portraitUrl} 
+                alt={player.name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
+              />
+              <User className="text-foreground absolute opacity-0 peer-error:opacity-100" size={20} />
               <div className="absolute inset-0 bg-accent/20 rounded-full animate-lantern pointer-events-none blur-[24px] scale-[4]" />
               {player.activeMadness && (
                 <div className="absolute -top-1 -right-1 w-5 h-5 bg-sanity border border-foreground rounded-full flex items-center justify-center animate-pulse">

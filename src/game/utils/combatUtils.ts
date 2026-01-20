@@ -21,6 +21,7 @@ import { BESTIARY, CHARACTERS } from '../constants';
 export interface CombatResult {
   hit: boolean;
   damage: number;
+  rolls: number[];             // Attack rolls for display (alias for attackRolls)
   attackRolls: number[];
   attackSuccesses: number;     // "Skulls" - successful attack dice
   defenseRolls: number[];
@@ -30,6 +31,7 @@ export interface CombatResult {
   horrorTriggered: boolean;
   sanityLoss: number;
   message: string;
+  successes: number;           // Alias for attackSuccesses for compatibility
 }
 
 // Horror check result
@@ -261,6 +263,10 @@ export function performAttack(
     hit: damage > 0,
     damage,
     rolls: attackRolls,
+    attackRolls,
+    attackSuccesses,
+    defenseRolls,
+    defenseSuccesses,
     successes: attackSuccesses,
     criticalHit,
     criticalMiss,
@@ -515,8 +521,13 @@ export function getCombatPreview(player: Player): {
   weaponName: string;
   armorName: string;
   breakdown: string[];
+  totalDice: number;
 } {
   const { attackDice, weaponName } = getAttackDice(player);
+  const defenseDice = getPlayerDefenseDice(player);
+  const items = getAllItems(player.inventory);
+  const armor = items.find(item => item.type === 'armor');
+  const armorName = armor?.name || 'Ingen rustning';
   const classBonusDice = player.specialAbility === 'combat_bonus' ? 1 : 0;
 
   const breakdown: string[] = [
@@ -528,6 +539,10 @@ export function getCombatPreview(player: Player): {
   }
 
   return {
+    attackDice,
+    defenseDice,
+    weaponName,
+    armorName,
     totalDice: attackDice + classBonusDice,
     breakdown
   };
