@@ -3,6 +3,7 @@ import { Player, Item, countInventoryItems, InventorySlotName, CharacterType } f
 import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User, Hand, Shirt, Key, X, ArrowRight, Trash2, Pill } from 'lucide-react';
 import { ItemTooltip } from './ItemTooltip';
 import { getCharacterPortrait, getCharacterDisplayName } from '../utils/characterAssets';
+import { getItemIcon as getSpecificItemIcon } from './ItemIcons';
 interface CharacterPanelProps {
   player: Player | null;
   onUseItem?: (item: Item, slotName: InventorySlotName) => void;
@@ -75,7 +76,16 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     return item.type === 'weapon' || item.type === 'tool';
   };
 
-  const getItemIcon = (type: string) => {
+  // Get item icon - first try specific icon, then fall back to generic
+  const getItemIcon = (type: string, itemId?: string) => {
+    // Try to get specific item icon first
+    if (itemId) {
+      const SpecificIcon = getSpecificItemIcon(itemId);
+      if (SpecificIcon) {
+        return <SpecificIcon size={24} />;
+      }
+    }
+    // Fall back to generic type icons
     switch (type) {
       case 'weapon': return <Sword size={18} />;
       case 'tool': return <Search size={18} />;
@@ -98,7 +108,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
             : 'bg-background/40 border-border opacity-50 cursor-default'
         }`}
       >
-        {item ? getItemIcon(item.type) : slotIcon}
+        {item ? getItemIcon(item.type, item.id) : slotIcon}
         <span className="text-[8px] uppercase tracking-wider mt-1 opacity-60">{label}</span>
         {/* Usage indicator for consumables */}
         {item && item.type === 'consumable' && item.uses !== undefined && (

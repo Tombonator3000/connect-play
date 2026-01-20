@@ -558,6 +558,7 @@ export interface EdgeData {
   lockType?: LockType;
   keyId?: string;
   puzzleId?: string;
+  isDiscovered?: boolean;       // For secret doors - true if player has found it
   // Blocked edge properties
   blockingType?: EdgeBlockingType;
   blockingRemovable?: boolean;

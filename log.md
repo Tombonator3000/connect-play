@@ -4236,3 +4236,217 @@ Occultist (Ritual Master) velger nå 3 av 5 tilgjengelige spells før scenario s
 - ✅ Blood Ritual puzzle har klasse-spesifikke bonuser
 - ✅ Occultist må velge 3 spells før spillet starter
 - ✅ All kode bygger uten feil
+
+---
+
+## 2026-01-20: Hex Wall Icons, Item Icons, Character Selection & Offline Save
+
+### Oppgaver
+1. Lag ikoner for hex-vegg kanter (dør, vegg, vindu, trapp, etc.)
+2. Generer item-ikoner for alle våpen, rustninger og utstyr
+3. Legg til karakter-valg skjerm med store profilbilder og detaljert info
+4. Implementer offline lagring med nedlasting/opplasting
+
+### Implementert
+
+#### 1. Hex Wall Edge Icons (EdgeIcons.tsx + GameBoard.tsx)
+
+**Nye edge-ikoner som vises på hex-kanter:**
+- **Wall**: Mur-mønster med brick pattern
+- **Door (open/closed/locked/barricaded/sealed/puzzle)**: Forskjellige dør-tilstander med unike ikoner
+- **Window**: Vindusrute med glass-effekt
+- **Stairs Up/Down**: Trapp-ikoner med piler
+- **Secret**: Mystisk øye-ikon (kun synlig hvis oppdaget)
+
+**EdgeIcons.tsx komponenter:**
+- `getEdgeIconInfo()`: Returnerer ikon, farge og label basert på edge-type
+- `getEdgeIconPosition()`: Beregner posisjon for ikon på hex-kant
+- Støtter alle DoorState-verdier fra game design bible
+
+**GameBoard.tsx oppdateringer:**
+- Erstattet enkle linjer med detaljerte SVG-ikoner
+- Ikoner vises på midtpunktet av hver edge
+- Fargekoding basert på type: grønn (open), rød (locked), amber (closed), etc.
+
+#### 2. Item Icons (ItemIcons.tsx)
+
+**SVG-ikoner for alle items i spillet:**
+
+**Våpen (Melee):**
+- `KnifeIcon` - Detaljert knivblad med trehåndtak
+- `ClubIcon` - Klubbe med metallbånd
+- `MacheteIcon` - Lang machete med guard
+
+**Våpen (Ranged):**
+- `DerringerIcon` - Liten skjult pistol
+- `RevolverIcon` - 6-skudd revolver med sylinder
+- `ShotgunIcon` - Dobbeltløpet hagle
+- `RifleIcon` - Rifle med scope
+- `TommyGunIcon` - Tommy gun med drum magazine
+
+**Rustning:**
+- `LeatherJacketIcon` - Skinnjakke med glidelås
+- `TrenchCoatIcon` - Trench coat med belte
+- `ArmoredVestIcon` - Militærvest med plater
+
+**Verktøy:**
+- `FlashlightIcon` - Lommelykt med lysstråle
+- `LanternIcon` - Oljelampe med flamme
+- `LockpickIcon` - Lockpick-sett
+- `CrowbarIcon` - Rød brekkstang
+
+**Forbruksvarer:**
+- `MedkitIcon` - Rød førstehjelpskasse
+- `WhiskeyIcon` - Whiskyflaske
+- `BandagesIcon` - Bandasjerull
+- `SedativesIcon` - Medisinflaske
+
+**Relics:**
+- `ElderSignIcon` - Glødende elder sign
+- `ProtectiveWardIcon` - Beskyttende amulett
+- `NecronomiconIcon` - Skummel bok
+
+**Integrering:**
+- `getItemIcon(itemId)` - Returnerer riktig ikon for item
+- Oppdatert CharacterPanel og ItemTooltip til å bruke nye ikoner
+- Fallback til generiske ikoner for ukjente items
+
+#### 3. Character Selection Screen (CharacterSelectionScreen.tsx)
+
+**Ny fullskjerm karakter-valg med detaljert info:**
+
+**Venstre side - Portrett-grid:**
+- 2x3 grid med alle 6 karakterer
+- Store portrettbilder med HP/Sanity stats
+- Klikk for fokus, dobbeltklikk for valg
+- Grønn checkmark på valgte karakterer
+
+**Høyre side - Detaljert info:**
+- Stor portrett med subtitle
+- Backstory (karakterens historie)
+- Combat stats (HP, Sanity, Attack Dice, Defense Dice)
+- Attribute bars (STR, AGI, INT, WIL) med visual progress
+- Playstyle beskrivelse
+- Strengths/Weaknesses lister
+- Available weapons
+- Special ability highlight
+- Occultist spell-note
+
+**CHARACTER_DETAILS data:**
+```typescript
+{
+  subtitle: 'Hardened Soldier',
+  backstory: 'A survivor of the Great War...',
+  playstyle: 'Front-line fighter...',
+  strengths: ['Highest HP (6)', '+1 melee attack die', ...],
+  weaknesses: ['Low Sanity (3)', 'No magic abilities'],
+  weapons: ['All weapons available']
+}
+```
+
+**Navigasjon:**
+- Piltaster for å bla mellom karakterer
+- Quick-select grid beholdt i scenario setup
+- "Open Character Selection" knapp
+
+#### 4. Offline Save System (saveManager.ts + SaveLoadModal.tsx)
+
+**saveManager.ts - Core save/load utilities:**
+
+**Eksport funksjoner:**
+- `exportLegacyData()` - Last ned heroes/gold/stash som JSON
+- `exportFullSave()` - Last ned komplett backup inkl. game state
+- `exportGameState()` - Last ned kun gjeldende scenario
+
+**Import funksjoner:**
+- `importSaveFile()` - Les og valider opplastet fil
+- `applySaveFile()` - Anvendelse av importert save
+- Version migration støtte
+
+**Auto-save:**
+- `autoSave()` - Automatisk lagring til localStorage
+- `loadAutoSave()` - Gjenopprett auto-save
+- `hasAutoSave()` / `clearAutoSave()`
+
+**Save slots:**
+- `getSaveSlots()` / `saveToSlot()` / `loadFromSlot()` / `deleteSlot()`
+- Støtte for flere lagrede spill
+
+**SaveLoadModal.tsx - UI komponent:**
+
+**Tre faner:**
+1. **Local Saves** - Opprett nye saves, last auto-save, administrer slots
+2. **Export** - Last ned heroes eller full backup
+3. **Import** - Last opp save-fil, preview og apply
+
+**Features:**
+- File drag-and-drop støtte
+- Preview av importert data før applying
+- Confirm dialogs for delete
+- Metadata visning (hero count, gold, scenario)
+
+**MainMenu integrering:**
+- Ny "Save/Load" knapp ved siden av Heroes og Stash
+- Åpner SaveLoadModal
+
+### Filer Opprettet
+
+1. **src/game/components/EdgeIcons.tsx**
+   - Edge ikon-system for hex-kanter
+
+2. **src/game/components/ItemIcons.tsx**
+   - 21 detaljerte SVG item-ikoner
+   - Icon mapping og getItemIcon helper
+
+3. **src/game/components/CharacterSelectionScreen.tsx**
+   - Fullskjerm karakter-valg UI
+   - Detaljert karakter-info display
+
+4. **src/game/utils/saveManager.ts**
+   - Core save/load funksjoner
+   - Export/import utilities
+   - Auto-save system
+   - Save slots management
+
+5. **src/game/components/SaveLoadModal.tsx**
+   - Save/Load dialog UI
+   - File upload/download
+   - Slot management UI
+
+### Filer Modifisert
+
+1. **src/game/types.ts**
+   - Lagt til `isDiscovered` på EdgeData interface
+
+2. **src/game/components/GameBoard.tsx**
+   - Importert EdgeIcons
+   - Erstattet edge rendering med detaljerte ikoner
+
+3. **src/game/components/CharacterPanel.tsx**
+   - Importert item icons
+   - Oppdatert getItemIcon til å bruke spesifikke ikoner
+
+4. **src/game/components/ItemTooltip.tsx**
+   - Importert item icons
+   - Oppdatert getTypeIcon til å bruke spesifikke ikoner
+
+5. **src/game/components/MainMenu.tsx**
+   - Lagt til `onSaveLoad` prop
+   - Ny Save/Load knapp
+
+6. **src/game/ShadowsGame.tsx**
+   - Importert nye komponenter
+   - State for showCharacterSelection og showSaveLoadModal
+   - Integrert CharacterSelectionScreen
+   - Integrert SaveLoadModal
+   - Lagt til knapp for å åpne karakter-valg
+
+### Resultat
+- ✅ Hex-kanter viser nå visuelle ikoner for dører, vegger, vinduer, trapper
+- ✅ Alle items har unike detaljerte SVG-ikoner
+- ✅ Ny karakter-valg skjerm med store profilbilder og full info
+- ✅ Offline lagring med eksport/import av JSON-filer
+- ✅ Save slots for flere lagrede spill
+- ✅ Auto-save funksjonalitet
+- ✅ TypeScript kompilerer uten feil
+- ✅ Build vellykket (800KB bundle)
