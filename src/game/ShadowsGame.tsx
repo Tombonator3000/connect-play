@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package, X } from 'lucide-react';
+import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package, X, Info } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent, OccultistSpell } from './types';
 import ContextActionBar from './components/ContextActionBar';
@@ -3384,13 +3385,41 @@ const ShadowsGame: React.FC = () => {
         <>
           {/* Top Header Bar - Responsive */}
           <div className={`fixed ${isMobile ? 'top-2 left-2 right-2' : 'top-6 left-1/2 -translate-x-1/2 max-w-xl w-full'} z-50 flex items-center gap-2 md:gap-4`}>
-            <div className={`flex-1 bg-leather/90 border-2 border-primary ${isMobile ? 'rounded-xl p-2' : 'rounded-2xl p-4'} shadow-[var(--shadow-doom)] backdrop-blur-md text-center pointer-events-none`}>
-              <div className={`flex items-center justify-center ${isMobile ? 'gap-4' : 'gap-8'} ${isMobile ? 'text-[9px]' : 'text-[10px] md:text-xs'} font-bold uppercase tracking-[0.2em] md:tracking-[0.3em] text-muted-foreground`}>
-                <span className="flex items-center gap-1 md:gap-2"><History size={isMobile ? 12 : 14} /> R: <span className="text-foreground">{state.round}</span></span>
-                <span className={`${isMobile ? 'w-1 h-1' : 'w-1.5 h-1.5'} bg-primary rounded-full`}></span>
-                <span className="flex items-center gap-1 md:gap-2"><Skull size={isMobile ? 12 : 14} /> D: <span className="text-primary">{state.doom}</span></span>
+            <TooltipProvider delayDuration={300}>
+              <div className={`flex-1 bg-leather/90 border-2 border-primary ${isMobile ? 'rounded-xl p-2' : 'rounded-2xl p-4'} shadow-[var(--shadow-doom)] backdrop-blur-md text-center`}>
+                <div className={`flex items-center justify-center ${isMobile ? 'gap-4' : 'gap-8'} ${isMobile ? 'text-[9px]' : 'text-[10px] md:text-xs'} font-bold uppercase tracking-[0.2em] md:tracking-[0.3em] text-muted-foreground`}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="flex items-center gap-1 md:gap-2 cursor-help">
+                        <History size={isMobile ? 12 : 14} /> R: <span className="text-foreground">{state.round}</span>
+                        <Info size={isMobile ? 10 : 12} className="opacity-50 hover:opacity-100 transition-opacity" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs bg-card border-2 border-primary/50 p-3 shadow-[var(--shadow-doom)]">
+                      <div className="space-y-1">
+                        <p className="font-bold text-foreground flex items-center gap-2"><History size={14} /> Round Counter</p>
+                        <p className="text-xs text-muted-foreground normal-case tracking-normal">Current game round. Each round, all investigators take their turns before the Mythos phase triggers. Some scenarios have time limits based on rounds.</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                  <span className={`${isMobile ? 'w-1 h-1' : 'w-1.5 h-1.5'} bg-primary rounded-full`}></span>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="flex items-center gap-1 md:gap-2 cursor-help">
+                        <Skull size={isMobile ? 12 : 14} /> D: <span className="text-primary">{state.doom}</span>
+                        <Info size={isMobile ? 10 : 12} className="opacity-50 hover:opacity-100 transition-opacity" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs bg-card border-2 border-primary/50 p-3 shadow-[var(--shadow-doom)]">
+                      <div className="space-y-1">
+                        <p className="font-bold text-primary flex items-center gap-2"><Skull size={14} /> Doom Counter</p>
+                        <p className="text-xs text-muted-foreground normal-case tracking-normal">The doom counter decreases each round. When it reaches 0, darkness consumes all and the game is lost. Some events may trigger at specific doom levels.</p>
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
-            </div>
+            </TooltipProvider>
             <button onClick={() => setIsMainMenuOpen(true)} className={`bg-leather/90 border-2 border-primary ${isMobile ? 'rounded-lg p-2' : 'rounded-xl p-3'} text-primary transition-colors hover:bg-background/50 active:scale-95`}><Settings size={isMobile ? 20 : 24} /></button>
           </div>
 

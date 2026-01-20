@@ -1,5 +1,43 @@
 # Development Log
 
+## 2026-01-20: Turn and Doom Info Icons
+
+### Oppgave
+Legge til info-ikoner ved siden av turn (R) og doom (D) markørene i header-baren for å gi spillere informasjon om hva disse betyr.
+
+### Løsning
+Lagt til interaktive info-ikoner med tooltips for både Round og Doom markørene i spill-headeren.
+
+#### Endringer i `src/game/ShadowsGame.tsx`:
+1. **Nye imports:**
+   - `Info` ikon fra lucide-react
+   - `Tooltip`, `TooltipContent`, `TooltipProvider`, `TooltipTrigger` fra @/components/ui/tooltip
+
+2. **Header-bar oppdateringer:**
+   - Wrappet hele header-innholdet i `TooltipProvider`
+   - Lagt til `Info` ikon ved siden av Round (R) markøren med tooltip som forklarer:
+     - "Current game round. Each round, all investigators take their turns before the Mythos phase triggers. Some scenarios have time limits based on rounds."
+   - Lagt til `Info` ikon ved siden av Doom (D) markøren med tooltip som forklarer:
+     - "The doom counter decreases each round. When it reaches 0, darkness consumes all and the game is lost. Some events may trigger at specific doom levels."
+   - Fjernet `pointer-events-none` fra containeren slik at tooltips fungerer
+   - Lagt til `cursor-help` styling på markørene for å indikere interaktivitet
+
+### Visuell stil
+- Info-ikonene har redusert opacity (50%) som standard og øker til 100% ved hover
+- Tooltips har samme stil som resten av UI med `shadow-[var(--shadow-doom)]` og primary border
+- Responsive størrelser for mobile enheter
+
+### Filer Endret
+- `src/game/ShadowsGame.tsx` - Lagt til info-ikoner med tooltips
+
+### Resultat
+- ✅ Info-ikoner synlige ved siden av turn og doom markører
+- ✅ Tooltips gir klar forklaring på norsk-inspirert engelsk
+- ✅ Responsivt design for mobile enheter
+- ✅ Build vellykket uten feil
+
+---
+
 ## 2026-01-20: Context Actions Code Refactoring
 
 ### Oppgave
