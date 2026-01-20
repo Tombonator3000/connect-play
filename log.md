@@ -1,5 +1,155 @@
 # Development Log
 
+## 2026-01-20: Mythos Phase Refactoring - handleMythosOverlayComplete() Clarity Improvement
+
+### Oppsummering
+
+Refaktorert `handleMythosOverlayComplete()`-funksjonen i ShadowsGame.tsx for bedre lesbarhet og vedlikeholdbarhet. Funksjonen var på 139 linjer med flere ansvar (doom-beregning, vær-oppdatering, mål-sjekking, seier/tap-betingelser). Nå er den redusert til ~90 linjer med klare, nummererte steg og gjenbrukbare hjelpefunksjoner.
+
+---
+
+### PROBLEMER IDENTIFISERT 🔴
+
+#### 1. For Lang Funksjon (139 linjer)
+**Problem:** `handleMythosOverlayComplete()` var 1.4x over anbefalt 100-linjer grense
+- Vanskelig å forstå hele funksjonens logikk
+- Vanskelig å teste individuelle deler
+- Høy kognitiv belastning ved vedlikehold
+
+#### 2. For Mange Ansvar
+**Problem:** Én funksjon håndterte:
+- Survival objective-oppdatering og logging
+- Dark insight doom-penalty beregning
+- Vær-varighet nedtelling
+- Doom-basert vær-triggering
+- Seier-betingelser sjekk
+- Tap-betingelser sjekk
+- State-oppdatering for neste runde
+
+#### 3. Inline Logikk
+**Problem:** All logikk for doom-beregning og vær-oppdatering var inline med nestede if/else-blokker uten separasjon av bekymringer.
+
+---
+
+### LØSNING IMPLEMENTERT ✅
+
+#### 1. Ny fil: `mythosPhaseHelpers.ts`
+**Fil:** `src/game/utils/mythosPhaseHelpers.ts`
+
+Ekstraherte logikk til fokuserte hjelpefunksjoner:
+
+| Funksjon | Ansvar |
+|----------|--------|
+| `calculateDoomWithDarkInsightPenalty()` | Beregner doom med dark insight-straff, returnerer påvirkede spillere |
+| `findNewlyCompletedSurvivalObjectives()` | Finner nylig fullførte survival-mål ved å sammenligne før/etter |
+| `updateWeatherDuration()` | Håndterer vær-varighet nedtelling og utløp |
+| `checkForNewWeatherFromDoom()` | Sjekker om doom-nivå skal trigge nytt vær |
+| `processWeatherForNewRound()` | Kombinerer alle vær-oppdateringer med logging-meldinger |
+
+**Nøkkelinnovasjon - Typede resultater:**
+```typescript
+interface DoomCalculationResult {
+  newDoom: number;
+  darkInsightPenalty: number;
+  affectedPlayers: Player[];
+}
+
+interface WeatherUpdateResult {
+  weatherState: WeatherState;
+  weatherExpired: boolean;
+  newWeatherTriggered: boolean;
+  weatherMessage: string | null;
+}
+```
+
+#### 2. Refaktorert `handleMythosOverlayComplete()`
+**Fil:** `src/game/ShadowsGame.tsx:3468-3559`
+
+**FØR (139 linjer):**
+```typescript
+const handleMythosOverlayComplete = () => {
+  // 139 linjer med nested if/else, inline doom-beregning,
+  // inline vær-logikk, og blandet state-oppdatering
+}
+```
+
+**ETTER (90 linjer, nummererte steg):**
+```typescript
+const handleMythosOverlayComplete = () => {
+  // 1. Calculate new round
+  const newRound = state.round + 1;
+
+  // 2. Update survival objectives
+  // Uses findNewlyCompletedSurvivalObjectives()
+
+  // 3. Calculate doom with dark insight penalty
+  // Uses calculateDoomWithDarkInsightPenalty()
+
+  // 4. Process weather for new round
+  // Uses processWeatherForNewRound()
+
+  // 5. Check victory conditions
+  // 6. Check defeat conditions
+  // 7. Transition to next round
+}
+```
+
+---
+
+### ARKITEKTUR FORBEDRINGER
+
+```
+FØR:                                    ETTER:
+┌─────────────────────────────┐        ┌─────────────────────────────┐
+│ handleMythosOverlayComplete()│        │ mythosPhaseHelpers.ts       │
+│ (139 linjer, alt inline)    │        │ ├─ calculateDoomWith...()   │
+│ ├─ Survival objective check │        │ ├─ findNewlyCompleted...()  │
+│ ├─ Dark insight filter      │        │ ├─ updateWeatherDuration()  │
+│ ├─ Doom calculation         │        │ ├─ checkForNewWeather...()  │
+│ ├─ Weather duration         │        │ └─ processWeatherFor...()   │
+│ ├─ New weather trigger      │        └─────────────────────────────┘
+│ ├─ Victory check            │        ┌─────────────────────────────┐
+│ ├─ Defeat check             │        │ ShadowsGame.tsx             │
+│ └─ State update             │        │ └─ handleMythosOverlay...() │
+└─────────────────────────────┘        │    (90 linjer, delegerer)   │
+                                       └─────────────────────────────┘
+```
+
+---
+
+### FILER ENDRET/OPPRETTET
+
+| Fil | Status | Beskrivelse |
+|-----|--------|-------------|
+| `src/game/utils/mythosPhaseHelpers.ts` | **NY** | Alle hjelpefunksjoner for Mythos-fase |
+| `src/game/ShadowsGame.tsx` | ENDRET | Ny import, refaktorert handleMythosOverlayComplete() |
+
+---
+
+### RESULTATER
+
+| Metrikk | Før | Etter | Forbedring |
+|---------|-----|-------|------------|
+| Linjer i handleMythosOverlayComplete() | 139 | 90 | **-35%** |
+| Inline doom-beregning | 15 linjer | 1 kall | **Separert** |
+| Inline vær-logikk | 35 linjer | 1 kall | **Separert** |
+| Antall filer | 1 | 2 | Bedre separasjon |
+| Testbarhet | Lav | Høy | Individuelle funksjoner kan testes |
+| Lesbarhet | Lav | Høy | Klare, nummererte steg |
+
+---
+
+### ATFERD UENDRET ✅
+
+- Doom beregnes korrekt med dark insight-straff
+- Vær-varighet teller ned korrekt
+- Nytt vær trigges korrekt basert på doom
+- Survival-mål fullføres og logges korrekt
+- Seier/tap-betingelser sjekkes som før
+- Build vellykket (914KB bundle)
+
+---
+
 ## 2026-01-20: Scenario Generator Refactoring - generateRandomScenario() Clarity Improvement
 
 ### Oppsummering

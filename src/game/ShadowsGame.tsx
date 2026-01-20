@@ -77,6 +77,11 @@ import {
   GuaranteedSpawnResult
 } from './utils/objectiveSpawner';
 import { getThemedTilePreferences } from './utils/scenarioGenerator';
+import {
+  calculateDoomWithDarkInsightPenalty,
+  findNewlyCompletedSurvivalObjectives,
+  processWeatherForNewRound
+} from './utils/mythosPhaseHelpers';
 
 const STORAGE_KEY = 'shadows_1920s_save';
 const SETTINGS_KEY = 'shadows_1920s_settings';
@@ -3463,85 +3468,46 @@ const ShadowsGame: React.FC = () => {
   const handleMythosOverlayComplete = () => {
     setShowMythosOverlay(false);
 
-    // Update survival objectives based on new round
+    // 1. Calculate new round
     const newRound = state.round + 1;
-    let updatedScenario = state.activeScenario;
 
+    // 2. Update survival objectives
+    let updatedScenario = state.activeScenario;
     if (state.activeScenario) {
       updatedScenario = updateSurvivalObjectives(state.activeScenario, newRound);
 
-      // Check if any survival objective was just completed
-      const survivalObjectives = updatedScenario.objectives.filter(
-        obj => obj.type === 'survive' && obj.completed
+      // Log newly completed survival objectives
+      const { newlyCompletedObjectives } = findNewlyCompletedSurvivalObjectives(
+        updatedScenario,
+        state.activeScenario
       );
-      const previouslyCompleted = state.activeScenario.objectives.filter(
-        obj => obj.type === 'survive' && obj.completed
-      );
-
-      if (survivalObjectives.length > previouslyCompleted.length) {
-        const newlyCompleted = survivalObjectives.find(
-          obj => !previouslyCompleted.some(prev => prev.id === obj.id)
-        );
-        if (newlyCompleted) {
-          addToLog(`OBJECTIVE COMPLETE: ${newlyCompleted.shortDescription}`);
-        }
-      }
+      newlyCompletedObjectives.forEach(obj => {
+        addToLog(`OBJECTIVE COMPLETE: ${obj.shortDescription}`);
+      });
     }
 
-    // Check if weather should change based on doom
-    // Dark Insight madness causes extra doom loss
-    const darkInsightPlayers = state.players.filter(
-      p => !p.isDead && p.activeMadness?.type === 'dark_insight'
-    );
-    const darkInsightPenalty = darkInsightPlayers.length; // -1 doom per player with dark insight
-    let newDoom = state.doom - 1 - darkInsightPenalty;
+    // 3. Calculate doom with dark insight penalty
+    const doomResult = calculateDoomWithDarkInsightPenalty(state.doom, state.players);
+    const newDoom = doomResult.newDoom;
 
-    if (darkInsightPenalty > 0) {
-      darkInsightPlayers.forEach(p => {
-        addToLog(`${p.name}'s dark insight accelerates the doom! (-${1} extra doom)`);
+    // Log dark insight effects
+    if (doomResult.darkInsightPenalty > 0) {
+      doomResult.affectedPlayers.forEach(p => {
+        addToLog(`${p.name}'s dark insight accelerates the doom! (-1 extra doom)`);
         addFloatingText(p.position.q, p.position.r, "-1 DOOM", "text-danger");
       });
     }
 
-    let newWeatherState = state.weatherState;
+    // 4. Process weather for new round
+    const weatherResult = processWeatherForNewRound(state.weatherState, newDoom);
+    const newWeatherState = weatherResult.weatherState;
 
-    // Update weather duration and check for new weather conditions
-    if (newWeatherState.global) {
-      // Decrement weather duration
-      if (newWeatherState.global.duration > 0) {
-        newWeatherState = {
-          ...newWeatherState,
-          global: {
-            ...newWeatherState.global,
-            duration: newWeatherState.global.duration - 1
-          }
-        };
-        // Remove weather if duration expired
-        if (newWeatherState.global.duration === 0) {
-          addToLog("Været letter noe...");
-          newWeatherState = { ...newWeatherState, global: null };
-        }
-      }
+    // Log weather changes
+    if (weatherResult.weatherMessage) {
+      addToLog(weatherResult.weatherMessage);
     }
 
-    // Check if doom triggers new weather (only if no current weather or current is less severe)
-    const potentialWeather = getWeatherForDoom(newDoom);
-    if (potentialWeather && !newWeatherState.global) {
-      const effect = getWeatherEffect(potentialWeather);
-      addToLog(`WEATHER: ${effect.name} - ${effect.description}`);
-      newWeatherState = {
-        ...newWeatherState,
-        global: {
-          type: potentialWeather,
-          intensity: newDoom <= 3 ? 'heavy' : newDoom <= 6 ? 'moderate' : 'light',
-          duration: -1 // Permanent until doom changes
-        },
-        isTransitioning: true,
-        transitionProgress: 0
-      };
-    }
-
-    // Check for victory conditions with the NEW values before transitioning
+    // 5. Check victory conditions
     if (updatedScenario) {
       const victoryResult = checkVictoryConditions(updatedScenario, {
         players: state.players,
@@ -3566,7 +3532,7 @@ const ShadowsGame: React.FC = () => {
         return;
       }
 
-      // Check for defeat (doom reaching 0)
+      // 6. Check defeat conditions
       const defeatResult = checkDefeatConditions(updatedScenario, {
         players: state.players,
         doom: newDoom,
@@ -3588,6 +3554,7 @@ const ShadowsGame: React.FC = () => {
       }
     }
 
+    // 7. Transition to next round
     setState(prev => ({
       ...prev,
       phase: GamePhase.MYTHOS,
