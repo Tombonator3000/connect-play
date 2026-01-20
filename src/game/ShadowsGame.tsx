@@ -70,7 +70,11 @@ import {
   collectQuestItem,
   onTileExplored,
   QUEST_ITEM_NAMES,
-  ObjectiveSpawnState
+  ObjectiveSpawnState,
+  checkGuaranteedSpawns,
+  executeGuaranteedSpawns,
+  getSpawnStatus,
+  GuaranteedSpawnResult
 } from './utils/objectiveSpawner';
 import { getThemedTilePreferences } from './utils/scenarioGenerator';
 
@@ -238,6 +242,92 @@ const ShadowsGame: React.FC = () => {
             spawnEnemy(enemyType, portal.q, portal.r);
             addToLog(`⚡ En ${enemyType} kryper ut av den eldritiske portalen!`);
             addFloatingText(portal.q, portal.r, "PORTAL SPAWN!", "text-purple-400");
+          }
+        }
+
+        // === GUARANTEED SPAWN SYSTEM ===
+        // Check if any quest items/tiles need to be force-spawned to ensure scenario is winnable
+        if (state.objectiveSpawnState && state.activeScenario) {
+          const completedObjectiveIds = state.activeScenario.objectives
+            .filter(o => o.completed)
+            .map(o => o.id);
+
+          const spawnCheck = checkGuaranteedSpawns(
+            state.objectiveSpawnState,
+            state.activeScenario,
+            state.doom,
+            state.board,
+            completedObjectiveIds
+          );
+
+          // Execute forced spawns if needed
+          if (spawnCheck.forcedItems.length > 0 || spawnCheck.forcedTiles.length > 0) {
+            const { updatedState, itemSpawnLocations, tileModifications } = executeGuaranteedSpawns(
+              state.objectiveSpawnState,
+              spawnCheck,
+              state.board
+            );
+
+            // Log warnings
+            spawnCheck.warnings.forEach(warning => {
+              addToLog(`⚠️ ${warning}`);
+            });
+
+            // Update board with spawned items and quest tiles
+            let updatedBoard = [...state.board];
+
+            // Add items to tiles
+            for (const spawn of itemSpawnLocations) {
+              const tileIndex = updatedBoard.findIndex(t => t.id === spawn.tileId);
+              if (tileIndex >= 0) {
+                const tile = updatedBoard[tileIndex];
+                const newItem: Item = {
+                  id: spawn.item.id,
+                  name: spawn.item.name,
+                  description: spawn.item.description,
+                  type: 'quest_item',
+                  category: 'special',
+                  isQuestItem: true,
+                  questItemType: spawn.item.type,
+                  objectiveId: spawn.item.objectiveId,
+                };
+                updatedBoard[tileIndex] = {
+                  ...tile,
+                  items: [...(tile.items || []), newItem],
+                  hasQuestItem: true,
+                };
+                addToLog(`✨ ${spawn.item.name} har materialisert seg i ${tile.name}!`);
+                addFloatingText(tile.q, tile.r, "QUEST ITEM!", "text-yellow-400");
+              }
+            }
+
+            // Apply quest tile modifications
+            for (const mod of tileModifications) {
+              const tileIndex = updatedBoard.findIndex(t => t.id === mod.tileId);
+              if (tileIndex >= 0) {
+                updatedBoard[tileIndex] = {
+                  ...updatedBoard[tileIndex],
+                  ...mod.modifications,
+                };
+                const tile = updatedBoard[tileIndex];
+                addToLog(`🌟 ${mod.questTile.name} har blitt avslørt i ${tile.name}!`);
+                addFloatingText(tile.q, tile.r, mod.questTile.type.toUpperCase() + "!", "text-purple-400");
+              }
+            }
+
+            // Update state with new spawns
+            setState(prev => ({
+              ...prev,
+              board: updatedBoard,
+              objectiveSpawnState: updatedState,
+            }));
+
+            // Log urgency status
+            if (spawnCheck.urgency === 'critical') {
+              addToLog("📜 Doom nærmer seg! Kritiske elementer har blitt avslørt for å gi deg en sjanse...");
+            } else if (spawnCheck.urgency === 'warning') {
+              addToLog("📜 Tiden er knapp. Noen skjulte elementer har avslørt seg selv...");
+            }
           }
         }
 
@@ -1482,10 +1572,27 @@ const ShadowsGame: React.FC = () => {
             ...prev,
             board: prev.board.map(t => {
               if (t.id === tile.id) {
+                // Remove collected quest item from tile's items array
+                const updatedItems = questItem
+                  ? (t.items || []).filter(item => item.id !== questItem.id)
+                  : t.items;
+                const hasRemainingQuestItems = updatedItems?.some(i => i.isQuestItem) || false;
+
                 if (t.object) {
-                  return { ...t, searched: true, object: { ...t.object, searched: true } };
+                  return {
+                    ...t,
+                    searched: true,
+                    object: { ...t.object, searched: true },
+                    items: updatedItems,
+                    hasQuestItem: hasRemainingQuestItems
+                  };
                 }
-                return { ...t, searched: true };
+                return {
+                  ...t,
+                  searched: true,
+                  items: updatedItems,
+                  hasQuestItem: hasRemainingQuestItems
+                };
               }
               return t;
             }),
@@ -1914,15 +2021,30 @@ const ShadowsGame: React.FC = () => {
 
       updatedObjectiveSpawnState = exploreResult.updatedState;
 
-      // If a quest item spawned, mark the tile
+      // If a quest item spawned, add it to the tile
       if (exploreResult.spawnedItem) {
-        addToLog(`Something important is hidden in ${newTile.name}... Search carefully!`);
+        const questItem: Item = {
+          id: exploreResult.spawnedItem.id,
+          name: exploreResult.spawnedItem.name,
+          description: exploreResult.spawnedItem.description,
+          type: 'quest_item',
+          category: 'special',
+          isQuestItem: true,
+          questItemType: exploreResult.spawnedItem.type,
+          objectiveId: exploreResult.spawnedItem.objectiveId,
+        };
+        finalTile = {
+          ...finalTile,
+          items: [...(finalTile.items || []), questItem],
+          hasQuestItem: true,
+        };
+        addToLog(`📦 Noe viktig er gjemt i ${newTile.name}... Søk nøye!`);
       }
 
       // If a quest tile spawned, modify the tile
       if (exploreResult.spawnedQuestTile && exploreResult.tileModifications) {
-        finalTile = { ...newTile, ...exploreResult.tileModifications };
-        addToLog(`IMPORTANT LOCATION: ${exploreResult.spawnedQuestTile.name} found!`);
+        finalTile = { ...finalTile, ...exploreResult.tileModifications };
+        addToLog(`⭐ VIKTIG LOKASJON: ${exploreResult.spawnedQuestTile.name} funnet!`);
       }
     }
 

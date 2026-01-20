@@ -154,8 +154,9 @@ export interface Player extends Character {
 export interface Item {
   id: string;
   name: string;
-  type: 'weapon' | 'tool' | 'relic' | 'armor' | 'consumable' | 'key' | 'clue';
-  effect: string;
+  type: 'weapon' | 'tool' | 'relic' | 'armor' | 'consumable' | 'key' | 'clue' | 'quest_item';
+  effect?: string;
+  description?: string;     // Item description for quest items
   bonus?: number;           // Legacy: general bonus (being replaced by attackDice/defenseDice)
   cost?: number;            // Legacy: insight cost
   goldCost?: number;        // Gold cost for shop
@@ -172,6 +173,11 @@ export interface Item {
   range?: number;           // For ranged weapons
   ammo?: number;            // Shots before reload (-1 = unlimited melee)
   silent?: boolean;         // For stealth weapons
+  // Quest item fields
+  isQuestItem?: boolean;    // True if this is a quest-critical item
+  questItemType?: 'key' | 'clue' | 'collectible' | 'artifact' | 'component';
+  objectiveId?: string;     // Which objective this item belongs to
+  category?: 'weapon' | 'tool' | 'armor' | 'consumable' | 'special';
 }
 
 // ============================================================================
@@ -722,6 +728,9 @@ export interface Tile {
   };
   // Fog of war reveal animation state
   fogRevealAnimation?: 'revealing' | 'revealed';  // For flicker effect when fog clears
+  // Quest item spawning system
+  items?: Item[];                 // Items on this tile (quest items, loot, etc.)
+  hasQuestItem?: boolean;         // Quick flag to indicate quest item presence
 }
 
 export type VictoryType = 'escape' | 'assassination' | 'collection' | 'survival' | 'ritual' | 'investigation';

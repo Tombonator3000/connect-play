@@ -517,3 +517,363 @@ export function getObjectiveProgress(
     };
   });
 }
+
+// ============================================================================
+// GUARANTEED SPAWN SYSTEM
+// ============================================================================
+
+/**
+ * Configuration for guaranteed spawn thresholds.
+ * These determine when the game forces items/tiles to spawn.
+ */
+export const GUARANTEED_SPAWN_CONFIG = {
+  // Doom thresholds for guaranteed spawns
+  DOOM_CRITICAL: 4,        // Force spawn all remaining items when doom is this low
+  DOOM_WARNING: 7,         // Increase spawn chance significantly
+
+  // Exploration thresholds
+  EXPLORATION_FORCE: 0.85, // Force spawn after exploring 85% of estimated tiles
+
+  // Per-round guarantees
+  MIN_ITEMS_PER_10_TILES: 1, // At least 1 item should spawn per 10 explored tiles
+};
+
+/**
+ * Result of a guaranteed spawn check.
+ */
+export interface GuaranteedSpawnResult {
+  forcedItems: QuestItem[];      // Items that MUST spawn immediately
+  forcedTiles: QuestTile[];      // Quest tiles that MUST be activated
+  warnings: string[];            // Warnings about spawn status
+  urgency: 'none' | 'warning' | 'critical';
+}
+
+/**
+ * Checks if any quest items or tiles need to be force-spawned.
+ * This prevents scenarios from becoming unwinnable due to bad RNG.
+ *
+ * Should be called:
+ * - At the start of each round (Mythos phase)
+ * - When doom changes
+ * - When a tile is explored (in addition to normal spawn logic)
+ */
+export function checkGuaranteedSpawns(
+  state: ObjectiveSpawnState,
+  scenario: Scenario,
+  currentDoom: number,
+  availableTiles: Tile[],
+  completedObjectiveIds: string[]
+): GuaranteedSpawnResult {
+  const result: GuaranteedSpawnResult = {
+    forcedItems: [],
+    forcedTiles: [],
+    warnings: [],
+    urgency: 'none',
+  };
+
+  // Get unspawned required items (non-optional objectives)
+  const unspawnedRequiredItems = state.questItems.filter(item => {
+    if (item.spawned) return false;
+    const obj = scenario.objectives.find(o => o.id === item.objectiveId);
+    return obj && !obj.isOptional;
+  });
+
+  // Get unspawned required tiles
+  const unspawnedRequiredTiles = state.questTiles.filter(tile => {
+    if (tile.spawned) return false;
+    // Check if tile should be revealed now
+    if (!shouldRevealQuestTile(tile, completedObjectiveIds)) return false;
+    const obj = scenario.objectives.find(o => o.id === tile.objectiveId);
+    return obj && !obj.isOptional;
+  });
+
+  // Calculate urgency based on doom
+  const doomUrgency = currentDoom <= GUARANTEED_SPAWN_CONFIG.DOOM_CRITICAL ? 'critical'
+    : currentDoom <= GUARANTEED_SPAWN_CONFIG.DOOM_WARNING ? 'warning'
+    : 'none';
+
+  // Calculate urgency based on exploration
+  const estimatedTotalTiles = scenario.startDoom * 1.5;
+  const explorationProgress = state.tilesExplored / estimatedTotalTiles;
+  const explorationUrgency = explorationProgress >= GUARANTEED_SPAWN_CONFIG.EXPLORATION_FORCE ? 'critical'
+    : explorationProgress >= 0.7 ? 'warning'
+    : 'none';
+
+  // Combined urgency (take the worst)
+  result.urgency = doomUrgency === 'critical' || explorationUrgency === 'critical' ? 'critical'
+    : doomUrgency === 'warning' || explorationUrgency === 'warning' ? 'warning'
+    : 'none';
+
+  // Check spawn rate - items should spawn at a reasonable pace
+  const expectedItemsSpawned = Math.floor(state.tilesExplored / 10) * GUARANTEED_SPAWN_CONFIG.MIN_ITEMS_PER_10_TILES;
+  const actualItemsSpawned = state.questItems.filter(i => i.spawned).length;
+  const behindOnSpawns = actualItemsSpawned < expectedItemsSpawned;
+
+  // CRITICAL: Force spawn everything
+  if (result.urgency === 'critical') {
+    result.forcedItems = [...unspawnedRequiredItems];
+    result.forcedTiles = [...unspawnedRequiredTiles];
+
+    if (unspawnedRequiredItems.length > 0) {
+      result.warnings.push(`CRITICAL: ${unspawnedRequiredItems.length} required items have not spawned yet!`);
+    }
+    if (unspawnedRequiredTiles.length > 0) {
+      result.warnings.push(`CRITICAL: ${unspawnedRequiredTiles.length} required locations have not appeared!`);
+    }
+  }
+  // WARNING: Force spawn if behind schedule
+  else if (result.urgency === 'warning' || behindOnSpawns) {
+    // Force spawn at least half of remaining items
+    const itemsToForce = Math.ceil(unspawnedRequiredItems.length / 2);
+    result.forcedItems = unspawnedRequiredItems.slice(0, itemsToForce);
+
+    // Force spawn tiles if any are pending
+    if (unspawnedRequiredTiles.length > 0) {
+      result.forcedTiles = [unspawnedRequiredTiles[0]]; // At least one tile
+    }
+
+    if (behindOnSpawns) {
+      result.warnings.push(`Warning: Spawn rate behind schedule (${actualItemsSpawned}/${expectedItemsSpawned} expected)`);
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Finds the best tile to spawn a quest item on.
+ * Prioritizes appropriate room types.
+ */
+export function findBestSpawnTile(
+  item: QuestItem,
+  availableTiles: Tile[],
+  alreadyUsedTileIds: Set<string>
+): Tile | null {
+  // Filter to valid tiles
+  const validTiles = availableTiles.filter(tile =>
+    tile.searchable &&
+    tile.explored &&
+    !alreadyUsedTileIds.has(tile.id) &&
+    tile.category !== 'corridor' &&
+    tile.category !== 'street'
+  );
+
+  if (validTiles.length === 0) return null;
+
+  // Score tiles by appropriateness
+  const scoredTiles = validTiles.map(tile => {
+    let score = 1;
+    const roomName = tile.name.toLowerCase();
+
+    // Boost score for appropriate room types
+    if (item.type === 'key') {
+      if (roomName.includes('study') || roomName.includes('office')) score += 3;
+      if (roomName.includes('bedroom') || roomName.includes('guard')) score += 2;
+    } else if (item.type === 'clue') {
+      if (roomName.includes('library') || roomName.includes('study')) score += 3;
+      if (roomName.includes('office') || roomName.includes('archive')) score += 2;
+    } else if (item.type === 'collectible' || item.type === 'artifact') {
+      if (roomName.includes('ritual') || roomName.includes('altar')) score += 3;
+      if (roomName.includes('vault') || roomName.includes('crypt')) score += 2;
+    }
+
+    // Slight randomization to prevent predictability
+    score += Math.random() * 0.5;
+
+    return { tile, score };
+  });
+
+  // Sort by score descending and return best
+  scoredTiles.sort((a, b) => b.score - a.score);
+  return scoredTiles[0]?.tile || null;
+}
+
+/**
+ * Finds the best tile to become a quest tile (exit, altar, etc).
+ */
+export function findBestQuestTileLocation(
+  questTile: QuestTile,
+  availableTiles: Tile[],
+  alreadyUsedTileIds: Set<string>
+): Tile | null {
+  const validTiles = availableTiles.filter(tile =>
+    tile.explored &&
+    !alreadyUsedTileIds.has(tile.id)
+  );
+
+  if (validTiles.length === 0) return null;
+
+  // Score tiles by type match
+  const scoredTiles = validTiles.map(tile => {
+    let score = 0;
+    const roomName = tile.name.toLowerCase();
+
+    switch (questTile.type) {
+      case 'exit':
+        if (tile.category === 'foyer') score += 5;
+        if (tile.category === 'facade') score += 4;
+        if (roomName.includes('entrance') || roomName.includes('door')) score += 3;
+        if (tile.zoneLevel === 0 || tile.zoneLevel === 1) score += 2;
+        break;
+
+      case 'altar':
+      case 'ritual_point':
+        if (tile.category === 'crypt') score += 5;
+        if (roomName.includes('ritual') || roomName.includes('altar')) score += 5;
+        if (tile.category === 'basement') score += 3;
+        if (roomName.includes('chamber') || roomName.includes('sanctum')) score += 3;
+        if (tile.zoneLevel < 0) score += 2;
+        break;
+
+      case 'boss_room':
+        if (tile.category === 'crypt') score += 5;
+        if (tile.zoneLevel <= -1) score += 4;
+        if (roomName.includes('sanctum') || roomName.includes('throne')) score += 3;
+        break;
+
+      case 'npc_location':
+        if (tile.category === 'room') score += 3;
+        if (roomName.includes('cell') || roomName.includes('prison')) score += 2;
+        break;
+    }
+
+    // Add randomization
+    score += Math.random() * 0.5;
+
+    return { tile, score };
+  });
+
+  scoredTiles.sort((a, b) => b.score - a.score);
+  return scoredTiles[0]?.tile || null;
+}
+
+/**
+ * Force spawns items and tiles that need to appear immediately.
+ * Returns the updated state and any tile modifications needed.
+ */
+export function executeGuaranteedSpawns(
+  state: ObjectiveSpawnState,
+  spawnResult: GuaranteedSpawnResult,
+  availableTiles: Tile[]
+): {
+  updatedState: ObjectiveSpawnState;
+  itemSpawnLocations: { item: QuestItem; tileId: string }[];
+  tileModifications: { tileId: string; modifications: Partial<Tile>; questTile: QuestTile }[];
+} {
+  let updatedState = { ...state };
+  const itemSpawnLocations: { item: QuestItem; tileId: string }[] = [];
+  const tileModifications: { tileId: string; modifications: Partial<Tile>; questTile: QuestTile }[] = [];
+  const usedTileIds = new Set<string>();
+
+  // First, mark already used tiles
+  state.questItems.filter(i => i.spawnedOnTileId).forEach(i => usedTileIds.add(i.spawnedOnTileId!));
+
+  // Spawn forced items
+  for (const item of spawnResult.forcedItems) {
+    const targetTile = findBestSpawnTile(item, availableTiles, usedTileIds);
+    if (targetTile) {
+      usedTileIds.add(targetTile.id);
+      itemSpawnLocations.push({ item, tileId: targetTile.id });
+
+      // Update state
+      updatedState = {
+        ...updatedState,
+        questItems: updatedState.questItems.map(qi =>
+          qi.id === item.id ? { ...qi, spawned: true, spawnedOnTileId: targetTile.id } : qi
+        ),
+      };
+    }
+  }
+
+  // Spawn forced quest tiles
+  for (const questTile of spawnResult.forcedTiles) {
+    const targetTile = findBestQuestTileLocation(questTile, availableTiles, usedTileIds);
+    if (targetTile) {
+      usedTileIds.add(targetTile.id);
+
+      // Prepare tile modifications
+      let modifications: Partial<Tile> = {};
+      if (questTile.type === 'exit') {
+        modifications = {
+          name: 'Exit Door',
+          description: 'The way out! But can you make it in time?',
+          isGate: true,
+        };
+      } else if (questTile.type === 'altar' || questTile.type === 'ritual_point') {
+        modifications = {
+          name: 'Ritual Altar',
+          description: 'An ancient altar for dark rituals. You can perform the ritual here.',
+          floorType: 'ritual',
+        };
+      } else if (questTile.type === 'boss_room') {
+        modifications = {
+          name: 'Dark Sanctum',
+          description: 'A place of terrible power. The final confrontation awaits.',
+        };
+      } else if (questTile.type === 'npc_location') {
+        modifications = {
+          name: 'Hidden Chamber',
+          description: 'Someone or something important is here.',
+        };
+      }
+
+      tileModifications.push({ tileId: targetTile.id, modifications, questTile });
+
+      // Update state
+      updatedState = {
+        ...updatedState,
+        questTiles: updatedState.questTiles.map(qt =>
+          qt.id === questTile.id ? { ...qt, spawned: true } : qt
+        ),
+      };
+    }
+  }
+
+  return { updatedState, itemSpawnLocations, tileModifications };
+}
+
+/**
+ * Gets a summary of what still needs to spawn for debugging/UI.
+ */
+export function getSpawnStatus(
+  state: ObjectiveSpawnState,
+  scenario: Scenario
+): {
+  totalItems: number;
+  spawnedItems: number;
+  collectedItems: number;
+  totalTiles: number;
+  spawnedTiles: number;
+  missingRequired: string[];
+} {
+  const spawnedItems = state.questItems.filter(i => i.spawned).length;
+  const collectedItems = state.questItems.filter(i => i.collected).length;
+  const spawnedTiles = state.questTiles.filter(t => t.spawned).length;
+
+  const missingRequired: string[] = [];
+
+  // Check for missing required items
+  state.questItems.filter(item => !item.spawned).forEach(item => {
+    const obj = scenario.objectives.find(o => o.id === item.objectiveId);
+    if (obj && !obj.isOptional) {
+      missingRequired.push(`Item: ${item.name}`);
+    }
+  });
+
+  // Check for missing required tiles
+  state.questTiles.filter(tile => !tile.spawned).forEach(tile => {
+    const obj = scenario.objectives.find(o => o.id === tile.objectiveId);
+    if (obj && !obj.isOptional) {
+      missingRequired.push(`Location: ${tile.name}`);
+    }
+  });
+
+  return {
+    totalItems: state.questItems.length,
+    spawnedItems,
+    collectedItems,
+    totalTiles: state.questTiles.length,
+    spawnedTiles,
+    missingRequired,
+  };
+}
