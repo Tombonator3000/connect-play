@@ -8331,3 +8331,116 @@ export function getThemedTilePreferences(theme: ScenarioTheme) {
 - Build successful (922.66 kB bundle)
 - Same behavior preserved - function returns identical values for all themes
 
+
+---
+
+## 2026-01-20: Refactor getThemeFromLocation - Data-Driven Lookup
+
+### Oppgave
+Refaktorere `getThemeFromLocation` funksjonen som var for kompleks med 8 kjede if-else statements og en switch fallback.
+
+### Problem
+Funksjonen på linje 52-90 hadde:
+- 8 chained if-else statements sjekking `nameLower.includes(...)`
+- 25+ individuelle string includes sjekker
+- Switch statement med 5 cases som fallback
+- Vanskelig å lese og vedlikeholde
+
+**Før (39 linjer):**
+```typescript
+function getThemeFromLocation(locationName: string, atmosphere: string): ScenarioTheme {
+  const nameLower = locationName.toLowerCase();
+  if (nameLower.includes('manor') || nameLower.includes('mansion') || nameLower.includes('house') || nameLower.includes('hotel')) {
+    return 'manor';
+  }
+  if (nameLower.includes('church') || nameLower.includes('chapel')) {
+    return 'church';
+  }
+  // ... 6 flere if-blokker ...
+  switch (atmosphere) {
+    case 'creepy': return 'manor';
+    case 'urban': return 'urban';
+    // ... 3 flere cases ...
+    default: return 'manor';
+  }
+}
+```
+
+### Løsning
+Refaktorerte til data-drevet lookup med tre konstanter:
+
+**1. LOCATION_NAME_PATTERNS** - Array av keyword-til-tema mapping:
+```typescript
+const LOCATION_NAME_PATTERNS: Array<{ keywords: string[]; theme: ScenarioTheme }> = [
+  { keywords: ['manor', 'mansion', 'house', 'hotel'], theme: 'manor' },
+  { keywords: ['church', 'chapel'], theme: 'church' },
+  { keywords: ['asylum', 'hospital'], theme: 'asylum' },
+  { keywords: ['warehouse', 'factory', 'industrial'], theme: 'warehouse' },
+  { keywords: ['forest', 'woods', 'marsh'], theme: 'forest' },
+  { keywords: ['library', 'university', 'campus'], theme: 'academic' },
+  { keywords: ['harbor', 'coast', 'cliff', 'dock'], theme: 'coastal' },
+  { keywords: ['crypt', 'cave', 'catacomb', 'sewer'], theme: 'underground' }
+];
+```
+
+**2. ATMOSPHERE_TO_THEME** - Record for fallback mapping:
+```typescript
+const ATMOSPHERE_TO_THEME: Record<string, ScenarioTheme> = {
+  creepy: 'manor',
+  urban: 'urban',
+  wilderness: 'forest',
+  academic: 'academic',
+  industrial: 'warehouse'
+};
+```
+
+**3. DEFAULT_THEME** - Konstant for default verdi:
+```typescript
+const DEFAULT_THEME: ScenarioTheme = 'manor';
+```
+
+**Etter (15 linjer funksjon):**
+```typescript
+function getThemeFromLocation(locationName: string, atmosphere: string): ScenarioTheme {
+  const nameLower = locationName.toLowerCase();
+
+  // Name-based mapping takes priority - find first matching pattern
+  const matchedPattern = LOCATION_NAME_PATTERNS.find(
+    pattern => pattern.keywords.some(keyword => nameLower.includes(keyword))
+  );
+
+  if (matchedPattern) {
+    return matchedPattern.theme;
+  }
+
+  // Fall back to atmosphere-based mapping
+  return ATMOSPHERE_TO_THEME[atmosphere] ?? DEFAULT_THEME;
+}
+```
+
+### Fordeler
+
+| Aspekt | Før | Etter |
+|--------|-----|-------|
+| **Lesbarhet** | Må lese 39 linjer for å forstå all mapping | All mapping synlig i én datastruktur |
+| **Vedlikehold** | Må legge til ny if-blokk for nytt mønster | Legg til én linje i array |
+| **Testing** | Må teste hver if-gren separat | Kan iterere over patterns programmatisk |
+| **Konsistens** | Manuelt sjekke at alle temaer dekkes | TypeScript-sjekket |
+
+### Filer Modifisert
+- `src/game/utils/scenarioGenerator.ts` (linjer 48-105)
+  - Lagt til `LOCATION_NAME_PATTERNS` konfigurasjon
+  - Lagt til `ATMOSPHERE_TO_THEME` mapping
+  - Lagt til `DEFAULT_THEME` konstant
+  - Forenklet `getThemeFromLocation` til 15 linjer
+
+### Refactoring Pattern
+**"Replace Conditional with Polymorphism/Data"** - Et vanlig refaktorerings-mønster hvor kjede if-else eller switch statements erstattes med data-drevne lookups. Spesielt nyttig når:
+- Alle branches returnerer samme datatype
+- Logikken er basert på string-matching
+- Dataene kan trenge å aksesseres eller itereres andre steder
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (922.43 kB bundle)
+✅ Samme oppførsel bevart - funksjonen returnerer identiske verdier for alle lokasjoner

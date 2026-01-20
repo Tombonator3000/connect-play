@@ -46,47 +46,62 @@ import {
 // ============================================================================
 
 /**
+ * Location name patterns to theme mapping.
+ * Each entry maps keywords found in location names to a specific theme.
+ *
+ * REFACTORED: Previously 8 chained if-else statements with 25+ string includes checks.
+ * Now a simple data-driven lookup table that's easier to:
+ * - Read and understand at a glance
+ * - Extend with new patterns (just add keywords to the array)
+ * - Test (can iterate over entries)
+ * - Maintain (changes are localized to this object)
+ */
+const LOCATION_NAME_PATTERNS: Array<{ keywords: string[]; theme: ScenarioTheme }> = [
+  { keywords: ['manor', 'mansion', 'house', 'hotel'], theme: 'manor' },
+  { keywords: ['church', 'chapel'], theme: 'church' },
+  { keywords: ['asylum', 'hospital'], theme: 'asylum' },
+  { keywords: ['warehouse', 'factory', 'industrial'], theme: 'warehouse' },
+  { keywords: ['forest', 'woods', 'marsh'], theme: 'forest' },
+  { keywords: ['library', 'university', 'campus'], theme: 'academic' },
+  { keywords: ['harbor', 'coast', 'cliff', 'dock'], theme: 'coastal' },
+  { keywords: ['crypt', 'cave', 'catacomb', 'sewer'], theme: 'underground' }
+];
+
+/**
+ * Atmosphere to theme fallback mapping.
+ * Used when no location name pattern matches.
+ */
+const ATMOSPHERE_TO_THEME: Record<string, ScenarioTheme> = {
+  creepy: 'manor',
+  urban: 'urban',
+  wilderness: 'forest',
+  academic: 'academic',
+  industrial: 'warehouse'
+};
+
+/** Default theme when no pattern or atmosphere matches */
+const DEFAULT_THEME: ScenarioTheme = 'manor';
+
+/**
  * Maps location atmosphere to scenario theme.
  * The theme determines which tile visuals and descriptions are used.
+ *
+ * Uses data-driven lookup instead of chained if-else for maintainability.
  */
 function getThemeFromLocation(locationName: string, atmosphere: string): ScenarioTheme {
   const nameLower = locationName.toLowerCase();
 
-  // Name-based mapping takes priority
-  if (nameLower.includes('manor') || nameLower.includes('mansion') || nameLower.includes('house') || nameLower.includes('hotel')) {
-    return 'manor';
-  }
-  if (nameLower.includes('church') || nameLower.includes('chapel')) {
-    return 'church';
-  }
-  if (nameLower.includes('asylum') || nameLower.includes('hospital')) {
-    return 'asylum';
-  }
-  if (nameLower.includes('warehouse') || nameLower.includes('factory') || nameLower.includes('industrial')) {
-    return 'warehouse';
-  }
-  if (nameLower.includes('forest') || nameLower.includes('woods') || nameLower.includes('marsh')) {
-    return 'forest';
-  }
-  if (nameLower.includes('library') || nameLower.includes('university') || nameLower.includes('campus')) {
-    return 'academic';
-  }
-  if (nameLower.includes('harbor') || nameLower.includes('coast') || nameLower.includes('cliff') || nameLower.includes('dock')) {
-    return 'coastal';
-  }
-  if (nameLower.includes('crypt') || nameLower.includes('cave') || nameLower.includes('catacomb') || nameLower.includes('sewer')) {
-    return 'underground';
+  // Name-based mapping takes priority - find first matching pattern
+  const matchedPattern = LOCATION_NAME_PATTERNS.find(
+    pattern => pattern.keywords.some(keyword => nameLower.includes(keyword))
+  );
+
+  if (matchedPattern) {
+    return matchedPattern.theme;
   }
 
   // Fall back to atmosphere-based mapping
-  switch (atmosphere) {
-    case 'creepy': return 'manor';
-    case 'urban': return 'urban';
-    case 'wilderness': return 'forest';
-    case 'academic': return 'academic';
-    case 'industrial': return 'warehouse';
-    default: return 'manor';
-  }
+  return ATMOSPHERE_TO_THEME[atmosphere] ?? DEFAULT_THEME;
 }
 
 /**
