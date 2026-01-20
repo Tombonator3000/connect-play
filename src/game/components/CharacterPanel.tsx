@@ -77,10 +77,10 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   };
 
   // Get item icon - first try specific icon, then fall back to generic
-  const getItemIcon = (type: string, itemId?: string) => {
-    // Try to get specific item icon first
+  const getItemIcon = (type: string, itemId?: string, questItemType?: string) => {
+    // Try to get specific item icon first (now with type and questItemType)
     if (itemId) {
-      const SpecificIcon = getSpecificItemIcon(itemId);
+      const SpecificIcon = getSpecificItemIcon(itemId, type, questItemType);
       if (SpecificIcon) {
         return <SpecificIcon size={24} />;
       }
@@ -93,6 +93,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       case 'armor': return <ShieldCheck size={18} />;
       case 'consumable': return <Cross size={18} />;
       case 'key': return <Key size={18} />;
+      case 'clue': return <FileQuestion size={18} />;
+      case 'quest_item': return <Star size={18} className="text-yellow-400" />;
       default: return <FileQuestion size={18} />;
     }
   };
@@ -108,7 +110,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
             : 'bg-background/40 border-border opacity-50 cursor-default'
         }`}
       >
-        {item ? getItemIcon(item.type, item.id) : slotIcon}
+        {item ? getItemIcon(item.type, item.id, item.questItemType) : slotIcon}
         <span className="text-[8px] uppercase tracking-wider mt-1 opacity-60">{label}</span>
         {/* Usage indicator for consumables */}
         {item && item.type === 'consumable' && item.uses !== undefined && (

@@ -4,7 +4,7 @@ import {
   User, Skull, DoorOpen, Lock, Flame, Hammer, Brain,
   BookOpen, Anchor, Church, MapPin, Building, ShoppingBag, Fish, PawPrint, Biohazard, Ghost, Bug, Search,
   Trees, AlertTriangle, Fence, Cloud, Archive, Radio, ToggleLeft, Sparkles, Moon, Package, CircleSlash,
-  Zap, Droplet
+  Zap, Droplet, Key, Star, FileText, Gem
 } from 'lucide-react';
 import { EnemyTooltip, TileObjectTooltip, EdgeFeatureTooltip } from './ItemTooltip';
 import WeatherOverlay from './WeatherOverlay';
@@ -1062,11 +1062,42 @@ const GameBoard: React.FC<GameBoardProps> = ({
                       {/* Statue - skull (ominous) */}
                       {tile.object.type === 'statue' && <Skull className="text-stone-400 drop-shadow-md" size={32} />}
 
-                      {/* Exit Door - escape route */}
+                      {/* Exit Door - escape route with prominent beacon effect */}
                       {tile.object.type === 'exit_door' && (
-                        <div className="flex flex-col items-center animate-pulse">
-                          <DoorOpen className="text-emerald-400 drop-shadow-[0_0_10px_rgba(52,211,153,0.6)]" size={36} />
-                          <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mt-1">Exit</span>
+                        <div className="relative flex flex-col items-center">
+                          {/* Outer beacon glow */}
+                          <div className="absolute inset-0 -m-8 rounded-full animate-exit-beacon opacity-80" />
+                          {/* Inner rotating ring */}
+                          <div className="absolute inset-0 -m-4 rounded-full animate-spin"
+                            style={{
+                              animationDuration: '8s',
+                              background: 'conic-gradient(from 0deg, transparent 0%, rgba(52,211,153,0.4) 25%, transparent 50%, rgba(52,211,153,0.4) 75%, transparent 100%)'
+                            }}
+                          />
+                          {/* Door icon with enhanced glow */}
+                          <DoorOpen
+                            className="text-emerald-400 animate-pulse drop-shadow-[0_0_15px_rgba(52,211,153,0.8)]"
+                            size={40}
+                          />
+                          <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-widest mt-1 drop-shadow-[0_0_6px_rgba(52,211,153,0.8)]">
+                            EXIT
+                          </span>
+                          {/* Pulsing rays */}
+                          <div className="absolute inset-0 -m-6">
+                            {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => (
+                              <div
+                                key={angle}
+                                className="absolute w-[2px] h-8 bg-gradient-to-t from-emerald-400/60 to-transparent animate-pulse"
+                                style={{
+                                  left: '50%',
+                                  top: '50%',
+                                  transform: `translate(-50%, -100%) rotate(${angle}deg)`,
+                                  transformOrigin: 'center bottom',
+                                  animationDelay: `${angle / 360}s`
+                                }}
+                              />
+                            ))}
+                          </div>
                         </div>
                       )}
 
@@ -1093,6 +1124,71 @@ const GameBoard: React.FC<GameBoardProps> = ({
                       )}
                     </div>
                   </TileObjectTooltip>
+                )}
+
+                {/* Quest Item Indicators - Shows glowing items on tiles */}
+                {isVisible && tile.items && tile.items.length > 0 && (
+                  <div className="absolute inset-0 flex items-end justify-center z-[21] pointer-events-none pb-4">
+                    <div className="flex gap-1">
+                      {tile.items.slice(0, 3).map((item, idx) => {
+                        // Determine icon based on quest item type
+                        const getQuestItemIcon = () => {
+                          if (item.questItemType === 'key' || item.type === 'key') {
+                            return <Key className="text-amber-400" size={20} />;
+                          } else if (item.questItemType === 'clue' || item.type === 'clue') {
+                            return <FileText className="text-blue-400" size={20} />;
+                          } else if (item.questItemType === 'artifact' || item.type === 'relic') {
+                            return <Gem className="text-purple-400" size={20} />;
+                          } else if (item.questItemType === 'collectible') {
+                            return <Star className="text-yellow-400" size={20} />;
+                          } else {
+                            return <Sparkles className="text-cyan-400" size={20} />;
+                          }
+                        };
+
+                        return (
+                          <div
+                            key={item.id || idx}
+                            className="relative animate-pulse"
+                            title={item.name}
+                          >
+                            {/* Glow ring */}
+                            <div className="absolute inset-0 -m-2 rounded-full animate-quest-item-glow"
+                              style={{
+                                background: item.questItemType === 'key' || item.type === 'key'
+                                  ? 'radial-gradient(circle, rgba(251,191,36,0.6) 0%, transparent 70%)'
+                                  : item.questItemType === 'clue' || item.type === 'clue'
+                                  ? 'radial-gradient(circle, rgba(96,165,250,0.6) 0%, transparent 70%)'
+                                  : item.questItemType === 'artifact' || item.type === 'relic'
+                                  ? 'radial-gradient(circle, rgba(168,85,247,0.6) 0%, transparent 70%)'
+                                  : 'radial-gradient(circle, rgba(34,211,238,0.6) 0%, transparent 70%)'
+                              }}
+                            />
+                            {/* Icon */}
+                            <div className="relative drop-shadow-[0_0_8px_rgba(255,255,255,0.8)]">
+                              {getQuestItemIcon()}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {tile.items.length > 3 && (
+                        <span className="text-xs text-white/80 font-bold ml-1">+{tile.items.length - 3}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Quest Tile Indicator - Special glow for quest-critical tiles (exit, altar, etc.) */}
+                {isVisible && tile.hasQuestItem && (
+                  <div className="absolute inset-0 z-[7] pointer-events-none">
+                    <div
+                      className="absolute inset-2 rounded-lg animate-quest-tile-pulse"
+                      style={{
+                        boxShadow: '0 0 20px rgba(52, 211, 153, 0.5), inset 0 0 15px rgba(52, 211, 153, 0.2)',
+                        border: '2px solid rgba(52, 211, 153, 0.4)'
+                      }}
+                    />
+                  </div>
                 )}
 
                 {/* Dead-end indicator - shows when tile has only one exit */}
@@ -1232,6 +1328,50 @@ const GameBoard: React.FC<GameBoardProps> = ({
               
               {/* Hex border with visibility-based styling */}
               <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full pointer-events-none z-10">
+                {/* Exit tile glow border */}
+                {isVisible && tile.object?.type === 'exit_door' && (
+                  <>
+                    <defs>
+                      <filter id={`exit-glow-${tile.id}`} x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="3" result="blur" />
+                        <feMerge>
+                          <feMergeNode in="blur" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
+                    </defs>
+                    <polygon
+                      points={HEX_POLY_POINTS}
+                      fill="none"
+                      stroke="rgba(52, 211, 153, 0.8)"
+                      strokeWidth="4"
+                      filter={`url(#exit-glow-${tile.id})`}
+                      className="animate-pulse"
+                    />
+                  </>
+                )}
+                {/* Quest item tile glow border */}
+                {isVisible && tile.hasQuestItem && tile.object?.type !== 'exit_door' && (
+                  <>
+                    <defs>
+                      <filter id={`quest-glow-${tile.id}`} x="-50%" y="-50%" width="200%" height="200%">
+                        <feGaussianBlur stdDeviation="2" result="blur" />
+                        <feMerge>
+                          <feMergeNode in="blur" />
+                          <feMergeNode in="SourceGraphic" />
+                        </feMerge>
+                      </filter>
+                    </defs>
+                    <polygon
+                      points={HEX_POLY_POINTS}
+                      fill="none"
+                      stroke="rgba(251, 191, 36, 0.6)"
+                      strokeWidth="3"
+                      filter={`url(#quest-glow-${tile.id})`}
+                      className="animate-pulse"
+                    />
+                  </>
+                )}
                 <polygon
                   points={HEX_POLY_POINTS}
                   fill="none"

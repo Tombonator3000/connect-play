@@ -1,6 +1,68 @@
 import React from 'react';
-import { X, Scroll, Target, AlertTriangle, Clock, Skull, Eye, MapPin, Shield } from 'lucide-react';
-import { Scenario } from '../types';
+import { X, Scroll, Target, AlertTriangle, Clock, Skull, Eye, MapPin, Shield, Key, FileText, CheckCircle2, Circle, Search, Swords, Star } from 'lucide-react';
+import { Scenario, ScenarioObjective } from '../types';
+import { getVisibleObjectives, getObjectiveProgressText } from '../utils/scenarioUtils';
+
+// Helper function to get objective icon
+const getObjectiveIcon = (type: ScenarioObjective['type']) => {
+  switch (type) {
+    case 'find_item': return Key;
+    case 'collect': return Search;
+    case 'find_tile': return MapPin;
+    case 'escape': return MapPin;
+    case 'kill_enemy':
+    case 'kill_boss': return Swords;
+    case 'survive': return Clock;
+    case 'explore': return Eye;
+    case 'interact': return Target;
+    case 'ritual': return Star;
+    case 'protect': return Shield;
+    default: return Target;
+  }
+};
+
+// Objective row component
+const ObjectiveRow: React.FC<{ objective: ScenarioObjective; isBonus?: boolean }> = ({
+  objective,
+  isBonus = false
+}) => {
+  const Icon = getObjectiveIcon(objective.type);
+  const progressText = getObjectiveProgressText(objective);
+  const isComplete = objective.completed;
+
+  return (
+    <div className={`flex items-start gap-2 text-xs ${isBonus ? 'text-amber-200/70' : 'text-foreground/80'}`}>
+      {/* Status indicator */}
+      <div className="flex-shrink-0 mt-0.5">
+        {isComplete ? (
+          <CheckCircle2 size={14} className="text-emerald-400" />
+        ) : (
+          <Circle size={14} className={isBonus ? 'text-amber-500/50' : 'text-muted-foreground/50'} />
+        )}
+      </div>
+
+      {/* Icon for objective type */}
+      <Icon size={12} className={`flex-shrink-0 mt-0.5 ${isComplete ? 'text-emerald-400/60' : isBonus ? 'text-amber-400/60' : 'text-muted-foreground/60'}`} />
+
+      {/* Description and progress */}
+      <div className="flex-1">
+        <span className={isComplete ? 'line-through opacity-60' : ''}>
+          {objective.description || objective.shortDescription || `${objective.type}: ${objective.targetId}`}
+        </span>
+        {objective.targetAmount && objective.targetAmount > 1 && (
+          <span className={`ml-2 text-[10px] ${isComplete ? 'text-emerald-400' : 'text-muted-foreground'}`}>
+            ({progressText})
+          </span>
+        )}
+      </div>
+
+      {/* Complete badge */}
+      {isComplete && (
+        <span className="text-[9px] font-bold text-emerald-400 uppercase">Done</span>
+      )}
+    </div>
+  );
+};
 
 interface ScenarioInfoModalProps {
   scenario: Scenario;
@@ -85,21 +147,37 @@ const ScenarioInfoModal: React.FC<ScenarioInfoModalProps> = ({
             </p>
           </div>
 
-          {/* Mission Objectives */}
+          {/* Mission Objectives - New system */}
           <div className="bg-background/30 rounded-lg p-3 border border-border">
             <div className="flex items-center gap-2 mb-2">
               <Target size={14} className="text-muted-foreground" />
               <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Mission Objectives</h3>
             </div>
-            <div className="space-y-1.5">
-              {scenario.steps.map((step, index) => (
-                <div key={step.id} className="flex items-start gap-2 text-xs text-foreground/80">
-                  <span className="flex-shrink-0 w-4 h-4 rounded-full border border-muted-foreground/50 flex items-center justify-center text-[9px] text-muted-foreground">
-                    {index + 1}
-                  </span>
-                  <span>{step.description}</span>
-                </div>
-              ))}
+            <div className="space-y-2">
+              {/* Required Objectives */}
+              {getVisibleObjectives(scenario)
+                .filter(obj => !obj.isOptional)
+                .map((objective) => (
+                  <ObjectiveRow key={objective.id} objective={objective} />
+                ))}
+
+              {/* Optional Objectives */}
+              {getVisibleObjectives(scenario)
+                .filter(obj => obj.isOptional)
+                .length > 0 && (
+                <>
+                  <div className="border-t border-border/50 my-2" />
+                  <p className="text-[9px] text-muted-foreground uppercase tracking-widest mb-1">
+                    <Star size={10} className="inline mr-1" />
+                    Bonus Objectives
+                  </p>
+                  {getVisibleObjectives(scenario)
+                    .filter(obj => obj.isOptional)
+                    .map((objective) => (
+                      <ObjectiveRow key={objective.id} objective={objective} isBonus />
+                    ))}
+                </>
+              )}
             </div>
           </div>
 

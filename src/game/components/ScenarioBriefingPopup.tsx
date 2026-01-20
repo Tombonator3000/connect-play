@@ -1,6 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { Scroll, Target, AlertTriangle, Clock, ChevronRight, Skull, Eye, MapPin } from 'lucide-react';
-import { Scenario, ScenarioStep } from '../types';
+import { Scroll, Target, AlertTriangle, Clock, ChevronRight, Skull, Eye, MapPin, Key, Search, Swords, Star, Shield, Circle } from 'lucide-react';
+import { Scenario, ScenarioObjective } from '../types';
+import { getVisibleObjectives } from '../utils/scenarioUtils';
+
+// Helper function to get objective icon
+const getObjectiveIcon = (type: ScenarioObjective['type']) => {
+  switch (type) {
+    case 'find_item': return Key;
+    case 'collect': return Search;
+    case 'find_tile': return MapPin;
+    case 'escape': return MapPin;
+    case 'kill_enemy':
+    case 'kill_boss': return Swords;
+    case 'survive': return Clock;
+    case 'explore': return Eye;
+    case 'interact': return Target;
+    case 'ritual': return Star;
+    case 'protect': return Shield;
+    default: return Target;
+  }
+};
 
 interface ScenarioBriefingPopupProps {
   scenario: Scenario;
@@ -111,21 +130,59 @@ const ScenarioBriefingPopup: React.FC<ScenarioBriefingPopupProps> = ({
             </p>
           </div>
 
-          {/* Mission Objectives */}
+          {/* Mission Objectives - Using new objectives system */}
           <div className="bg-stone-100/50 rounded p-4 border border-stone-300">
             <div className="flex items-center gap-2 mb-3">
               <Target size={16} className="text-stone-600" />
               <h2 className="text-xs font-bold text-stone-700 uppercase tracking-widest">Mission Objectives</h2>
             </div>
             <div className="space-y-2">
-              {scenario.steps.map((step, index) => (
-                <div key={step.id} className="flex items-start gap-3 text-sm text-stone-700">
-                  <span className="flex-shrink-0 w-5 h-5 rounded-full border border-stone-400 flex items-center justify-center text-[10px] font-bold text-stone-500">
-                    {index + 1}
-                  </span>
-                  <span className="font-serif">{step.description}</span>
-                </div>
-              ))}
+              {/* Required objectives */}
+              {getVisibleObjectives(scenario)
+                .filter(obj => !obj.isOptional)
+                .map((objective, index) => {
+                  const Icon = getObjectiveIcon(objective.type);
+                  return (
+                    <div key={objective.id} className="flex items-start gap-3 text-sm text-stone-700">
+                      <Circle size={14} className="flex-shrink-0 mt-0.5 text-stone-400" />
+                      <Icon size={14} className="flex-shrink-0 mt-0.5 text-stone-500" />
+                      <span className="font-serif">
+                        {objective.description || objective.shortDescription || `${objective.type}: ${objective.targetId}`}
+                        {objective.targetAmount && objective.targetAmount > 1 && (
+                          <span className="text-stone-500 text-xs ml-1">
+                            (0/{objective.targetAmount})
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                  );
+                })}
+
+              {/* Bonus objectives preview */}
+              {getVisibleObjectives(scenario).filter(obj => obj.isOptional).length > 0 && (
+                <>
+                  <div className="border-t border-stone-300 my-2 pt-2">
+                    <p className="text-[10px] text-stone-500 uppercase tracking-widest mb-2">
+                      <Star size={10} className="inline mr-1" />
+                      Bonus Objectives
+                    </p>
+                    {getVisibleObjectives(scenario)
+                      .filter(obj => obj.isOptional)
+                      .map((objective) => {
+                        const Icon = getObjectiveIcon(objective.type);
+                        return (
+                          <div key={objective.id} className="flex items-start gap-3 text-sm text-amber-700">
+                            <Circle size={14} className="flex-shrink-0 mt-0.5 text-amber-400/50" />
+                            <Icon size={14} className="flex-shrink-0 mt-0.5 text-amber-500/60" />
+                            <span className="font-serif text-xs">
+                              {objective.description || objective.shortDescription || `${objective.type}: ${objective.targetId}`}
+                            </span>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </>
+              )}
             </div>
           </div>
 

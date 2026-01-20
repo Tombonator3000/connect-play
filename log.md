@@ -1,5 +1,91 @@
 # Development Log
 
+## 2026-01-20: Comprehensive Scenario System Overhaul - Quest Items & Objectives
+
+### Problemene (Identifisert gjennom deep audit)
+
+Scenario-systemet hadde flere kritiske problemer som gjorde det umulig å fullføre scenarios:
+
+1. **Quest items usynlige på tiles** - Items spawnet riktig i `tile.items`, men ble aldri rendret visuelt
+2. **Escape victory sjekket ikke for nøkler** - Spillere kunne flykte uten å samle nødvendige items
+3. **Objectives ble ikke vist i UI** - Legacy `steps` system ble vist i stedet for det nye `objectives` systemet
+4. **Quest items ikke i inventory** - Items ble samlet men ikke lagt til spillerens inventory
+
+### Løsninger Implementert
+
+#### 1. Visuell Rendering av Quest Items på Tiles (`GameBoard.tsx`)
+- Lagt til glødende ikoner for quest items basert på type (key/clue/artifact/collectible)
+- Hver item-type har unik farge:
+  - Keys: Gull/amber glow
+  - Clues: Blå glow
+  - Artifacts: Lilla glow
+  - Collectibles: Cyan glow
+- SVG hex-border glow for tiles med quest items
+- z-index håndtering for synlighet over overlays
+
+#### 2. Forbedret Exit Tile Visuell Indikator (`GameBoard.tsx`)
+- Exit door har nå prominent beacon-effekt med:
+  - Roterende ring-animasjon
+  - Pulserende stråler i 8 retninger
+  - Sterkere glow og drop-shadow
+- Grønn SVG hex-border glow rundt exit tiles
+- Større og mer synlig dør-ikon
+
+#### 3. Escape Victory Logikk Fikset (`scenarioUtils.ts`)
+- `checkEscapeVictory()` sjekker nå at:
+  - Alle required `find_item` objectives er fullført
+  - Escape objective ikke er hidden (prerequisites er oppfylt)
+  - Spilleren er på exit tile
+- Funksjon mottar nå `scenario` parameter for validering
+
+#### 4. Objectives Vises i UI (`ScenarioInfoModal.tsx`, `ScenarioBriefingPopup.tsx`)
+- Erstattet legacy `scenario.steps` med `scenario.objectives`
+- Viser required og optional/bonus objectives separat
+- Ikoner basert på objective type (Key, MapPin, Swords, Clock, etc.)
+- Progress tracking (currentAmount/targetAmount)
+- Completed status med avkrysning
+
+#### 5. Quest Items Legges til Inventory (`ShadowsGame.tsx`)
+- Når quest item samles via search, legges den nå til player inventory
+- Item opprettes med korrekt type og questItemType
+- Viser floating text og log melding
+- Fallback warning hvis inventory er full
+
+#### 6. Quest Item Ikoner (`ItemIcons.tsx`)
+- Nye SVG ikoner for quest items:
+  - `QuestKeyIcon` - Gull nøkkel med glow
+  - `QuestClueIcon` - Dokument med forstørrelsesglass
+  - `QuestArtifactIcon` - Lilla krystall/gem
+  - `QuestCollectibleIcon` - Gull stjerne
+  - `QuestComponentIcon` - Cyan gear/komponent
+- Oppdatert `getItemIcon()` til å håndtere questItemType
+
+#### 7. CSS Animasjoner (`index.css`)
+- `@keyframes quest-item-glow` - Pulserende aura
+- `@keyframes quest-tile-pulse` - Border glow for quest tiles
+- `@keyframes exit-beacon` - Sterk pulserende glow for exit
+- `@keyframes key-shimmer` - Gull glow for nøkler
+- `@keyframes collectible-sparkle` - Roterende gnistrende effekt
+
+### Filer Endret
+- `src/game/components/GameBoard.tsx` - Quest item og exit visuals
+- `src/game/components/ItemIcons.tsx` - Nye quest item ikoner
+- `src/game/components/CharacterPanel.tsx` - getItemIcon med questItemType
+- `src/game/components/ScenarioInfoModal.tsx` - Objectives display
+- `src/game/components/ScenarioBriefingPopup.tsx` - Objectives display
+- `src/game/utils/scenarioUtils.ts` - Escape victory fix
+- `src/game/ShadowsGame.tsx` - Quest items til inventory
+- `src/index.css` - Quest item animasjoner
+
+### Testing
+- TypeScript kompilering: OK
+- Quest items vises nå på tiles med glødende effekt
+- Exit tiles lyser opp når revealed
+- Objectives vises riktig i briefing og info modals
+- Quest items samles og vises i inventory
+
+---
+
 ## 2026-01-20: Restore Tile Graphics - Fix CSS Stacking Issue
 
 ### Problemet
