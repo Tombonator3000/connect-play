@@ -18,6 +18,7 @@ import OptionsMenu, { GameSettings, DEFAULT_SETTINGS } from './components/Option
 import GameOverOverlay, { GameOverType } from './components/GameOverOverlay';
 import MythosPhaseOverlay from './components/MythosPhaseOverlay';
 import ScenarioBriefingPopup from './components/ScenarioBriefingPopup';
+import ScenarioInfoModal from './components/ScenarioInfoModal';
 import HeroArchivePanel from './components/HeroArchivePanel';
 import EquipmentStashPanel from './components/EquipmentStashPanel';
 import MerchantShop from './components/MerchantShop';
@@ -144,6 +145,7 @@ const ShadowsGame: React.FC = () => {
   const [selectedLegacyHeroIds, setSelectedLegacyHeroIds] = useState<string[]>([]);
   const [showMerchantShop, setShowMerchantShop] = useState(false);
   const [showStashPanel, setShowStashPanel] = useState(false);
+  const [showScenarioInfo, setShowScenarioInfo] = useState(false);
   const [lastScenarioResult, setLastScenarioResult] = useState<ScenarioResult | null>(null);
   const [heroKillCounts, setHeroKillCounts] = useState<Record<string, number>>({});
 
@@ -3420,6 +3422,24 @@ const ShadowsGame: React.FC = () => {
                 </div>
               </div>
             </TooltipProvider>
+            {/* Scenario Info Button */}
+            {state.activeScenario && (
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setShowScenarioInfo(true)}
+                      className={`bg-leather/90 border-2 border-primary ${isMobile ? 'rounded-lg p-2' : 'rounded-xl p-3'} text-primary transition-colors hover:bg-background/50 active:scale-95`}
+                    >
+                      <ScrollText size={isMobile ? 20 : 24} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="bg-card border-2 border-primary/50 p-2 shadow-[var(--shadow-doom)]">
+                    <p className="text-xs">View Mission Briefing</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
             <button onClick={() => setIsMainMenuOpen(true)} className={`bg-leather/90 border-2 border-primary ${isMobile ? 'rounded-lg p-2' : 'rounded-xl p-3'} text-primary transition-colors hover:bg-background/50 active:scale-95`}><Settings size={isMobile ? 20 : 24} /></button>
           </div>
 
@@ -3723,6 +3743,16 @@ const ShadowsGame: React.FC = () => {
           }));
         }}
       />
+
+      {/* Scenario Info Modal */}
+      {showScenarioInfo && state.activeScenario && (
+        <ScenarioInfoModal
+          scenario={state.activeScenario}
+          currentDoom={state.doom}
+          currentRound={state.round}
+          onClose={() => setShowScenarioInfo(false)}
+        />
+      )}
 
       {/* Game Over Overlay */}
       {gameOverType && (

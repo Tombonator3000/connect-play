@@ -1,5 +1,56 @@
 # Development Log
 
+## 2026-01-20: Scenario Info Button in Header
+
+### Oppgave
+Legge til en knapp ved siden av turn og doom markørene som viser scenario-info (mission briefing, objectives, victory conditions) når man klikker på den.
+
+### Løsning
+Laget en ny `ScenarioInfoModal` komponent og lagt til en knapp i header-baren ved siden av turn/doom markørene.
+
+#### Ny fil: `src/game/components/ScenarioInfoModal.tsx`
+En modal som viser all relevant scenario-informasjon under spillet:
+- Case File ID og tittel
+- Vanskelighetsgrad
+- Nåværende round og doom status
+- Briefing/beskrivelse
+- Mission objectives (nummerert liste)
+- Victory condition (grønt panel)
+- Special conditions (gult panel, hvis tilgjengelig)
+- Doom prophecy med events (rødt panel, med strikethrough for triggered events)
+- Lokasjonsinformasjon
+
+#### Endringer i `src/game/ShadowsGame.tsx`:
+1. **Import**: Lagt til import av `ScenarioInfoModal`
+2. **State**: Ny `showScenarioInfo` state for å kontrollere modal-visning
+3. **Header-knapp**: Lagt til `ScrollText`-ikon knapp i header ved siden av turn/doom markørene
+   - Kun synlig når det er et aktivt scenario
+   - Har tooltip med "View Mission Briefing"
+   - Samme styling som settings-knappen
+4. **Modal-rendering**: Lagt til `ScenarioInfoModal` komponent i render-output
+
+### Visuell stil
+- Knappen bruker `ScrollText` ikon fra lucide-react
+- Modal har samme dark theme styling som resten av UI
+- Fargekoding for ulike seksjoner:
+  - Emerald/grønn for victory condition
+  - Amber/gul for special conditions
+  - Red/rød for doom prophecy
+- Triggered doom events vises med strikethrough og redusert opacity
+
+### Filer Endret
+- `src/game/components/ScenarioInfoModal.tsx` - NY FIL
+- `src/game/ShadowsGame.tsx` - Lagt til import, state, knapp og modal
+
+### Resultat
+- ✅ Ny knapp synlig i header ved siden av turn/doom markører
+- ✅ Klikk på knappen åpner scenario info modal
+- ✅ Modal viser all relevant scenario-info
+- ✅ Doom events vises med visuell indikasjon på triggered status
+- ✅ Build vellykket uten feil
+
+---
+
 ## 2026-01-20: Turn and Doom Info Icons
 
 ### Oppgave
