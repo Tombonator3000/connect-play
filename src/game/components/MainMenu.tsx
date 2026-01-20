@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Skull, Settings, Users, Package } from 'lucide-react';
+import { Play, Skull, Settings, Users, Package, HardDrive } from 'lucide-react';
 
 interface MainMenuProps {
   onNewGame: () => void;
@@ -10,6 +10,7 @@ interface MainMenuProps {
   // Legacy system props
   onHeroArchive?: () => void;
   onStash?: () => void;
+  onSaveLoad?: () => void;
   heroCount?: number;
   stashCount?: number;
 }
@@ -22,6 +23,7 @@ const MainMenu: React.FC<MainMenuProps> = ({
   version,
   onHeroArchive,
   onStash,
+  onSaveLoad,
   heroCount = 0,
   stashCount = 0
 }) => {
@@ -63,7 +65,7 @@ const MainMenu: React.FC<MainMenuProps> = ({
           </button>
 
           {/* Legacy System Buttons */}
-          {(onHeroArchive || onStash) && (
+          {(onHeroArchive || onStash || onSaveLoad) && (
             <div className="flex gap-3 mt-2">
               {onHeroArchive && (
                 <button
@@ -94,6 +96,17 @@ const MainMenu: React.FC<MainMenuProps> = ({
                         {stashCount}
                       </span>
                     )}
+                  </span>
+                </button>
+              )}
+              {onSaveLoad && (
+                <button
+                  onClick={onSaveLoad}
+                  className="group flex-1 relative px-4 py-3 bg-green-900/20 border border-green-700 hover:border-green-500 text-green-400 hover:text-green-300 transition-all uppercase tracking-wider font-bold text-xs rounded backdrop-blur-sm"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <HardDrive size={16} />
+                    <span className="hidden md:inline">Save/Load</span>
                   </span>
                 </button>
               )}

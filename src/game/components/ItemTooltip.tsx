@@ -3,6 +3,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Item, Spell, Enemy, EnemyType } from '../types';
 import { BESTIARY } from '../constants';
 import { Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, Eye, Skull, Brain, Swords, BookOpen } from 'lucide-react';
+import { getItemIcon as getSpecificItemIcon } from './ItemIcons';
 
 interface ItemTooltipProps {
   item: Item;
@@ -21,7 +22,15 @@ export const ItemTooltip: React.FC<ItemTooltipProps> = ({ item, children }) => {
     }
   };
 
-  const getTypeIcon = (type: string) => {
+  const getTypeIcon = (type: string, itemId?: string) => {
+    // Try specific item icon first
+    if (itemId) {
+      const SpecificIcon = getSpecificItemIcon(itemId);
+      if (SpecificIcon) {
+        return <SpecificIcon size={16} />;
+      }
+    }
+    // Fall back to generic type icons
     switch (type) {
       case 'weapon': return <Sword size={12} />;
       case 'tool': return <Search size={12} />;
@@ -44,7 +53,7 @@ export const ItemTooltip: React.FC<ItemTooltipProps> = ({ item, children }) => {
         >
           <div className="bg-primary/20 px-3 py-2 border-b border-primary/30">
             <div className="flex items-center gap-2">
-              <span className={getTypeColor(item.type)}>{getTypeIcon(item.type)}</span>
+              <span className={getTypeColor(item.type)}>{getTypeIcon(item.type, item.id)}</span>
               <span className="font-bold text-sm text-foreground">{item.name}</span>
             </div>
             <div className={`text-[10px] uppercase tracking-wider ${getTypeColor(item.type)}`}>

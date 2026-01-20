@@ -11,6 +11,7 @@ import { calculateWeatherVision, weatherHidesEnemy, getDarkRoomDisplayState } fr
 import { Flashlight } from 'lucide-react';
 import { getCharacterPortrait } from '../utils/characterAssets';
 import { getMonsterPortrait } from '../utils/monsterAssets';
+import { getEdgeIconInfo, getEdgeIconPosition } from './EdgeIcons';
 
 // Import AI-generated tile images
 import tileLibrary from '@/assets/tiles/tile-library.png';
@@ -1101,79 +1102,179 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   strokeWidth={isVisible ? "1.5" : "0.5"}
                   className={`transition-all duration-500 ${isVisible ? 'opacity-40' : 'opacity-20'}`}
                 />
-                {/* Dead-end edge indicators - walls, blocked edges, and windows */}
+                {/* Edge indicators with icons - walls, doors, windows, stairs, etc. */}
                 {isVisible && tile.edges && tile.edges.map((edge: EdgeData, edgeIndex: number) => {
-                  const isWall = isDeadEndEdge(edge?.type);
-                  const isWindow = isWindowEdge(edge?.type);
-
-                  if (!isWall && !isWindow) return null;
                   const points = HEX_EDGE_POINTS[edgeIndex];
                   if (!points) return null;
 
-                  // Calculate midpoint for markers
+                  // Calculate midpoint and edge properties
                   const midX = (points.x1 + points.x2) / 2;
                   const midY = (points.y1 + points.y2) / 2;
+                  const edgeType = edge?.type?.toLowerCase() || '';
+                  const doorState = edge?.doorState?.toLowerCase() || '';
 
-                  if (isWall) {
-                    return (
-                      <g key={`edge-${edgeIndex}`}>
-                        {/* Thick wall line with dark color */}
-                        <line
-                          x1={points.x1}
-                          y1={points.y1}
-                          x2={points.x2}
-                          y2={points.y2}
-                          stroke="hsl(0, 10%, 15%)"
-                          strokeWidth="4"
-                          strokeLinecap="round"
-                          className="opacity-70"
-                        />
-                        {/* Subtle inner line for depth */}
-                        <line
-                          x1={points.x1}
-                          y1={points.y1}
-                          x2={points.x2}
-                          y2={points.y2}
-                          stroke="hsl(20, 15%, 25%)"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          className="opacity-80"
-                        />
-                        {/* Small cross marker at midpoint to indicate blocked */}
-                        <g transform={`translate(${midX}, ${midY})`} className="opacity-50">
-                          <line x1="-4" y1="-4" x2="4" y2="4" stroke="hsl(0, 40%, 30%)" strokeWidth="1.5" />
-                          <line x1="4" y1="-4" x2="-4" y2="4" stroke="hsl(0, 40%, 30%)" strokeWidth="1.5" />
-                        </g>
-                      </g>
-                    );
-                  }
+                  // Skip open/empty edges
+                  if (!edgeType || edgeType === 'open') return null;
 
-                  // Window edge - dashed line with different color
+                  // Get icon info for this edge type
+                  const iconInfo = getEdgeIconInfo(edgeType, doorState);
+
+                  // Determine edge rendering based on type
+                  const isWall = edgeType === 'wall' || edgeType === 'blocked';
+                  const isWindow = edgeType === 'window';
+                  const isDoor = edgeType === 'door';
+                  const isStairs = edgeType.includes('stairs');
+                  const isSecret = edgeType === 'secret';
+
+                  // Calculate icon position and rotation
+                  const iconPos = getEdgeIconPosition(edgeIndex);
+                  const iconRotation = edgeIndex * 60;
+
                   return (
                     <g key={`edge-${edgeIndex}`}>
-                      {/* Window frame line */}
-                      <line
-                        x1={points.x1}
-                        y1={points.y1}
-                        x2={points.x2}
-                        y2={points.y2}
-                        stroke="hsl(200, 30%, 40%)"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeDasharray="8,4"
-                        className="opacity-60"
-                      />
-                      {/* Inner glass line */}
-                      <line
-                        x1={points.x1}
-                        y1={points.y1}
-                        x2={points.x2}
-                        y2={points.y2}
-                        stroke="hsl(200, 50%, 60%)"
-                        strokeWidth="1"
-                        strokeLinecap="round"
-                        className="opacity-40"
-                      />
+                      {/* Wall rendering */}
+                      {isWall && (
+                        <>
+                          <line
+                            x1={points.x1} y1={points.y1} x2={points.x2} y2={points.y2}
+                            stroke="hsl(0, 10%, 15%)" strokeWidth="5" strokeLinecap="round" className="opacity-80"
+                          />
+                          <line
+                            x1={points.x1} y1={points.y1} x2={points.x2} y2={points.y2}
+                            stroke="hsl(20, 15%, 25%)" strokeWidth="2" strokeLinecap="round" className="opacity-90"
+                          />
+                          {/* Brick pattern indicator */}
+                          <g transform={`translate(${midX}, ${midY})`}>
+                            <rect x="-6" y="-3" width="12" height="6" fill="hsl(20, 25%, 20%)" rx="1" className="opacity-70" />
+                            <line x1="-6" y1="0" x2="6" y2="0" stroke="hsl(20, 15%, 15%)" strokeWidth="0.5" />
+                            <line x1="0" y1="-3" x2="0" y2="0" stroke="hsl(20, 15%, 15%)" strokeWidth="0.5" />
+                            <line x1="-3" y1="0" x2="-3" y2="3" stroke="hsl(20, 15%, 15%)" strokeWidth="0.5" />
+                            <line x1="3" y1="0" x2="3" y2="3" stroke="hsl(20, 15%, 15%)" strokeWidth="0.5" />
+                          </g>
+                        </>
+                      )}
+
+                      {/* Window rendering */}
+                      {isWindow && (
+                        <>
+                          <line
+                            x1={points.x1} y1={points.y1} x2={points.x2} y2={points.y2}
+                            stroke="hsl(200, 30%, 30%)" strokeWidth="4" strokeLinecap="round" className="opacity-70"
+                          />
+                          <line
+                            x1={points.x1} y1={points.y1} x2={points.x2} y2={points.y2}
+                            stroke="hsl(200, 50%, 70%)" strokeWidth="2" strokeLinecap="round"
+                            strokeDasharray="6,3" className="opacity-60"
+                          />
+                          {/* Window icon */}
+                          <g transform={`translate(${midX}, ${midY})`}>
+                            <rect x="-5" y="-5" width="10" height="10" fill="hsl(200, 40%, 25%)" rx="1" className="opacity-80" />
+                            <rect x="-4" y="-4" width="3" height="3" fill="hsl(200, 60%, 70%)" className="opacity-50" />
+                            <rect x="1" y="-4" width="3" height="3" fill="hsl(200, 60%, 70%)" className="opacity-50" />
+                            <rect x="-4" y="1" width="3" height="3" fill="hsl(200, 60%, 70%)" className="opacity-50" />
+                            <rect x="1" y="1" width="3" height="3" fill="hsl(200, 60%, 70%)" className="opacity-50" />
+                          </g>
+                        </>
+                      )}
+
+                      {/* Door rendering */}
+                      {isDoor && (
+                        <>
+                          <line
+                            x1={points.x1} y1={points.y1} x2={points.x2} y2={points.y2}
+                            stroke={doorState === 'open' ? 'hsl(120, 30%, 30%)' : doorState === 'locked' ? 'hsl(0, 40%, 30%)' : 'hsl(35, 40%, 30%)'}
+                            strokeWidth="4" strokeLinecap="round" className="opacity-70"
+                          />
+                          {/* Door icon based on state */}
+                          <g transform={`translate(${midX}, ${midY})`}>
+                            <rect x="-6" y="-7" width="12" height="14" fill={doorState === 'open' ? 'hsl(120, 30%, 25%)' : doorState === 'locked' ? 'hsl(0, 40%, 25%)' : 'hsl(35, 50%, 25%)'} rx="1" className="opacity-90" />
+                            {doorState === 'open' ? (
+                              // Open door icon - door ajar
+                              <>
+                                <rect x="-4" y="-5" width="6" height="10" fill="hsl(120, 40%, 35%)" rx="0.5" transform="skewY(-10)" />
+                                <circle cx="1" cy="0" r="1" fill="hsl(45, 60%, 50%)" />
+                              </>
+                            ) : doorState === 'locked' ? (
+                              // Locked door icon - with lock
+                              <>
+                                <rect x="-3" y="-4" width="6" height="8" fill="hsl(35, 50%, 35%)" rx="0.5" />
+                                <rect x="-1.5" y="-1" width="3" height="3" fill="hsl(45, 60%, 40%)" rx="0.5" />
+                                <circle cx="0" cy="-3" r="1.5" fill="none" stroke="hsl(45, 60%, 40%)" strokeWidth="1" />
+                              </>
+                            ) : doorState === 'barricaded' ? (
+                              // Barricaded door - with planks
+                              <>
+                                <rect x="-3" y="-4" width="6" height="8" fill="hsl(35, 50%, 35%)" rx="0.5" />
+                                <line x1="-5" y1="-3" x2="5" y2="3" stroke="hsl(30, 40%, 45%)" strokeWidth="2" />
+                                <line x1="-5" y1="3" x2="5" y2="-3" stroke="hsl(30, 40%, 45%)" strokeWidth="2" />
+                              </>
+                            ) : doorState === 'sealed' ? (
+                              // Sealed door - with glowing symbols
+                              <>
+                                <rect x="-3" y="-4" width="6" height="8" fill="hsl(280, 50%, 25%)" rx="0.5" />
+                                <circle cx="0" cy="0" r="2" fill="none" stroke="hsl(280, 70%, 60%)" strokeWidth="0.5" className="opacity-80" />
+                                <text x="0" y="1" fontSize="4" fill="hsl(280, 70%, 70%)" textAnchor="middle" className="opacity-90">*</text>
+                              </>
+                            ) : doorState === 'puzzle' ? (
+                              // Puzzle door - with symbol
+                              <>
+                                <rect x="-3" y="-4" width="6" height="8" fill="hsl(220, 50%, 30%)" rx="0.5" />
+                                <text x="0" y="2" fontSize="6" fill="hsl(220, 70%, 70%)" textAnchor="middle">?</text>
+                              </>
+                            ) : (
+                              // Closed door - default
+                              <>
+                                <rect x="-3" y="-4" width="6" height="8" fill="hsl(35, 50%, 35%)" rx="0.5" />
+                                <circle cx="2" cy="0" r="1" fill="hsl(45, 60%, 50%)" />
+                              </>
+                            )}
+                          </g>
+                        </>
+                      )}
+
+                      {/* Stairs rendering */}
+                      {isStairs && (
+                        <>
+                          <line
+                            x1={points.x1} y1={points.y1} x2={points.x2} y2={points.y2}
+                            stroke="hsl(40, 30%, 35%)" strokeWidth="4" strokeLinecap="round" className="opacity-70"
+                          />
+                          <g transform={`translate(${midX}, ${midY})`}>
+                            <rect x="-6" y="-6" width="12" height="12" fill="hsl(40, 25%, 20%)" rx="1" className="opacity-90" />
+                            {/* Stair steps */}
+                            {edgeType.includes('up') ? (
+                              <>
+                                <rect x="-4" y="2" width="8" height="2" fill="hsl(40, 30%, 40%)" />
+                                <rect x="-3" y="0" width="6" height="2" fill="hsl(40, 30%, 45%)" />
+                                <rect x="-2" y="-2" width="4" height="2" fill="hsl(40, 30%, 50%)" />
+                                <polygon points="0,-5 3,-2 -3,-2" fill="hsl(120, 50%, 50%)" className="opacity-80" />
+                              </>
+                            ) : (
+                              <>
+                                <rect x="-2" y="2" width="4" height="2" fill="hsl(40, 30%, 40%)" />
+                                <rect x="-3" y="0" width="6" height="2" fill="hsl(40, 30%, 45%)" />
+                                <rect x="-4" y="-2" width="8" height="2" fill="hsl(40, 30%, 50%)" />
+                                <polygon points="0,5 3,2 -3,2" fill="hsl(0, 50%, 50%)" className="opacity-80" />
+                              </>
+                            )}
+                          </g>
+                        </>
+                      )}
+
+                      {/* Secret door rendering (only if discovered) */}
+                      {isSecret && edge?.isDiscovered && (
+                        <>
+                          <line
+                            x1={points.x1} y1={points.y1} x2={points.x2} y2={points.y2}
+                            stroke="hsl(280, 40%, 35%)" strokeWidth="3" strokeLinecap="round"
+                            strokeDasharray="4,4" className="opacity-60"
+                          />
+                          <g transform={`translate(${midX}, ${midY})`}>
+                            <circle cx="0" cy="0" r="5" fill="hsl(280, 40%, 20%)" className="opacity-80" />
+                            <circle cx="0" cy="0" r="2" fill="hsl(280, 60%, 60%)" className="opacity-70" />
+                          </g>
+                        </>
+                      )}
                     </g>
                   );
                 })}

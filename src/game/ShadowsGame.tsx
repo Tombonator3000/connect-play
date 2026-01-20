@@ -26,6 +26,9 @@ import { checkVictoryConditions, checkDefeatConditions, updateObjectiveProgress,
 import PuzzleModal from './components/PuzzleModal';
 import SpellSelectionModal from './components/SpellSelectionModal';
 import FieldGuidePanel from './components/FieldGuidePanel';
+import CharacterSelectionScreen from './components/CharacterSelectionScreen';
+import SaveLoadModal from './components/SaveLoadModal';
+import { autoSave } from './utils/saveManager';
 import {
   loadLegacyData,
   saveLegacyData,
@@ -117,6 +120,12 @@ const ShadowsGame: React.FC = () => {
   // Occultist Spell Selection state
   const [showSpellSelection, setShowSpellSelection] = useState(false);
   const [pendingOccultistCharacter, setPendingOccultistCharacter] = useState<CharacterType | null>(null);
+
+  // Character Selection Screen state
+  const [showCharacterSelection, setShowCharacterSelection] = useState(false);
+
+  // Save/Load Modal state
+  const [showSaveLoadModal, setShowSaveLoadModal] = useState(false);
 
   // Context Action state
   const [activeContextTarget, setActiveContextTarget] = useState<ContextActionTarget | null>(null);
@@ -2729,6 +2738,10 @@ const ShadowsGame: React.FC = () => {
           // Legacy system buttons
           onHeroArchive={() => setMainMenuView('heroArchive')}
           onStash={() => setMainMenuView('stash')}
+          onSaveLoad={() => {
+            setIsMainMenuOpen(false);
+            setShowSaveLoadModal(true);
+          }}
           heroCount={getLivingHeroes(legacyData).length}
           stashCount={legacyData.stash.items.length}
         />
@@ -2979,62 +2992,77 @@ const ShadowsGame: React.FC = () => {
 
               {/* Classic mode character selection */}
               {selectedLegacyHeroIds.length === 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-12">
-                  {(Object.keys(CHARACTERS) as CharacterType[]).map(type => {
-                    const isSelected = !!state.players.find(p => p.id === type);
-                    return (
-                      <button key={type} onClick={() => {
-                        const char = CHARACTERS[type];
+                <div className="mb-8">
+                  {/* View detailed character selection button */}
+                  <div className="flex justify-center mb-6">
+                    <button
+                      onClick={() => setShowCharacterSelection(true)}
+                      className="px-6 py-3 bg-primary/10 border-2 border-primary rounded-xl text-primary hover:bg-primary/20 transition-all flex items-center gap-2"
+                    >
+                      <Users size={20} />
+                      Open Character Selection
+                      <span className="text-xs opacity-70 ml-2">(Detailed View)</span>
+                    </button>
+                  </div>
 
-                        if (isSelected) {
-                          // Deselect character
+                  {/* Quick selection grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                    {(Object.keys(CHARACTERS) as CharacterType[]).map(type => {
+                      const isSelected = !!state.players.find(p => p.id === type);
+                      return (
+                        <button key={type} onClick={() => {
+                          const char = CHARACTERS[type];
+
+                          if (isSelected) {
+                            // Deselect character
+                            setState(prev => ({
+                              ...prev,
+                              players: prev.players.filter(p => p.id !== type)
+                            }));
+                            return;
+                          }
+
+                          // For Occultist, show spell selection modal first
+                          if (type === 'occultist') {
+                            setPendingOccultistCharacter(type);
+                            setShowSpellSelection(true);
+                            return;
+                          }
+
+                          // Assign spells based on character class (Hero Quest style)
+                          // Professor (Wizard) = Limited scholarly spells (True Sight, Mend Flesh)
+                          const characterSpells = type === 'professor'
+                            ? SPELLS.filter(s => s.id === 'reveal' || s.id === 'mend')
+                            : [];
+
                           setState(prev => ({
                             ...prev,
-                            players: prev.players.filter(p => p.id !== type)
+                            players: [...prev.players, {
+                              ...char,
+                              position: { q: 0, r: 0 },
+                              inventory: createEmptyInventory(),
+                              spells: characterSpells,
+                              selectedSpells: undefined,
+                              actions: 2,
+                              isDead: false,
+                              madness: [],
+                              activeMadness: null,
+                              traits: []
+                            }]
                           }));
-                          return;
-                        }
-
-                        // For Occultist, show spell selection modal first
-                        if (type === 'occultist') {
-                          setPendingOccultistCharacter(type);
-                          setShowSpellSelection(true);
-                          return;
-                        }
-
-                        // Assign spells based on character class (Hero Quest style)
-                        // Professor (Wizard) = Limited scholarly spells (True Sight, Mend Flesh)
-                        const characterSpells = type === 'professor'
-                          ? SPELLS.filter(s => s.id === 'reveal' || s.id === 'mend')
-                          : [];
-
-                        setState(prev => ({
-                          ...prev,
-                          players: [...prev.players, {
-                            ...char,
-                            position: { q: 0, r: 0 },
-                            inventory: createEmptyInventory(),
-                            spells: characterSpells,
-                            selectedSpells: undefined,
-                            actions: 2,
-                            isDead: false,
-                            madness: [],
-                            activeMadness: null,
-                            traits: []
-                          }]
-                        }));
-                      }} className={`p-4 bg-background border-2 rounded-xl transition-all ${isSelected ? 'border-primary shadow-[var(--shadow-doom)] scale-105' : 'border-border opacity-60'}`}>
-                        <div className="text-lg font-bold text-foreground uppercase tracking-tighter">{CHARACTERS[type].name}</div>
-                        <div className="flex justify-center gap-4 text-xs font-bold mt-2">
-                          <span className="text-health flex items-center gap-1"><Heart size={12} /> {CHARACTERS[type].hp}</span>
-                          <span className="text-sanity flex items-center gap-1"><Brain size={12} /> {CHARACTERS[type].sanity}</span>
-                        </div>
-                        {type === 'occultist' && (
-                          <div className="text-xs text-purple-400 mt-1">Select 3 Spells</div>
-                        )}
-                      </button>
-                    );
-                  })}
+                        }} className={`p-4 bg-background border-2 rounded-xl transition-all ${isSelected ? 'border-primary shadow-[var(--shadow-doom)] scale-105' : 'border-border opacity-60'}`}>
+                          <div className="text-lg font-bold text-foreground uppercase tracking-tighter">{CHARACTERS[type].name}</div>
+                          <div className="flex justify-center gap-4 text-xs font-bold mt-2">
+                            <span className="text-health flex items-center gap-1"><Heart size={12} /> {CHARACTERS[type].hp}</span>
+                            <span className="text-sanity flex items-center gap-1"><Brain size={12} /> {CHARACTERS[type].sanity}</span>
+                          </div>
+                          {type === 'occultist' && (
+                            <div className="text-xs text-purple-400 mt-1">Select 3 Spells</div>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
@@ -3299,6 +3327,53 @@ const ShadowsGame: React.FC = () => {
           }}
         />
       )}
+
+      {/* Character Selection Screen */}
+      {showCharacterSelection && (
+        <CharacterSelectionScreen
+          selectedPlayers={state.players}
+          onSelectCharacter={(player: Player) => {
+            setState(prev => ({
+              ...prev,
+              players: [...prev.players, player]
+            }));
+          }}
+          onDeselectCharacter={(characterType: CharacterType) => {
+            setState(prev => ({
+              ...prev,
+              players: prev.players.filter(p => p.id !== characterType)
+            }));
+          }}
+          onConfirm={() => {
+            setShowCharacterSelection(false);
+          }}
+          onBack={() => {
+            setShowCharacterSelection(false);
+          }}
+          onOpenSpellSelection={(characterType: CharacterType) => {
+            setPendingOccultistCharacter(characterType);
+            setShowSpellSelection(true);
+          }}
+        />
+      )}
+
+      {/* Save/Load Modal */}
+      <SaveLoadModal
+        isOpen={showSaveLoadModal}
+        onClose={() => setShowSaveLoadModal(false)}
+        legacyData={legacyData}
+        gameState={state}
+        onLoadLegacyData={(data) => {
+          setLegacyData(data);
+          saveLegacyData(data);
+        }}
+        onLoadGameState={(loadedState) => {
+          setState(prev => ({
+            ...prev,
+            ...loadedState
+          }));
+        }}
+      />
 
       {/* Game Over Overlay */}
       {gameOverType && (
