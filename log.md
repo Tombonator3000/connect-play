@@ -8133,3 +8133,127 @@ timeoutRef.current = setTimeout(() => {
 - TypeScript compiles without errors
 - Build successful
 
+---
+
+## 2026-01-20: Refactor handleContextActionEffect - Extract to Modular System
+
+### Problem
+The `handleContextActionEffect` function in `ShadowsGame.tsx` was a **470-line monolithic switch statement** handling all context action effects. This made the code:
+- Hard to read and understand
+- Difficult to maintain and extend
+- Impossible to unit test individual handlers
+- Prone to bugs when adding new action types
+
+### Solution
+Extracted all effect handling logic into a new modular system in `src/game/utils/contextActionEffects.ts`.
+
+### New Architecture
+
+#### 1. Pure Helper Functions for Board Operations
+```typescript
+// Generic tile update
+export function updateTile(board, tileId, updater): Tile[]
+
+// Edge-specific updates
+export function updateTileEdge(board, tileId, edgeIndex, edgeUpdater): Tile[]
+export function setDoorState(board, tileId, edgeIndex, doorState): Tile[]
+export function clearBlockedEdge(board, tileId, edgeIndex): Tile[]
+
+// Obstacle/object removal
+export function removeTileObstacle(board, tileId): Tile[]
+export function removeTileObject(board, tileId): Tile[]
+```
+
+#### 2. Effect Handlers by Category
+- **Door effects**: `handleOpenDoorEffect`, `handleBreakDoorEffect`, `handleCloseDoorEffect`
+- **Obstacle effects**: `handleClearObstacleEffect`, `handleClearEdgeEffect`, `handleBreakWindowEffect`
+- **Search effects**: `handleSearchEffect` (handles quest item collection)
+- **Objective effects**: `handleObjectiveProgressEffect`, `handleEscapeEffect`
+- **Quest item effects**: `handleQuestItemPickupEffect`
+
+#### 3. Main Dispatcher Function
+```typescript
+export function processActionEffect(actionId: string, ctx: ActionEffectContext): ActionEffectResult
+```
+
+Uses action ID grouping instead of a giant switch:
+```typescript
+const OPEN_DOOR_ACTIONS = ['open_door', 'use_key', 'lockpick'];
+const BREAK_DOOR_ACTIONS = ['force_door', 'break_barricade'];
+const CLEAR_EDGE_ACTIONS = ['clear_edge_rubble', 'break_edge_barricade', ...];
+
+if (OPEN_DOOR_ACTIONS.includes(actionId)) {
+  return handleOpenDoorEffect(ctx);
+}
+```
+
+#### 4. Refactored ShadowsGame.tsx Handler
+The new `handleContextActionEffect` in ShadowsGame.tsx is now only **~55 lines**:
+```typescript
+const handleContextActionEffect = useCallback((action: ContextAction, success: boolean) => {
+  if (!activeContextTarget || !success) return;
+
+  const tile = state.board.find(t => t.id === activeContextTarget.tileId);
+  if (!tile) return;
+
+  // Build context
+  const ctx: ActionEffectContext = { ... };
+
+  // Special handling for door opening - trigger fog reveal
+  if (['open_door', 'use_key', 'lockpick'].includes(action.id) && ...) {
+    triggerFogReveal(...);
+  }
+
+  // Process the action effect
+  const result = processActionEffect(action.id, ctx);
+
+  // Apply log messages and floating text
+  result.logMessages?.forEach(msg => addToLog(msg));
+  if (result.floatingText) { addFloatingText(...); }
+
+  // Apply state updates
+  if (result.board || result.players || ...) {
+    setState(prev => ({ ...prev, ...result }));
+  }
+}, [...]);
+```
+
+### Files Created
+- `src/game/utils/contextActionEffects.ts` (~450 lines)
+  - Contains all effect handling logic
+  - Pure functions for board updates
+  - Typed interfaces for context and results
+  - Grouped action handlers by category
+
+### Files Modified
+- `src/game/ShadowsGame.tsx`
+  - Added import for new module
+  - Replaced 470-line switch with ~55-line delegator
+  - Reduced file size by ~400 lines
+
+### Benefits
+1. **Separation of concerns**: Effect logic is now separate from React component
+2. **Testability**: Pure functions can be unit tested independently
+3. **Maintainability**: Adding new actions only requires adding to action groups
+4. **Readability**: Each handler is focused and easy to understand
+5. **Reusability**: Helper functions can be used elsewhere if needed
+
+### Action Categories Handled
+| Category | Actions |
+|----------|---------|
+| Door Open | open_door, use_key, lockpick |
+| Door Break | force_door, break_barricade |
+| Door Close | close_door |
+| Clear Obstacle | clear_rubble, extinguish |
+| Search | search_tile, search_books, search_container, search_rubble, search_water, search_statue |
+| Remove Object | open_gate, force_gate, disarm_trap, trigger_trap, dispel_fog |
+| Clear Edge | clear_edge_rubble, break_edge_barricade, unlock_edge_gate, lockpick_edge_gate, force_edge_gate, extinguish_edge_fire, dispel_edge_ward, banish_edge_spirits |
+| Window | break_window |
+| Objectives | perform_ritual, seal_portal, flip_switch, escape |
+| Quest Items | pickup_quest_item_* |
+
+### Verification
+- TypeScript compiles without errors
+- Build successful (922.66 kB bundle)
+- All action effects preserved with same behavior
+
