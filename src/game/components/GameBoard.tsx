@@ -733,6 +733,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const [longPressTile, setLongPressTile] = useState<{ q: number; r: number } | null>(null);
   const [selectedMoveTarget, setSelectedMoveTarget] = useState<{ q: number; r: number } | null>(null);
 
+  // Track tile being touched for explicit mobile tap handling
+  const touchedTileRef = useRef<{ q: number; r: number } | null>(null);
+  const tileTouchStartTime = useRef<number>(0);
+  const tileTouchStartPos = useRef<{ x: number; y: number } | null>(null);
+
   useEffect(() => {
     if (containerRef.current) {
       const { width, height } = containerRef.current.getBoundingClientRect();
@@ -1042,18 +1047,42 @@ const GameBoard: React.FC<GameBoardProps> = ({
               key={tile.id}
               className="absolute flex items-center justify-center transition-all duration-500"
               style={{ width: `${HEX_SIZE * 2}px`, height: `${HEX_SIZE * 1.732}px`, left: `${x - HEX_SIZE}px`, top: `${y - HEX_SIZE * 0.866}px` }}
-              onClick={() => { if (!hasDragged.current) onTileClick(tile.q, tile.r); }}
-              onTouchStart={() => {
+              onClick={(e) => {
+                // Desktop click handling
+                if (!hasDragged.current) onTileClick(tile.q, tile.r);
+              }}
+              onTouchStart={(e) => {
                 setTouchedTileKey(tileKey);
                 handleTileLongPressStart(tile.q, tile.r);
+                // Store touch info for mobile tap detection
+                touchedTileRef.current = { q: tile.q, r: tile.r };
+                tileTouchStartTime.current = Date.now();
+                const touch = e.touches[0];
+                if (touch) {
+                  tileTouchStartPos.current = { x: touch.clientX, y: touch.clientY };
+                }
               }}
-              onTouchEnd={() => {
+              onTouchEnd={(e) => {
                 setTouchedTileKey(null);
                 handleTileLongPressEnd();
+                // Mobile tap detection - trigger tile click if it was a quick tap without drag
+                const touchDuration = Date.now() - tileTouchStartTime.current;
+                const wasQuickTap = touchDuration < TAP_TIME_THRESHOLD;
+                const wasSameTile = touchedTileRef.current?.q === tile.q && touchedTileRef.current?.r === tile.r;
+
+                if (wasQuickTap && !hasDragged.current && wasSameTile) {
+                  // Prevent onClick from also firing
+                  e.preventDefault();
+                  onTileClick(tile.q, tile.r);
+                }
+                touchedTileRef.current = null;
+                tileTouchStartPos.current = null;
               }}
               onTouchCancel={() => {
                 setTouchedTileKey(null);
                 handleTileLongPressEnd();
+                touchedTileRef.current = null;
+                tileTouchStartPos.current = null;
               }}
             >
               {/* Board game tile with AI-generated oil painting texture and 3D depth */}
@@ -1735,18 +1764,42 @@ const GameBoard: React.FC<GameBoardProps> = ({
               key={`move-${i}`}
               className={`absolute flex items-center justify-center cursor-pointer transition-all z-20 group ${isTouchedMove ? 'scale-105' : ''}`}
               style={{ width: `${HEX_SIZE * 2}px`, height: `${HEX_SIZE * 1.732}px`, left: `${x - HEX_SIZE}px`, top: `${y - HEX_SIZE * 0.866}px` }}
-              onClick={() => { if (!hasDragged.current) onTileClick(move.q, move.r); }}
-              onTouchStart={() => {
+              onClick={(e) => {
+                // Desktop click handling
+                if (!hasDragged.current) onTileClick(move.q, move.r);
+              }}
+              onTouchStart={(e) => {
                 setTouchedTileKey(moveKey);
                 handleTileLongPressStart(move.q, move.r);
+                // Store touch info for mobile tap detection
+                touchedTileRef.current = { q: move.q, r: move.r };
+                tileTouchStartTime.current = Date.now();
+                const touch = e.touches[0];
+                if (touch) {
+                  tileTouchStartPos.current = { x: touch.clientX, y: touch.clientY };
+                }
               }}
-              onTouchEnd={() => {
+              onTouchEnd={(e) => {
                 setTouchedTileKey(null);
                 handleTileLongPressEnd();
+                // Mobile tap detection - trigger tile click if it was a quick tap without drag
+                const touchDuration = Date.now() - tileTouchStartTime.current;
+                const wasQuickTap = touchDuration < TAP_TIME_THRESHOLD;
+                const wasSameTile = touchedTileRef.current?.q === move.q && touchedTileRef.current?.r === move.r;
+
+                if (wasQuickTap && !hasDragged.current && wasSameTile) {
+                  // Prevent onClick from also firing
+                  e.preventDefault();
+                  onTileClick(move.q, move.r);
+                }
+                touchedTileRef.current = null;
+                tileTouchStartPos.current = null;
               }}
               onTouchCancel={() => {
                 setTouchedTileKey(null);
                 handleTileLongPressEnd();
+                touchedTileRef.current = null;
+                tileTouchStartPos.current = null;
               }}
             >
               {/* Hex background - enhanced for touch with larger active area */}

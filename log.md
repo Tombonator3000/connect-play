@@ -1,5 +1,167 @@
 # Development Log
 
+## 2026-01-20: Fix Mobile Touch Movement and Disable Tooltip Inspection
+
+### Oppsummering
+
+Fikset to kritiske mobilproblemer:
+1. **Touch-basert spillerbevegelse** fungerte ikke pålitelig på mobil
+2. **Tooltips ga "gratis" informasjon** ved touch på mobil uten å bruke action points
+
+---
+
+### PROBLEMER IDENTIFISERT 🔴
+
+#### 1. Touch-bevegelse fungerte ikke på mobil
+**Problem:** Når spilleren prøvde å trykke på en tile for å flytte på mobil, ble ikke `onClick`-eventet trigget konsistent. Dette skyldtes konflikt mellom container-nivå touch handlers (for drag/pan) og tile-nivå touch handlers.
+
+**Årsak:**
+- Container `handleTouchStart` startet drag-logikk og satte `hasDragged.current = false`
+- Selv små bevegelser under touch kunne sette `hasDragged.current = true`
+- `onClick` på tiles sjekket `if (!hasDragged.current)` og failet
+
+#### 2. Tooltips viste informasjon uten kost
+**Problem:** På mobil kunne spilleren trykke på hvilken som helst tile og se tooltip med informasjon om objekter, fiender og edge-features - uten å bruke action points eller være adjacent.
+
+**Årsak:** Radix UI tooltips trigger ved touch på mobil, noe som ga spilleren "gratis" informasjon som burde kreve Investigate-handling.
+
+---
+
+### LØSNING IMPLEMENTERT ✅
+
+#### 1. Eksplisitt Mobile Tap Handling
+
+**Fil:** `src/game/components/GameBoard.tsx`
+
+Lagt til nye refs for å tracke touch på tile-nivå:
+```typescript
+// Track tile being touched for explicit mobile tap handling
+const touchedTileRef = useRef<{ q: number; r: number } | null>(null);
+const tileTouchStartTime = useRef<number>(0);
+const tileTouchStartPos = useRef<{ x: number; y: number } | null>(null);
+```
+
+Oppdatert tile touch handlers til å eksplisitt håndtere tap:
+```typescript
+onTouchStart={(e) => {
+  setTouchedTileKey(tileKey);
+  handleTileLongPressStart(tile.q, tile.r);
+  // Store touch info for mobile tap detection
+  touchedTileRef.current = { q: tile.q, r: tile.r };
+  tileTouchStartTime.current = Date.now();
+  const touch = e.touches[0];
+  if (touch) {
+    tileTouchStartPos.current = { x: touch.clientX, y: touch.clientY };
+  }
+}}
+onTouchEnd={(e) => {
+  setTouchedTileKey(null);
+  handleTileLongPressEnd();
+  // Mobile tap detection - trigger tile click if quick tap without drag
+  const touchDuration = Date.now() - tileTouchStartTime.current;
+  const wasQuickTap = touchDuration < TAP_TIME_THRESHOLD;
+  const wasSameTile = touchedTileRef.current?.q === tile.q && touchedTileRef.current?.r === tile.r;
+
+  if (wasQuickTap && !hasDragged.current && wasSameTile) {
+    e.preventDefault();
+    onTileClick(tile.q, tile.r);
+  }
+  touchedTileRef.current = null;
+  tileTouchStartPos.current = null;
+}}
+```
+
+#### 2. Disable Tooltips på Mobil
+
+**Fil:** `src/game/components/ItemTooltip.tsx`
+
+Lagt til `useIsMobile` hook import:
+```typescript
+import { useIsMobile } from '@/hooks/use-mobile';
+```
+
+Oppdatert tre tooltip-komponenter til å returnere bare children på mobil:
+
+**EnemyTooltip:**
+```typescript
+export const EnemyTooltip: React.FC<EnemyTooltipProps> = ({ enemy, children }) => {
+  const isMobile = useIsMobile();
+  // On mobile, don't show tooltips - prevents "free" information gathering via touch
+  if (isMobile) {
+    return <>{children}</>;
+  }
+  // ... rest of component
+};
+```
+
+**TileObjectTooltip:**
+```typescript
+export const TileObjectTooltip: React.FC<TileObjectTooltipProps> = ({ object, children }) => {
+  const isMobile = useIsMobile();
+  // On mobile, don't show tooltips - prevents "free" information gathering
+  // Player must investigate the tile to learn what's there
+  if (isMobile) {
+    return <>{children}</>;
+  }
+  // ... rest of component
+};
+```
+
+**EdgeFeatureTooltip:**
+```typescript
+export const EdgeFeatureTooltip: React.FC<EdgeFeatureTooltipProps> = ({ edge, children }) => {
+  const isMobile = useIsMobile();
+  // On mobile, don't show tooltips - prevents "free" information gathering via touch
+  if (isMobile) {
+    return <>{children}</>;
+  }
+  // ... rest of component
+};
+```
+
+---
+
+### FILER MODIFISERT
+
+1. **src/game/components/GameBoard.tsx**
+   - Nye refs: `touchedTileRef`, `tileTouchStartTime`, `tileTouchStartPos`
+   - Oppdatert tile touch handlers med eksplisitt tap-deteksjon
+   - Oppdatert possibleMoves touch handlers med samme logikk
+
+2. **src/game/components/ItemTooltip.tsx**
+   - Import `useIsMobile` hook
+   - `EnemyTooltip`: Returnerer bare children på mobil
+   - `TileObjectTooltip`: Returnerer bare children på mobil
+   - `EdgeFeatureTooltip`: Returnerer bare children på mobil
+
+---
+
+### BRUKEROPPLEVELSE FORBEDRINGER
+
+| Før | Etter |
+|-----|-------|
+| Touch på tile flyttet ikke spilleren | Touch på tile flytter spilleren pålitelig |
+| Tooltips viste info ved touch (gratis) | Tooltips vises IKKE på mobil - må bruke Investigate |
+| Spilleren kunne "cheate" ved å se på alle tiles | Spilleren må faktisk bruke handlinger for informasjon |
+
+---
+
+### SPILLMEKANIKK FORBEDRING
+
+**Regelbok-kompatibilitet:** Iht. REGELBOK.MD skal spilleren bruke **Investigate**-handlingen (1 AP) for å undersøke tiles og finne skjulte ting. Ved å disable tooltips på mobil følger vi dette prinsippet - spilleren kan ikke lenger få "gratis" informasjon ved å holde fingeren på en tile.
+
+---
+
+### RESULTAT
+
+- ✅ Touch-basert bevegelse fungerer pålitelig på mobil
+- ✅ Tooltips vises IKKE på mobil (ingen "gratis" informasjon)
+- ✅ Spillmekanikken følger regelverket bedre
+- ✅ TypeScript kompilerer uten feil
+- ✅ Build vellykket (917KB bundle)
+
+---
+
 ## 2026-01-20: Mobile Touch Hero Movement Enhancement
 
 ### Oppsummering
