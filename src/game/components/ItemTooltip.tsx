@@ -381,6 +381,15 @@ const TILE_OBJECT_INFO: Record<TileObjectType, {
     color: 'text-emerald-400',
     bgColor: 'bg-emerald-950/95',
     borderColor: 'border-emerald-500/50'
+  },
+  eldritch_portal: {
+    name: 'Eldritch Portal',
+    description: 'Et gapende hull i virkeligheten. Lilla lys pulserer fra den andre siden, og noe stirrer tilbake.',
+    interaction: 'Fiender spawner her i Mythos-fasen. Kan forsegles med Elder Signs eller ritualer.',
+    icon: Zap,
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-950/95',
+    borderColor: 'border-purple-500/50'
   }
 };
 

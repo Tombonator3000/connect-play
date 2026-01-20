@@ -220,6 +220,27 @@ const ShadowsGame: React.FC = () => {
       addToLog("Mythos-fasen vekkes. Eldgamle hjul snurrer i morket.");
 
       const runEnemyAI = async () => {
+        // === ELDRITCH PORTAL SPAWNING ===
+        // Check for active portals on the board and spawn enemies
+        const portalsToSpawn: Array<{tileId: string; q: number; r: number; types: EnemyType[]; chance: number}> = [];
+        state.board.forEach(tile => {
+          if (tile.object?.type === 'eldritch_portal' && tile.object.portalActive) {
+            const spawnChance = tile.object.portalSpawnChance ?? 50;
+            const spawnTypes = tile.object.portalSpawnTypes ?? ['cultist' as EnemyType];
+            portalsToSpawn.push({ tileId: tile.id, q: tile.q, r: tile.r, types: spawnTypes, chance: spawnChance });
+          }
+        });
+
+        // Process portal spawning
+        for (const portal of portalsToSpawn) {
+          if (Math.random() * 100 < portal.chance) {
+            const enemyType = portal.types[Math.floor(Math.random() * portal.types.length)];
+            spawnEnemy(enemyType, portal.q, portal.r);
+            addToLog(`⚡ En ${enemyType} kryper ut av den eldritiske portalen!`);
+            addFloatingText(portal.q, portal.r, "PORTAL SPAWN!", "text-purple-400");
+          }
+        }
+
         // Use the enhanced AI system with smart targeting and special abilities
         const { updatedEnemies, attacks, messages, specialEvents } = processEnemyTurn(
           state.enemies,
@@ -275,6 +296,11 @@ const ShadowsGame: React.FC = () => {
             "text-primary"
           );
           triggerScreenShake();
+
+          // Add blood stains when physical damage is dealt
+          if (totalHpDamage > 0) {
+            addBloodstains(targetPlayer.position.q, targetPlayer.position.r, totalHpDamage);
+          }
 
           updatedPlayers = updatedPlayers.map(p => {
             if (p.id === targetPlayer.id) {
@@ -382,6 +408,61 @@ const ShadowsGame: React.FC = () => {
       setState(prev => ({ ...prev, floatingTexts: prev.floatingTexts.filter(t => t.id !== id) }));
     }, 2000);
   };
+
+  // Add blood stains to a tile when damage is dealt
+  const addBloodstains = useCallback((q: number, r: number, damageAmount: number) => {
+    const stainCount = Math.min(Math.ceil(damageAmount / 2), 4); // 1-4 stains based on damage
+    const positions = Array.from({ length: stainCount }, () => ({
+      x: 20 + Math.random() * 60, // 20-80% of tile width
+      y: 20 + Math.random() * 60, // 20-80% of tile height
+      rotation: Math.random() * 360,
+      size: 15 + Math.random() * 20 // 15-35px
+    }));
+
+    setState(prev => ({
+      ...prev,
+      board: prev.board.map(tile => {
+        if (tile.q === q && tile.r === r) {
+          const existingStains = tile.bloodstains || { count: 0, positions: [] };
+          return {
+            ...tile,
+            bloodstains: {
+              count: Math.min(existingStains.count + stainCount, 8), // Max 8 stains per tile
+              positions: [...existingStains.positions, ...positions].slice(-8),
+              fadeTime: 0 // Reset fade time
+            }
+          };
+        }
+        return tile;
+      })
+    }));
+  }, []);
+
+  // Trigger fog reveal animation for a tile
+  const triggerFogReveal = useCallback((q: number, r: number) => {
+    setState(prev => ({
+      ...prev,
+      board: prev.board.map(tile => {
+        if (tile.q === q && tile.r === r && !tile.explored) {
+          return { ...tile, fogRevealAnimation: 'revealing' as const };
+        }
+        return tile;
+      })
+    }));
+
+    // Clear the animation after it completes
+    setTimeout(() => {
+      setState(prev => ({
+        ...prev,
+        board: prev.board.map(tile => {
+          if (tile.q === q && tile.r === r) {
+            return { ...tile, fogRevealAnimation: 'revealed' as const, explored: true };
+          }
+          return tile;
+        })
+      }));
+    }, 1200);
+  }, []);
 
   // Emit spell particle effects
   const emitSpellEffect = (
@@ -1269,6 +1350,24 @@ const ShadowsGame: React.FC = () => {
       case 'use_key':
       case 'lockpick':
         if (activeContextTarget.edgeIndex !== undefined) {
+          // Get the adjacent tile through this edge for fog reveal
+          const edgeIndex = activeContextTarget.edgeIndex;
+          const adjacentOffsets: Record<number, {dq: number; dr: number}> = {
+            0: { dq: 0, dr: -1 },  // North
+            1: { dq: 1, dr: -1 },  // Northeast
+            2: { dq: 1, dr: 0 },   // Southeast
+            3: { dq: 0, dr: 1 },   // South
+            4: { dq: -1, dr: 1 },  // Southwest
+            5: { dq: -1, dr: 0 }   // Northwest
+          };
+          const offset = adjacentOffsets[edgeIndex];
+          if (offset) {
+            const adjacentQ = tile.q + offset.dq;
+            const adjacentR = tile.r + offset.dr;
+            // Trigger fog reveal animation on adjacent unexplored tile
+            triggerFogReveal(adjacentQ, adjacentR);
+          }
+
           setState(prev => ({
             ...prev,
             board: prev.board.map(t => {
@@ -2333,6 +2432,11 @@ const ShadowsGame: React.FC = () => {
 
             triggerScreenShake();
 
+            // Add blood stains when spell damage is dealt
+            if (spell.value > 0) {
+              addBloodstains(spellTarget.position.q, spellTarget.position.r, spell.value);
+            }
+
             const newEnemyHp = spellTarget.hp - spell.value;
             const isKilled = newEnemyHp <= 0;
 
@@ -2751,6 +2855,9 @@ const ShadowsGame: React.FC = () => {
 
           addFloatingText(enemy.position.q, enemy.position.r, `-${damage} HP`, "text-primary");
           triggerScreenShake();
+
+          // Add blood stains when damage is dealt to enemies
+          addBloodstains(enemy.position.q, enemy.position.r, damage);
 
           if (isKilled) {
             const bestiary = BESTIARY[enemy.type];

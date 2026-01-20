@@ -1446,4 +1446,527 @@
     width: 24px;
     height: 24px;
   }
+
+  /* ==========================================================================
+     FOG OF WAR SYSTEM - "The Veil Between Worlds"
+     Animated shadow mist for unexplored areas
+     ========================================================================== */
+
+  /* Animated shadow mist - swirling fog in unexplored areas */
+  @keyframes fog-mist-swirl {
+    0% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.7;
+    }
+    25% {
+      transform: translate(10px, -5px) scale(1.05);
+      opacity: 0.8;
+    }
+    50% {
+      transform: translate(-5px, -10px) scale(0.98);
+      opacity: 0.75;
+    }
+    75% {
+      transform: translate(5px, 5px) scale(1.02);
+      opacity: 0.85;
+    }
+    100% {
+      transform: translate(0, 0) scale(1);
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes fog-mist-drift {
+    0%, 100% {
+      transform: translateX(-20%) translateY(0);
+      opacity: 0.6;
+    }
+    50% {
+      transform: translateX(20%) translateY(-10%);
+      opacity: 0.8;
+    }
+  }
+
+  @keyframes fog-tendril-wave {
+    0% {
+      transform: scaleY(0.8) scaleX(1);
+      opacity: 0.4;
+    }
+    50% {
+      transform: scaleY(1.2) scaleX(0.9);
+      opacity: 0.6;
+    }
+    100% {
+      transform: scaleY(0.8) scaleX(1);
+      opacity: 0.4;
+    }
+  }
+
+  .animate-fog-mist-swirl {
+    animation: fog-mist-swirl 8s ease-in-out infinite;
+  }
+
+  .animate-fog-mist-drift {
+    animation: fog-mist-drift 12s ease-in-out infinite;
+  }
+
+  .animate-fog-tendril {
+    animation: fog-tendril-wave 4s ease-in-out infinite;
+  }
+
+  /* Fog of War animated overlay */
+  .fog-of-war-unexplored {
+    background:
+      radial-gradient(ellipse at 30% 40%, rgba(20, 15, 30, 0.9) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 60%, rgba(30, 20, 40, 0.85) 0%, transparent 50%),
+      linear-gradient(180deg, rgba(10, 10, 20, 0.95) 0%, rgba(20, 15, 30, 0.9) 100%);
+  }
+
+  /* ==========================================================================
+     FOG REVEAL FLICKER - "The Veil Tears"
+     Flicker effect when fog clears upon door opening
+     ========================================================================== */
+
+  @keyframes fog-reveal-flicker {
+    0% {
+      opacity: 1;
+      filter: brightness(0.8);
+    }
+    10% {
+      opacity: 0.7;
+      filter: brightness(1.2);
+    }
+    20% {
+      opacity: 0.9;
+      filter: brightness(0.9);
+    }
+    30% {
+      opacity: 0.4;
+      filter: brightness(1.4);
+    }
+    40% {
+      opacity: 0.8;
+      filter: brightness(1);
+    }
+    50% {
+      opacity: 0.3;
+      filter: brightness(1.5);
+    }
+    60% {
+      opacity: 0.6;
+      filter: brightness(1.1);
+    }
+    70% {
+      opacity: 0.2;
+      filter: brightness(1.3);
+    }
+    80% {
+      opacity: 0.4;
+      filter: brightness(1.2);
+    }
+    90% {
+      opacity: 0.1;
+      filter: brightness(1.1);
+    }
+    100% {
+      opacity: 0;
+      filter: brightness(1);
+    }
+  }
+
+  @keyframes fog-reveal-shimmer {
+    0% {
+      background-position: -200% 0;
+      opacity: 0.8;
+    }
+    50% {
+      background-position: 0% 0;
+      opacity: 0.4;
+    }
+    100% {
+      background-position: 200% 0;
+      opacity: 0;
+    }
+  }
+
+  .animate-fog-reveal-flicker {
+    animation: fog-reveal-flicker 1.2s ease-out forwards;
+  }
+
+  .fog-reveal-shimmer {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(200, 180, 255, 0.3) 25%,
+      rgba(255, 255, 255, 0.4) 50%,
+      rgba(200, 180, 255, 0.3) 75%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: fog-reveal-shimmer 1.5s ease-out forwards;
+  }
+
+  /* ==========================================================================
+     3D HEX DEPTH - "The Weight of Dread"
+     Board game tile thickness effect using CSS shadows and transforms
+     ========================================================================== */
+
+  .hex-3d-base {
+    transform-style: preserve-3d;
+    transform: perspective(800px) rotateX(2deg);
+  }
+
+  .hex-3d-depth {
+    position: relative;
+    box-shadow:
+      /* Main tile shadow - creates depth illusion */
+      0 4px 0 0 hsl(25, 30%, 8%),
+      0 5px 0 0 hsl(25, 25%, 6%),
+      0 6px 0 0 hsl(25, 20%, 4%),
+      /* Soft ambient shadow */
+      0 8px 16px -4px rgba(0, 0, 0, 0.6),
+      /* Inner edge highlight */
+      inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
+  }
+
+  .hex-3d-depth-elevated {
+    box-shadow:
+      /* Elevated tile - more depth */
+      0 6px 0 0 hsl(25, 30%, 10%),
+      0 7px 0 0 hsl(25, 25%, 8%),
+      0 8px 0 0 hsl(25, 20%, 6%),
+      0 9px 0 0 hsl(25, 15%, 4%),
+      /* Larger ambient shadow */
+      0 12px 24px -4px rgba(0, 0, 0, 0.7),
+      /* Rim light */
+      inset 0 2px 0 0 rgba(255, 255, 255, 0.08);
+  }
+
+  .hex-3d-depth-sunken {
+    box-shadow:
+      /* Sunken tile - inset shadows */
+      inset 0 2px 4px 0 rgba(0, 0, 0, 0.4),
+      inset 0 4px 8px 0 rgba(0, 0, 0, 0.3),
+      /* Minimal external shadow */
+      0 2px 0 0 hsl(25, 20%, 5%),
+      0 4px 8px -2px rgba(0, 0, 0, 0.4);
+  }
+
+  /* Edge lighting for 3D effect */
+  .hex-3d-edge-light {
+    background: linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.1) 0%,
+      transparent 40%,
+      transparent 60%,
+      rgba(0, 0, 0, 0.2) 100%
+    );
+  }
+
+  /* ==========================================================================
+     ELDRITCH PORTAL - "The Gateway to Madness"
+     Glowing purple portal that spawns enemies
+     ========================================================================== */
+
+  @keyframes portal-pulse {
+    0%, 100% {
+      box-shadow:
+        0 0 20px rgba(128, 0, 255, 0.6),
+        0 0 40px rgba(128, 0, 255, 0.4),
+        0 0 60px rgba(128, 0, 255, 0.2),
+        inset 0 0 30px rgba(128, 0, 255, 0.3);
+      transform: scale(1);
+    }
+    50% {
+      box-shadow:
+        0 0 30px rgba(150, 50, 255, 0.8),
+        0 0 60px rgba(150, 50, 255, 0.5),
+        0 0 90px rgba(150, 50, 255, 0.3),
+        inset 0 0 50px rgba(150, 50, 255, 0.4);
+      transform: scale(1.05);
+    }
+  }
+
+  @keyframes portal-swirl {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes portal-energy {
+    0%, 100% {
+      opacity: 0.6;
+      filter: hue-rotate(0deg);
+    }
+    25% {
+      opacity: 0.8;
+      filter: hue-rotate(-20deg);
+    }
+    50% {
+      opacity: 0.7;
+      filter: hue-rotate(20deg);
+    }
+    75% {
+      opacity: 0.9;
+      filter: hue-rotate(-10deg);
+    }
+  }
+
+  @keyframes portal-flare {
+    0%, 90%, 100% {
+      opacity: 0;
+      transform: scale(0.5);
+    }
+    95% {
+      opacity: 1;
+      transform: scale(1.5);
+    }
+  }
+
+  .animate-portal-pulse {
+    animation: portal-pulse 3s ease-in-out infinite;
+  }
+
+  .animate-portal-swirl {
+    animation: portal-swirl 20s linear infinite;
+  }
+
+  .animate-portal-energy {
+    animation: portal-energy 4s ease-in-out infinite;
+  }
+
+  .animate-portal-flare {
+    animation: portal-flare 8s ease-in-out infinite;
+  }
+
+  .eldritch-portal-glow {
+    background: radial-gradient(
+      ellipse at center,
+      rgba(150, 50, 255, 0.4) 0%,
+      rgba(128, 0, 255, 0.3) 30%,
+      rgba(80, 0, 150, 0.2) 60%,
+      transparent 100%
+    );
+  }
+
+  /* ==========================================================================
+     BLOOD TRAILS - "The Mark of Violence"
+     Visual indicator of combat damage on tiles
+     ========================================================================== */
+
+  @keyframes blood-drip {
+    0% {
+      transform: scaleY(0);
+      opacity: 0;
+    }
+    20% {
+      transform: scaleY(0.3);
+      opacity: 0.9;
+    }
+    100% {
+      transform: scaleY(1);
+      opacity: 0.7;
+    }
+  }
+
+  @keyframes blood-pool-spread {
+    0% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    30% {
+      transform: scale(0.7);
+      opacity: 0.9;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 0.8;
+    }
+  }
+
+  @keyframes blood-splatter {
+    0% {
+      transform: scale(0) rotate(0deg);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.2) rotate(var(--rotation, 0deg));
+      opacity: 1;
+    }
+    100% {
+      transform: scale(1) rotate(var(--rotation, 0deg));
+      opacity: 0.85;
+    }
+  }
+
+  .animate-blood-drip {
+    animation: blood-drip 0.8s ease-out forwards;
+  }
+
+  .animate-blood-pool {
+    animation: blood-pool-spread 1s ease-out forwards;
+  }
+
+  .animate-blood-splatter {
+    animation: blood-splatter 0.5s ease-out forwards;
+  }
+
+  .blood-stain {
+    background: radial-gradient(
+      ellipse at center,
+      rgba(120, 10, 20, 0.9) 0%,
+      rgba(80, 5, 10, 0.7) 40%,
+      rgba(60, 0, 5, 0.4) 70%,
+      transparent 100%
+    );
+  }
+
+  .blood-splatter {
+    background: radial-gradient(
+      ellipse at 30% 40%,
+      rgba(140, 15, 25, 0.85) 0%,
+      transparent 50%
+    ),
+    radial-gradient(
+      ellipse at 70% 60%,
+      rgba(100, 10, 15, 0.75) 0%,
+      transparent 40%
+    ),
+    radial-gradient(
+      ellipse at 50% 30%,
+      rgba(120, 10, 20, 0.65) 0%,
+      transparent 35%
+    );
+  }
+
+  /* ==========================================================================
+     RAIN & LOCAL FOG PARTICLES - "Nature's Tears"
+     Environmental particle effects for specific tiles
+     ========================================================================== */
+
+  @keyframes rain-drop-fall {
+    0% {
+      transform: translateY(-20px) rotate(15deg);
+      opacity: 0;
+    }
+    10% {
+      opacity: 0.7;
+    }
+    90% {
+      opacity: 0.7;
+    }
+    100% {
+      transform: translateY(200px) rotate(15deg);
+      opacity: 0;
+    }
+  }
+
+  @keyframes local-fog-drift {
+    0%, 100% {
+      transform: translateX(-30%) translateY(0) scale(1);
+      opacity: 0.3;
+    }
+    50% {
+      transform: translateX(30%) translateY(-10%) scale(1.1);
+      opacity: 0.5;
+    }
+  }
+
+  @keyframes local-fog-pulse {
+    0%, 100% {
+      opacity: 0.2;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 0.4;
+      transform: scale(1.05);
+    }
+  }
+
+  .animate-rain-drop {
+    animation: rain-drop-fall var(--duration, 0.6s) linear infinite;
+    animation-delay: var(--delay, 0s);
+  }
+
+  .animate-local-fog-drift {
+    animation: local-fog-drift 10s ease-in-out infinite;
+  }
+
+  .animate-local-fog-pulse {
+    animation: local-fog-pulse 4s ease-in-out infinite;
+  }
+
+  .local-rain-overlay {
+    background: linear-gradient(
+      180deg,
+      rgba(100, 130, 160, 0.1) 0%,
+      rgba(80, 110, 140, 0.15) 100%
+    );
+  }
+
+  .local-fog-overlay {
+    background: radial-gradient(
+      ellipse at center,
+      rgba(150, 160, 180, 0.3) 0%,
+      rgba(120, 130, 150, 0.2) 50%,
+      transparent 100%
+    );
+  }
+
+  /* ==========================================================================
+     BOOKSHELF SEARCH - "Ancient Knowledge"
+     Visual feedback for searching bookshelves
+     ========================================================================== */
+
+  @keyframes bookshelf-search {
+    0% {
+      filter: brightness(1);
+    }
+    25% {
+      filter: brightness(1.3);
+      transform: translateX(-2px);
+    }
+    50% {
+      filter: brightness(1);
+      transform: translateX(2px);
+    }
+    75% {
+      filter: brightness(1.2);
+      transform: translateX(-1px);
+    }
+    100% {
+      filter: brightness(1);
+      transform: translateX(0);
+    }
+  }
+
+  @keyframes bookshelf-glow {
+    0%, 100% {
+      box-shadow: 0 0 5px rgba(139, 90, 43, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(200, 160, 80, 0.6);
+    }
+  }
+
+  .animate-bookshelf-search {
+    animation: bookshelf-search 0.8s ease-in-out;
+  }
+
+  .animate-bookshelf-glow {
+    animation: bookshelf-glow 2s ease-in-out infinite;
+  }
+
+  .bookshelf-unsearched {
+    filter: brightness(1.05);
+    box-shadow: 0 0 10px rgba(200, 160, 80, 0.3);
+  }
+
+  .bookshelf-searched {
+    filter: brightness(0.85) grayscale(0.2);
+    opacity: 0.7;
+  }
 }

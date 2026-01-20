@@ -526,7 +526,8 @@ export interface BestiaryEntry {
 export type TileObjectType =
   | 'altar' | 'bookshelf' | 'crate' | 'chest' | 'cabinet'
   | 'gate' | 'barricade' | 'locked_door' | 'rubble' | 'fire' | 'trap'
-  | 'mirror' | 'radio' | 'switch' | 'statue' | 'fog_wall' | 'exit_door';
+  | 'mirror' | 'radio' | 'switch' | 'statue' | 'fog_wall' | 'exit_door'
+  | 'eldritch_portal';  // Glowing purple portal - spawns enemies during Mythos phase
 
 export type EdgeType = 'open' | 'wall' | 'door' | 'secret' | 'window' | 'stairs_up' | 'stairs_down' | 'blocked';
 
@@ -586,6 +587,10 @@ export interface TileObject {
   health?: number;
   difficulty?: number;
   reqSkill?: SkillType;
+  // Portal-specific properties
+  portalActive?: boolean;          // Is portal currently active (can spawn enemies)
+  portalSpawnTypes?: EnemyType[];  // What enemy types can spawn from this portal
+  portalSpawnChance?: number;      // Chance to spawn enemy each Mythos phase (0-100)
 }
 
 export type TileVisibility = 'hidden' | 'adjacent' | 'revealed' | 'visible';
@@ -709,6 +714,14 @@ export interface Tile {
   isDarkRoom?: boolean;           // Is this room shrouded in darkness?
   darkRoomContent?: DarkRoomContent;  // Hidden content revealed when illuminated
   darkRoomIlluminated?: boolean;  // Has this dark room been illuminated?
+  // Blood trail system - visual indicator of combat
+  bloodstains?: {
+    count: number;              // Number of bloodstains (affects visual intensity)
+    positions: Array<{x: number; y: number; rotation: number; size: number}>;  // Random positions within tile
+    fadeTime?: number;          // Rounds until blood fades (optional)
+  };
+  // Fog of war reveal animation state
+  fogRevealAnimation?: 'revealing' | 'revealed';  // For flicker effect when fog clears
 }
 
 export type VictoryType = 'escape' | 'assassination' | 'collection' | 'survival' | 'ritual' | 'investigation';
