@@ -1,5 +1,114 @@
 # Development Log
 
+## 2026-01-20: Guaranteed Quest Item/NPC Spawn System
+
+### Problemet
+Spillere kunne ikke fullføre scenarier fordi quest items (nøkler, ledetråder, samleobjekter) og quest tiles (utganger, altere, NPC-lokasjoner) aldri spawnet i spillet. Spawn-systemet var helt probabilistisk og hadde ingen garanti for at kritiske elementer faktisk ville dukke opp.
+
+### Årsak
+Det eksisterende spawn-systemet i `objectiveSpawner.ts` hadde flere svakheter:
+1. Items spawnet kun med 10-50% sjanse basert på exploration progress
+2. Ingen "fail-safe" mekanisme for å tvinge spawns når doom blir lav
+3. Items ble aldri faktisk lagt til på tiles - bare en logg-melding ble vist
+4. Ingen tracking av om spawning var "on schedule" eller bak
+
+### Løsning
+
+#### 1. Garantert Spawn System (`objectiveSpawner.ts`)
+
+**Nye funksjoner:**
+- `checkGuaranteedSpawns()` - Sjekker om kritiske elementer må force-spawnes
+- `executeGuaranteedSpawns()` - Utfører tvungen spawning
+- `findBestSpawnTile()` - Finner beste tile for et quest item basert på type
+- `findBestQuestTileLocation()` - Finner beste lokasjon for quest tiles (exit, altar, etc.)
+- `getSpawnStatus()` - Debug-funksjon for å se spawn-status
+
+**Konfigurasjon:**
+```typescript
+GUARANTEED_SPAWN_CONFIG = {
+  DOOM_CRITICAL: 4,        // Force spawn ALT når doom <= 4
+  DOOM_WARNING: 7,         // Øk spawn-sjanse når doom <= 7
+  EXPLORATION_FORCE: 0.85, // Force spawn etter 85% exploration
+  MIN_ITEMS_PER_10_TILES: 1, // Minst 1 item per 10 utforskede tiles
+}
+```
+
+**Urgency Levels:**
+- `none`: Normal spawn-logikk
+- `warning`: Spawn halvparten av gjenstående items
+- `critical`: Spawn ALLE gjenstående kritiske items/tiles
+
+#### 2. Items Legges Faktisk Til Tiles
+
+Når et quest item spawner:
+```typescript
+const questItem: Item = {
+  id: spawnedItem.id,
+  name: spawnedItem.name,
+  description: spawnedItem.description,
+  type: 'quest_item',
+  category: 'special',
+  isQuestItem: true,
+  questItemType: spawnedItem.type,
+  objectiveId: spawnedItem.objectiveId,
+};
+tile.items = [...(tile.items || []), questItem];
+tile.hasQuestItem = true;
+```
+
+#### 3. Mythos-fase Spawn Check
+
+I hver Mythos-fase sjekkes spawn-status:
+1. Beregn urgency basert på doom og exploration
+2. Hvis `urgency !== 'none'`, kjør `executeGuaranteedSpawns()`
+3. Legg items til utforskede tiles
+4. Modifiser tiles som blir quest locations (exit, altar)
+5. Logg meldinger til spilleren
+
+#### 4. Type-utvidelser (`types.ts`)
+
+**Item interface:**
+```typescript
+// Quest item fields
+isQuestItem?: boolean;
+questItemType?: 'key' | 'clue' | 'collectible' | 'artifact' | 'component';
+objectiveId?: string;
+category?: 'weapon' | 'tool' | 'armor' | 'consumable' | 'special';
+```
+
+**Tile interface:**
+```typescript
+items?: Item[];           // Items on this tile
+hasQuestItem?: boolean;   // Quick flag for quest items
+```
+
+### Endrede Filer
+- `src/game/utils/objectiveSpawner.ts` - Komplett garantert spawn system (350+ nye linjer)
+- `src/game/ShadowsGame.tsx` - Mythos-fase spawn check, tile exploration spawn, search collection
+- `src/game/types.ts` - Item og Tile interface utvidet
+
+### Testing
+- TypeScript kompilerer uten feil
+- Build fullført uten errors
+
+### Hvordan det fungerer i praksis
+
+**Normal gameplay:**
+1. Spiller utforsker tiles
+2. Quest items spawner progressivt (10-50% sjanse per tile)
+3. Items legges til tiles og vises som søkbare
+
+**Når doom går ned:**
+1. Ved doom 7: Warning - halvparten av gjenstående items force-spawnes
+2. Ved doom 4: Critical - ALLE gjenstående items force-spawnes på best passende tiles
+
+**Meldinger til spiller:**
+- `📦 Noe viktig er gjemt i {tileName}... Søk nøye!`
+- `⭐ VIKTIG LOKASJON: {questTileName} funnet!`
+- `📜 Doom nærmer seg! Kritiske elementer har blitt avslørt...`
+
+---
+
 ## 2026-01-20: Fix Occultist Spell Casting - Target Selection Bug
 
 ### Problemet
