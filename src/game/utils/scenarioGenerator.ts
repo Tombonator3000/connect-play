@@ -23,6 +23,24 @@ import {
   ScenarioTheme
 } from '../types';
 
+import {
+  randomElement,
+  randomRange,
+  generateId,
+  buildTemplateContext,
+  selectLocation,
+  generateObjectivesFromTemplates,
+  generateBonusObjectives,
+  generateDoomEvents,
+  generateTitle,
+  generateBriefing,
+  buildVictoryConditions,
+  buildDefeatConditions,
+  selectCollectible,
+  interpolateTemplate,
+  TemplateContext
+} from './scenarioGeneratorHelpers';
+
 // ============================================================================
 // THEME MAPPING
 // ============================================================================
@@ -893,255 +911,80 @@ export const BONUS_OBJECTIVES: ObjectiveTemplate[] = [
 ];
 
 // ============================================================================
-// UTILITY FUNCTIONS
+// UTILITY FUNCTIONS (moved to scenarioGeneratorHelpers.ts)
 // ============================================================================
-
-function randomElement<T>(array: T[]): T {
-  return array[Math.floor(Math.random() * array.length)];
-}
-
-function randomRange(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function generateId(): string {
-  return `gen_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-}
+// randomElement, randomRange, generateId are now imported from helpers
 
 // ============================================================================
 // MAIN GENERATOR FUNCTION
 // ============================================================================
 
+/**
+ * Generate a random scenario with the specified difficulty.
+ *
+ * REFACTORED: Previously 242 lines with repeated string replacements.
+ * Now ~60 lines using extracted helper functions for:
+ * - Template interpolation (eliminates 9x duplicate .replace() chains)
+ * - Objective generation
+ * - Doom event generation
+ * - Victory/defeat conditions
+ *
+ * @param difficulty - Game difficulty level
+ * @returns Complete Scenario object ready for gameplay
+ */
 export function generateRandomScenario(difficulty: 'Normal' | 'Hard' | 'Nightmare'): Scenario {
-  // 1. Select random mission type
+  // 1. Select mission type and location
   const missionType = randomElement(MISSION_TYPES);
+  const location = selectLocation(
+    missionType,
+    INDOOR_START_LOCATIONS,
+    OUTDOOR_START_LOCATIONS,
+    MIXED_START_LOCATIONS
+  );
 
-  // 2. Select location based on tileset
-  let locationPool: LocationOption[];
-  if (missionType.tileSet === 'indoor') {
-    locationPool = INDOOR_START_LOCATIONS;
-  } else if (missionType.tileSet === 'outdoor') {
-    locationPool = OUTDOOR_START_LOCATIONS;
-  } else {
-    locationPool = [...INDOOR_START_LOCATIONS, ...OUTDOOR_START_LOCATIONS, ...MIXED_START_LOCATIONS];
-  }
-  const location = randomElement(locationPool);
-
-  // 3. Generate contextual elements
+  // 2. Generate contextual elements
   const target = randomElement(TARGET_NAMES);
   const victim = randomElement(VICTIM_NAMES);
   const mystery = randomElement(MYSTERY_NAMES);
-  const collectibleKey = randomElement(Object.keys(COLLECTIBLE_ITEMS));
-  const collectible = COLLECTIBLE_ITEMS[collectibleKey];
+  const collectible = selectCollectible();
 
-  // 4. Generate objectives
-  const objectives: ScenarioObjective[] = [];
-  let objIndex = 0;
+  // 3. Build template context for string interpolation
+  const ctx = buildTemplateContext(location, target, victim, mystery, collectible);
 
-  for (const template of missionType.objectiveTemplates) {
-    const amount = template.targetAmount
-      ? randomRange(template.targetAmount.min, template.targetAmount.max)
-      : undefined;
+  // 4. Generate objectives (main + bonus)
+  const mainObjectives = generateObjectivesFromTemplates(missionType, ctx);
+  const bonusObjectives = generateBonusObjectives(randomRange(1, 2));
+  const objectives = [...mainObjectives, ...bonusObjectives];
 
-    const targetId = template.targetIdOptions
-      ? randomElement(template.targetIdOptions)
-      : undefined;
+  // 5. Update context with objective-specific values for goal interpolation
+  const goalCtx: TemplateContext = {
+    ...ctx,
+    count: objectives[0]?.targetAmount ?? 3,
+    rounds: objectives.find(o => o.type === 'survive')?.targetAmount ?? 10
+  };
 
-    let description = template.descriptionTemplate
-      .replace(/{location}/g, location.name)
-      .replace(/{item}/g, collectible.singular)
-      .replace(/{items}/g, collectible.plural)
-      .replace(/{target}/g, target)
-      .replace(/{victim}/g, victim)
-      .replace(/{mystery}/g, mystery)
-      .replace(/{count}/g, String(amount || 1))
-      .replace(/{half}/g, String(Math.ceil((amount || 10) / 2)))
-      .replace(/{total}/g, String(amount || 10));
-
-    let shortDescription = template.shortDescriptionTemplate
-      .replace(/{location}/g, location.name)
-      .replace(/{item}/g, collectible.singular)
-      .replace(/{items}/g, collectible.plural)
-      .replace(/{target}/g, target)
-      .replace(/{victim}/g, victim)
-      .replace(/{count}/g, String(amount || 1))
-      .replace(/{half}/g, String(Math.ceil((amount || 10) / 2)))
-      .replace(/{total}/g, String(amount || 10));
-
-    const objective: ScenarioObjective = {
-      id: `obj_${template.id}_${objIndex}`,
-      description,
-      shortDescription,
-      type: template.type,
-      targetId,
-      targetAmount: amount,
-      currentAmount: 0,
-      isOptional: template.isOptional,
-      isHidden: template.isHidden,
-      revealedBy: template.revealedByIndex !== undefined
-        ? `obj_${missionType.objectiveTemplates[template.revealedByIndex].id}_${template.revealedByIndex}`
-        : undefined,
-      completed: false,
-      rewardInsight: template.rewardInsight,
-      rewardItem: template.rewardItemOptions ? randomElement(template.rewardItemOptions) : undefined
-    };
-
-    objectives.push(objective);
-    objIndex++;
-  }
-
-  // 5. Add 1-2 bonus objectives
-  const numBonusObjectives = randomRange(1, 2);
-  const shuffledBonus = [...BONUS_OBJECTIVES].sort(() => Math.random() - 0.5);
-
-  for (let i = 0; i < numBonusObjectives && i < shuffledBonus.length; i++) {
-    const template = shuffledBonus[i];
-    const amount = template.targetAmount
-      ? randomRange(template.targetAmount.min, template.targetAmount.max)
-      : undefined;
-
-    objectives.push({
-      id: `obj_bonus_${i}`,
-      description: template.descriptionTemplate,
-      shortDescription: template.shortDescriptionTemplate.replace(/{count}/g, String(amount || 1)),
-      type: template.type,
-      targetId: template.targetIdOptions ? randomElement(template.targetIdOptions) : undefined,
-      targetAmount: amount,
-      currentAmount: 0,
-      isOptional: true,
-      isHidden: template.isHidden,
-      completed: false,
-      rewardInsight: template.rewardInsight,
-      rewardItem: template.rewardItemOptions ? randomElement(template.rewardItemOptions) : undefined
-    });
-  }
-
-  // 6. Generate doom events
-  // Thresholds adjusted to give players more time before encounters
-  // Early: 55% = roughly 7 rounds into a 16-doom scenario
-  // Mid: 35% = roughly 10 rounds in
-  // Late/Boss: 15% = near the end for dramatic finale
+  // 6. Generate scenario elements using helpers
   const baseDoom = missionType.baseDoom[difficulty];
-  const enemyPool = ENEMY_POOLS[difficulty];
-  const doomEvents: DoomEvent[] = [];
-
-  // Early wave - gives player time to explore before first combat
-  const earlyEnemy = randomElement(enemyPool);
-  doomEvents.push({
-    threshold: Math.ceil(baseDoom * 0.55),  // Changed from 0.7 for more exploration time
-    triggered: false,
-    type: 'spawn_enemy',
-    targetId: earlyEnemy.type,
-    amount: randomRange(earlyEnemy.amount.min, earlyEnemy.amount.max),
-    message: earlyEnemy.message
-  });
-
-  // Mid wave - pressure builds
-  const midEnemy = randomElement(enemyPool);
-  doomEvents.push({
-    threshold: Math.ceil(baseDoom * 0.35),  // Changed from 0.5
-    triggered: false,
-    type: 'spawn_enemy',
-    targetId: midEnemy.type,
-    amount: randomRange(midEnemy.amount.min, midEnemy.amount.max),
-    message: midEnemy.message
-  });
-
-  // Late wave - boss appears near finale
-  const availableBosses = BOSS_POOL.filter(b =>
-    difficulty === 'Nightmare' ||
-    (difficulty === 'Hard' && b.difficulty !== 'Nightmare') ||
-    (difficulty === 'Normal' && b.difficulty === 'Normal')
-  );
-  const boss = randomElement(availableBosses);
-  doomEvents.push({
-    threshold: Math.ceil(baseDoom * 0.15),  // Changed from 0.2 for more dramatic finale
-    triggered: false,
-    type: 'spawn_boss',
-    targetId: boss.type,
-    amount: 1,
-    message: boss.spawnMessage
-  });
-
-  // 7. Generate title
-  const titleTemplates = TITLE_TEMPLATES[missionType.id] || TITLE_TEMPLATES[missionType.victoryType] || [`The ${location.name} Incident`];
-  let title = randomElement(titleTemplates)
-    .replace(/{location}/g, location.name)
-    .replace(/{target}/g, target)
-    .replace(/{victim}/g, victim)
-    .replace(/{item}/g, collectible.singular)
-    .replace(/{items}/g, collectible.plural)
-    .replace(/{mystery}/g, mystery);
-
-  // 8. Generate goal
-  const goal = missionType.goalTemplate
-    .replace(/{location}/g, location.name)
-    .replace(/{item}/g, collectible.singular)
-    .replace(/{items}/g, collectible.plural)
-    .replace(/{target}/g, target)
-    .replace(/{victim}/g, victim)
-    .replace(/{count}/g, String(objectives[0]?.targetAmount || 3))
-    .replace(/{rounds}/g, String(objectives.find(o => o.type === 'survive')?.targetAmount || 10));
-
-  // 9. Generate briefing
-  const opening = randomElement(BRIEFING_OPENINGS);
-  const middleOptions = BRIEFING_MIDDLES[missionType.victoryType] || BRIEFING_MIDDLES.escape;
-  const middle = randomElement(middleOptions);
-  const closingOptions = BRIEFING_CLOSINGS[difficulty];
-  const closing = randomElement(closingOptions);
-
-  const briefing = `${opening}
-
-${middle}
-
-${closing}
-
-Location: ${location.name}
-Objective: ${goal}`;
-
-  // 10. Generate description
-  const description = `${missionType.name} mission at ${location.name}. ${goal}`;
-
-  // 11. Build victory conditions
-  const requiredObjectiveIds = objectives
-    .filter(o => !o.isOptional)
-    .map(o => o.id);
-
-  const victoryConditions: VictoryCondition[] = [{
-    ...missionType.victoryConditionTemplate,
-    requiredObjectives: requiredObjectiveIds
-  }];
-
-  // 12. Build defeat conditions
-  const defeatConditions: DefeatCondition[] = [
-    { type: 'all_dead', description: 'All investigators have been killed' },
-    { type: 'doom_zero', description: 'The doom counter reaches zero' }
-  ];
-
-  // Add objective-specific defeat for rescue missions
-  if (missionType.id === 'rescue') {
-    defeatConditions.push({
-      type: 'objective_failed',
-      description: `${victim} has been killed`,
-      objectiveId: objectives.find(o => o.type === 'escape')?.id
-    });
-  }
-
-  // 13. Determine theme from location
+  const title = generateTitle(missionType, ctx);
+  const goal = interpolateTemplate(missionType.goalTemplate, goalCtx);
+  const briefing = generateBriefing(missionType, difficulty, location.name, goal);
+  const doomEvents = generateDoomEvents(difficulty, baseDoom);
+  const victoryConditions = buildVictoryConditions(missionType, objectives);
+  const defeatConditions = buildDefeatConditions(missionType, victim, objectives);
   const theme = getThemeFromLocation(location.name, location.atmosphere);
 
-  // 14. Assemble scenario
-  const scenario: Scenario = {
+  // 7. Assemble and return scenario
+  return {
     id: generateId(),
     title,
-    description,
+    description: `${missionType.name} mission at ${location.name}. ${goal}`,
     briefing,
     startDoom: baseDoom,
     startLocation: location.name,
     specialRule: missionType.specialRuleTemplate,
     difficulty,
     tileSet: missionType.tileSet,
-    theme,  // Theme for tile selection
+    theme,
     goal,
     victoryType: missionType.victoryType,
     steps: [], // Legacy field
@@ -1152,8 +995,6 @@ Objective: ${goal}`;
     estimatedTime: difficulty === 'Nightmare' ? '60-90 min' : difficulty === 'Hard' ? '45-60 min' : '30-45 min',
     recommendedPlayers: difficulty === 'Nightmare' ? '3-4' : difficulty === 'Hard' ? '2-3' : '1-2'
   };
-
-  return scenario;
 }
 
 /**

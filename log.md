@@ -1,5 +1,187 @@
 # Development Log
 
+## 2026-01-20: Scenario Generator Refactoring - generateRandomScenario() Clarity Improvement
+
+### Oppsummering
+
+Refaktorert `generateRandomScenario()`-funksjonen i scenarioGenerator.ts for bedre lesbarhet og vedlikeholdbarhet. Funksjonen var på 242 linjer med gjentatte string-erstatninger (9 `.replace()` kall × 4 steder = 36 duplikater). Nå er den redusert til ~60 linjer med klare, navngitte steg.
+
+---
+
+### PROBLEMER IDENTIFISERT 🔴
+
+#### 1. Gjentatte String-erstatninger (36 duplikater)
+**Problem:** Samme 9 `.replace()` kall ble gjentatt 4 ganger:
+- For `description` i objektiv-loop (linje 950-959)
+- For `shortDescription` i objektiv-loop (linje 961-969)
+- For `title` generering (linje 1068-1074)
+- For `goal` generering (linje 1077-1084)
+
+**Resultat:** Kodeoppblåsing, høy risiko for inkonsistens ved endringer.
+
+#### 2. Lang Funksjon (242 linjer)
+**Problem:** `generateRandomScenario()` var 2.4x over anbefalt 100-linjer grense
+- Vanskelig å forstå hele funksjonens logikk
+- Vanskelig å teste individuelle deler
+- Høy kognitiv belastning ved vedlikehold
+
+#### 3. Ingen Gjenbruk av Kontekst
+**Problem:** Alle kontekstuelle verdier (location, target, victim, mystery, collectible) ble brukt inline med separate `.replace()` kjeder.
+
+#### 4. For Mange Ansvar
+**Problem:** Én funksjon håndterte:
+- Lokasjon-valg
+- Objektiv-generering (hovedmål + bonus)
+- Doom event-generering
+- Tittel-generering
+- Briefing-generering
+- Victory/defeat conditions
+
+---
+
+### LØSNING IMPLEMENTERT ✅
+
+#### 1. Ny fil: `scenarioGeneratorHelpers.ts`
+**Fil:** `src/game/utils/scenarioGeneratorHelpers.ts`
+
+Ekstraherte all logikk til fokuserte hjelpefunksjoner:
+
+| Funksjon | Ansvar |
+|----------|--------|
+| `interpolateTemplate()` | **Sentral** string-interpolering - erstatter alle 36 duplikater |
+| `buildTemplateContext()` | Bygger kontekst-objekt for interpolering |
+| `selectLocation()` | Velger lokasjon basert på mission tileset |
+| `generateObjectivesFromTemplates()` | Genererer objektiver fra mission templates |
+| `generateBonusObjectives()` | Genererer bonus-objektiver |
+| `generateDoomEvents()` | Genererer early/mid/late doom events |
+| `generateTitle()` | Genererer scenario-tittel |
+| `generateBriefing()` | Genererer narrativ briefing |
+| `buildVictoryConditions()` | Bygger victory conditions |
+| `buildDefeatConditions()` | Bygger defeat conditions (inkl. rescue-spesifikke) |
+| `selectCollectible()` | Velger tilfeldig collectible item |
+
+**Nøkkelinnovasjon - `TemplateContext` interface:**
+```typescript
+interface TemplateContext {
+  location: string;
+  target: string;
+  victim: string;
+  mystery: string;
+  item: string;       // singular
+  items: string;      // plural
+  count?: number;
+  half?: number;
+  total?: number;
+  rounds?: number;
+  enemies?: string;
+}
+```
+
+**Nøkkelinnovasjon - `interpolateTemplate()` funksjon:**
+```typescript
+// Erstatter 36 duplikate .replace() kjeder med én funksjon
+export function interpolateTemplate(template: string, ctx: TemplateContext): string {
+  return template
+    .replace(/{location}/g, ctx.location)
+    .replace(/{target}/g, ctx.target)
+    // ... alle 9 erstatninger på ett sted
+}
+```
+
+#### 2. Refaktorert `generateRandomScenario()`
+**Fil:** `src/game/utils/scenarioGenerator.ts:915-976`
+
+**FØR (242 linjer):**
+```typescript
+export function generateRandomScenario(...): Scenario {
+  // 242 linjer med nested loops, gjentatte .replace() kjeder,
+  // og blandet logikk for alle generasjonstyper
+}
+```
+
+**ETTER (60 linjer):**
+```typescript
+export function generateRandomScenario(...): Scenario {
+  // 1. Select mission type and location
+  const missionType = randomElement(MISSION_TYPES);
+  const location = selectLocation(...);
+
+  // 2. Generate contextual elements
+  const target = randomElement(TARGET_NAMES);
+  // ...
+
+  // 3. Build template context
+  const ctx = buildTemplateContext(...);
+
+  // 4. Generate objectives
+  const objectives = [
+    ...generateObjectivesFromTemplates(missionType, ctx),
+    ...generateBonusObjectives(randomRange(1, 2))
+  ];
+
+  // 5-7. Generate using helpers
+  // ...clear, numbered steps...
+
+  return scenario;
+}
+```
+
+---
+
+### ARKITEKTUR FORBEDRINGER
+
+```
+FØR:                                    ETTER:
+┌─────────────────────────────┐        ┌─────────────────────────────┐
+│ generateRandomScenario()    │        │ scenarioGeneratorHelpers.ts │
+│ (242 linjer, alt inline)    │        │ ├─ interpolateTemplate()    │
+│ ├─ Location selection       │        │ ├─ buildTemplateContext()   │
+│ ├─ 9x .replace() for desc   │        │ ├─ selectLocation()         │
+│ ├─ 9x .replace() for short  │        │ ├─ generateObjectives...()  │
+│ ├─ Bonus objective loop     │        │ ├─ generateDoomEvents()     │
+│ ├─ Doom event generation    │        │ ├─ generateTitle()          │
+│ ├─ 6x .replace() for title  │        │ ├─ generateBriefing()       │
+│ ├─ 6x .replace() for goal   │        │ ├─ buildVictoryConditions() │
+│ ├─ Briefing assembly        │        │ └─ buildDefeatConditions()  │
+│ ├─ Victory conditions       │        └─────────────────────────────┘
+│ └─ Defeat conditions        │        ┌─────────────────────────────┐
+└─────────────────────────────┘        │ scenarioGenerator.ts        │
+                                       │ └─ generateRandomScenario() │
+                                       │    (60 linjer, delegerer)   │
+                                       └─────────────────────────────┘
+```
+
+---
+
+### FILER ENDRET/OPPRETTET
+
+| Fil | Status | Beskrivelse |
+|-----|--------|-------------|
+| `src/game/utils/scenarioGeneratorHelpers.ts` | **NY** | Alle hjelpefunksjoner for scenario-generering |
+| `src/game/utils/scenarioGenerator.ts` | ENDRET | Oppdatert imports, refaktorert generateRandomScenario() |
+
+---
+
+### RESULTATER
+
+| Metrikk | Før | Etter | Forbedring |
+|---------|-----|-------|------------|
+| Linjer i generateRandomScenario() | 242 | 60 | **-75%** |
+| .replace() duplikater | 36 | 0 | **-100%** |
+| Antall filer | 1 | 2 | Bedre separasjon |
+| Testbarhet | Lav | Høy | Individuelle funksjoner kan testes |
+| Lesbarhet | Lav | Høy | Klare, navngitte steg |
+
+---
+
+### ATFERD UENDRET ✅
+
+- Alle scenariotyper (escape, assassination, survival, collection, ritual, rescue, investigation, seal_portal, purge) genereres identisk
+- Template-interpolering produserer samme resultater
+- Build vellykket (913KB bundle)
+
+---
+
 ## 2026-01-20: Monster AI Refactoring - getMonsterDecision() Clarity Improvement
 
 ### Oppsummering
