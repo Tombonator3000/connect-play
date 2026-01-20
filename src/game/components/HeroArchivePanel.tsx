@@ -61,6 +61,7 @@ export const HeroArchivePanel: React.FC<HeroArchivePanelProps> = ({
   const [newHeroName, setNewHeroName] = useState('');
   const [newHeroClass, setNewHeroClass] = useState<CharacterType>('detective');
   const [newHeroPortrait, setNewHeroPortrait] = useState(0);
+  const [newHeroPermadeath, setNewHeroPermadeath] = useState(false);
 
   const livingHeroes = useMemo(() => getLivingHeroes(legacyData), [legacyData]);
   const deadHeroes = useMemo(() => getDeadHeroes(legacyData), [legacyData]);
@@ -68,9 +69,10 @@ export const HeroArchivePanel: React.FC<HeroArchivePanelProps> = ({
   const handleCreateHero = () => {
     if (!newHeroName.trim()) return;
 
-    const hero = createLegacyHero(newHeroName.trim(), newHeroClass, newHeroPortrait);
+    const hero = createLegacyHero(newHeroName.trim(), newHeroClass, newHeroPortrait, newHeroPermadeath);
     onCreateHero(hero);
     setNewHeroName('');
+    setNewHeroPermadeath(false);
     setViewMode('list');
   };
 
@@ -136,6 +138,13 @@ export const HeroArchivePanel: React.FC<HeroArchivePanelProps> = ({
         {needsLevelUp && (
           <div className="absolute -top-2 -left-2 px-2 py-0.5 bg-yellow-500 text-yellow-900 text-xs font-bold rounded animate-pulse">
             LEVEL UP!
+          </div>
+        )}
+
+        {/* Permadeath indicator */}
+        {hero.hasPermadeath && (
+          <div className="absolute top-2 right-10 px-1.5 py-0.5 bg-red-900/80 border border-red-600 text-red-300 text-xs font-bold rounded" title="This hero has permadeath enabled">
+            PERMADEATH
           </div>
         )}
 
@@ -244,16 +253,21 @@ export const HeroArchivePanel: React.FC<HeroArchivePanelProps> = ({
     return (
       <div
         key={hero.id}
-        className="p-4 rounded-lg border-2 border-stone-700 bg-stone-900/50 opacity-70"
+        className={`p-4 rounded-lg border-2 ${hero.hasPermadeath ? 'border-red-900/50 bg-red-950/30' : 'border-stone-700 bg-stone-900/50'} opacity-70`}
       >
         <div className="flex items-center gap-3 mb-2">
           <div className="w-10 h-10 rounded-full bg-stone-800 border-2 border-stone-600 flex items-center justify-center grayscale">
             <span className="text-xl">💀</span>
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="font-bold text-stone-400 line-through">{hero.name}</h3>
             <p className="text-sm text-stone-500 capitalize">{hero.characterClass}</p>
           </div>
+          {hero.hasPermadeath && (
+            <div className="px-2 py-0.5 bg-red-900/60 border border-red-700 text-red-400 text-xs font-bold rounded">
+              PERMADEATH
+            </div>
+          )}
         </div>
         <div className="text-xs text-stone-500">
           <p>Level {hero.level} - {hero.totalKills} kills</p>
@@ -368,6 +382,25 @@ export const HeroArchivePanel: React.FC<HeroArchivePanelProps> = ({
         </div>
       </div>
 
+      {/* Permadeath option */}
+      <div className="p-4 bg-stone-800/50 rounded-lg border border-stone-600">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={newHeroPermadeath}
+            onChange={(e) => setNewHeroPermadeath(e.target.checked)}
+            className="mt-1 w-5 h-5 rounded border-stone-500 bg-stone-700 text-red-600 focus:ring-red-500 focus:ring-offset-stone-900"
+          />
+          <div>
+            <span className="font-bold text-red-400">PERMADEATH</span>
+            <p className="text-xs text-stone-400 mt-1">
+              When this hero dies, they are permanently lost and will be moved to the Memorial.
+              Their equipment will be returned to the stash. This cannot be undone.
+            </p>
+          </div>
+        </label>
+      </div>
+
       {/* Buttons */}
       <div className="flex gap-4">
         <button
@@ -409,6 +442,11 @@ export const HeroArchivePanel: React.FC<HeroArchivePanelProps> = ({
             <h2 className="text-2xl font-bold text-amber-200">{selectedHero.name}</h2>
             <p className="text-stone-400 capitalize">Level {selectedHero.level} {selectedHero.characterClass}</p>
           </div>
+          {selectedHero.hasPermadeath && (
+            <div className="px-3 py-1.5 bg-red-900/60 border border-red-600 text-red-300 text-sm font-bold rounded">
+              PERMADEATH
+            </div>
+          )}
           {needsLevelUp && (
             <button
               className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-yellow-100 rounded-lg animate-pulse"

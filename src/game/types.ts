@@ -1099,7 +1099,8 @@ export interface LegacyHero {
 
   // Status
   isRetired: boolean;                   // Voluntarily retired
-  isDead: boolean;                      // Permadeath - cannot be used again
+  isDead: boolean;                      // Died in scenario
+  hasPermadeath: boolean;               // If true, death is permanent - hero goes to memorial and is unplayable
   deathScenario?: string;               // Scenario where hero died
   deathCause?: string;                  // How they died
 }

@@ -1,5 +1,69 @@
 # Development Log
 
+## 2026-01-20: Legacy Hero Permadeath Option - "Death's Final Embrace"
+
+### Oppgave
+Implementere en PERMADEATH-funksjon for legacy heroes. Når en spiller lager en legacy hero, kan de velge å aktivere permadeath. Hvis en permadeath-hero dør, blir karakteren uspillbar og havner i Memorial.
+
+### Implementasjon
+
+#### 1. Types (`src/game/types.ts`)
+
+**Endring:** Lagt til `hasPermadeath: boolean` felt til `LegacyHero` interface.
+
+```typescript
+// Status
+isRetired: boolean;                   // Voluntarily retired
+isDead: boolean;                      // Died in scenario
+hasPermadeath: boolean;               // If true, death is permanent - hero goes to memorial and is unplayable
+deathScenario?: string;               // Scenario where hero died
+deathCause?: string;                  // How they died
+```
+
+#### 2. Legacy Manager (`src/game/utils/legacyManager.ts`)
+
+**Endringer:**
+
+1. `createLegacyHero()` - Ny parameter `hasPermadeath: boolean = false`
+2. `killHero()` - Oppdatert logikk basert på permadeath:
+   - `hasPermadeath = true`: Hero dør permanent, går til memorial
+   - `hasPermadeath = false`: Hero mister utstyr men kan fortsette å spille
+3. `updateLegacyHeroFromPlayer()` - Samme logikk som `killHero()`
+
+#### 3. Hero Archive Panel (`src/game/components/HeroArchivePanel.tsx`)
+
+**Endringer:**
+
+1. Ny state: `newHeroPermadeath` for hero creation form
+2. Permadeath checkbox i create hero view med beskrivelse
+3. Permadeath-indikator badge på hero cards (rød "PERMADEATH" label)
+4. Permadeath-indikator i hero detail view
+5. Permadeath-status i memorial for døde heroes (rød styling)
+
+### Filer Endret
+
+| Fil | Handling | Beskrivelse |
+|-----|----------|-------------|
+| `src/game/types.ts` | ENDRET | Lagt til `hasPermadeath` felt til `LegacyHero` interface |
+| `src/game/utils/legacyManager.ts` | ENDRET | Oppdatert `createLegacyHero`, `killHero`, `updateLegacyHeroFromPlayer` med permadeath-logikk |
+| `src/game/components/HeroArchivePanel.tsx` | ENDRET | Lagt til permadeath checkbox i create form og visuelle indikatorer |
+
+### Brukeropplevelse
+
+1. **Create Hero**: Ny checkbox "PERMADEATH" med advarsel om at døden er permanent
+2. **Hero Cards**: Rødt "PERMADEATH" badge vises på heroes med permadeath aktivert
+3. **Hero Detail**: "PERMADEATH" badge vises i header
+4. **Memorial**: Permadeath-heroes vises med rød styling for å markere permanent død
+
+### Spillmekanikk
+
+| Permadeath | Ved død |
+|------------|---------|
+| **Aktivert** | Hero settes til `isDead: true`, flyttes til Memorial, utstyr går til stash |
+| **Deaktivert** | Hero beholder liv, mister alt utstyr (går til stash), kan prøve igjen |
+
+---
+
 ## 2026-01-20: GitHub Pages & Multi-Platform Development - "Deploy the Darkness"
 
 ### Oppgave
