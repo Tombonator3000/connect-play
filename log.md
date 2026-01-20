@@ -1,5 +1,170 @@
 # Development Log
 
+## 2026-01-20: Mobile Touch Controls Improvement - Bedre Tap-to-Move
+
+### Oppsummering
+
+Forbedret mobil touch-kontroller basert på research av beste praksis for HTML5-spill touch-interaksjon. Hovedfokus på å skille tap fra drag/pan og gi umiddelbar visuell feedback.
+
+---
+
+### RESEARCH GJORT 📱
+
+#### Kilder Konsultert
+- [MDN Mobile Touch Controls](https://developer.mozilla.org/en-US/docs/Games/Techniques/Control_mechanisms/Mobile_touch)
+- [JavaScript Touch Events Best Practices](https://borstch.com/blog/javascript-touch-events-and-mobile-specific-considerations)
+- [ZingTouch Gesture Library](https://zingchart.github.io/zingtouch/)
+- [web.dev Touch and Mouse](https://web.dev/mobile-touchandmouse/)
+- [Gamedev.js Mobile Best Practices](https://gamedevjs.com/articles/best-practices-of-building-mobile-friendly-html5-games/)
+
+#### Nøkkelfunn
+1. **Tap vs Drag Threshold**: Fingre er upresis - 5px er for lavt, 10-20px anbefalt
+2. **Tap Timing**: Tap defineres som touch < 200-300ms varighet
+3. **300ms Delay**: Mobile browsere har 300ms delay for double-tap zoom detection
+4. **Touch Target Size**: Minimum 44x44px for touch targets
+5. **Visuell Feedback**: Umiddelbar feedback er kritisk for god UX
+
+---
+
+### IMPLEMENTERT ✅
+
+#### 1. Økt DRAG_THRESHOLD fra 5px til 15px
+**Fil:** `src/game/components/GameBoard.tsx:536`
+
+```typescript
+const DRAG_THRESHOLD = 15; // px - increased from 5 to account for finger wobble
+```
+
+**Hvorfor:** Fingre beveger seg naturlig litt når man trykker. 5px var for sensitivt og registrerte mange taps som drags.
+
+#### 2. Tap Timing Detection (250ms threshold)
+**Fil:** `src/game/components/GameBoard.tsx:537, 716, 767, 821-827`
+
+```typescript
+const TAP_TIME_THRESHOLD = 250; // ms - max time for a tap vs hold
+const touchStartTime = useRef<number>(0);
+
+// In handleTouchStart:
+touchStartTime.current = Date.now();
+
+// In handleTouchEnd:
+const touchDuration = Date.now() - touchStartTime.current;
+const wasQuickTap = touchDuration < TAP_TIME_THRESHOLD;
+```
+
+**Hvorfor:** Kombinasjon av tid og avstand gir mer presis tap-deteksjon.
+
+#### 3. Visuell Touch Feedback på Tiles
+**Fil:** `src/game/components/GameBoard.tsx:717, 950-960, 964`
+
+```typescript
+const [touchedTileKey, setTouchedTileKey] = useState<string | null>(null);
+
+// On tile element:
+onTouchStart={() => setTouchedTileKey(tileKey)}
+onTouchEnd={() => setTouchedTileKey(null)}
+onTouchCancel={() => setTouchedTileKey(null)}
+
+// CSS classes when touched:
+className={`... ${isTouched ? 'brightness-125 scale-[1.02] touch-highlight' : ''}`}
+```
+
+**Hvorfor:** Umiddelbar visuell feedback lar spilleren se hvilken tile de trykker på.
+
+#### 4. Fjernet 300ms Mobile Tap Delay
+**Fil:** `src/index.css:99-102`
+
+```css
+html {
+  touch-action: manipulation;
+}
+```
+
+**Hvorfor:** `touch-action: manipulation` forteller browseren at vi ikke bruker double-tap zoom, så den kan fjerne 300ms forsinkelsen.
+
+#### 5. Tap Pulse Animation
+**Fil:** `src/index.css:450-498`
+
+```css
+@keyframes touch-pulse {
+  0% { box-shadow: inset 0 0 0 0 hsla(45, 100%, 50%, 0); }
+  50% { box-shadow: inset 0 0 30px 5px hsla(45, 100%, 50%, 0.3); }
+  100% { box-shadow: inset 0 0 0 0 hsla(45, 100%, 50%, 0); }
+}
+
+.touch-highlight {
+  animation: touch-pulse 0.3s ease-out forwards;
+}
+```
+
+**Hvorfor:** Gull-puls gir tydelig visuell indikasjon på aktiv tile.
+
+#### 6. Game Board Container CSS Optimizations
+**Fil:** `src/index.css:104-114, src/game/components/GameBoard.tsx:900`
+
+```css
+.game-board-container {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+```
+
+**Hvorfor:** Forhindrer uønsket tekstvalg og iOS callout menu under spilling.
+
+---
+
+### TEKNISK FLYT: Tap vs Pan Detection
+
+```
+Touch Start
+    │
+    ├─► Record: touchStartTime, dragStartRaw
+    ├─► Set: isDragging = true, hasDragged = false
+    └─► Set: touchedTileKey for visual feedback
+           │
+           ▼
+Touch Move (if single finger)
+    │
+    ├─► Calculate distance from start
+    │
+    └─► IF distance > 15px (DRAG_THRESHOLD)
+            │
+            ├─► hasDragged = true
+            ├─► Clear touchedTileKey (no more feedback)
+            └─► Pan the board
+           │
+           ▼
+Touch End
+    │
+    ├─► Clear touchedTileKey
+    ├─► Calculate: touchDuration = now - touchStartTime
+    │
+    └─► IF duration < 250ms AND !hasDragged
+            │
+            └─► This is a valid TAP → onClick fires
+```
+
+---
+
+### FILER ENDRET
+
+| Fil | Endringer |
+|-----|-----------|
+| `src/game/components/GameBoard.tsx` | DRAG_THRESHOLD 5→15, TAP_TIME_THRESHOLD, touchStartTime ref, touchedTileKey state, visual feedback |
+| `src/index.css` | touch-action: manipulation, .game-board-container, touch-pulse animation |
+
+---
+
+### RESULTAT
+- ✅ Tap-to-move er nå mer responsiv
+- ✅ Uønskede pan-hendelser ved tap er redusert
+- ✅ Umiddelbar visuell feedback ved touch
+- ✅ 300ms delay er fjernet
+- ✅ Build vellykket (912KB bundle)
+
+---
+
 ## 2026-01-20: Scenario Win Conditions Audit & Fix - ALL Scenario Types Now Winnable!
 
 ### Oppsummering

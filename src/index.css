@@ -90,10 +90,27 @@
   * {
     @apply border-border;
   }
-  
+
   body {
     @apply bg-background text-foreground;
     font-family: 'Crimson Pro', serif;
+  }
+
+  /* Mobile Touch Optimization - Remove 300ms tap delay */
+  html {
+    touch-action: manipulation;
+  }
+
+  /* Prevent text selection during gameplay */
+  .game-board-container {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  /* Smooth touch scrolling for game elements */
+  .touch-scroll {
+    -webkit-overflow-scrolling: touch;
   }
 }
 
@@ -428,6 +445,56 @@
 
   .animate-float {
     animation: float 4s ease-in-out infinite;
+  }
+
+  /* ==========================================================================
+     MOBILE TOUCH FEEDBACK ANIMATIONS
+     ========================================================================== */
+
+  /* Tap ripple effect for tiles */
+  @keyframes tap-ripple {
+    0% {
+      transform: scale(0.8);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(1.5);
+      opacity: 0;
+    }
+  }
+
+  .tap-ripple {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.4) 0%, transparent 70%);
+    animation: tap-ripple 0.4s ease-out forwards;
+    pointer-events: none;
+  }
+
+  /* Touch highlight pulse for hex tiles */
+  @keyframes touch-pulse {
+    0% {
+      box-shadow: inset 0 0 0 0 hsla(45, 100%, 50%, 0);
+    }
+    50% {
+      box-shadow: inset 0 0 30px 5px hsla(45, 100%, 50%, 0.3);
+    }
+    100% {
+      box-shadow: inset 0 0 0 0 hsla(45, 100%, 50%, 0);
+    }
+  }
+
+  .touch-highlight {
+    animation: touch-pulse 0.3s ease-out forwards;
+  }
+
+  /* Tile press effect - subtle scale down */
+  .tile-pressed {
+    transform: scale(0.96);
+    filter: brightness(1.15);
+    transition: transform 0.1s ease-out, filter 0.1s ease-out;
   }
 
   /* ==========================================================================
