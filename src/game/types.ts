@@ -935,10 +935,37 @@ export interface GameSettings {
   };
 }
 
+// ============================================================================
+// PUZZLE SYSTEM - "The Seals Must Be Broken"
+// ============================================================================
+
+/**
+ * Types of puzzles that can appear on doors and obstacles
+ * Each type has unique mechanics and difficulty scaling
+ */
+export type PuzzleType =
+  | 'sequence'       // Memory pattern - recall lit sequence (existing)
+  | 'code_lock'      // Enter a numeric code found elsewhere
+  | 'symbol_match'   // Match 3 ancient symbols in correct order
+  | 'blood_ritual'   // Sacrifice HP or Sanity to open
+  | 'astronomy'      // Align rotating star dials
+  | 'pressure_plate'; // Co-op - someone must stand on plate
+
+/**
+ * Active puzzle state during puzzle interaction
+ */
 export interface ActivePuzzle {
-  type: 'sequence';
+  type: PuzzleType;
   difficulty: number;
   targetTileId: string;
+  // Optional data for specific puzzle types
+  code?: string;           // For code_lock - the correct code (hidden from UI)
+  symbols?: string[];      // For symbol_match - the correct symbol sequence
+  requiredCost?: {         // For blood_ritual
+    hp?: number;
+    sanity?: number;
+  };
+  hint?: string;           // Optional hint text for the puzzle
 }
 
 // ============================================================================

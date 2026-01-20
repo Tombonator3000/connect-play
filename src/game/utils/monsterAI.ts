@@ -1026,7 +1026,8 @@ function getMonsterAttackType(type: EnemyType): 'melee' | 'ranged' | 'sanity' | 
 
 /**
  * Determine if monster can see player
- * Now includes weather effects on monster vision
+ * Now includes weather effects on monster vision AND proper line-of-sight checks
+ * Monsters cannot see through walls, closed doors, or blocking obstacles
  */
 export function canSeePlayer(
   enemy: Enemy,
@@ -1052,8 +1053,19 @@ export function canSeePlayer(
     }
   }
 
-  // TODO: Add line of sight checking through walls
-  // For now, simple distance check
+  // CRITICAL FIX: Check actual line of sight through walls and doors
+  // Monsters cannot see through:
+  // - Walls
+  // - Closed/locked doors
+  // - Blocking obstacles
+  // But they CAN see through:
+  // - Open doors
+  // - Windows
+  // - Open edges
+  if (!hasLineOfSight(enemy.position, player.position, tiles, effectiveVision)) {
+    return false;
+  }
+
   return true;
 }
 

@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package, X } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent } from './types';
+import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent, OccultistSpell } from './types';
 import ContextActionBar from './components/ContextActionBar';
 import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
 import { performSkillCheck } from './utils/combatUtils';
-import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES, validateTileConnection, selectRandomConnectableCategory, isDoorRequired, CATEGORY_ZONE_LEVELS, LOCATION_DESCRIPTIONS, getWeatherForDoom, getWeatherEffect, calculateWeatherAgilityPenalty, rollWeatherHorror, WEATHER_EFFECTS, getDarkRoomItem, DARK_ROOM_LOOT_TABLES } from './constants';
+import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, OCCULTIST_SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES, validateTileConnection, selectRandomConnectableCategory, isDoorRequired, CATEGORY_ZONE_LEVELS, LOCATION_DESCRIPTIONS, getWeatherForDoom, getWeatherEffect, calculateWeatherAgilityPenalty, rollWeatherHorror, WEATHER_EFFECTS, getDarkRoomItem, DARK_ROOM_LOOT_TABLES } from './constants';
 import { hexDistance, findPath } from './hexUtils';
 import GameBoard from './components/GameBoard';
 import CharacterPanel from './components/CharacterPanel';
@@ -24,6 +24,7 @@ import { performAttack, performHorrorCheck, calculateEnemyDamage, hasRangedWeapo
 import { processEnemyTurn, selectRandomEnemy, createEnemy, shouldSpawnMonster } from './utils/monsterAI';
 import { checkVictoryConditions, checkDefeatConditions, updateObjectiveProgress, completeObjective, checkKillObjectives, checkExploreObjectives, updateSurvivalObjectives, getVisibleObjectives } from './utils/scenarioUtils';
 import PuzzleModal from './components/PuzzleModal';
+import SpellSelectionModal from './components/SpellSelectionModal';
 import FieldGuidePanel from './components/FieldGuidePanel';
 import {
   loadLegacyData,
@@ -112,6 +113,10 @@ const ShadowsGame: React.FC = () => {
   const [showBriefing, setShowBriefing] = useState(false);
   const [gameOverType, setGameOverType] = useState<GameOverType | null>(null);
   const [showFieldGuide, setShowFieldGuide] = useState(false);
+
+  // Occultist Spell Selection state
+  const [showSpellSelection, setShowSpellSelection] = useState(false);
+  const [pendingOccultistCharacter, setPendingOccultistCharacter] = useState<CharacterType | null>(null);
 
   // Context Action state
   const [activeContextTarget, setActiveContextTarget] = useState<ContextActionTarget | null>(null);
@@ -1368,7 +1373,8 @@ const ShadowsGame: React.FC = () => {
   }, [activeContextTarget, state.board]);
 
   // Handle puzzle completion (from PuzzleModal)
-  const handlePuzzleSolve = useCallback((success: boolean) => {
+  // Now supports cost parameter for blood_ritual puzzles
+  const handlePuzzleSolve = useCallback((success: boolean, cost?: { hp?: number; sanity?: number }) => {
     const activePlayer = state.players[state.activePlayerIndex];
     const puzzleTarget = state.activePuzzle;
 
@@ -1380,14 +1386,40 @@ const ShadowsGame: React.FC = () => {
     }
 
     if (success) {
-      addToLog('PUZZLE SOLVED! The mechanism clicks and the door opens.');
+      // Log different messages based on puzzle type
+      const puzzleMessages: Record<string, string> = {
+        sequence: 'PUZZLE SOLVED! The mechanism clicks and the door opens.',
+        code_lock: 'CODE ACCEPTED! The lock disengages with a satisfying click.',
+        symbol_match: 'SYMBOLS ALIGNED! Ancient power flows and the seal breaks.',
+        blood_ritual: 'THE SEAL ACCEPTS YOUR OFFERING! The blood price is paid.',
+        astronomy: 'THE STARS ALIGN! Celestial harmony grants passage.',
+        pressure_plate: 'PLATE ACTIVATED! The mechanism engages.',
+      };
+      addToLog(puzzleMessages[puzzleTarget.type] || puzzleMessages.sequence);
       addFloatingText(activePlayer.position.q, activePlayer.position.r, "UNLOCKED!", "text-accent");
 
       // Find the tile and open the puzzle door
       const tileId = puzzleTarget.targetTileId;
+
+      // Calculate player updates (HP/Sanity cost for blood_ritual)
+      let playerUpdate = activePlayer;
+      if (cost) {
+        if (cost.hp && cost.hp > 0) {
+          playerUpdate = { ...playerUpdate, hp: Math.max(0, playerUpdate.hp - cost.hp) };
+          addFloatingText(activePlayer.position.q, activePlayer.position.r, `-${cost.hp} HP`, "text-red-500");
+          addToLog(`You sacrifice ${cost.hp} HP to break the blood seal.`);
+        }
+        if (cost.sanity && cost.sanity > 0) {
+          playerUpdate = checkMadness({ ...playerUpdate, sanity: Math.max(0, playerUpdate.sanity - cost.sanity) });
+          addFloatingText(activePlayer.position.q, activePlayer.position.r, `-${cost.sanity} SAN`, "text-sanity");
+          addToLog(`You sacrifice ${cost.sanity} Sanity to break the blood seal.`);
+        }
+      }
+
       setState(prev => ({
         ...prev,
         activePuzzle: null,
+        players: prev.players.map((p, i) => i === prev.activePlayerIndex ? playerUpdate : p),
         board: prev.board.map(t => {
           if (t.id === tileId) {
             // Find the puzzle door edge and open it
@@ -1404,19 +1436,33 @@ const ShadowsGame: React.FC = () => {
         })
       }));
     } else {
-      addToLog('PUZZLE FAILED! Your mind reels from the eldritch symbols.');
-      addFloatingText(activePlayer.position.q, activePlayer.position.r, "-1 SAN", "text-sanity");
+      // Different failure messages by puzzle type
+      const failMessages: Record<string, string> = {
+        sequence: 'PUZZLE FAILED! Your mind reels from the eldritch symbols.',
+        code_lock: 'WRONG CODE! The mechanism locks up, damaging your confidence.',
+        symbol_match: 'WRONG PATTERN! The ancient symbols burn into your memory.',
+        blood_ritual: 'YOU REFUSE THE PRICE. The seal remains unmoved.',
+        astronomy: 'MISALIGNED! The stars mock your feeble attempt.',
+        pressure_plate: 'RELEASED! The mechanism resets.',
+      };
+      addToLog(failMessages[puzzleTarget.type] || failMessages.sequence);
 
-      setState(prev => ({
-        ...prev,
-        activePuzzle: null,
-        players: prev.players.map((p, i) =>
-          i === prev.activePlayerIndex ? checkMadness({
-            ...p,
-            sanity: Math.max(0, p.sanity - 1)
-          }) : p
-        )
-      }));
+      // Blood ritual refusal doesn't cost sanity
+      if (puzzleTarget.type !== 'blood_ritual') {
+        addFloatingText(activePlayer.position.q, activePlayer.position.r, "-1 SAN", "text-sanity");
+        setState(prev => ({
+          ...prev,
+          activePuzzle: null,
+          players: prev.players.map((p, i) =>
+            i === prev.activePlayerIndex ? checkMadness({
+              ...p,
+              sanity: Math.max(0, p.sanity - 1)
+            }) : p
+          )
+        }));
+      } else {
+        setState(prev => ({ ...prev, activePuzzle: null }));
+      }
     }
 
     // Close context menu
@@ -2939,17 +2985,43 @@ const ShadowsGame: React.FC = () => {
                     return (
                       <button key={type} onClick={() => {
                         const char = CHARACTERS[type];
+
+                        if (isSelected) {
+                          // Deselect character
+                          setState(prev => ({
+                            ...prev,
+                            players: prev.players.filter(p => p.id !== type)
+                          }));
+                          return;
+                        }
+
+                        // For Occultist, show spell selection modal first
+                        if (type === 'occultist') {
+                          setPendingOccultistCharacter(type);
+                          setShowSpellSelection(true);
+                          return;
+                        }
+
                         // Assign spells based on character class (Hero Quest style)
-                        // Occultist (Elf) = Full spell access (Ritual Master)
                         // Professor (Wizard) = Limited scholarly spells (True Sight, Mend Flesh)
-                        const characterSpells = type === 'occultist'
-                          ? SPELLS  // All 4 spells
-                          : type === 'professor'
-                            ? SPELLS.filter(s => s.id === 'reveal' || s.id === 'mend')  // 2 scholarly spells
-                            : [];
+                        const characterSpells = type === 'professor'
+                          ? SPELLS.filter(s => s.id === 'reveal' || s.id === 'mend')
+                          : [];
+
                         setState(prev => ({
                           ...prev,
-                          players: isSelected ? prev.players.filter(p => p.id !== type) : [...prev.players, { ...char, position: { q: 0, r: 0 }, inventory: createEmptyInventory(), spells: characterSpells, actions: 2, isDead: false, madness: [], activeMadness: null, traits: [] }]
+                          players: [...prev.players, {
+                            ...char,
+                            position: { q: 0, r: 0 },
+                            inventory: createEmptyInventory(),
+                            spells: characterSpells,
+                            selectedSpells: undefined,
+                            actions: 2,
+                            isDead: false,
+                            madness: [],
+                            activeMadness: null,
+                            traits: []
+                          }]
                         }));
                       }} className={`p-4 bg-background border-2 rounded-xl transition-all ${isSelected ? 'border-primary shadow-[var(--shadow-doom)] scale-105' : 'border-border opacity-60'}`}>
                         <div className="text-lg font-bold text-foreground uppercase tracking-tighter">{CHARACTERS[type].name}</div>
@@ -2957,6 +3029,9 @@ const ShadowsGame: React.FC = () => {
                           <span className="text-health flex items-center gap-1"><Heart size={12} /> {CHARACTERS[type].hp}</span>
                           <span className="text-sanity flex items-center gap-1"><Brain size={12} /> {CHARACTERS[type].sanity}</span>
                         </div>
+                        {type === 'occultist' && (
+                          <div className="text-xs text-purple-400 mt-1">Select 3 Spells</div>
+                        )}
                       </button>
                     );
                   })}
@@ -3171,11 +3246,16 @@ const ShadowsGame: React.FC = () => {
         onComplete={handleMythosOverlayComplete}
       />
 
-      {/* Puzzle Modal */}
+      {/* Puzzle Modal - Supports multiple puzzle types */}
       {state.activePuzzle && (
         <PuzzleModal
+          type={state.activePuzzle.type}
           difficulty={state.activePuzzle.difficulty}
           onSolve={handlePuzzleSolve}
+          code={state.activePuzzle.code}
+          symbols={state.activePuzzle.symbols}
+          hint={state.activePuzzle.hint}
+          playerClass={state.players[state.activePlayerIndex]?.id}
         />
       )}
 
@@ -3184,6 +3264,39 @@ const ShadowsGame: React.FC = () => {
         <FieldGuidePanel
           encounteredEnemies={state.encounteredEnemies}
           onClose={() => setShowFieldGuide(false)}
+        />
+      )}
+
+      {/* Occultist Spell Selection Modal */}
+      {showSpellSelection && pendingOccultistCharacter && (
+        <SpellSelectionModal
+          availableSpells={OCCULTIST_SPELLS}
+          maxSelections={3}
+          heroName={CHARACTERS[pendingOccultistCharacter].name}
+          onConfirm={(selectedSpells: OccultistSpell[]) => {
+            const char = CHARACTERS[pendingOccultistCharacter];
+            setState(prev => ({
+              ...prev,
+              players: [...prev.players, {
+                ...char,
+                position: { q: 0, r: 0 },
+                inventory: createEmptyInventory(),
+                spells: [], // Legacy spells empty for Occultist with new system
+                selectedSpells: selectedSpells, // New OccultistSpell system
+                actions: 2,
+                isDead: false,
+                madness: [],
+                activeMadness: null,
+                traits: []
+              }]
+            }));
+            setShowSpellSelection(false);
+            setPendingOccultistCharacter(null);
+          }}
+          onCancel={() => {
+            setShowSpellSelection(false);
+            setPendingOccultistCharacter(null);
+          }}
         />
       )}
 
