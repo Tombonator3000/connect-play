@@ -1,5 +1,129 @@
 # Development Log
 
+## 2026-01-20: Spell Particle Effects - "The Arcane Manifestations"
+
+### Oppgave
+Implementere partikkeleffekter for de ulike magiene i spillet. Når en spiller caster en spell (f.eks. Wither), skal det vises en visuell effekt - som en flyvende kule med magi fra caster til mål.
+
+### Implementasjon
+
+#### 1. Types (`src/game/types.ts`)
+
+**Endring:** Lagt til `SpellParticleType` og `SpellParticle` interface for partikkeleffekter.
+
+```typescript
+export type SpellParticleType =
+  | 'wither'           // Dark purple energy drain
+  | 'eldritch_bolt'    // Glowing eldritch projectile
+  | 'mend_flesh'       // Golden healing sparkles
+  | 'true_sight'       // Blue mystical eye particles
+  | 'banish'           // Red void implosion
+  | 'mind_blast'       // Pink/purple shockwave
+  | 'dark_shield'      // Dark swirling aura
+  | 'explosion' | 'blood' | 'smoke' | 'sparkle';
+
+export interface SpellParticle {
+  id: string;
+  type: SpellParticleType;
+  startQ: number; startR: number;
+  targetQ?: number; targetR?: number;
+  startTime: number; duration: number;
+  color: string; size: 'sm' | 'md' | 'lg';
+  count: number;
+  animation: 'projectile' | 'burst' | 'radiate' | 'implode' | 'orbit' | 'float';
+}
+```
+
+**Endring:** Lagt til `spellParticles: SpellParticle[]` i `GameState`.
+
+#### 2. CSS Animasjoner (`src/index.css`)
+
+**Endring:** Lagt til 11 nye spell-spesifikke CSS animasjoner:
+
+| Spell Type | Animasjon | Beskrivelse |
+|------------|-----------|-------------|
+| **Wither** | `animate-wither-projectile` | Mørk lilla energi-kule som flyr til mål |
+| **Eldritch Bolt** | `animate-eldritch-bolt` | Glødende grønn/lilla prosjektil |
+| **Mend Flesh** | `animate-mend-sparkle` | Gylne healing-gnister som stiger opp |
+| **True Sight** | `animate-true-sight-radiate` | Blå mystiske partikler som stråler utover |
+| **Banish** | `animate-banish-vortex` | Rød void-implosjon med rotasjon |
+| **Mind Blast** | `animate-mind-blast-wave` | Rosa sjokkbølge som ekspanderer |
+| **Dark Shield** | `animate-dark-shield-orbit` | Mørke partikler som sirkulerer |
+| **Explosion** | `animate-explosion-burst` | Rask eksplosjon |
+| **Blood** | `animate-blood-splatter` | Blodsprut ved skade |
+| **Smoke** | `animate-smoke-rise` | Røyk som stiger ved død |
+| **Sparkle** | `animate-sparkle-twinkle` | Generiske magiske gnister |
+
+Også lagt til partikkel-stil klasser for farger og størrelser:
+- `.spell-particle-wither`, `.spell-particle-eldritch`, `.spell-particle-mend`, etc.
+- `.spell-particle-sm`, `.spell-particle-md`, `.spell-particle-lg`
+
+#### 3. Spell Effect Emitter (`src/game/ShadowsGame.tsx`)
+
+**Endring:** Lagt til `emitSpellEffect()` funksjon for å skape partikkeleffekter.
+
+```typescript
+const emitSpellEffect = (
+  startQ: number, startR: number,
+  type: SpellParticleType,
+  targetQ?: number, targetR?: number
+) => {
+  // Konfigurer partikkel basert på spell-type
+  // Legg til i state.spellParticles
+  // Auto-fjern etter duration
+};
+```
+
+**Integrert ved spell casting:**
+- **Damage spells** (Wither): Prosjektil fra caster til fiende
+- **Banish spell**: Implosjon på fienden
+- **Heal spell** (Mend Flesh): Healing-gnister rundt caster
+- **Reveal spell** (True Sight): Stråler som går utover fra caster
+
+#### 4. Partikkel-rendering (`src/game/components/GameBoard.tsx`)
+
+**Endring:** Lagt til `spellParticles` prop og rendering-logikk.
+
+```typescript
+{spellParticles.map(particle => {
+  // Kalkuler start/mål-posisjoner
+  // Generer multiple partikler per effekt
+  // Anvend animasjon basert på type
+  return Array.from({ length: particle.count }).map((_, index) => (
+    <div className={`spell-particle ${typeClass} ${sizeClass} ${animationClass}`}
+      style={{ '--tx': `${dx}px`, '--ty': `${dy}px` }} />
+  ));
+})}
+```
+
+### Spell Effekter Oversikt
+
+| Spell | Effekt-type | Animasjon | Visuell |
+|-------|-------------|-----------|---------|
+| **Wither** | Projectile | Flyr fra caster til mål | Mørk lilla kule med trail |
+| **Eldritch Bolt** | Projectile | Flyr fra caster til mål | Grønn/lilla glødende orb |
+| **Mend Flesh** | Burst | Partikler rundt caster | Gylne gnister som stiger |
+| **True Sight** | Radiate | Stråler ut fra caster | Blå øye-partikler |
+| **Banish** | Implode | Suges inn til mål | Rød vortex |
+
+### Filer Endret
+
+| Fil | Handling | Beskrivelse |
+|-----|----------|-------------|
+| `src/game/types.ts` | ENDRET | Lagt til SpellParticle interface og type i GameState |
+| `src/index.css` | ENDRET | 11 nye spell animasjoner og partikkel-stiler |
+| `src/game/ShadowsGame.tsx` | ENDRET | emitSpellEffect() funksjon, integrert ved spell casting |
+| `src/game/components/GameBoard.tsx` | ENDRET | Rendering av partikkeleffekter |
+
+### Tekniske Detaljer
+
+- Partikler bruker CSS custom properties (`--tx`, `--ty`) for dynamiske mål
+- Hver spell genererer multiple partikler (8-20) for fyldig effekt
+- Auto-cleanup etter animasjon er ferdig
+- Støtter både projectile (flyr til mål) og lokale effekter (burst, radiate)
+
+---
+
 ## 2026-01-20: Professor Scholarly Spells - "Hero Quest Wizard Style"
 
 ### Oppgave
