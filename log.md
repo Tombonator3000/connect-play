@@ -3913,3 +3913,150 @@ npm run dev
 - ✅ Riktig spilltittel og metadata for SEO/deling
 - ✅ Build vellykket uten advarsler
 - ✅ Favicon fungerer
+
+---
+
+## Session: 20. januar 2026 - Monster Line-of-Sight Fix, Puzzle System, Occultist Spell Selection
+
+### Oppgaver
+1. Fikse monster sight-buggen (line-of-sight gjennom vegger)
+2. Legge til flere puzzle-typer (SYMBOL_MATCH, CODE_LOCK, etc.)
+3. Occultist spell selection UI
+
+### Løsninger Implementert
+
+#### 1. Monster Line-of-Sight Bug Fix
+**Problem:** Monstre kunne "se" spillere gjennom vegger, noe som brøt immersion og gjorde spillet for vanskelig.
+
+**Løsning:** Implementerte ekte line-of-sight sjekking i `hexUtils.ts`:
+
+```typescript
+// Nye hjelpefunksjoner
+export const getEdgeDirection = (from, to) => {
+  // Returnerer kant-indeks (0-5) basert på hex-bevegelse
+}
+
+export const getOppositeEdgeDirection = (direction) => {
+  return (direction + 3) % 6;
+}
+
+export const edgeBlocksSight = (edge: EdgeData | undefined): boolean => {
+  // Sjekker om en kant blokkerer sikt:
+  // - wall: alltid blokkerer
+  // - door: blokkerer hvis lukket/låst (ikke 'open' eller 'broken')
+  // - blocked: barricade og collapsed blokkerer
+  // - window/open: tillater sikt
+  // - secret: blokkerer (ser ut som vegg)
+}
+```
+
+**Oppdatert hasLineOfSight:**
+- Sjekker nå alle kanter mellom tiles langs siktlinjen
+- Verifiserer både utgående kant fra nåværende tile OG inngående kant på neste tile
+- Sjekker også blokkerende objekter og obstacles på mellomliggende tiles
+
+**Oppdatert monsterAI.ts canSeePlayer:**
+- Fjernet TODO kommentar
+- Kaller nå `hasLineOfSight()` for ekte vegg-sjekking
+- Monstre kan fortsatt se gjennom åpne dører og vinduer
+
+#### 2. Utvidet Puzzle-System
+**Nye puzzle-typer implementert i PuzzleModal.tsx:**
+
+| Type | Beskrivelse | Mekanikk |
+|------|-------------|----------|
+| `sequence` | Memory pattern (eksisterende) | Gjenta lyssekvens på 3x3 grid |
+| `code_lock` | Tallkode-lås | 4-sifret kode, 3 forsøk, numpad UI |
+| `symbol_match` | Symbol-sekvens | Memorer 3 symboler, velg i rekkefølge |
+| `blood_ritual` | Blodoffer | Velg HP eller Sanity kostnad for å åpne |
+| `astronomy` | Stjernekart | Roter skiver for å justere stjerner |
+| `pressure_plate` | Trykk-plate | (Placeholder for co-op) |
+
+**Nye types i types.ts:**
+```typescript
+export type PuzzleType =
+  | 'sequence' | 'code_lock' | 'symbol_match'
+  | 'blood_ritual' | 'astronomy' | 'pressure_plate';
+
+export interface ActivePuzzle {
+  type: PuzzleType;
+  difficulty: number;
+  targetTileId: string;
+  code?: string;           // For code_lock
+  symbols?: string[];      // For symbol_match
+  requiredCost?: { hp?: number; sanity?: number };  // For blood_ritual
+  hint?: string;
+}
+```
+
+**Blood Ritual spesialregler:**
+- Occultist får redusert Sanity-kostnad (klasse-bonus)
+- Nekting av ritual = ingen Sanity-tap (i motsetning til andre puzzles)
+- HP og Sanity kostnader vises tydelig i UI
+
+#### 3. Occultist Spell Selection System
+**Ny komponent: SpellSelectionModal.tsx**
+
+Occultist (Ritual Master) velger nå 3 av 5 tilgjengelige spells før scenario starter:
+
+| Spell | Type | Angrep | Uses | Effekt |
+|-------|------|--------|------|--------|
+| Eldritch Bolt | attack | 3 dice | ∞ (1/runde) | Grunnleggende angrep |
+| Mind Blast | attack_horror | 2 dice | 2 | Skade + 1 horror |
+| Banish | banish | WIL check | 2 | Øyeblikkelig drep (HP ≤ 3) |
+| Dark Shield | defense | - | 3 | +2 forsvarsterninger |
+| Glimpse Beyond | utility | - | 1 | Avslør tiles i radius 3 |
+
+**Integrasjon i ShadowsGame.tsx:**
+- Når Occultist velges i character selection, åpnes SpellSelectionModal
+- Spilleren MÅ velge nøyaktig 3 spells for å fortsette
+- Valgte spells lagres i `player.selectedSpells` (ny OccultistSpell[] array)
+- Character card viser "Select 3 Spells" hint for Occultist
+
+**UI-features:**
+- Fargekodede ikoner basert på spell-type
+- Detaljert informasjon om hver spell (angrep, uses, rekkevidde)
+- Visuell indikator for valgte spells
+- Bekreft-knapp aktiveres først når 3 er valgt
+- Mulighet for å avbryte valget
+
+### Filer Modifisert
+
+**src/game/hexUtils.ts:**
+- Lagt til `getEdgeDirection()`, `getOppositeEdgeDirection()`, `edgeBlocksSight()`
+- Fullstendig omskrevet `hasLineOfSight()` med vegg-sjekking
+
+**src/game/utils/monsterAI.ts:**
+- Oppdatert `canSeePlayer()` for å bruke ekte line-of-sight
+
+**src/game/types.ts:**
+- Ny `PuzzleType` union type
+- Utvidet `ActivePuzzle` interface med puzzle-spesifikke felter
+
+**src/game/components/PuzzleModal.tsx:**
+- Fullstendig omskrevet med modulær arkitektur
+- 5 separate puzzle-komponenter (SequencePuzzle, CodeLockPuzzle, etc.)
+- Ny StatusFooter komponent for konsistente meldinger
+- Støtte for puzzle-spesifikke props (code, symbols, hint, playerClass)
+
+**src/game/ShadowsGame.tsx:**
+- Importert SpellSelectionModal og OCCULTIST_SPELLS
+- Lagt til state: `showSpellSelection`, `pendingOccultistCharacter`
+- Oppdatert character selection for Occultist workflow
+- Oppdatert `handlePuzzleSolve()` med blood_ritual HP/Sanity kostnader
+- Nye puzzle-spesifikke log-meldinger
+
+### Filer Opprettet
+
+**src/game/components/SpellSelectionModal.tsx:**
+- Komplett spell selection UI for Occultist
+- Støtter alle 5 OccultistSpells fra constants.ts
+- Responsive design med hover effects
+
+### Resultat
+- ✅ Monstre ser ikke gjennom vegger lenger
+- ✅ Line-of-sight fungerer korrekt med dører og vinduer
+- ✅ 5 forskjellige puzzle-typer tilgjengelig
+- ✅ Blood Ritual puzzle har klasse-spesifikke bonuser
+- ✅ Occultist må velge 3 spells før spillet starter
+- ✅ All kode bygger uten feil
