@@ -1,5 +1,181 @@
 # Development Log
 
+## 2026-01-20: Monster AI Variation & NPC Survivor System
+
+### Oppgave
+Implementere to manglende features fra designdokumentene:
+1. **Monster AI Variation** - Alle monstre oppførte seg likt, nå har hver type unik oppførsel
+2. **NPC Survivors** - Nytt system for redningbare NPCer
+
+### Implementerte Features
+
+#### 1. Monster Personality System (`monsterAI.ts`)
+
+Hvert av de 16 monstertypene har nå unike personligheter som påvirker oppførsel:
+
+| Monster | Aggresjon | Flukt-terskel | Combat Style | Spesielle evner |
+|---------|-----------|---------------|--------------|-----------------|
+| **Cultist** | 70% | 30% HP | tactical | charge |
+| **Deep One** | 80% | 20% HP | berserker | drag_under |
+| **Ghoul** | 50% | 40% HP | ambush | pack_tactics |
+| **Shoggoth** | 100% | Aldri | berserker | enrage |
+| **Boss** | 90% | Aldri | berserker | devour, cosmic_presence |
+| **Sniper** | 40% | 50% HP | siege | snipe |
+| **Priest** | 30% | 60% HP | cautious | summon, ritual |
+| **Mi-Go** | 60% | 40% HP | hit_and_run | ranged_shot |
+| **Nightgaunt** | 55% | 25% HP | ambush | phasing, terrify |
+| **Hound** | 95% | 10% HP | berserker | teleport |
+| **Dark Young** | 85% | 15% HP | berserker | ritual |
+| **Byakhee** | 75% | 35% HP | hit_and_run | swoop |
+| **Star Spawn** | 85% | 5% HP | berserker | cosmic_presence, terrify |
+| **Formless Spawn** | 65% | Aldri | swarm | regenerate |
+| **Hunting Horror** | 90% | 20% HP | hit_and_run | terrify, swoop |
+| **Moon Beast** | 50% | 45% HP | siege | ranged_shot |
+
+**Nye Combat Styles:**
+- `berserker` - +1 angrep, -1 forsvar, flykter aldri
+- `cautious` - +1 forsvar, angriper kun når fordelaktig
+- `tactical` - Flankerer, koordinerer med allierte
+- `hit_and_run` - Angrip og trekk seg tilbake
+- `siege` - Holder avstand, bombarderer
+- `swarm` - Koordinerer med samme type
+- `ambush` - +2 angrep på første slag, så tilbaketrekking
+
+**Spesielle Evner:**
+- `pack_tactics` - Ghouls får +1 angrepsterning per tilstøtende ghoul
+- `enrage` - Shoggoth får +2 angrepsterninger under 50% HP
+- `summon` - Priests kan påkalle 1-2 cultister
+- `teleport` - Hounds kan teleportere gjennom "vinkler"
+- `regenerate` - Formless Spawn helbreder 1 HP per runde
+- `terrify` - Tvinger sanity-sjekk ved syn
+- Og flere...
+
+#### 2. NPC Survivor System (`survivorSystem.ts`)
+
+Nytt system for redningbare NPCer med 8 forskjellige typer:
+
+| Type | HP | Hastighet | Belønning | Spesiell evne |
+|------|-----|-----------|-----------|---------------|
+| **Civilian** | 2 | 1 | +1 Sanity, $25 | - |
+| **Wounded** | 1 | 0 | +2 Sanity, $50 | - |
+| **Researcher** | 2 | 1 | +3 Insight, $75 | knowledge |
+| **Cultist Defector** | 3 | 1 | +2 Insight, $100, -1 San | reveal_map |
+| **Child** | 1 | 1 | +3 Sanity | calm_aura |
+| **Asylum Patient** | 2 | 1 | +1 Insight, -2 San | distraction |
+| **Reporter** | 2 | 1 | +1 Insight, $50 | - |
+| **Occultist Ally** | 3 | 1 | +2 Insight, $100 | ward |
+
+**Survivor States:**
+- `hidden` - Ikke oppdaget ennå
+- `found` - Oppdaget men ikke reddet
+- `following` - Følger en spiller
+- `rescued` - Vellykket evakuert
+- `dead` - Drept av monstre
+- `captured` - Tatt av fiender
+
+**Survivor Spawning:**
+- 8% grunnsjanse ved første besøk av tile
+- Kategorimodifikatorer (rom/korridor = +5%, krypt = +3%)
+- Doom-modifikator (lavere doom = flere desperate overlevende)
+- Maks 3 aktive overlevende samtidig
+
+**Survivor Behavior:**
+- Følger spilleren automatisk når rescued
+- Panikknivå øker ved nærvær av fiender
+- Wounded survivors må bæres (speed = 0)
+- Spesielle evner kan brukes én gang
+
+**Enemy vs Survivor Targeting:**
+- Ghouls foretrekker wounded/svake mål
+- Cultists jakter defectors med prioritet
+- Nightgaunts foretrekker isolerte, panikkslagede overlevende
+- 30% sjanse for at monstre angriper survivors i stedet for spillere
+
+### Nye Typer i `types.ts`
+
+```typescript
+// Monster Special Abilities
+type MonsterSpecialAbility = 'charge' | 'pack_tactics' | 'drag_under' |
+  'phasing' | 'teleport' | 'enrage' | 'summon' | 'snipe' | 'swoop' |
+  'regenerate' | 'terrify' | 'ranged_shot' | 'ritual' | 'cosmic_presence' | 'devour';
+
+// Monster Combat Styles
+type MonsterCombatStyle = 'berserker' | 'cautious' | 'tactical' |
+  'hit_and_run' | 'siege' | 'swarm' | 'ambush';
+
+// Monster Personality
+interface MonsterPersonality {
+  aggressionLevel: number;        // 0-100
+  cowardiceThreshold: number;     // HP% for flukt
+  packMentality: boolean;
+  territorialRange: number;
+  preferredTerrain?: TileCategory[];
+  avoidsTerrain?: TileCategory[];
+  combatStyle: MonsterCombatStyle;
+  specialAbilities: MonsterSpecialAbility[];
+  callForHelpChance: number;      // 0-100
+}
+
+// Survivor types
+type SurvivorType = 'civilian' | 'wounded' | 'researcher' |
+  'cultist_defector' | 'child' | 'asylum_patient' | 'reporter' | 'occultist_ally';
+
+type SurvivorState = 'hidden' | 'found' | 'following' | 'rescued' | 'dead' | 'captured';
+
+interface Survivor {
+  id: string;
+  name: string;
+  type: SurvivorType;
+  state: SurvivorState;
+  position: { q: number; r: number };
+  hp: number;
+  maxHp: number;
+  followingPlayerId?: string;
+  speed: number;
+  canDefendSelf: boolean;
+  panicLevel: number;
+  insightReward: number;
+  sanityReward: number;
+  goldReward: number;
+  specialAbility?: SurvivorSpecialAbility;
+  // ... dialoger og mer
+}
+```
+
+### Filer Opprettet
+- `src/game/utils/survivorSystem.ts` - Komplett survivor-logikk
+
+### Filer Modifisert
+- `src/game/types.ts` - Nye interfaces for monster personality og survivors
+- `src/game/utils/monsterAI.ts` - Personality system, combat styles, special abilities
+
+### GameState Utvidet
+```typescript
+interface GameState {
+  // ... eksisterende properties
+  survivors: Survivor[];           // NPC survivors på kartet
+  rescuedSurvivors: string[];      // IDs av reddede survivors
+}
+```
+
+### Resultat
+Monster AI er nå betydelig mer variert:
+- ✅ Hvert monster har unik aggresjon og flukt-oppførsel
+- ✅ Combat styles påvirker posisjonering og taktikk
+- ✅ Spesielle evner gir unike kampsituasjoner
+- ✅ Pack mentality for ghouls, cultists, etc.
+- ✅ Unike meldinger per monstertype
+
+NPC Survivor system er komplett:
+- ✅ 8 forskjellige survivor-typer
+- ✅ Spawning og oppdagelse
+- ✅ Følge-logikk
+- ✅ Rescue rewards
+- ✅ Enemy vs survivor targeting
+- ✅ Spesielle evner
+
+---
+
 ## 2026-01-20: Kodebase-analyse og Forbedringsforslag
 
 ### Oppgave
