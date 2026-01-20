@@ -392,16 +392,26 @@ const ShadowsGame: React.FC = () => {
             addBloodstains(targetPlayer.position.q, targetPlayer.position.r, totalHpDamage);
           }
 
+          let newlyDeadPlayerId: string | null = null;
           updatedPlayers = updatedPlayers.map(p => {
             if (p.id === targetPlayer.id) {
               const newHp = Math.max(0, p.hp - totalHpDamage);
               const newSanity = Math.max(0, p.sanity - sanityDamage);
+              const wasDead = p.isDead;
               const isDead = newHp <= 0;
-              if (isDead) addToLog(`${p.name} har falt for morket...`);
+              if (isDead && !wasDead) {
+                addToLog(`${p.name} har falt for morket...`);
+                newlyDeadPlayerId = p.id;
+              }
               return checkMadness({ ...p, hp: newHp, sanity: newSanity, isDead });
             }
             return p;
           });
+
+          // Apply sanity loss to allies witnessing death
+          if (newlyDeadPlayerId) {
+            updatedPlayers = applyAllyDeathSanityLoss(newlyDeadPlayerId, updatedPlayers);
+          }
         }
 
         // Check for doom events
@@ -425,13 +435,22 @@ const ShadowsGame: React.FC = () => {
 
         // Transition back to investigator phase after a delay
         setTimeout(() => {
-          setState(prev => ({
-            ...prev,
-            enemies: updatedEnemies.filter(e => e.hp > 0),
-            phase: GamePhase.INVESTIGATOR,
-            activePlayerIndex: 0,
-            players: updatedPlayers.map(p => ({ ...p, actions: p.isDead ? 0 : 2 }))
-          }));
+          setState(prev => {
+            // Reset actions for all players
+            const resetPlayers = updatedPlayers.map(p => ({ ...p, actions: p.isDead ? 0 : 2 }));
+            // Apply madness effects to first player (index 0)
+            const firstPlayer = resetPlayers[0];
+            if (firstPlayer && !firstPlayer.isDead && firstPlayer.activeMadness) {
+              resetPlayers[0] = applyMadnessTurnStartEffects(firstPlayer);
+            }
+            return {
+              ...prev,
+              enemies: updatedEnemies.filter(e => e.hp > 0),
+              phase: GamePhase.INVESTIGATOR,
+              activePlayerIndex: 0,
+              players: resetPlayers
+            };
+          });
           addToLog("En ny dag gryr...");
         }, 1200);
       };
@@ -612,12 +631,83 @@ const ShadowsGame: React.FC = () => {
   const checkMadness = (player: Player) => {
     if (player.sanity <= 0 && !player.activeMadness) {
       const newMadness = MADNESS_CONDITIONS[Math.floor(Math.random() * MADNESS_CONDITIONS.length)];
+      const updatedMadnessList = [...player.madness, newMadness.id];
+
       addToLog(`${player.name} has cracked. Madness sets in: ${newMadness.name}!`);
       addFloatingText(player.position.q, player.position.r, "MENTAL BREAK", "text-sanity");
       triggerScreenShake();
-      return { ...player, sanity: Math.floor(player.maxSanity / 2), activeMadness: newMadness, madness: [...player.madness, newMadness.id] };
+
+      // Check for 3 madness conditions = character permanently lost
+      if (updatedMadnessList.length >= 3) {
+        addToLog(`${player.name} has accumulated 3 madness conditions and is PERMANENTLY LOST to insanity!`);
+        addFloatingText(player.position.q, player.position.r, "LOST TO MADNESS", "text-danger");
+        return {
+          ...player,
+          sanity: 0,
+          activeMadness: newMadness,
+          madness: updatedMadnessList,
+          isDead: true  // Treat as dead for game mechanics
+        };
+      }
+
+      return {
+        ...player,
+        sanity: Math.floor(player.maxSanity / 2),
+        activeMadness: newMadness,
+        madness: updatedMadnessList
+      };
     }
     return player;
+  };
+
+  // Apply madness effects at the start of a player's turn
+  const applyMadnessTurnStartEffects = (player: Player): Player => {
+    if (!player.activeMadness || player.isDead) return player;
+
+    let updatedPlayer = { ...player };
+    const madnessType = player.activeMadness.type;
+
+    switch (madnessType) {
+      case 'catatonia':
+        // Catatonia: -1 AP permanently
+        updatedPlayer.actions = Math.max(0, updatedPlayer.actions - 1);
+        addToLog(`${player.name}'s catatonia reduces their actions by 1.`);
+        addFloatingText(player.position.q, player.position.r, "-1 AP (Catatonia)", "text-warning");
+        break;
+
+      case 'hysteria':
+        // Hysteria: 50% chance to lose 1 AP
+        if (Math.random() < 0.5) {
+          updatedPlayer.actions = Math.max(0, updatedPlayer.actions - 1);
+          addToLog(`${player.name} loses control momentarily! -1 AP from hysteria.`);
+          addFloatingText(player.position.q, player.position.r, "-1 AP (Hysteria)", "text-warning");
+        }
+        break;
+
+      case 'dark_insight':
+        // Dark Insight: +2 Insight (permanent effect handled here for visibility)
+        // The doom penalty is handled in handleMythosOverlayComplete
+        if (!player.traits?.some(t => t.id === 'dark_insight_bonus')) {
+          addToLog(`${player.name}'s dark insight grants forbidden knowledge...`);
+        }
+        break;
+    }
+
+    return updatedPlayer;
+  };
+
+  // Apply sanity loss to other players when witnessing ally death
+  const applyAllyDeathSanityLoss = (deadPlayerId: string, allPlayers: Player[]): Player[] => {
+    const ALLY_DEATH_SANITY_LOSS = 2;
+    return allPlayers.map(p => {
+      if (p.id !== deadPlayerId && !p.isDead) {
+        const newSanity = Math.max(0, p.sanity - ALLY_DEATH_SANITY_LOSS);
+        addFloatingText(p.position.q, p.position.r, `-${ALLY_DEATH_SANITY_LOSS} SAN`, "text-sanity");
+        addToLog(`${p.name} witnesses their ally fall - sanity shaken!`);
+        return checkMadness({ ...p, sanity: newSanity });
+      }
+      return p;
+    });
   };
 
   // Check for game over conditions (both victory and defeat)
@@ -923,7 +1013,45 @@ const ShadowsGame: React.FC = () => {
     const activePlayer = state.players[state.activePlayerIndex];
     if (!activePlayer || state.phase !== GamePhase.INVESTIGATOR) return;
 
-    // Only consumables can be used
+    // Handle occult texts/relics that grant insight but cost sanity
+    const isOccultText = item.type === 'relic' &&
+      (item.effect.toLowerCase().includes('insight') ||
+       item.name.toLowerCase().includes('necronomicon') ||
+       item.name.toLowerCase().includes('tome'));
+
+    if (isOccultText) {
+      const insightGain = item.bonus || 3;
+      const sanityCost = 1;
+
+      // Professor is immune to sanity loss from reading occult texts
+      const isProfessor = activePlayer.id === 'professor' || activePlayer.specialAbility === 'occult_immunity';
+      const actualSanityCost = isProfessor ? 0 : sanityCost;
+
+      if (isProfessor) {
+        addToLog(`${activePlayer.name} reads ${item.name} with scholarly detachment. +${insightGain} Insight (no sanity loss - Professor ability).`);
+      } else {
+        addToLog(`${activePlayer.name} reads ${item.name}. The forbidden knowledge burns into your mind. +${insightGain} Insight, -${sanityCost} Sanity.`);
+        addFloatingText(activePlayer.position.q, activePlayer.position.r, `-${sanityCost} SAN`, "text-sanity");
+      }
+      addFloatingText(activePlayer.position.q, activePlayer.position.r, `+${insightGain} INSIGHT`, "text-purple-400");
+
+      setState(prev => ({
+        ...prev,
+        players: prev.players.map((p, i) => {
+          if (i !== prev.activePlayerIndex) return p;
+          const newSanity = Math.max(0, p.sanity - actualSanityCost);
+          return checkMadness({
+            ...p,
+            insight: p.insight + insightGain,
+            sanity: newSanity,
+            actions: p.actions - 1
+          });
+        })
+      }));
+      return;
+    }
+
+    // Only consumables can be used directly (for non-occult items)
     if (item.type !== 'consumable') {
       addToLog(`${item.name} cannot be used directly.`);
       return;
@@ -2279,6 +2407,18 @@ const ShadowsGame: React.FC = () => {
           }
         }
 
+        // Paranoia: Cannot share tile with other players
+        if (activePlayer.activeMadness?.type === 'paranoia') {
+          const playersOnTargetTile = state.players.filter(
+            p => p.id !== activePlayer.id && !p.isDead && p.position.q === q && p.position.r === r
+          );
+          if (playersOnTargetTile.length > 0) {
+            addToLog(`${activePlayer.name}'s paranoia prevents them from approaching others!`);
+            addFloatingText(activePlayer.position.q, activePlayer.position.r, "PARANOIA!", "text-sanity");
+            return;
+          }
+        }
+
         if (!targetTile) {
           spawnRoom(q, r, state.activeScenario?.tileSet || 'mixed');
         }
@@ -2311,6 +2451,47 @@ const ShadowsGame: React.FC = () => {
         if (tileToEnter?.obstacle?.type === 'fire') {
           hazardDamage = 1;
           hazardMessage = `${activePlayer.name} is burned by fire! -${hazardDamage} HP`;
+        }
+
+        // Tile-based sanity triggers on first visit
+        const isFirstVisit = !state.exploredTiles?.has(`${q},${r}`);
+        let tileSanityLoss = 0;
+        if (isFirstVisit && tileToEnter) {
+          const tileName = tileToEnter.name?.toLowerCase() || '';
+          const tileCategory = tileToEnter.category?.toLowerCase() || '';
+
+          // Define scary tiles and their sanity costs
+          const SCARY_TILES: Record<string, { sanityLoss: number; message: string }> = {
+            'sacrificial altar': { sanityLoss: 2, message: 'The altar is stained with centuries of unspeakable offerings.' },
+            'eldritch portal': { sanityLoss: 2, message: 'Through the portal, you glimpse geometries that hurt to perceive.' },
+            'ancient stone circle': { sanityLoss: 1, message: 'The monoliths hum with wrongness. The carvings shift when you look away.' },
+            'coastal cliffs': { sanityLoss: 1, message: 'Something in the waves below whispers promises of oblivion.' },
+            'cell corridor': { sanityLoss: 1, message: 'The hands reaching through the bars are too pale, the fingers too long.' },
+            'sewer access': { sanityLoss: 1, message: 'Things live down here that have never seen the sun.' },
+            'sewer grate': { sanityLoss: 1, message: 'Something below reaches up with too many fingers.' },
+            'secret crypt': { sanityLoss: 1, message: 'The cold is unnatural. Some names carved here are still legible.' },
+            'bone ossuary': { sanityLoss: 1, message: 'Thousands of skulls watch you with empty sockets.' },
+            'forgotten tomb': { sanityLoss: 1, message: 'The dust has been disturbed recently. From the inside.' },
+          };
+
+          // Check crypt category for base sanity loss
+          if (tileCategory === 'crypt' && !SCARY_TILES[tileName]) {
+            tileSanityLoss = 1;
+            addToLog(`The crypt's ancient evil seeps into your mind. -1 Sanity`);
+          }
+
+          // Check for specific scary tile names
+          for (const [name, data] of Object.entries(SCARY_TILES)) {
+            if (tileName.includes(name.toLowerCase())) {
+              tileSanityLoss = data.sanityLoss;
+              addToLog(`${data.message} -${tileSanityLoss} Sanity`);
+              break;
+            }
+          }
+
+          if (tileSanityLoss > 0) {
+            addFloatingText(q, r, `-${tileSanityLoss} SAN`, "text-sanity");
+          }
         }
 
         // Mark tile and surrounding tiles as explored
@@ -2453,9 +2634,11 @@ const ShadowsGame: React.FC = () => {
             players: prev.players.map((p, i) => {
               if (i !== prev.activePlayerIndex) return p;
               const newHp = Math.max(0, p.hp - totalDamage);
-              const newSanity = Math.max(0, Math.min(p.maxSanity, p.sanity + darkRoomEffects.sanityChange));
+              // Apply both dark room effects and tile-based sanity loss
+              const totalSanityChange = darkRoomEffects.sanityChange - tileSanityLoss;
+              const newSanity = Math.max(0, Math.min(p.maxSanity, p.sanity + totalSanityChange));
               const newInsight = p.insight + darkRoomEffects.insightGain;
-              return {
+              const updatedPlayer = {
                 ...p,
                 position: { q, r },
                 actions: p.actions - 1,
@@ -2464,6 +2647,8 @@ const ShadowsGame: React.FC = () => {
                 insight: newInsight,
                 isDead: newHp <= 0
               };
+              // Check for madness trigger from sanity loss
+              return checkMadness(updatedPlayer);
             }),
             exploredTiles: Array.from(newExplored)
           };
@@ -2471,6 +2656,12 @@ const ShadowsGame: React.FC = () => {
         break;
 
       case 'rest':
+        // Night Terrors blocks rest action
+        if (activePlayer.activeMadness?.type === 'night_terrors') {
+          addToLog(`${activePlayer.name} cannot rest - night terrors haunt every attempt at sleep!`);
+          addFloatingText(activePlayer.position.q, activePlayer.position.r, "CANNOT REST", "text-sanity");
+          return;
+        }
         setState(prev => ({
           ...prev,
           players: prev.players.map((p, i) => i === prev.activePlayerIndex ? { ...p, hp: Math.min(p.maxHp, p.hp + 1), sanity: Math.min(p.maxSanity, p.sanity + 1), actions: p.actions - 1 } : p)
@@ -3174,7 +3365,16 @@ const ShadowsGame: React.FC = () => {
       // Show Mythos phase overlay
       setShowMythosOverlay(true);
     } else {
-      setState(prev => ({ ...prev, activePlayerIndex: nextIndex, activeSpell: null, activeOccultistSpell: null }));
+      // Apply madness turn start effects to next player
+      setState(prev => {
+        const nextPlayer = prev.players[nextIndex];
+        if (nextPlayer && !nextPlayer.isDead && nextPlayer.activeMadness) {
+          const updatedPlayers = [...prev.players];
+          updatedPlayers[nextIndex] = applyMadnessTurnStartEffects(nextPlayer);
+          return { ...prev, activePlayerIndex: nextIndex, activeSpell: null, activeOccultistSpell: null, players: updatedPlayers };
+        }
+        return { ...prev, activePlayerIndex: nextIndex, activeSpell: null, activeOccultistSpell: null };
+      });
     }
   };
 
@@ -3207,7 +3407,20 @@ const ShadowsGame: React.FC = () => {
     }
 
     // Check if weather should change based on doom
-    const newDoom = state.doom - 1;
+    // Dark Insight madness causes extra doom loss
+    const darkInsightPlayers = state.players.filter(
+      p => !p.isDead && p.activeMadness?.type === 'dark_insight'
+    );
+    const darkInsightPenalty = darkInsightPlayers.length; // -1 doom per player with dark insight
+    let newDoom = state.doom - 1 - darkInsightPenalty;
+
+    if (darkInsightPenalty > 0) {
+      darkInsightPlayers.forEach(p => {
+        addToLog(`${p.name}'s dark insight accelerates the doom! (-${1} extra doom)`);
+        addFloatingText(p.position.q, p.position.r, "-1 DOOM", "text-danger");
+      });
+    }
+
     let newWeatherState = state.weatherState;
 
     // Update weather duration and check for new weather conditions

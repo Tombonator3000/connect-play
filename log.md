@@ -1,5 +1,73 @@
 # Development Log
 
+## 2026-01-20: Sanity System Implementation - Complete Madness Mechanics
+
+### Oppsummering
+
+Fullstendig implementasjon av alle manglende sanity- og madness-mekanikker basert på audit. Alle 8 madness conditions har nå faktiske gameplay-konsekvenser.
+
+---
+
+### IMPLEMENTERT ✅
+
+#### 1. 3 Madness = Character Permanently Lost
+**Fil:** `src/game/ShadowsGame.tsx:621-632`
+
+Når en spiller får sin tredje madness condition, er karakteren permanent tapt (behandles som død).
+
+#### 2. Catatonia: -1 AP Effect
+**Fil:** `src/game/ShadowsGame.tsx:652-657`
+
+Spillere med Catatonia mister 1 AP ved rundestart.
+
+#### 3. Hysteria: 50% Chance -1 AP
+**Fil:** `src/game/ShadowsGame.tsx:659-666`
+
+50% sjanse for å miste 1 AP hver runde.
+
+#### 4. Night Terrors: Cannot Rest
+**Fil:** `src/game/ShadowsGame.tsx:2540-2545`
+
+Rest-handling blokkert for spillere med Night Terrors.
+
+#### 5. Dark Insight: Extra Doom Loss
+**Fil:** `src/game/ShadowsGame.tsx:3315-3327`
+
+Doom synker ekstra -1 per runde for spillere med Dark Insight.
+
+#### 6. Paranoia: Cannot Share Tiles
+**Fil:** `src/game/ShadowsGame.tsx:2372-2382`
+
+Spillere med Paranoia kan ikke gå til tiles med andre spillere.
+
+#### 7. Ally Death Sanity Trigger
+**Fil:** `src/game/ShadowsGame.tsx:689-701`
+
+Alle spillere mister -2 Sanity når en alliert dør.
+
+#### 8. Tile-Based Sanity Triggers
+**Fil:** `src/game/ShadowsGame.tsx:2418-2457`
+
+Sanity-tap ved første besøk til skremmende tiles:
+- Sacrificial Altar, Eldritch Portal: -2 SAN
+- Stone Circle, Coastal Cliffs, Sewer, Crypt tiles: -1 SAN
+
+#### 9. Occult Text Reading Sanity
+**Fil:** `src/game/ShadowsGame.tsx:1016-1052`
+
+Lese okkulte tekster (Necronomicon, Ancient Tome) koster -1 Sanity men gir +3 Insight.
+**Professor er immun** mot sanity-tap fra lesing.
+
+---
+
+### Filer Endret
+
+| Fil | Endringer |
+|-----|-----------|
+| `src/game/ShadowsGame.tsx` | checkMadness, applyMadnessTurnStartEffects, applyAllyDeathSanityLoss, move action, rest action, handleMythosOverlayComplete, handleUseItem |
+
+---
+
 ## 2026-01-20: Sanity System Audit - Comprehensive Analysis
 
 ### Oppsummering
