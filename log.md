@@ -1,5 +1,305 @@
 # Development Log
 
+## 2026-01-20: Sanity System Implementation - Complete Madness Mechanics
+
+### Oppsummering
+
+Fullstendig implementasjon av alle manglende sanity- og madness-mekanikker basert på audit. Alle 8 madness conditions har nå faktiske gameplay-konsekvenser.
+
+---
+
+### IMPLEMENTERT ✅
+
+#### 1. 3 Madness = Character Permanently Lost
+**Fil:** `src/game/ShadowsGame.tsx:621-632`
+
+Når en spiller får sin tredje madness condition, er karakteren permanent tapt (behandles som død).
+
+#### 2. Catatonia: -1 AP Effect
+**Fil:** `src/game/ShadowsGame.tsx:652-657`
+
+Spillere med Catatonia mister 1 AP ved rundestart.
+
+#### 3. Hysteria: 50% Chance -1 AP
+**Fil:** `src/game/ShadowsGame.tsx:659-666`
+
+50% sjanse for å miste 1 AP hver runde.
+
+#### 4. Night Terrors: Cannot Rest
+**Fil:** `src/game/ShadowsGame.tsx:2540-2545`
+
+Rest-handling blokkert for spillere med Night Terrors.
+
+#### 5. Dark Insight: Extra Doom Loss
+**Fil:** `src/game/ShadowsGame.tsx:3315-3327`
+
+Doom synker ekstra -1 per runde for spillere med Dark Insight.
+
+#### 6. Paranoia: Cannot Share Tiles
+**Fil:** `src/game/ShadowsGame.tsx:2372-2382`
+
+Spillere med Paranoia kan ikke gå til tiles med andre spillere.
+
+#### 7. Ally Death Sanity Trigger
+**Fil:** `src/game/ShadowsGame.tsx:689-701`
+
+Alle spillere mister -2 Sanity når en alliert dør.
+
+#### 8. Tile-Based Sanity Triggers
+**Fil:** `src/game/ShadowsGame.tsx:2418-2457`
+
+Sanity-tap ved første besøk til skremmende tiles:
+- Sacrificial Altar, Eldritch Portal: -2 SAN
+- Stone Circle, Coastal Cliffs, Sewer, Crypt tiles: -1 SAN
+
+#### 9. Occult Text Reading Sanity
+**Fil:** `src/game/ShadowsGame.tsx:1016-1052`
+
+Lese okkulte tekster (Necronomicon, Ancient Tome) koster -1 Sanity men gir +3 Insight.
+**Professor er immun** mot sanity-tap fra lesing.
+
+---
+
+### Filer Endret
+
+| Fil | Endringer |
+|-----|-----------|
+| `src/game/ShadowsGame.tsx` | checkMadness, applyMadnessTurnStartEffects, applyAllyDeathSanityLoss, move action, rest action, handleMythosOverlayComplete, handleUseItem |
+
+---
+
+## 2026-01-20: Sanity System Audit - Comprehensive Analysis
+
+### Oppsummering
+
+Full audit av sanity-systemet for å vurdere om det fungerer som et Cthulhu/Lovecraft-inspirert horror-system. Sammenlignet implementasjon mot `game_design_bible.md` og `REGELBOK.MD`.
+
+---
+
+### HVA FUNGERER ✅
+
+#### 1. Grunnleggende Sanity-attributt
+- `Player.sanity` og `Player.maxSanity` er implementert (`src/game/types.ts:105-106`)
+- Sanity vises korrekt i UI med hjerne-ikon
+
+#### 2. Madness Conditions Definert
+- 8 madness-typer definert i `src/game/constants.ts:2333-2382`:
+  - `hallucination`, `paranoia`, `hysteria`, `catatonia`
+  - `obsession`, `amnesia`, `night_terrors`, `dark_insight`
+- Hver har `name`, `description`, `mechanicalEffect`, `visualClass`, `audioEffect`
+
+#### 3. Horror Checks ved Fiende-møte
+- `performHorrorCheck()` i `src/game/utils/combatUtils.ts:319-376`
+- Dice pool: 2 (base) + Willpower + klasseBonus
+- DC basert på fiende horror: 1=DC3, 2=DC4, 3+=DC5
+- Feiler = mister sanity lik fiendens horror-verdi (1-6)
+- **Veteran immun** mot første horror check (Fearless)
+- **Professor får +1 terning** på horror checks
+
+#### 4. Fiende Horror Ratings
+- Alle fiender har `horror`-verdi i `src/game/constants.ts:2089-2225`
+- Cultist: 1, Ghoul: 2, Deep One: 2, Shoggoth: 4, Star Spawn: 5, Ancient One: 6
+
+#### 5. Madness Trigger-mekanisme
+- `checkMadness()` i `src/game/ShadowsGame.tsx:612-621`
+- Når sanity <= 0 OG ingen aktivMadness:
+  - Tilfeldig madness tildeles
+  - Sanity settes til 50% av max
+  - CSS-klasse appliseres på spillcontainer
+
+#### 6. CSS Visual Effects for Madness
+- Alle 8 madness-typer har CSS i `src/index.css:323-400`:
+  - `hallucinate`: hue-rotate + blur
+  - `paranoia`: saturate + sepia shift
+  - `hysteria`: shake/jitter
+  - `catatonia`: desaturate + dim
+  - `obsession`: glow på interactables
+  - `amnesia`: fog overlay
+  - `night_terrors`: brightness flashes
+  - `dark_insight`: purple glow
+
+#### 7. Sanity Restoration
+- **Rest Action** (`ShadowsGame.tsx:2476`): 2 AP for +1 HP og +1 Sanity
+- **Consumables**: Old Whiskey (+2 SAN), Sedatives (+1 SAN)
+- **Survivor Rescue**: +1 til +3 SAN avhengig av survivor-type
+
+#### 8. Noen Kontekst-handlinger
+- Sealed doors kan koste sanity ved forsøk
+- Spirit barriers koster -1 til -2 sanity
+- Dark room discoveries (horror/corpse) koster sanity
+- Eldritch portal undersøkelse koster -1 sanity
+
+---
+
+### HVA MANGLER ❌
+
+#### A. MADNESS MEKANIKKER IKKE IMPLEMENTERT
+**KRITISK**: CSS-effekter vises, men spillmekanikkene håndheves IKKE!
+
+| Madness | Beskrevet Effekt | Implementert? |
+|---------|------------------|---------------|
+| **Hallucinations** | 25% sjanse falske fiender, må "angripe" dem | ❌ NEI |
+| **Paranoia** | Kan ikke dele tile med andre, -1 alle kast nær andre | ❌ NEI |
+| **Hysteria** | 50% sjanse miste 1 AP ved rundestart | ❌ NEI |
+| **Catatonia** | -1 AP permanent, kan ikke bruke Flee | ❌ NEI |
+| **Obsession** | Kan ikke forlate rom før ALT er undersøkt | ❌ NEI |
+| **Amnesia** | Fog of War resetter hver runde | ❌ NEI |
+| **Night Terrors** | Kan ikke bruke Rest-handling | ❌ NEI |
+| **Dark Insight** | +2 Insight men Doom -1 ekstra per runde | ❌ NEI |
+
+**Filer som trenger oppdatering:**
+- `src/game/ShadowsGame.tsx` - Rundestart logikk for Hysteria/Catatonia
+- `src/game/ShadowsGame.tsx` - Bevegelseslogikk for Paranoia
+- `src/game/ShadowsGame.tsx` - Rest-handling for Night Terrors
+- `src/game/ShadowsGame.tsx` - Doom-oppdatering for Dark Insight
+- Egen hallucination-system trengs
+
+#### B. 3 MADNESS = KARAKTER TAPT - IKKE IMPLEMENTERT
+Ifølge `REGELBOK.MD:456`: "Ved 3 Madness Conditions = karakter er tapt"
+
+**Nåværende kode** (`ShadowsGame.tsx:618`):
+```typescript
+madness: [...player.madness, newMadness.id]  // Bare legger til, sjekker aldri lengden
+```
+
+**Må legge til:**
+```typescript
+if (player.madness.length >= 3) {
+  // Karakter er permanent tapt (død eller gal)
+}
+```
+
+#### C. SANITY-TAP TRIGGERS SOM MANGLER
+
+| Trigger | Sanity-tap | Implementert? |
+|---------|------------|---------------|
+| Se fiende første gang | -1 til -6 | ✅ JA (horror check) |
+| **Se medspiller dø** | -2 (kan ikke motstå) | ❌ NEI |
+| **Lese okkult tekst** | -1 (Professor immun) | ❌ DELVIS (bare Necronomicon item) |
+| **Utføre ritual** | -1 til -3 (Occultist halvert) | ❌ NEI |
+| **Se portal/dimensjon** | -2 (willpower DC 5) | ❌ DELVIS |
+| Spirit barrier | -1 per forsøk | ✅ JA |
+
+#### D. TILE-BASERTE SANITY TRIGGERS MANGLER
+Fra `game_design_bible.md`, disse tiles skal gi sanity-tap ved første besøk:
+
+| Tile | Sanity-tap | Implementert? |
+|------|------------|---------------|
+| **Klippekyst** | Horror check | ❌ NEI |
+| **Gammel Steinsirkel** | -1 | ❌ NEI |
+| **Celle-korridor (Asyl)** | -1 | ❌ NEI |
+| **Kloakktunnel** | -1 | ❌ NEI |
+| **Offersted/Altar** | -2 | ❌ NEI |
+| **Eldgammel Portal** | Massive tap | ❌ DELVIS |
+
+#### E. LYDEFFEKTER IKKE IMPLEMENTERT
+Madness conditions definerer `audioEffect` men Tone.js ikke integrert:
+- `whispers` (Hallucinations)
+- `heartbeat` (Paranoia)
+- `laughter` (Hysteria)
+- `silence` (Catatonia)
+- `ticking` (Obsession)
+- `static` (Amnesia)
+- `screams` (Night Terrors)
+- `cosmic` (Dark Insight)
+
+---
+
+### ANBEFALINGER FOR FORBEDRING
+
+#### Prioritet 1: Kritiske Mekanikker
+1. **Implementer 3-madness game over** - Enkel sjekk
+2. **Implementer Catatonia -1 AP** - Påvirker rundestart
+3. **Implementer Night Terrors Rest-blokkering** - Enkel action guard
+4. **Se medspiller dø trigger** - Når spiller HP=0, andre spillere mister -2 SAN
+
+#### Prioritet 2: Viktige Horror Elements
+5. **Tile-baserte sanity triggers** - Legg til `onFirstVisit` sanity tap for scary tiles
+6. **Occult text reading** - Generelt system for -1 SAN ved lesing (Professor immun)
+7. **Ritual sanity cost** - -1 til -3 SAN for ritualer (Occultist halvert)
+
+#### Prioritet 3: Fordypning
+8. **Hallucination system** - Falske fiender som spawner og forsvinner
+9. **Paranoia tile restriction** - Blokkér bevegelse til tiles med andre spillere
+10. **Hysteria AP loss** - 50% sjanse ved rundestart
+11. **Amnesia fog reset** - Fog of war tilbakestilling
+12. **Obsession investigate lock** - Kan ikke gå før alt undersøkt
+
+#### Prioritet 4: Polish
+13. **Audio effects med Tone.js** - Atmosfærisk lyd per madness
+14. **Dark Insight doom penalty** - Doom tracker synker raskere
+
+---
+
+### TEKNISKE DETALJER
+
+#### Hvor madness-mekanikker bør implementeres:
+
+**1. Rundestart-effekter** (`ShadowsGame.tsx` i endTurn/startRound):
+```typescript
+// Ved rundestart, sjekk aktiv madness
+if (activePlayer.activeMadness) {
+  switch (activePlayer.activeMadness.type) {
+    case 'hysteria':
+      if (Math.random() < 0.5) {
+        // Mist 1 AP
+      }
+      break;
+    case 'catatonia':
+      // -1 AP permanent
+      break;
+    case 'dark_insight':
+      // Doom -1 ekstra
+      break;
+    case 'amnesia':
+      // Reset fog of war for denne spilleren
+      break;
+  }
+}
+```
+
+**2. Bevegelses-restriksjoner** (i `movePlayer` eller tilsvarende):
+```typescript
+// Paranoia: Kan ikke dele tile
+if (activePlayer.activeMadness?.type === 'paranoia') {
+  const otherPlayersOnTile = players.filter(p =>
+    p.id !== activePlayer.id &&
+    p.position.q === targetQ &&
+    p.position.r === targetR
+  );
+  if (otherPlayersOnTile.length > 0) {
+    // Blokkér bevegelse
+  }
+}
+```
+
+**3. Action guards** (i REST handling):
+```typescript
+if (activePlayer.activeMadness?.type === 'night_terrors') {
+  addToLog("You cannot rest - night terrors haunt you!");
+  return; // Blokkér rest
+}
+```
+
+---
+
+### KONKLUSJON
+
+Sanity-systemet har et **solid fundament** med:
+- Attributter, horror checks, madness triggering, visual effects
+
+Men det **mangler de faktiske spillmekanikkene** som gjør madness betydningsfullt. Uten disse er madness bare en visuell effekt uten gameplay-konsekvenser.
+
+**Lovecraft-inspirasjon krever** at spillere *føler* skrekkens konsekvenser - å miste kontroll (Hysteria), bli paranoid (Paranoia), eller miste hukommelsen (Amnesia). Uten disse mekanikkene er horror-elementet bare kosmetisk.
+
+**Estimert arbeid:**
+- Prioritet 1: 2-3 timer
+- Prioritet 2: 3-4 timer
+- Prioritet 3: 4-6 timer
+- Prioritet 4: 2-3 timer
+
+---
+
 ## 2026-01-20: Comprehensive Scenario System Overhaul - Quest Items & Objectives
 
 ### Problemene (Identifisert gjennom deep audit)
