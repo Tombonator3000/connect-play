@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Search, Sword, Heart, Package, LockOpen, Hammer, Wind, Zap, X, Eye, User, BookOpen, Skull } from 'lucide-react';
-import { ContextAction, Spell } from '../types';
+import { Search, Sword, Heart, Package, LockOpen, Hammer, Wind, Zap, X, Eye, User, BookOpen, Skull, Sparkles } from 'lucide-react';
+import { ContextAction, Spell, OccultistSpell } from '../types';
 import { SpellTooltip } from './ItemTooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
 
@@ -10,7 +10,9 @@ interface ActionBarProps {
   isInvestigatorPhase: boolean;
   contextAction?: ContextAction | null;
   spells: Spell[];
+  occultistSpells?: OccultistSpell[];  // Hero Quest style spells for Occultist
   activeSpell: Spell | null;
+  activeOccultistSpell?: OccultistSpell | null;  // Currently casting occultist spell
   onToggleCharacter: () => void;
   showCharacter: boolean;
   onToggleInfo: () => void;
@@ -20,12 +22,19 @@ interface ActionBarProps {
 }
 
 const ActionBar: React.FC<ActionBarProps> = ({
-  onAction, actionsRemaining, isInvestigatorPhase, contextAction, spells, activeSpell,
+  onAction, actionsRemaining, isInvestigatorPhase, contextAction, spells, occultistSpells,
+  activeSpell, activeOccultistSpell,
   onToggleCharacter, showCharacter, onToggleInfo, showInfo, onToggleFieldGuide, showFieldGuide
 }) => {
   const [showSpellMenu, setShowSpellMenu] = useState(false);
   const disabled = actionsRemaining <= 0 || !isInvestigatorPhase;
   const isMobile = useIsMobile();
+
+  // Check if player has any spells (either legacy or occultist)
+  const hasLegacySpells = spells.length > 0;
+  const hasOccultistSpells = occultistSpells && occultistSpells.length > 0;
+  const hasAnySpells = hasLegacySpells || hasOccultistSpells;
+  const isAnyCastActive = activeSpell !== null || activeOccultistSpell !== null;
 
   // Button sizes optimized for touch (minimum 44x44px for mobile)
   const buttonSize = isMobile ? 'w-12 h-12' : 'w-14 h-14 md:w-20 md:h-20';
@@ -96,39 +105,102 @@ const ActionBar: React.FC<ActionBarProps> = ({
 
           <div className="relative">
             {showSpellMenu && !disabled && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-secondary border-2 border-sanity rounded-lg shadow-[0_0_30px_hsla(280,60%,55%,0.5)] w-56 overflow-hidden z-50 animate-in slide-in-from-bottom-4 duration-200">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-secondary border-2 border-sanity rounded-lg shadow-[0_0_30px_hsla(280,60%,55%,0.5)] w-64 overflow-hidden z-50 animate-in slide-in-from-bottom-4 duration-200">
                 <div className="bg-secondary/40 p-2 text-center text-xs font-bold text-sanity border-b border-sanity/30 uppercase tracking-widest">
                   Grimoire
                 </div>
-                <div className="flex flex-col max-h-60 overflow-y-auto">
-                  {spells.length === 0 ? (
+                <div className="flex flex-col max-h-72 overflow-y-auto">
+                  {!hasAnySpells ? (
                     <div className="p-4 text-center text-muted-foreground italic text-xs">No spells memorized.</div>
                   ) : (
-                    spells.map(spell => (
-                      <SpellTooltip key={spell.id} spell={spell}>
-                        <button
-                          onClick={() => {
-                            onAction('cast', spell);
-                            setShowSpellMenu(false);
-                          }}
-                          className="text-left p-3 hover:bg-secondary/30 border-b border-secondary/20 group transition-colors w-full"
-                        >
-                          <div className="flex justify-between items-center mb-1">
-                            <span className="text-secondary-foreground font-bold text-xs uppercase group-hover:text-foreground">{spell.name}</span>
-                            <span className="text-[10px] bg-background/40 px-2 py-0.5 rounded text-insight font-bold border border-insight/30 flex items-center gap-1">
-                              <Eye size={10} /> {spell.cost}
-                            </span>
-                          </div>
-                          <div className="text-[10px] text-muted-foreground italic line-clamp-2">{spell.description}</div>
-                        </button>
-                      </SpellTooltip>
-                    ))
+                    <>
+                      {/* Legacy Spells (Professor/Doctor) - Insight cost based */}
+                      {hasLegacySpells && spells.map(spell => (
+                        <SpellTooltip key={spell.id} spell={spell}>
+                          <button
+                            onClick={() => {
+                              onAction('cast', spell);
+                              setShowSpellMenu(false);
+                            }}
+                            className="text-left p-3 hover:bg-secondary/30 border-b border-secondary/20 group transition-colors w-full"
+                          >
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-secondary-foreground font-bold text-xs uppercase group-hover:text-foreground">{spell.name}</span>
+                              <span className="text-[10px] bg-background/40 px-2 py-0.5 rounded text-insight font-bold border border-insight/30 flex items-center gap-1">
+                                <Eye size={10} /> {spell.cost}
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-muted-foreground italic line-clamp-2">{spell.description}</div>
+                          </button>
+                        </SpellTooltip>
+                      ))}
+
+                      {/* Occultist Spells - Attack dice based with limited uses */}
+                      {hasOccultistSpells && occultistSpells!.map(spell => {
+                        const remainingUses = spell.currentUses ?? spell.usesPerScenario;
+                        const isUnlimited = spell.usesPerScenario === -1;
+                        const isUsable = isUnlimited || remainingUses > 0;
+
+                        // Get effect color
+                        const effectColor = spell.effect === 'attack' || spell.effect === 'attack_horror'
+                          ? 'text-red-400 border-red-400/30 bg-red-950/30'
+                          : spell.effect === 'defense'
+                            ? 'text-blue-400 border-blue-400/30 bg-blue-950/30'
+                            : spell.effect === 'banish'
+                              ? 'text-purple-400 border-purple-400/30 bg-purple-950/30'
+                              : 'text-cyan-400 border-cyan-400/30 bg-cyan-950/30';
+
+                        return (
+                          <button
+                            key={spell.id}
+                            disabled={!isUsable}
+                            onClick={() => {
+                              if (isUsable) {
+                                onAction('cast_occultist', spell);
+                                setShowSpellMenu(false);
+                              }
+                            }}
+                            className={`text-left p-3 border-b border-secondary/20 group transition-colors w-full ${
+                              isUsable ? 'hover:bg-secondary/30' : 'opacity-50 cursor-not-allowed'
+                            }`}
+                          >
+                            <div className="flex justify-between items-center mb-1">
+                              <span className="text-secondary-foreground font-bold text-xs uppercase group-hover:text-foreground flex items-center gap-1">
+                                <Sparkles size={10} className="text-sanity" />
+                                {spell.name}
+                              </span>
+                              <div className="flex items-center gap-1">
+                                {spell.attackDice > 0 && (
+                                  <span className="text-[10px] bg-background/40 px-1.5 py-0.5 rounded text-red-400 font-bold border border-red-400/30">
+                                    {spell.attackDice}🎲
+                                  </span>
+                                )}
+                                {spell.defenseBonus && (
+                                  <span className="text-[10px] bg-background/40 px-1.5 py-0.5 rounded text-blue-400 font-bold border border-blue-400/30">
+                                    +{spell.defenseBonus}🛡
+                                  </span>
+                                )}
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold border ${effectColor}`}>
+                                  {isUnlimited ? '∞' : `${remainingUses}/${spell.usesPerScenario}`}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <div className="text-[10px] text-muted-foreground italic line-clamp-2 flex-1 mr-2">{spell.description}</div>
+                              {spell.range > 0 && (
+                                <span className="text-[9px] text-muted-foreground">Range: {spell.range}</span>
+                              )}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </>
                   )}
                 </div>
               </div>
             )}
 
-            {activeSpell ? (
+            {isAnyCastActive ? (
               <button
                 onClick={() => onAction('cancel_cast')}
                 className={`group flex flex-col items-center justify-center ${buttonSize} rounded border ml-0.5 md:ml-2 border-primary bg-primary/20 hover:bg-primary/40 active:scale-95 animate-pulse transition-all duration-200 shrink-0 shadow-[var(--shadow-doom)]`}
@@ -137,7 +209,7 @@ const ActionBar: React.FC<ActionBarProps> = ({
                 {!isMobile && <span className="text-[8px] md:text-[10px] font-bold uppercase tracking-wider text-primary hidden md:block">Cancel</span>}
               </button>
             ) : (
-              spells.length > 0 && (
+              hasAnySpells && (
                 <button
                   disabled={disabled}
                   onClick={() => setShowSpellMenu(!showSpellMenu)}
