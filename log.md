@@ -1,5 +1,80 @@
 # Development Log
 
+## 2026-01-20: Multi-Character Hex Tile Positioning
+
+### Oppgave
+Når flere personer/monstre står i samme hex tile, skal de ikke stå oppå hverandre men settes rundt slik at det er mulig å se alle som er i en hex tile.
+
+### Problem
+Tidligere ble alle spillere og fiender på samme hex tile rendret i sentrum av hexen, noe som førte til fullstendig overlapping. Kun den siste entiteten var synlig.
+
+### Løsning
+
+#### 1. Ny utility-fil: `src/game/utils/entityPositioning.ts`
+Opprettet et nytt modul med posisjoneringslogikk:
+
+**Hovedfunksjoner:**
+- `calculateEntityOffset()` - Beregner offset for en entitet basert på indeks og totalt antall
+- `calculateCombinedOffset()` - Kombinert posisjonering for spillere og fiender på samme tile
+
+**Posisjoneringsstrategier:**
+- **1 entitet**: Sentrumsposisjon (ingen offset)
+- **2 entiteter**: Plasseres på motsatte sider (venstre/høyre)
+- **3+ entiteter**: Sirkulær arrangering rundt sentrum
+
+**Spillere vs Fiender:**
+- Spillere bruker mindre radius (18px) - inner ring
+- Fiender bruker større radius (28px) - outer ring
+- Når begge typer er til stede, får fiender vinkeljustert posisjon for å unngå overlapping
+
+```typescript
+export function calculateCombinedOffset(
+  entityType: 'player' | 'enemy',
+  entityIndex: number,
+  playersAtPosition: number,
+  enemiesAtPosition: number,
+  playerRadius: number = 18,
+  enemyRadius: number = 28
+): PositionOffset
+```
+
+#### 2. Endringer i `GameBoard.tsx`
+
+**Import:**
+```typescript
+import { calculateCombinedOffset } from '../utils/entityPositioning';
+```
+
+**Spiller-rendering (linje 1334-1356):**
+- Beregner antall spillere og fiender på samme posisjon
+- Finner spiller-indeks blant entiteter på tilen
+- Bruker `calculateCombinedOffset()` for å få offset
+- Legger offset til x og y posisjon
+
+**Fiende-rendering (linje 1377-1419):**
+- Samme logikk som spillere
+- Fiender får større radius og vinkeljustert posisjon
+
+### Filer Endret
+- `src/game/utils/entityPositioning.ts` - **NY** - Posisjoneringslogikk
+- `src/game/components/GameBoard.tsx` - Oppdatert spiller- og fiende-rendering
+
+### Resultat
+- ✅ Spillere på samme tile vises i sirkulær formasjon
+- ✅ Fiender på samme tile vises spredt ut
+- ✅ Når spillere og fiender er på samme tile, brukes forskjellige radier
+- ✅ Animasjon for bevegelse fungerer fortsatt (transition-all duration-500)
+- ✅ Build vellykket
+
+### Tekniske detaljer
+- **HEX_SIZE**: 95px
+- **Spiller-token**: 48x48px (offset -24px for sentrering)
+- **Fiende-token**: 56x56px (offset -28px for sentrering)
+- **Spiller-radius**: 18px fra sentrum
+- **Fiende-radius**: 28px fra sentrum
+
+---
+
 ## 2026-01-20: Magic UI Button for Occultist and Professor
 
 ### Oppgave
