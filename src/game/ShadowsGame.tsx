@@ -83,6 +83,12 @@ import {
   processWeatherForNewRound
 } from './utils/mythosPhaseHelpers';
 import {
+  processActionEffect,
+  ActionEffectContext,
+  ActionEffectResult,
+  getAdjacentPosition
+} from './utils/contextActionEffects';
+import {
   getCategoryTilePool,
   getFloorTypeForCategory,
   createFallbackEdges,
@@ -1572,476 +1578,74 @@ const ShadowsGame: React.FC = () => {
   }, [activeContextTarget]);
 
   // Handle specific action effects (opening doors, etc.)
+  // REFACTORED: Now uses processActionEffect from contextActionEffects.ts
+  // Original 470-line switch statement extracted into modular, testable functions
   const handleContextActionEffect = useCallback((action: ContextAction, success: boolean) => {
     if (!activeContextTarget || !success) return;
 
     const tile = state.board.find(t => t.id === activeContextTarget.tileId);
     if (!tile) return;
 
-    switch (action.id) {
-      case 'open_door':
-      case 'use_key':
-      case 'lockpick':
-        if (activeContextTarget.edgeIndex !== undefined) {
-          // Get the adjacent tile through this edge for fog reveal
-          const edgeIndex = activeContextTarget.edgeIndex;
-          const adjacentOffsets: Record<number, {dq: number; dr: number}> = {
-            0: { dq: 0, dr: -1 },  // North
-            1: { dq: 1, dr: -1 },  // Northeast
-            2: { dq: 1, dr: 0 },   // Southeast
-            3: { dq: 0, dr: 1 },   // South
-            4: { dq: -1, dr: 1 },  // Southwest
-            5: { dq: -1, dr: 0 }   // Northwest
-          };
-          const offset = adjacentOffsets[edgeIndex];
-          if (offset) {
-            const adjacentQ = tile.q + offset.dq;
-            const adjacentR = tile.r + offset.dr;
-            // Trigger fog reveal animation on adjacent unexplored tile
-            triggerFogReveal(adjacentQ, adjacentR);
-          }
+    // Build context for effect processing
+    const ctx: ActionEffectContext = {
+      tileId: activeContextTarget.tileId,
+      edgeIndex: activeContextTarget.edgeIndex,
+      board: state.board,
+      players: state.players,
+      activePlayerIndex: state.activePlayerIndex,
+      activeScenario: state.activeScenario,
+      objectiveSpawnState: state.objectiveSpawnState,
+      questItemsCollected: state.questItemsCollected
+    };
 
-          setState(prev => ({
-            ...prev,
-            board: prev.board.map(t => {
-              if (t.id === tile.id) {
-                const newEdges = [...t.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
-                newEdges[activeContextTarget.edgeIndex!] = {
-                  ...newEdges[activeContextTarget.edgeIndex!],
-                  doorState: 'open'
-                };
-                return { ...t, edges: newEdges };
-              }
-              return t;
-            })
-          }));
-        }
-        break;
+    // Special handling for door opening - trigger fog reveal before state update
+    if (['open_door', 'use_key', 'lockpick'].includes(action.id) && activeContextTarget.edgeIndex !== undefined) {
+      const adjacentPos = getAdjacentPosition(tile, activeContextTarget.edgeIndex);
+      if (adjacentPos) {
+        triggerFogReveal(adjacentPos.q, adjacentPos.r);
+      }
+    }
 
-      case 'force_door':
-      case 'break_barricade':
-        if (activeContextTarget.edgeIndex !== undefined) {
-          setState(prev => ({
-            ...prev,
-            board: prev.board.map(t => {
-              if (t.id === tile.id) {
-                const newEdges = [...t.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
-                newEdges[activeContextTarget.edgeIndex!] = {
-                  ...newEdges[activeContextTarget.edgeIndex!],
-                  doorState: 'broken'
-                };
-                return { ...t, edges: newEdges };
-              }
-              return t;
-            })
-          }));
-        }
-        break;
+    // Process the action effect using the refactored module
+    const result: ActionEffectResult = processActionEffect(action.id, ctx);
 
-      case 'close_door':
-        if (activeContextTarget.edgeIndex !== undefined) {
-          setState(prev => ({
-            ...prev,
-            board: prev.board.map(t => {
-              if (t.id === tile.id) {
-                const newEdges = [...t.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
-                newEdges[activeContextTarget.edgeIndex!] = {
-                  ...newEdges[activeContextTarget.edgeIndex!],
-                  doorState: 'closed'
-                };
-                return { ...t, edges: newEdges };
-              }
-              return t;
-            })
-          }));
-        }
-        break;
+    // Apply log messages
+    if (result.logMessages) {
+      result.logMessages.forEach(msg => addToLog(msg));
+    }
 
-      case 'clear_rubble':
-      case 'extinguish':
-        setState(prev => ({
-          ...prev,
-          board: prev.board.map(t =>
-            t.id === tile.id ? { ...t, obstacle: undefined } : t
-          )
-        }));
-        break;
+    // Apply floating text
+    if (result.floatingText) {
+      addFloatingText(
+        result.floatingText.q,
+        result.floatingText.r,
+        result.floatingText.text,
+        result.floatingText.colorClass
+      );
+    }
 
-      case 'search_tile':
-      case 'search_books':
-      case 'search_container':
-      case 'search_rubble':
-      case 'search_water':
-      case 'search_statue':
-        // Mark as searched and check for quest items
-        setState(prev => {
-          // Check if there's a quest item spawned on this tile
-          const questItem = prev.objectiveSpawnState?.questItems.find(
-            qi => qi.spawned && qi.spawnedOnTileId === tile.id && !qi.collected
-          );
-
-          let updatedObjectiveSpawnState = prev.objectiveSpawnState;
-          let updatedScenario = prev.activeScenario;
-          let updatedQuestItemsCollected = prev.questItemsCollected;
-          let updatedPlayers = prev.players;
-
-          if (questItem && prev.activeScenario) {
-            // Found a quest item! Collect it.
-            const result = collectQuestItem(prev.objectiveSpawnState!, questItem, prev.activeScenario);
-            updatedObjectiveSpawnState = result.updatedState;
-
-            if (result.updatedObjective) {
-              // Update the objective in scenario
-              updatedScenario = {
-                ...prev.activeScenario,
-                objectives: prev.activeScenario.objectives.map(o =>
-                  o.id === result.updatedObjective!.id ? result.updatedObjective! : o
-                )
-              };
-
-              addToLog(`QUEST ITEM FOUND: ${questItem.name}`);
-              addToLog(questItem.description);
-
-              if (result.objectiveCompleted) {
-                addToLog(`OBJECTIVE COMPLETE: ${result.updatedObjective.shortDescription}`);
-              } else {
-                addToLog(`Progress: ${result.updatedObjective.shortDescription}`);
-              }
-            }
-
-            updatedQuestItemsCollected = [...prev.questItemsCollected, questItem.id];
-
-            // ADD QUEST ITEM TO PLAYER'S INVENTORY
-            // Create a proper Item from the quest item data
-            const questItemForInventory: Item = {
-              id: `quest_${questItem.id}`,
-              name: questItem.name,
-              description: questItem.description,
-              type: 'quest_item',
-              isQuestItem: true,
-              questItemType: questItem.type as 'key' | 'clue' | 'collectible' | 'artifact' | 'component',
-              objectiveId: questItem.objectiveId,
-              slotType: 'bag', // Quest items go in bag
-              category: 'special'
-            };
-
-            // Add to active player's inventory
-            const activePlayer = prev.players[prev.activePlayerIndex];
-            if (activePlayer) {
-              const equipResult = equipItem(activePlayer.inventory, questItemForInventory);
-              if (equipResult.success) {
-                updatedPlayers = prev.players.map((p, idx) => {
-                  if (idx === prev.activePlayerIndex) {
-                    return { ...p, inventory: equipResult.inventory };
-                  }
-                  return p;
-                });
-                addToLog(`${activePlayer.name} tar med seg ${questItem.name}.`);
-                addFloatingText(activePlayer.position.q, activePlayer.position.r, questItem.name, "text-yellow-400");
-              } else {
-                addToLog(`⚠️ Inventory full! Quest item ${questItem.name} is tracked but not stored.`);
-              }
-            }
-          }
-
-          return {
-            ...prev,
-            players: updatedPlayers,
-            board: prev.board.map(t => {
-              if (t.id === tile.id) {
-                // Remove collected quest item from tile's items array
-                const updatedItems = questItem
-                  ? (t.items || []).filter(item => item.id !== questItem.id)
-                  : t.items;
-                const hasRemainingQuestItems = updatedItems?.some(i => i.isQuestItem) || false;
-
-                if (t.object) {
-                  return {
-                    ...t,
-                    searched: true,
-                    object: { ...t.object, searched: true },
-                    items: updatedItems,
-                    hasQuestItem: hasRemainingQuestItems
-                  };
-                }
-                return {
-                  ...t,
-                  searched: true,
-                  items: updatedItems,
-                  hasQuestItem: hasRemainingQuestItems
-                };
-              }
-              return t;
-            }),
-            objectiveSpawnState: updatedObjectiveSpawnState,
-            activeScenario: updatedScenario,
-            questItemsCollected: updatedQuestItemsCollected
-          };
-        });
-        break;
-
-      // Handle gate/trap/fog_wall object removal
-      case 'open_gate':
-      case 'force_gate':
-      case 'disarm_trap':
-      case 'trigger_trap':
-      case 'dispel_fog':
-        setState(prev => ({
-          ...prev,
-          board: prev.board.map(t =>
-            t.id === tile.id ? { ...t, object: undefined } : t
-          )
-        }));
-        break;
-
-      // =====================================================================
-      // BLOCKED EDGE ACTIONS - Clear or open blocked passages
-      // =====================================================================
-
-      // Clear edge blocking (rubble, barricade, etc.) - converts to open edge
-      case 'clear_edge_rubble':
-      case 'clear_edge_heavy_rubble':
-      case 'break_edge_barricade':
-      case 'unlock_edge_gate':
-      case 'lockpick_edge_gate':
-      case 'force_edge_gate':
-      case 'extinguish_edge_fire':
-      case 'dispel_edge_ward':
-      case 'banish_edge_spirits':
-        if (activeContextTarget.edgeIndex !== undefined) {
-          setState(prev => ({
-            ...prev,
-            board: prev.board.map(t => {
-              if (t.id === tile.id) {
-                const newEdges = [...t.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
-                newEdges[activeContextTarget.edgeIndex!] = {
-                  type: 'open' // Convert blocked edge to open
-                };
-                return { ...t, edges: newEdges };
-              }
-              return t;
-            })
-          }));
-          addToLog(`The passage is now clear.`);
-        }
-        break;
-
-      // Break window - converts window to open edge
-      case 'break_window':
-        if (activeContextTarget.edgeIndex !== undefined) {
-          setState(prev => ({
-            ...prev,
-            board: prev.board.map(t => {
-              if (t.id === tile.id) {
-                const newEdges = [...t.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
-                newEdges[activeContextTarget.edgeIndex!] = {
-                  type: 'open' // Broken window is now an open passage
-                };
-                return { ...t, edges: newEdges };
-              }
-              return t;
-            })
-          }));
-          addToLog(`The window shatters! You can now pass through.`);
-        }
-        break;
-
-      // Search edge debris (for items, doesn't clear the edge)
-      case 'search_edge_rubble':
-      case 'search_edge_water':
-        // Could spawn random item here
-        addToLog(`You search carefully but find nothing of value.`);
-        break;
-
-      // =====================================================================
-      // OBJECTIVE COMPLETION ACTIONS - Critical for winning scenarios
-      // =====================================================================
-
-      // Perform ritual at altar - completes ritual/interact objectives
-      case 'perform_ritual':
-      case 'seal_portal':
-      case 'flip_switch':
-        if (state.activeScenario) {
-          // Find matching ritual or interact objective
-          const interactObjective = state.activeScenario.objectives.find(
-            obj => (obj.type === 'ritual' || obj.type === 'interact') && !obj.completed && !obj.isHidden
-          );
-          if (interactObjective) {
-            const newAmount = (interactObjective.currentAmount || 0) + 1;
-            const targetAmount = interactObjective.targetAmount || 1;
-            const isComplete = newAmount >= targetAmount;
-
-            setState(prev => ({
-              ...prev,
-              activeScenario: prev.activeScenario ? {
-                ...prev.activeScenario,
-                objectives: prev.activeScenario.objectives.map(obj => {
-                  if (obj.id === interactObjective.id) {
-                    const updatedObj = { ...obj, currentAmount: newAmount, completed: isComplete };
-                    // Update shortDescription with progress
-                    if (targetAmount > 1) {
-                      updatedObj.shortDescription = obj.shortDescription.replace(
-                        /\(\d+\/\d+\)/, `(${newAmount}/${targetAmount})`
-                      );
-                    }
-                    return updatedObj;
-                  }
-                  // Reveal hidden objectives when their prerequisite is completed
-                  if (obj.isHidden && obj.revealedBy === interactObjective.id && isComplete) {
-                    return { ...obj, isHidden: false };
-                  }
-                  return obj;
-                })
-              } : null
-            }));
-
-            if (isComplete) {
-              addToLog(`OBJECTIVE COMPLETE: ${interactObjective.shortDescription}`);
-              addFloatingText(tile.q, tile.r, "OBJECTIVE COMPLETE!", "text-purple-400");
-            } else {
-              addToLog(`Objective progress: ${interactObjective.shortDescription} (${newAmount}/${targetAmount})`);
-              addFloatingText(tile.q, tile.r, `${newAmount}/${targetAmount}`, "text-yellow-400");
-            }
-          }
-        }
-        break;
-
-      // Escape action - completes escape objectives and triggers victory
-      case 'escape':
-        if (state.activeScenario) {
-          const escapeObjective = state.activeScenario.objectives.find(
-            obj => obj.type === 'escape' && !obj.completed
-          );
-          if (escapeObjective) {
-            setState(prev => ({
-              ...prev,
-              activeScenario: prev.activeScenario ? {
-                ...prev.activeScenario,
-                objectives: prev.activeScenario.objectives.map(obj =>
-                  obj.id === escapeObjective.id
-                    ? { ...obj, completed: true }
-                    : obj
-                )
-              } : null
-            }));
-            addToLog(`OBJECTIVE COMPLETE: ${escapeObjective.shortDescription}`);
-            addToLog(`You have escaped!`);
-            addFloatingText(tile.q, tile.r, "ESCAPED!", "text-green-400");
-          } else {
-            // No escape objective, but we're on exit - still log escape
-            addToLog(`You have escaped the horrors within!`);
-            addFloatingText(tile.q, tile.r, "ESCAPED!", "text-green-400");
-          }
-        }
-        break;
-
-      // Handle quest item pickup - allows picking up visible quest items
-      default:
-        if (action.id.startsWith('pickup_quest_item_')) {
-          // Extract item index from action id
-          const itemIndexStr = action.id.replace('pickup_quest_item_', '');
-          const itemIndex = parseInt(itemIndexStr, 10);
-
-          // Find the quest item on the tile
-          const questItems = tile.items?.filter(item => item.isQuestItem) || [];
-          const questItemToPickup = questItems[itemIndex];
-
-          if (questItemToPickup && state.activeScenario) {
-            // Find matching quest item in spawn state
-            const spawnedQuestItem = state.objectiveSpawnState?.questItems.find(
-              qi => qi.spawned && qi.spawnedOnTileId === tile.id && !qi.collected &&
-                    (qi.id === questItemToPickup.id || qi.name === questItemToPickup.name)
-            );
-
-            let updatedObjectiveSpawnState = state.objectiveSpawnState;
-            let updatedScenario = state.activeScenario;
-            let updatedQuestItemsCollected = state.questItemsCollected;
-            let updatedPlayers = state.players;
-
-            if (spawnedQuestItem) {
-              // Collect via spawn state system
-              const result = collectQuestItem(state.objectiveSpawnState!, spawnedQuestItem, state.activeScenario);
-              updatedObjectiveSpawnState = result.updatedState;
-
-              if (result.updatedObjective) {
-                updatedScenario = {
-                  ...state.activeScenario,
-                  objectives: state.activeScenario.objectives.map(o =>
-                    o.id === result.updatedObjective!.id ? result.updatedObjective! : o
-                  )
-                };
-
-                addToLog(`QUEST ITEM COLLECTED: ${spawnedQuestItem.name}`);
-
-                if (result.objectiveCompleted) {
-                  addToLog(`OBJECTIVE COMPLETE: ${result.updatedObjective.shortDescription}`);
-                  addFloatingText(tile.q, tile.r, "OBJECTIVE COMPLETE!", "text-green-400");
-                } else {
-                  addToLog(`Progress: ${result.updatedObjective.shortDescription}`);
-                }
-              }
-
-              updatedQuestItemsCollected = [...state.questItemsCollected, spawnedQuestItem.id];
-            }
-
-            // Add quest item to player's inventory
-            const questItemForInventory: Item = {
-              id: `quest_${questItemToPickup.id || Date.now()}`,
-              name: questItemToPickup.name,
-              description: questItemToPickup.description || '',
-              type: 'quest_item',
-              isQuestItem: true,
-              questItemType: questItemToPickup.questItemType as 'key' | 'clue' | 'collectible' | 'artifact' | 'component',
-              objectiveId: questItemToPickup.objectiveId,
-              slotType: 'bag',
-              category: 'special'
-            };
-
-            const activePlayer = state.players[state.activePlayerIndex];
-            if (activePlayer) {
-              const equipResult = equipItem(activePlayer.inventory, questItemForInventory);
-              if (equipResult.success) {
-                updatedPlayers = state.players.map((p, idx) => {
-                  if (idx === state.activePlayerIndex) {
-                    return { ...p, inventory: equipResult.inventory };
-                  }
-                  return p;
-                });
-                addToLog(`${activePlayer.name} tar med seg ${questItemToPickup.name}.`);
-                addFloatingText(activePlayer.position.q, activePlayer.position.r, questItemToPickup.name, "text-yellow-400");
-              } else {
-                addToLog(`⚠️ Inventory full! Quest item ${questItemToPickup.name} is tracked but not stored.`);
-              }
-            }
-
-            // Update state
-            setState(prev => ({
-              ...prev,
-              players: updatedPlayers,
-              board: prev.board.map(t => {
-                if (t.id === tile.id) {
-                  // Remove picked up quest item from tile's items array
-                  const updatedItems = (t.items || []).filter(item =>
-                    item.id !== questItemToPickup.id && item.name !== questItemToPickup.name
-                  );
-                  const hasRemainingQuestItems = updatedItems.some(i => i.isQuestItem);
-                  return {
-                    ...t,
-                    items: updatedItems,
-                    hasQuestItem: hasRemainingQuestItems
-                  };
-                }
-                return t;
-              }),
-              objectiveSpawnState: updatedObjectiveSpawnState,
-              activeScenario: updatedScenario,
-              questItemsCollected: updatedQuestItemsCollected
-            }));
-          }
-        }
-        break;
+    // Apply state updates
+    if (result.board || result.players || result.activeScenario !== undefined ||
+        result.objectiveSpawnState !== undefined || result.questItemsCollected) {
+      setState(prev => ({
+        ...prev,
+        ...(result.board && { board: result.board }),
+        ...(result.players && { players: result.players }),
+        ...(result.activeScenario !== undefined && { activeScenario: result.activeScenario }),
+        ...(result.objectiveSpawnState !== undefined && { objectiveSpawnState: result.objectiveSpawnState }),
+        ...(result.questItemsCollected && { questItemsCollected: result.questItemsCollected })
+      }));
     }
   }, [activeContextTarget, state.board, state.activeScenario, state.objectiveSpawnState, state.questItemsCollected, state.players, state.activePlayerIndex]);
+
+  // NOTE: The following cases were part of the old 470-line switch statement
+  // They have been refactored into contextActionEffects.ts - DO NOT REINTRODUCE
+  // Old cases: force_door, break_barricade, close_door, clear_rubble, extinguish,
+  // search_tile, search_books, search_container, search_rubble, search_water,
+  // search_statue, open_gate, force_gate, disarm_trap, trigger_trap, dispel_fog,
+  // clear_edge_*, break_edge_*, unlock_edge_*, lockpick_edge_*, extinguish_edge_*,
+  // dispel_edge_*, banish_edge_*, break_window, search_edge_*, perform_ritual,
+  // seal_portal, flip_switch, escape, pickup_quest_item_*
 
   // Handle puzzle completion (from PuzzleModal)
   // Now supports cost parameter for blood_ritual puzzles
