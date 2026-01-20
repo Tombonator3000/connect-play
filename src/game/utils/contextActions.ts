@@ -339,8 +339,27 @@ export function getContextActions(
       break;
 
     case 'tile':
-      // General tile actions (search, etc.)
+      // General tile actions (search, pick up items, etc.)
       const actions: ContextAction[] = [];
+
+      // Check if tile has visible quest items that can be picked up
+      const hasVisibleQuestItems = tile.items && tile.items.length > 0 && tile.items.some(item => item.isQuestItem);
+      if (hasVisibleQuestItems) {
+        // Add pick up action for each visible quest item
+        const questItems = tile.items?.filter(item => item.isQuestItem) || [];
+        questItems.forEach((item, index) => {
+          actions.push({
+            id: `pickup_quest_item_${index}`,
+            label: `Plukk opp: ${item.name}`,
+            icon: 'interact',
+            apCost: 0, // Free action to pick up visible items
+            enabled: true,
+            successMessage: `Du plukket opp ${item.name}!`
+          });
+        });
+      }
+
+      // Standard search action for searchable tiles
       if (tile.searchable && !tile.searched) {
         actions.push({
           id: 'search_tile',

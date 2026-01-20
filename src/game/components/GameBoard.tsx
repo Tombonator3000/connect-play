@@ -533,10 +533,11 @@ interface GameBoardProps {
 
 const HEX_SIZE = 95;
 const VISIBILITY_RANGE = 2;
-// Mobile touch thresholds - increased for better tap detection on touchscreens
-const DRAG_THRESHOLD = 15; // px - increased from 5 to account for finger wobble
-const TAP_TIME_THRESHOLD = 250; // ms - max time for a tap vs hold
+// Mobile touch thresholds - increased significantly for better tap detection on touchscreens
+const DRAG_THRESHOLD = 25; // px - increased to 25 to account for finger wobble on mobile
+const TAP_TIME_THRESHOLD = 350; // ms - increased to 350 for more forgiving tap detection
 const LONG_PRESS_THRESHOLD = 400; // ms - time for long press to trigger preview
+const MOBILE_TAP_MOVEMENT_THRESHOLD = 20; // px - max movement allowed during tap on mobile
 const HEX_POLY_POINTS = "25,0 75,0 100,50 75,100 25,100 0,50";
 
 // Hex neighbor directions (flat-top hexagon)
@@ -1065,14 +1066,27 @@ const GameBoard: React.FC<GameBoardProps> = ({
               onTouchEnd={(e) => {
                 setTouchedTileKey(null);
                 handleTileLongPressEnd();
-                // Mobile tap detection - trigger tile click if it was a quick tap without drag
+                // Mobile tap detection - trigger tile click if it was a quick tap without significant drag
                 const touchDuration = Date.now() - tileTouchStartTime.current;
                 const wasQuickTap = touchDuration < TAP_TIME_THRESHOLD;
                 const wasSameTile = touchedTileRef.current?.q === tile.q && touchedTileRef.current?.r === tile.r;
 
-                if (wasQuickTap && !hasDragged.current && wasSameTile) {
+                // Calculate actual movement from touch start position
+                const changedTouch = e.changedTouches[0];
+                let actualMovement = 0;
+                if (changedTouch && tileTouchStartPos.current) {
+                  actualMovement = Math.hypot(
+                    changedTouch.clientX - tileTouchStartPos.current.x,
+                    changedTouch.clientY - tileTouchStartPos.current.y
+                  );
+                }
+                const wasMinimalMovement = actualMovement < MOBILE_TAP_MOVEMENT_THRESHOLD;
+
+                // Use both hasDragged and actual movement check for more reliable tap detection
+                if (wasQuickTap && wasSameTile && (wasMinimalMovement || !hasDragged.current)) {
                   // Prevent onClick from also firing
                   e.preventDefault();
+                  e.stopPropagation();
                   onTileClick(tile.q, tile.r);
                 }
                 touchedTileRef.current = null;
@@ -1782,14 +1796,27 @@ const GameBoard: React.FC<GameBoardProps> = ({
               onTouchEnd={(e) => {
                 setTouchedTileKey(null);
                 handleTileLongPressEnd();
-                // Mobile tap detection - trigger tile click if it was a quick tap without drag
+                // Mobile tap detection - trigger tile click if it was a quick tap without significant drag
                 const touchDuration = Date.now() - tileTouchStartTime.current;
                 const wasQuickTap = touchDuration < TAP_TIME_THRESHOLD;
                 const wasSameTile = touchedTileRef.current?.q === move.q && touchedTileRef.current?.r === move.r;
 
-                if (wasQuickTap && !hasDragged.current && wasSameTile) {
+                // Calculate actual movement from touch start position
+                const changedTouch = e.changedTouches[0];
+                let actualMovement = 0;
+                if (changedTouch && tileTouchStartPos.current) {
+                  actualMovement = Math.hypot(
+                    changedTouch.clientX - tileTouchStartPos.current.x,
+                    changedTouch.clientY - tileTouchStartPos.current.y
+                  );
+                }
+                const wasMinimalMovement = actualMovement < MOBILE_TAP_MOVEMENT_THRESHOLD;
+
+                // Use both hasDragged and actual movement check for more reliable tap detection
+                if (wasQuickTap && wasSameTile && (wasMinimalMovement || !hasDragged.current)) {
                   // Prevent onClick from also firing
                   e.preventDefault();
+                  e.stopPropagation();
                   onTileClick(move.q, move.r);
                 }
                 touchedTileRef.current = null;

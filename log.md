@@ -1,5 +1,121 @@
 # Development Log
 
+## 2026-01-20: Comprehensive Mobile Touch and Quest Item Fixes
+
+### Oppsummering
+
+Fikset tre kritiske problemer:
+1. **Touch-basert spillerbevegelse** - Forbedret tap-deteksjon med høyere thresholds og bevegelsessjekk
+2. **Quest item pickup** - Lagt til direkte "Plukk opp" handling for synlige quest items
+3. **Tile info-avsløring på mobil** - Spilleren kan ikke lenger se context actions for fjerne tiles
+
+---
+
+### PROBLEMER IDENTIFISERT OG LØST 🔴→✅
+
+#### 1. Mobil touch bevegelse fungerte fortsatt ikke pålitelig
+**Problem:** Selv etter forrige fix, var det vanskelig å flytte spilleren på mobil. Finger-bevegelser under tap trigger fortsatt `hasDragged.current = true`.
+
+**Løsning:**
+- Økt `DRAG_THRESHOLD` fra 15px til 25px
+- Økt `TAP_TIME_THRESHOLD` fra 250ms til 350ms
+- Lagt til ny `MOBILE_TAP_MOVEMENT_THRESHOLD` (20px) for å sjekke faktisk bevegelse
+- Oppdatert touch handlers til å bruke både `hasDragged` og faktisk bevegelsesavstand:
+
+```typescript
+// Calculate actual movement from touch start position
+const changedTouch = e.changedTouches[0];
+let actualMovement = 0;
+if (changedTouch && tileTouchStartPos.current) {
+  actualMovement = Math.hypot(
+    changedTouch.clientX - tileTouchStartPos.current.x,
+    changedTouch.clientY - tileTouchStartPos.current.y
+  );
+}
+const wasMinimalMovement = actualMovement < MOBILE_TAP_MOVEMENT_THRESHOLD;
+
+// Use both hasDragged and actual movement check for more reliable tap detection
+if (wasQuickTap && wasSameTile && (wasMinimalMovement || !hasDragged.current)) {
+  onTileClick(tile.q, tile.r);
+}
+```
+
+**Fil:** `src/game/components/GameBoard.tsx`
+
+---
+
+#### 2. Kan ikke plukke opp quest items
+**Problem:** Quest items på tiles kunne ikke plukkes opp. Spilleren måtte bruke "Search Area" som krever skill check.
+
+**Løsning:**
+- Lagt til eksplisitt "Plukk opp: [item navn]" handling i context actions for tiles med synlige quest items
+- Quest item pickup er nå gratis (0 AP) - det er en "free action"
+- Lagt til `pickup_quest_item_X` handling i `handleContextActionEffect`
+
+**Fil:** `src/game/utils/contextActions.ts` og `src/game/ShadowsGame.tsx`
+
+```typescript
+// Check if tile has visible quest items that can be picked up
+const hasVisibleQuestItems = tile.items && tile.items.length > 0 && tile.items.some(item => item.isQuestItem);
+if (hasVisibleQuestItems) {
+  const questItems = tile.items?.filter(item => item.isQuestItem) || [];
+  questItems.forEach((item, index) => {
+    actions.push({
+      id: `pickup_quest_item_${index}`,
+      label: `Plukk opp: ${item.name}`,
+      icon: 'interact',
+      apCost: 0, // Free action to pick up visible items
+      enabled: true,
+      successMessage: `Du plukket opp ${item.name}!`
+    });
+  });
+}
+```
+
+---
+
+#### 3. Man kan trykke på alle tiles og se info (mobil)
+**Problem:** Spilleren kunne trykke på tiles langt unna og se context actions, som avslører info om objekter og obstacles på tilen.
+
+**Løsning:**
+- Lagt til adjacency-sjekk før context actions vises
+- Hvis spilleren klikker på en tile med blocking object/obstacle som ikke er adjacent, vises meldingen "Du må være nærmere for å interagere med det."
+
+**Fil:** `src/game/ShadowsGame.tsx`
+
+```typescript
+// Check if target tile is adjacent to player (distance 1 or 0)
+const distanceToTarget = hexDistance(activePlayer.position, { q, r });
+const isAdjacent = distanceToTarget <= 1;
+
+// Check for blocking objects - only show context menu if adjacent
+if (targetTile?.object?.blocking) {
+  if (isAdjacent) {
+    showContextActions(targetTile);
+  } else {
+    addToLog(`Du må være nærmere for å interagere med det.`);
+  }
+  return;
+}
+```
+
+---
+
+### FILER ENDRET
+
+1. **src/game/components/GameBoard.tsx**
+   - Økt touch thresholds for mer pålitelig tap-deteksjon
+   - Lagt til faktisk bevegelsessjekk i onTouchEnd
+
+2. **src/game/utils/contextActions.ts**
+   - Lagt til "Plukk opp" actions for tiles med synlige quest items
+
+3. **src/game/ShadowsGame.tsx**
+   - Lagt til `pickup_quest_item_X` handling i handleContextActionEffect
+   - Lagt til adjacency-sjekk før context actions vises
+
+---
+
 ## 2026-01-20: Fix Mobile Touch Movement and Disable Tooltip Inspection
 
 ### Oppsummering

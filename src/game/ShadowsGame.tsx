@@ -1934,8 +1934,114 @@ const ShadowsGame: React.FC = () => {
           }
         }
         break;
+
+      // Handle quest item pickup - allows picking up visible quest items
+      default:
+        if (action.id.startsWith('pickup_quest_item_')) {
+          // Extract item index from action id
+          const itemIndexStr = action.id.replace('pickup_quest_item_', '');
+          const itemIndex = parseInt(itemIndexStr, 10);
+
+          // Find the quest item on the tile
+          const questItems = tile.items?.filter(item => item.isQuestItem) || [];
+          const questItemToPickup = questItems[itemIndex];
+
+          if (questItemToPickup && state.activeScenario) {
+            // Find matching quest item in spawn state
+            const spawnedQuestItem = state.objectiveSpawnState?.questItems.find(
+              qi => qi.spawned && qi.spawnedOnTileId === tile.id && !qi.collected &&
+                    (qi.id === questItemToPickup.id || qi.name === questItemToPickup.name)
+            );
+
+            let updatedObjectiveSpawnState = state.objectiveSpawnState;
+            let updatedScenario = state.activeScenario;
+            let updatedQuestItemsCollected = state.questItemsCollected;
+            let updatedPlayers = state.players;
+
+            if (spawnedQuestItem) {
+              // Collect via spawn state system
+              const result = collectQuestItem(state.objectiveSpawnState!, spawnedQuestItem, state.activeScenario);
+              updatedObjectiveSpawnState = result.updatedState;
+
+              if (result.updatedObjective) {
+                updatedScenario = {
+                  ...state.activeScenario,
+                  objectives: state.activeScenario.objectives.map(o =>
+                    o.id === result.updatedObjective!.id ? result.updatedObjective! : o
+                  )
+                };
+
+                addToLog(`QUEST ITEM COLLECTED: ${spawnedQuestItem.name}`);
+
+                if (result.objectiveCompleted) {
+                  addToLog(`OBJECTIVE COMPLETE: ${result.updatedObjective.shortDescription}`);
+                  addFloatingText(tile.q, tile.r, "OBJECTIVE COMPLETE!", "text-green-400");
+                } else {
+                  addToLog(`Progress: ${result.updatedObjective.shortDescription}`);
+                }
+              }
+
+              updatedQuestItemsCollected = [...state.questItemsCollected, spawnedQuestItem.id];
+            }
+
+            // Add quest item to player's inventory
+            const questItemForInventory: Item = {
+              id: `quest_${questItemToPickup.id || Date.now()}`,
+              name: questItemToPickup.name,
+              description: questItemToPickup.description || '',
+              type: 'quest_item',
+              isQuestItem: true,
+              questItemType: questItemToPickup.questItemType as 'key' | 'clue' | 'collectible' | 'artifact' | 'component',
+              objectiveId: questItemToPickup.objectiveId,
+              slotType: 'bag',
+              category: 'special'
+            };
+
+            const activePlayer = state.players[state.activePlayerIndex];
+            if (activePlayer) {
+              const equipResult = equipItem(activePlayer.inventory, questItemForInventory);
+              if (equipResult.success) {
+                updatedPlayers = state.players.map((p, idx) => {
+                  if (idx === state.activePlayerIndex) {
+                    return { ...p, inventory: equipResult.inventory };
+                  }
+                  return p;
+                });
+                addToLog(`${activePlayer.name} tar med seg ${questItemToPickup.name}.`);
+                addFloatingText(activePlayer.position.q, activePlayer.position.r, questItemToPickup.name, "text-yellow-400");
+              } else {
+                addToLog(`⚠️ Inventory full! Quest item ${questItemToPickup.name} is tracked but not stored.`);
+              }
+            }
+
+            // Update state
+            setState(prev => ({
+              ...prev,
+              players: updatedPlayers,
+              board: prev.board.map(t => {
+                if (t.id === tile.id) {
+                  // Remove picked up quest item from tile's items array
+                  const updatedItems = (t.items || []).filter(item =>
+                    item.id !== questItemToPickup.id && item.name !== questItemToPickup.name
+                  );
+                  const hasRemainingQuestItems = updatedItems.some(i => i.isQuestItem);
+                  return {
+                    ...t,
+                    items: updatedItems,
+                    hasQuestItem: hasRemainingQuestItems
+                  };
+                }
+                return t;
+              }),
+              objectiveSpawnState: updatedObjectiveSpawnState,
+              activeScenario: updatedScenario,
+              questItemsCollected: updatedQuestItemsCollected
+            }));
+          }
+        }
+        break;
     }
-  }, [activeContextTarget, state.board, state.activeScenario]);
+  }, [activeContextTarget, state.board, state.activeScenario, state.objectiveSpawnState, state.questItemsCollected, state.players, state.activePlayerIndex]);
 
   // Handle puzzle completion (from PuzzleModal)
   // Now supports cost parameter for blood_ritual puzzles
@@ -2333,19 +2439,32 @@ const ShadowsGame: React.FC = () => {
         const { q, r } = payload;
         const targetTile = state.board.find(t => t.q === q && t.r === r);
 
-        // Check for blocking objects - show context menu
+        // Check if target tile is adjacent to player (distance 1 or 0)
+        const distanceToTarget = hexDistance(activePlayer.position, { q, r });
+        const isAdjacent = distanceToTarget <= 1;
+
+        // Check for blocking objects - only show context menu if adjacent
+        // On mobile, don't reveal info about distant tiles
         if (targetTile?.object?.blocking) {
-          setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
-          showContextActions(targetTile);
-          addToLog(`PATH BLOCKED: ${targetTile.object.type}.`);
+          if (isAdjacent) {
+            setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
+            showContextActions(targetTile);
+            addToLog(`PATH BLOCKED: ${targetTile.object.type}.`);
+          } else {
+            addToLog(`Du må være nærmere for å interagere med det.`);
+          }
           return;
         }
 
-        // Check for blocking obstacles - show context menu
+        // Check for blocking obstacles - only show context menu if adjacent
         if (targetTile?.obstacle?.blocking) {
-          setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
-          showContextActions(targetTile);
-          addToLog(`PATH BLOCKED: ${targetTile.obstacle.type.replace('_', ' ')}.`);
+          if (isAdjacent) {
+            setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
+            showContextActions(targetTile);
+            addToLog(`PATH BLOCKED: ${targetTile.obstacle.type.replace('_', ' ')}.`);
+          } else {
+            addToLog(`Du må være nærmere for å interagere med det.`);
+          }
           return;
         }
 
