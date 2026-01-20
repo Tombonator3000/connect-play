@@ -11,6 +11,7 @@ import React, { useState, useMemo } from 'react';
 import { X, HelpCircle, BookOpen, Skull, Heart, Swords, Shield, Eye, AlertTriangle } from 'lucide-react';
 import { EnemyType, BestiaryEntry } from '../types';
 import { BESTIARY } from '../constants';
+import { getMonsterPortrait } from '../utils/monsterAssets';
 
 interface FieldGuidePanelProps {
   encounteredEnemies: string[];  // Array of EnemyType strings that player has encountered
@@ -100,24 +101,13 @@ export const FieldGuidePanel: React.FC<FieldGuidePanelProps> = ({
       >
         {discovered ? (
           <>
-            {/* Monster icon/emoji placeholder */}
-            <div className="text-2xl mb-1">
-              {type === 'cultist' && '🗡️'}
-              {type === 'mi-go' && '🦀'}
-              {type === 'nightgaunt' && '🦇'}
-              {type === 'moon_beast' && '🌙'}
-              {type === 'ghoul' && '💀'}
-              {type === 'deepone' && '🐟'}
-              {type === 'sniper' && '🎯'}
-              {type === 'byakhee' && '🦅'}
-              {type === 'formless_spawn' && '🫧'}
-              {type === 'hound' && '🐕'}
-              {type === 'priest' && '📿'}
-              {type === 'hunting_horror' && '🐍'}
-              {type === 'dark_young' && '🌲'}
-              {type === 'shoggoth' && '👁️'}
-              {type === 'star_spawn' && '⭐'}
-              {type === 'boss' && '👹'}
+            {/* Monster portrait */}
+            <div className="w-12 h-12 md:w-14 md:h-14 mb-1 rounded-full overflow-hidden border-2 border-amber-700/50 bg-stone-800">
+              <img
+                src={getMonsterPortrait(type)}
+                alt={entry?.name || type}
+                className="w-full h-full object-cover object-center"
+              />
             </div>
             <span className="text-[10px] md:text-xs text-amber-200 font-bold uppercase tracking-wider line-clamp-1">
               {entry?.name || type}
@@ -149,37 +139,27 @@ export const FieldGuidePanel: React.FC<FieldGuidePanelProps> = ({
 
     return (
       <div className="p-4 md:p-6 h-full overflow-y-auto">
-        {/* Header */}
+        {/* Header with large portrait */}
         <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="text-4xl">
-              {selectedMonster === 'cultist' && '🗡️'}
-              {selectedMonster === 'mi-go' && '🦀'}
-              {selectedMonster === 'nightgaunt' && '🦇'}
-              {selectedMonster === 'moon_beast' && '🌙'}
-              {selectedMonster === 'ghoul' && '💀'}
-              {selectedMonster === 'deepone' && '🐟'}
-              {selectedMonster === 'sniper' && '🎯'}
-              {selectedMonster === 'byakhee' && '🦅'}
-              {selectedMonster === 'formless_spawn' && '🫧'}
-              {selectedMonster === 'hound' && '🐕'}
-              {selectedMonster === 'priest' && '📿'}
-              {selectedMonster === 'hunting_horror' && '🐍'}
-              {selectedMonster === 'dark_young' && '🌲'}
-              {selectedMonster === 'shoggoth' && '👁️'}
-              {selectedMonster === 'star_spawn' && '⭐'}
-              {selectedMonster === 'boss' && '👹'}
-            </span>
-            <div>
-              <h2 className="text-2xl font-bold text-amber-200">{selectedEntry.name}</h2>
+          <div className="flex items-start gap-4 mb-4">
+            {/* Large monster portrait */}
+            <div className="w-24 h-24 md:w-32 md:h-32 flex-shrink-0 rounded-lg overflow-hidden border-2 border-amber-700 bg-stone-800 shadow-lg shadow-amber-900/20">
+              <img
+                src={getMonsterPortrait(selectedMonster)}
+                alt={selectedEntry.name}
+                className="w-full h-full object-cover object-center"
+              />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-2xl md:text-3xl font-bold text-amber-200 mb-1">{selectedEntry.name}</h2>
               <span className={`text-xs font-bold uppercase tracking-widest ${threat.color}`}>
                 {threat.text}
               </span>
+              <p className="text-stone-300 italic text-sm mt-3 border-l-2 border-amber-700 pl-3">
+                "{selectedEntry.description}"
+              </p>
             </div>
           </div>
-          <p className="text-stone-300 italic text-sm border-l-2 border-amber-700 pl-3">
-            "{selectedEntry.description}"
-          </p>
         </div>
 
         {/* Stats */}

@@ -1,5 +1,88 @@
 # Development Log
 
+## 2026-01-20: Bestiary Panel Enhancement - "Notes on the Horrors"
+
+### Oppgave
+Forbedre Bestiary-panelet i FieldGuide slik at spillere kan se alle oppdagede monstre med deres faktiske portretter og lore-tekst i stedet for emojier.
+
+### Implementasjon
+
+#### 1. Import av Monster-portretter (`src/game/components/FieldGuidePanel.tsx`)
+
+**Endring:** Lagt til import av `getMonsterPortrait` fra `monsterAssets.ts`.
+
+```typescript
+import { getMonsterPortrait } from '../utils/monsterAssets';
+```
+
+#### 2. Monster-kort med portretter
+
+**Endring:** Erstattet emoji-ikoner med faktiske monster-portretter i monster-kortene.
+
+**Før:**
+```typescript
+<div className="text-2xl mb-1">
+  {type === 'cultist' && '🗡️'}
+  {type === 'ghoul' && '💀'}
+  // ... etc
+</div>
+```
+
+**Etter:**
+```typescript
+<div className="w-12 h-12 md:w-14 md:h-14 mb-1 rounded-full overflow-hidden border-2 border-amber-700/50 bg-stone-800">
+  <img
+    src={getMonsterPortrait(type)}
+    alt={entry?.name || type}
+    className="w-full h-full object-cover object-center"
+  />
+</div>
+```
+
+#### 3. Detalj-panel med stort portrett
+
+**Endring:** Erstattet emoji med et stort monster-portrett (32x32 på desktop, 24x24 på mobil).
+
+```typescript
+<div className="w-24 h-24 md:w-32 md:h-32 flex-shrink-0 rounded-lg overflow-hidden border-2 border-amber-700 bg-stone-800 shadow-lg shadow-amber-900/20">
+  <img
+    src={getMonsterPortrait(selectedMonster)}
+    alt={selectedEntry.name}
+    className="w-full h-full object-cover object-center"
+  />
+</div>
+```
+
+### Bestiary Panel Features
+
+| Feature | Beskrivelse |
+|---------|-------------|
+| **Monster Grid** | Venstre panel med 2-kolonne grid av monster-kort |
+| **Portretter** | Runde portretter i kortene, firkantede i detalj-panelet |
+| **Discovered System** | Kun oppdagede monstre viser portretter, ukjente viser spørsmålstegn |
+| **Stats Display** | HP, Attack Dice, Defense Dice, Horror level |
+| **Lore Section** | Utdypende lore-tekst for hvert monster |
+| **Traits** | Badges for monster-egenskaper (Flying, Aquatic, Fast, etc.) |
+| **Defeat Flavor** | Tekst som vises når monsteret beseires |
+
+### Monster-kategorier
+
+| Kategori | Farge | Monstre |
+|----------|-------|---------|
+| **Minions** | Stone (grå) | Cultist, Mi-Go, Nightgaunt, Moon-Beast |
+| **Warriors** | Amber (gul) | Ghoul, Deep One, Sniper, Byakhee, Formless Spawn, Hound |
+| **Elites** | Red (rød) | Dark Priest, Hunting Horror, Dark Young |
+| **Bosses** | Purple (lilla) | Shoggoth, Star Spawn, Elder Horror |
+
+### Relaterte filer
+
+- `src/game/components/FieldGuidePanel.tsx` - Hovedkomponent for Bestiary
+- `src/game/utils/monsterAssets.ts` - Monster-portretter og helper-funksjoner
+- `src/game/constants.ts` - BESTIARY med all monster-data og lore
+- `src/assets/monsters/` - Monster-portrettbilder
+
+---
+
 ## 2026-01-20: Spell Particle Effects - "The Arcane Manifestations"
 
 ### Oppgave
