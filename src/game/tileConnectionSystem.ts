@@ -818,6 +818,481 @@ export const NATURE_STONES: TileTemplate = {
 };
 
 // ============================================================================
+// PRIORITY 1 - ESSENTIAL NEW TILES (12)
+// ============================================================================
+
+// ----- NEW FACADE TEMPLATES -----
+
+export const FACADE_ASYLUM: TileTemplate = {
+  id: 'facade_asylum',
+  name: 'Arkham Asylum',
+  category: 'facade',
+  subType: 'asylum',
+  edges: ['DOOR', 'WALL', 'WALL', 'FACADE', 'WALL', 'WALL'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'Brain',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Iron gates guard Arkham\'s infamous asylum. The screams from within are not always human.',
+  enemySpawnChance: 15,
+  possibleEnemies: ['cultist']
+};
+
+export const FACADE_HOSPITAL: TileTemplate = {
+  id: 'facade_hospital',
+  name: 'St. Mary\'s Hospital',
+  category: 'facade',
+  subType: 'hospital',
+  edges: ['DOOR', 'WALL', 'DOOR', 'FACADE', 'WALL', 'WALL'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'Cross',
+  spawnWeight: 7,
+  canRotate: true,
+  description: 'The hospital stands quiet. Too quiet. The emergency ward light flickers in a pattern.'
+};
+
+export const FACADE_MUSEUM: TileTemplate = {
+  id: 'facade_museum',
+  name: 'Arkham Historical Museum',
+  category: 'facade',
+  subType: 'museum',
+  edges: ['DOOR', 'WALL', 'WALL', 'FACADE', 'WALL', 'WALL'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'Landmark',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Exhibits from civilizations that predate known history. The new Egyptian wing is closed indefinitely.'
+};
+
+export const FACADE_POLICE: TileTemplate = {
+  id: 'facade_police',
+  name: 'Arkham Police Station',
+  category: 'facade',
+  subType: 'police',
+  edges: ['DOOR', 'WALL', 'WALL', 'FACADE', 'WALL', 'WALL'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'Shield',
+  spawnWeight: 7,
+  canRotate: true,
+  description: 'The station is undermanned tonight. Case files on the desk describe things the police cannot fight.'
+};
+
+export const FACADE_WITCHHOUSE: TileTemplate = {
+  id: 'facade_witchhouse',
+  name: 'The Witch House',
+  category: 'facade',
+  subType: 'witchhouse',
+  edges: ['DOOR', 'WALL', 'WALL', 'NATURE', 'WALL', 'WALL'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'Sparkles',
+  spawnWeight: 3,
+  canRotate: true,
+  description: 'Keziah Mason\'s house. The angles are wrong—geometry that hurts to comprehend.',
+  enemySpawnChance: 40,
+  possibleEnemies: ['cultist', 'nightgaunt']
+};
+
+// ----- NEW ROOM TEMPLATES -----
+
+export const ROOM_PARLOR: TileTemplate = {
+  id: 'room_parlor',
+  name: 'Victorian Parlor',
+  category: 'room',
+  subType: 'parlor',
+  edges: ['DOOR', 'WALL', 'WALL', 'DOOR', 'WALL', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Armchair',
+  spawnWeight: 10,
+  canRotate: true,
+  description: 'Velvet curtains and a spirit board on the table. The planchette moves without touch.',
+  possibleObjects: ['altar', 'cabinet']
+};
+
+export const ROOM_OFFICE: TileTemplate = {
+  id: 'room_office',
+  name: 'Administrator\'s Office',
+  category: 'room',
+  subType: 'office',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WINDOW'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'FileText',
+  spawnWeight: 12,
+  canRotate: true,
+  description: 'Filing cabinets overflow with documents. One drawer is labeled "DO NOT OPEN".',
+  possibleObjects: ['cabinet', 'chest']
+};
+
+export const ROOM_GALLERY: TileTemplate = {
+  id: 'room_gallery',
+  name: 'Art Gallery',
+  category: 'room',
+  subType: 'gallery',
+  edges: ['DOOR', 'WALL', 'DOOR', 'WALL', 'WALL', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Frame',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'Portraits of people who never existed. One canvas shows a place that will exist tomorrow.',
+  possibleObjects: ['statue', 'painting']
+};
+
+export const ROOM_CONSERVATORY: TileTemplate = {
+  id: 'room_conservatory',
+  name: 'Overgrown Conservatory',
+  category: 'room',
+  subType: 'conservatory',
+  edges: ['DOOR', 'WINDOW', 'WINDOW', 'WALL', 'WINDOW', 'WALL'],
+  floorType: 'grass',
+  zoneLevel: 1,
+  watermarkIcon: 'Flower',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Plants have burst their pots, reclaiming the glass house. Some species are unknown to botany.'
+};
+
+// ----- NEW BASEMENT/CRYPT TEMPLATES -----
+
+export const BASEMENT_MINE: TileTemplate = {
+  id: 'basement_mine',
+  name: 'Abandoned Mine Shaft',
+  category: 'basement',
+  subType: 'mine',
+  edges: ['STAIRS_UP', 'WALL', 'OPEN', 'OPEN', 'WALL', 'WALL'],
+  floorType: 'dirt',
+  zoneLevel: -1,
+  watermarkIcon: 'Pickaxe',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Timber supports groan under tons of earth. The miners dug too deep.',
+  enemySpawnChance: 35,
+  possibleEnemies: ['ghoul', 'formless_spawn']
+};
+
+export const CRYPT_SANCTUM: TileTemplate = {
+  id: 'crypt_sanctum',
+  name: 'Inner Sanctum',
+  category: 'crypt',
+  subType: 'sanctum',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'ritual',
+  zoneLevel: -2,
+  watermarkIcon: 'Eye',
+  spawnWeight: 2,
+  canRotate: true,
+  description: 'The innermost chamber. Here the veil between worlds is thinnest.',
+  possibleObjects: ['altar'],
+  enemySpawnChance: 70,
+  possibleEnemies: ['priest', 'dark_young']
+};
+
+export const CRYPT_MASSGRAVE: TileTemplate = {
+  id: 'crypt_massgrave',
+  name: 'Mass Grave',
+  category: 'crypt',
+  subType: 'massgrave',
+  edges: ['OPEN', 'WALL', 'WALL', 'OPEN', 'WALL', 'WALL'],
+  floorType: 'dirt',
+  zoneLevel: -2,
+  watermarkIcon: 'Skull',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'Bones upon bones. The plague dead were dumped here. Something stirs beneath.',
+  enemySpawnChance: 60,
+  possibleEnemies: ['ghoul', 'ghoul']
+};
+
+// ============================================================================
+// PRIORITY 2 - GOOD VARIETY TILES (10)
+// ============================================================================
+
+// ----- NEW URBAN TEMPLATES -----
+
+export const URBAN_STATION: TileTemplate = {
+  id: 'urban_station',
+  name: 'Arkham Train Station',
+  category: 'urban',
+  subType: 'station',
+  edges: ['STREET', 'FACADE', 'STREET', 'STREET', 'WALL', 'FACADE'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'Train',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'The last train to Boston left hours ago. The next arrival is not on any schedule.'
+};
+
+export const URBAN_MARKET: TileTemplate = {
+  id: 'urban_market',
+  name: 'Night Market',
+  category: 'urban',
+  subType: 'market',
+  edges: ['STREET', 'STREET', 'STREET', 'STREET', 'FACADE', 'FACADE'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'ShoppingBag',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Stalls selling curiosities. One merchant offers items that grant wishes—for a price.'
+};
+
+export const URBAN_PARK: TileTemplate = {
+  id: 'urban_park',
+  name: 'Independence Square Park',
+  category: 'urban',
+  subType: 'park',
+  edges: ['STREET', 'NATURE', 'NATURE', 'STREET', 'NATURE', 'NATURE'],
+  floorType: 'grass',
+  zoneLevel: 0,
+  watermarkIcon: 'TreePine',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'The park bench faces a statue of the town founder. His stone eyes follow passersby.'
+};
+
+export const URBAN_DOCK: TileTemplate = {
+  id: 'urban_dock',
+  name: 'Fishing Dock',
+  category: 'urban',
+  subType: 'dock',
+  edges: ['STREET', 'WATER', 'WATER', 'WATER', 'WATER', 'STREET'],
+  floorType: 'wood',
+  zoneLevel: 0,
+  watermarkIcon: 'Ship',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Empty nets hang from hooks. The fishermen refuse to say what they saw in the deep.',
+  enemySpawnChance: 40,
+  possibleEnemies: ['deepone']
+};
+
+// ----- NEW STREET TEMPLATES -----
+
+export const STREET_BRIDGE: TileTemplate = {
+  id: 'street_bridge',
+  name: 'Miskatonic Bridge',
+  category: 'street',
+  subType: 'bridge',
+  edges: ['STREET', 'WATER', 'WATER', 'STREET', 'WATER', 'WATER'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'ArrowRight',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'The old stone bridge over the Miskatonic. Something large moves in the water below.'
+};
+
+export const STREET_DEADEND: TileTemplate = {
+  id: 'street_deadend',
+  name: 'Dead End Alley',
+  category: 'street',
+  subType: 'deadend',
+  edges: ['STREET', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'A brick wall blocks the way. Fresh mortar seals something behind it.',
+  possibleObjects: ['crate']
+};
+
+// ----- NEW NATURE TEMPLATES -----
+
+export const NATURE_RUINS: TileTemplate = {
+  id: 'nature_ruins',
+  name: 'Ancient Ruins',
+  category: 'nature',
+  subType: 'ruins',
+  edges: ['NATURE', 'NATURE', 'OPEN', 'NATURE', 'NATURE', 'OPEN'],
+  floorType: 'stone',
+  zoneLevel: 0,
+  watermarkIcon: 'Columns',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Stone columns older than Rome. The architecture matches no known civilization.',
+  possibleObjects: ['altar', 'statue'],
+  enemySpawnChance: 30,
+  possibleEnemies: ['cultist']
+};
+
+export const NATURE_SWAMP: TileTemplate = {
+  id: 'nature_swamp',
+  name: 'Fetid Swamp',
+  category: 'nature',
+  subType: 'swamp',
+  edges: ['WATER', 'NATURE', 'WATER', 'WATER', 'NATURE', 'WATER'],
+  floorType: 'water',
+  zoneLevel: 0,
+  watermarkIcon: 'Droplets',
+  spawnWeight: 7,
+  canRotate: true,
+  description: 'Thick mist and treacherous footing. Things that were once human lurk here.',
+  enemySpawnChance: 35,
+  possibleEnemies: ['ghoul', 'deepone']
+};
+
+export const NATURE_CAVE: TileTemplate = {
+  id: 'nature_cave',
+  name: 'Cave Entrance',
+  category: 'nature',
+  subType: 'cave',
+  edges: ['NATURE', 'WALL', 'WALL', 'STAIRS_DOWN', 'WALL', 'NATURE'],
+  floorType: 'stone',
+  zoneLevel: 0,
+  watermarkIcon: 'Mountain',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'A dark maw in the hillside. Cold air breathes from within, carrying whispers.'
+};
+
+export const NATURE_BLACKPOOL: TileTemplate = {
+  id: 'nature_blackpool',
+  name: 'The Black Pool',
+  category: 'nature',
+  subType: 'blackpool',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'water',
+  zoneLevel: 0,
+  watermarkIcon: 'Circle',
+  spawnWeight: 3,
+  canRotate: false,
+  description: 'Water black as ink, perfectly still. Your reflection smiles when you do not.',
+  enemySpawnChance: 25,
+  possibleEnemies: ['deepone', 'formless_spawn']
+};
+
+// ============================================================================
+// PRIORITY 3 - ATMOSPHERE TILES (8)
+// ============================================================================
+
+export const FACADE_HOTEL: TileTemplate = {
+  id: 'facade_hotel',
+  name: 'Grand Arkham Hotel',
+  category: 'facade',
+  subType: 'hotel',
+  edges: ['DOOR', 'WALL', 'WALL', 'FACADE', 'WALL', 'WALL'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'Building',
+  spawnWeight: 7,
+  canRotate: true,
+  description: 'Room 217 is always booked. The guests never check out.'
+};
+
+export const FACADE_LIGHTHOUSE: TileTemplate = {
+  id: 'facade_lighthouse',
+  name: 'Kingsport Lighthouse',
+  category: 'facade',
+  subType: 'lighthouse',
+  edges: ['DOOR', 'WATER', 'WATER', 'NATURE', 'WATER', 'WATER'],
+  floorType: 'stone',
+  zoneLevel: 0,
+  watermarkIcon: 'Lightbulb',
+  spawnWeight: 3,
+  canRotate: true,
+  description: 'The light sweeps the waves. On foggy nights, it illuminates things in the sky.',
+  enemySpawnChance: 20,
+  possibleEnemies: ['byakhee']
+};
+
+export const FACADE_FUNERAL: TileTemplate = {
+  id: 'facade_funeral',
+  name: 'Christchurch Funeral Home',
+  category: 'facade',
+  subType: 'funeral',
+  edges: ['DOOR', 'WALL', 'WALL', 'FACADE', 'WALL', 'WALL'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'Cross',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'The mortician works late. His clients occasionally walk out on their own.',
+  enemySpawnChance: 30,
+  possibleEnemies: ['ghoul']
+};
+
+export const FACADE_FARMHOUSE: TileTemplate = {
+  id: 'facade_farmhouse',
+  name: 'Isolated Farmhouse',
+  category: 'facade',
+  subType: 'farmhouse',
+  edges: ['DOOR', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 0,
+  watermarkIcon: 'Home',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Miles from anywhere. The Whateleys lived here once. The barn still moves at night.'
+};
+
+export const ROOM_NURSERY: TileTemplate = {
+  id: 'room_nursery',
+  name: 'Abandoned Nursery',
+  category: 'room',
+  subType: 'nursery',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WINDOW'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Baby',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'A mobile spins without wind. The rocking chair moves to a rhythm only it hears.'
+};
+
+export const ROOM_MAPROOM: TileTemplate = {
+  id: 'room_maproom',
+  name: 'Cartographer\'s Study',
+  category: 'room',
+  subType: 'maproom',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Map',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Maps of places that don\'t exist. Or perhaps they exist elsewhere.',
+  possibleObjects: ['bookshelf', 'cabinet']
+};
+
+export const BASEMENT_BOILER: TileTemplate = {
+  id: 'basement_boiler',
+  name: 'Boiler Room',
+  category: 'basement',
+  subType: 'boiler',
+  edges: ['STAIRS_UP', 'WALL', 'WALL', 'OPEN', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: -1,
+  watermarkIcon: 'Flame',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'The furnace burns without fuel. Faces form in the flames.'
+};
+
+export const CRYPT_STARCHAMBER: TileTemplate = {
+  id: 'crypt_starchamber',
+  name: 'Star Chamber',
+  category: 'crypt',
+  subType: 'starchamber',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'ritual',
+  zoneLevel: -2,
+  watermarkIcon: 'Star',
+  spawnWeight: 2,
+  canRotate: true,
+  description: 'The domed ceiling shows stars in wrong positions. This is the sky of another world.',
+  possibleObjects: ['altar'],
+  enemySpawnChance: 50,
+  possibleEnemies: ['star_spawn', 'mi-go']
+};
+
+// ============================================================================
 // 5. TEMPLATES REGISTRY
 // ============================================================================
 
@@ -837,7 +1312,7 @@ export const TILE_TEMPLATES: Record<string, TileTemplate> = {
   corridor_cross: CORRIDOR_CROSS,
   corridor_wide: CORRIDOR_WIDE,
 
-  // Room
+  // Room (original)
   room_study: ROOM_STUDY,
   room_bedroom: ROOM_BEDROOM,
   room_kitchen: ROOM_KITCHEN,
@@ -846,47 +1321,84 @@ export const TILE_TEMPLATES: Record<string, TileTemplate> = {
   room_lab: ROOM_LAB,
   room_dining: ROOM_DINING,
   room_living: ROOM_LIVING,
+  // Room (new)
+  room_parlor: ROOM_PARLOR,
+  room_office: ROOM_OFFICE,
+  room_gallery: ROOM_GALLERY,
+  room_conservatory: ROOM_CONSERVATORY,
+  room_nursery: ROOM_NURSERY,
+  room_maproom: ROOM_MAPROOM,
 
   // Stairs
   stairs_down: STAIRS_DOWN,
   stairs_up: STAIRS_UP,
   stairs_spiral: STAIRS_SPIRAL,
 
-  // Basement
+  // Basement (original)
   basement_cellar: BASEMENT_CELLAR,
   basement_wine: BASEMENT_WINE,
   basement_tunnel: BASEMENT_TUNNEL,
   basement_sewer: BASEMENT_SEWER,
+  // Basement (new)
+  basement_mine: BASEMENT_MINE,
+  basement_boiler: BASEMENT_BOILER,
 
-  // Crypt
+  // Crypt (original)
   crypt_tomb: CRYPT_TOMB,
   crypt_altar: CRYPT_ALTAR,
   crypt_tunnel: CRYPT_TUNNEL,
   crypt_portal: CRYPT_PORTAL,
+  // Crypt (new)
+  crypt_sanctum: CRYPT_SANCTUM,
+  crypt_massgrave: CRYPT_MASSGRAVE,
+  crypt_starchamber: CRYPT_STARCHAMBER,
 
-  // Facade
+  // Facade (original)
   facade_manor: FACADE_MANOR,
   facade_shop: FACADE_SHOP,
   facade_church: FACADE_CHURCH,
   facade_warehouse: FACADE_WAREHOUSE,
+  // Facade (new)
+  facade_asylum: FACADE_ASYLUM,
+  facade_hospital: FACADE_HOSPITAL,
+  facade_museum: FACADE_MUSEUM,
+  facade_police: FACADE_POLICE,
+  facade_witchhouse: FACADE_WITCHHOUSE,
+  facade_hotel: FACADE_HOTEL,
+  facade_lighthouse: FACADE_LIGHTHOUSE,
+  facade_funeral: FACADE_FUNERAL,
+  facade_farmhouse: FACADE_FARMHOUSE,
 
-  // Street
+  // Street (original)
   street_main: STREET_MAIN,
   street_alley: STREET_ALLEY,
   street_crossing: STREET_CROSSING,
   street_corner: STREET_CORNER,
+  // Street (new)
+  street_bridge: STREET_BRIDGE,
+  street_deadend: STREET_DEADEND,
 
-  // Urban
+  // Urban (original)
   urban_square: URBAN_SQUARE,
   urban_harbor: URBAN_HARBOR,
   urban_cemetery: URBAN_CEMETERY,
+  // Urban (new)
+  urban_station: URBAN_STATION,
+  urban_market: URBAN_MARKET,
+  urban_park: URBAN_PARK,
+  urban_dock: URBAN_DOCK,
 
-  // Nature
+  // Nature (original)
   nature_forest: NATURE_FOREST,
   nature_clearing: NATURE_CLEARING,
   nature_path: NATURE_PATH,
   nature_marsh: NATURE_MARSH,
-  nature_stones: NATURE_STONES
+  nature_stones: NATURE_STONES,
+  // Nature (new)
+  nature_ruins: NATURE_RUINS,
+  nature_swamp: NATURE_SWAMP,
+  nature_cave: NATURE_CAVE,
+  nature_blackpool: NATURE_BLACKPOOL
 };
 
 /**
