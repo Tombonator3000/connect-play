@@ -3,7 +3,7 @@
  * Supports: sequence, code_lock, symbol_match, blood_ritual, astronomy
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Sparkles, Brain, X, Unlock, Lock,
   Star, Moon, Sun, Skull, Heart,
@@ -51,7 +51,22 @@ const SequencePuzzle: React.FC<{
   const [gameState, setGameState] = useState<GameState>('showing');
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
 
+  // Refs for cleanup to prevent memory leaks
+  const timeoutRefs = useRef<NodeJS.Timeout[]>([]);
+  const isMountedRef = useRef(true);
+
   const sequenceLength = difficulty + 2;
+
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      // Clear all pending timeouts
+      timeoutRefs.current.forEach(timeout => clearTimeout(timeout));
+      timeoutRefs.current = [];
+    };
+  }, []);
 
   useEffect(() => {
     const newSeq = Array.from({ length: sequenceLength }, () => Math.floor(Math.random() * 9));
@@ -62,17 +77,32 @@ const SequencePuzzle: React.FC<{
     if (sequence.length > 0 && gameState === 'showing') {
       let step = 0;
       const interval = setInterval(() => {
+        if (!isMountedRef.current) {
+          clearInterval(interval);
+          return;
+        }
         if (step >= sequence.length) {
           clearInterval(interval);
           setHighlightedIndex(null);
           setGameState('input');
         } else {
           setHighlightedIndex(sequence[step]);
-          setTimeout(() => setHighlightedIndex(null), 500);
+          // Track timeout for cleanup
+          const timeout = setTimeout(() => {
+            if (isMountedRef.current) {
+              setHighlightedIndex(null);
+            }
+          }, 500);
+          timeoutRefs.current.push(timeout);
           step++;
         }
       }, 800);
-      return () => clearInterval(interval);
+      return () => {
+        clearInterval(interval);
+        // Clear all pending timeouts when effect re-runs
+        timeoutRefs.current.forEach(timeout => clearTimeout(timeout));
+        timeoutRefs.current = [];
+      };
     }
   }, [sequence, gameState]);
 
@@ -85,13 +115,23 @@ const SequencePuzzle: React.FC<{
     const currentStep = newInput.length - 1;
     if (newInput[currentStep] !== sequence[currentStep]) {
       setGameState('fail');
-      setTimeout(() => onComplete(false), 1500);
+      const timeout = setTimeout(() => {
+        if (isMountedRef.current) {
+          onComplete(false);
+        }
+      }, 1500);
+      timeoutRefs.current.push(timeout);
       return;
     }
 
     if (newInput.length === sequence.length) {
       setGameState('success');
-      setTimeout(() => onComplete(true), 1500);
+      const timeout = setTimeout(() => {
+        if (isMountedRef.current) {
+          onComplete(true);
+        }
+      }, 1500);
+      timeoutRefs.current.push(timeout);
     }
   };
 
@@ -143,6 +183,21 @@ const CodeLockPuzzle: React.FC<{
   const [gameState, setGameState] = useState<GameState>('input');
   const [attempts, setAttempts] = useState(3);
 
+  // Refs for cleanup to prevent memory leaks
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleDigitClick = (digit: string) => {
     if (gameState !== 'input' || input.length >= 4) return;
     setInput(prev => prev + digit);
@@ -155,12 +210,20 @@ const CodeLockPuzzle: React.FC<{
   const handleSubmit = () => {
     if (input === code) {
       setGameState('success');
-      setTimeout(() => onComplete(true), 1500);
+      timeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          onComplete(true);
+        }
+      }, 1500);
     } else {
       setAttempts(prev => prev - 1);
       if (attempts <= 1) {
         setGameState('fail');
-        setTimeout(() => onComplete(false), 1500);
+        timeoutRef.current = setTimeout(() => {
+          if (isMountedRef.current) {
+            onComplete(false);
+          }
+        }, 1500);
       } else {
         setInput('');
         // Shake animation would go here
@@ -243,9 +306,28 @@ const SymbolMatchPuzzle: React.FC<{
   const [gameState, setGameState] = useState<GameState>('input');
   const [showTarget, setShowTarget] = useState(true);
 
+  // Refs for cleanup to prevent memory leaks
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
   // Show target symbols for 3 seconds, then hide
   useEffect(() => {
-    const timer = setTimeout(() => setShowTarget(false), 3000);
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) {
+        setShowTarget(false);
+      }
+    }, 3000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -261,10 +343,18 @@ const SymbolMatchPuzzle: React.FC<{
       const isCorrect = newSelection.every((s, i) => s === targetSymbols[i]);
       if (isCorrect) {
         setGameState('success');
-        setTimeout(() => onComplete(true), 1500);
+        timeoutRef.current = setTimeout(() => {
+          if (isMountedRef.current) {
+            onComplete(true);
+          }
+        }, 1500);
       } else {
         setGameState('fail');
-        setTimeout(() => onComplete(false), 1500);
+        timeoutRef.current = setTimeout(() => {
+          if (isMountedRef.current) {
+            onComplete(false);
+          }
+        }, 1500);
       }
     }
   };
@@ -362,6 +452,21 @@ const BloodRitualPuzzle: React.FC<{
   const [selectedCost, setSelectedCost] = useState<'hp' | 'sanity' | null>(null);
   const [gameState, setGameState] = useState<GameState>('input');
 
+  // Refs for cleanup to prevent memory leaks
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
   // Calculate costs based on difficulty
   const hpCost = Math.max(1, difficulty - 1);
   const sanityCost = Math.max(1, difficulty - 2);
@@ -374,17 +479,23 @@ const BloodRitualPuzzle: React.FC<{
     setSelectedCost(type);
     setGameState('success');
 
-    setTimeout(() => {
-      onComplete(true, {
-        hp: type === 'hp' ? hpCost : 0,
-        sanity: type === 'sanity' ? adjustedSanityCost : 0,
-      });
+    timeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        onComplete(true, {
+          hp: type === 'hp' ? hpCost : 0,
+          sanity: type === 'sanity' ? adjustedSanityCost : 0,
+        });
+      }
     }, 1500);
   };
 
   const handleRefuse = () => {
     setGameState('fail');
-    setTimeout(() => onComplete(false), 1500);
+    timeoutRef.current = setTimeout(() => {
+      if (isMountedRef.current) {
+        onComplete(false);
+      }
+    }, 1500);
   };
 
   return (
@@ -463,6 +574,21 @@ const AstronomyPuzzle: React.FC<{
   );
   const [gameState, setGameState] = useState<GameState>('input');
 
+  // Refs for cleanup to prevent memory leaks
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
   const rotateDial = (dialIndex: number) => {
     if (gameState !== 'input') return;
 
@@ -473,7 +599,11 @@ const AstronomyPuzzle: React.FC<{
     // Check if all dials are aligned
     if (newPositions.every((pos, i) => pos === targetPositions[i])) {
       setGameState('success');
-      setTimeout(() => onComplete(true), 1500);
+      timeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) {
+          onComplete(true);
+        }
+      }, 1500);
     }
   };
 

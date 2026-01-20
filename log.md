@@ -7944,3 +7944,76 @@ Oppdaterte `getDefaultShopInventory()` i `legacyManager.ts`:
 - TypeScript kompilerer uten feil
 - Verdiene matcher WEAPON_STATS og REGELBOK.MD spesifikasjonene
 
+---
+
+## 2026-01-20: Bug Fix - Memory Leak in PuzzleModal Components
+
+### Problem
+All puzzle components in `PuzzleModal.tsx` had potential memory leaks and could cause React warnings about state updates on unmounted components. The issues were:
+
+1. **SequencePuzzle**: `setTimeout` called inside `setInterval` without cleanup - multiple timeouts could accumulate and attempt to update state after unmount
+2. **All puzzle components**: `setTimeout` calls for delayed `onComplete` callbacks had no cleanup on unmount
+
+### Root Cause
+When a puzzle modal is closed (unmounted) before the animation/delay completes:
+- Pending `setTimeout` callbacks would still fire
+- Attempting to call `setState` on unmounted components
+- This causes React warnings and potential memory leaks
+
+### Fix Applied
+Added proper cleanup for all timeout operations in all puzzle components:
+
+1. **Added `useRef` import** to track timeout IDs and mounted state
+2. **SequencePuzzle**:
+   - Added `timeoutRefs` array to track all timeouts created during sequence display
+   - Added `isMountedRef` to check if component is still mounted before state updates
+   - Cleanup function clears all pending timeouts on unmount
+3. **CodeLockPuzzle**: Added timeout ref and mounted check for success/fail callbacks
+4. **SymbolMatchPuzzle**: Added timeout ref and mounted check for success/fail callbacks
+5. **BloodRitualPuzzle**: Added timeout ref and mounted check for sacrifice/refuse callbacks
+6. **AstronomyPuzzle**: Added timeout ref and mounted check for success callback
+
+### Code Pattern Used
+```typescript
+// Refs for cleanup to prevent memory leaks
+const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+const isMountedRef = useRef(true);
+
+// Cleanup on unmount
+useEffect(() => {
+  isMountedRef.current = true;
+  return () => {
+    isMountedRef.current = false;
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+  };
+}, []);
+
+// Safe timeout usage
+timeoutRef.current = setTimeout(() => {
+  if (isMountedRef.current) {
+    onComplete(true);
+  }
+}, 1500);
+```
+
+### Files Modified
+- `src/game/components/PuzzleModal.tsx`
+  - Added `useRef` to imports
+  - Fixed SequencePuzzle (sequence animation + completion callbacks)
+  - Fixed CodeLockPuzzle (success/fail callbacks)
+  - Fixed SymbolMatchPuzzle (target display + success/fail callbacks)
+  - Fixed BloodRitualPuzzle (sacrifice/refuse callbacks)
+  - Fixed AstronomyPuzzle (success callback)
+
+### Impact
+- No more potential memory leaks from puzzle components
+- No more React warnings about state updates on unmounted components
+- Puzzles can be safely closed at any time without side effects
+- Improved application stability
+
+### Verification
+- TypeScript compiles without errors
+- Build successful
+
