@@ -1241,6 +1241,7 @@ export interface GameState {
   spellParticles: SpellParticle[];  // Active spell visual effects
   screenShake: boolean;
   activeSpell: Spell | null;
+  activeOccultistSpell: OccultistSpell | null;  // Hero Quest style spell waiting for target
   currentStepIndex: number;
   questItemsCollected: string[];
   exploredTiles: string[];

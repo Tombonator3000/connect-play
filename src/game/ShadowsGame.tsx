@@ -92,11 +92,14 @@ const DEFAULT_STATE: GameState = {
   spellParticles: [],
   screenShake: false,
   activeSpell: null,
+  activeOccultistSpell: null,
   currentStepIndex: 0,
   questItemsCollected: [],
   exploredTiles: ['0,0'], // Start tile is always explored
   pendingHorrorChecks: [],
-  weatherState: createDefaultWeatherState()
+  weatherState: createDefaultWeatherState(),
+  survivors: [],
+  rescuedSurvivors: []
 };
 
 const ROOM_SHAPES = {
@@ -183,7 +186,7 @@ const ShadowsGame: React.FC = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return { ...parsed, floatingTexts: [], spellParticles: [], screenShake: false, activeSpell: null };
+        return { ...parsed, floatingTexts: [], spellParticles: [], screenShake: false, activeSpell: null, activeOccultistSpell: null };
       } catch (e) { console.error(e); }
     }
     return DEFAULT_STATE;
@@ -2385,14 +2388,247 @@ const ShadowsGame: React.FC = () => {
         break;
 
       case 'cancel_cast':
-        setState(prev => ({ ...prev, activeSpell: null }));
+        setState(prev => ({ ...prev, activeSpell: null, activeOccultistSpell: null }));
         addToLog(`Spell casting cancelled.`);
+        break;
+
+      case 'cast_occultist':
+        // Cast Occultist spell - Hero Quest style with attack dice and limited uses
+        const occSpell = payload as OccultistSpell;
+        if (!occSpell) {
+          addToLog(`No spell selected.`);
+          return;
+        }
+
+        // Check remaining uses
+        const remainingUses = occSpell.currentUses ?? occSpell.usesPerScenario;
+        const isUnlimited = occSpell.usesPerScenario === -1;
+        if (!isUnlimited && remainingUses <= 0) {
+          addToLog(`${occSpell.name} has no uses remaining this scenario.`);
+          addFloatingText(activePlayer.position.q, activePlayer.position.r, "NO USES LEFT", "text-muted-foreground");
+          return;
+        }
+
+        // Handle different spell effects
+        if (occSpell.effect === 'attack' || occSpell.effect === 'attack_horror' || occSpell.effect === 'banish') {
+          // These spells need a target
+          const occTarget = state.enemies.find(e => e.id === state.selectedEnemyId);
+          if (!occTarget) {
+            // Set active spell and wait for target selection
+            setState(prev => ({ ...prev, activeOccultistSpell: occSpell }));
+            addToLog(`Select a target for ${occSpell.name}. Range: ${occSpell.range} tiles.`);
+            return;
+          }
+
+          // Check range
+          const occDistance = hexDistance(activePlayer.position, occTarget.position);
+          if (occDistance > occSpell.range) {
+            addToLog(`${occTarget.name} is out of range for ${occSpell.name}. Max range: ${occSpell.range}, distance: ${occDistance}.`);
+            addFloatingText(activePlayer.position.q, activePlayer.position.r, "OUT OF RANGE", "text-muted-foreground");
+            return;
+          }
+
+          if (occSpell.effect === 'attack' || occSpell.effect === 'attack_horror') {
+            // Roll attack dice
+            const attackDice = occSpell.attackDice;
+            const rolls: number[] = [];
+            let skulls = 0;
+            for (let i = 0; i < attackDice; i++) {
+              const roll = Math.floor(Math.random() * 6) + 1;
+              rolls.push(roll);
+              if (roll >= 4) skulls++;
+            }
+
+            // Show dice roll
+            setState(prev => ({ ...prev, lastDiceRoll: rolls }));
+
+            // Calculate damage (skulls vs enemy defense)
+            const enemyDefense = BESTIARY[occTarget.type]?.defense || 1;
+            const defenseRolls: number[] = [];
+            let shields = 0;
+            for (let i = 0; i < enemyDefense; i++) {
+              const roll = Math.floor(Math.random() * 6) + 1;
+              defenseRolls.push(roll);
+              if (roll >= 4) shields++;
+            }
+
+            const occDamage = Math.max(0, skulls - shields);
+
+            addToLog(`${activePlayer.name} casts ${occSpell.name}! Rolled ${attackDice}🎲: [${rolls.join(', ')}] = ${skulls} skulls vs ${shields} shields = ${occDamage} damage!`);
+
+            if (occDamage > 0) {
+              addFloatingText(occTarget.position.q, occTarget.position.r, `-${occDamage} HP`, "text-sanity");
+            } else {
+              addFloatingText(occTarget.position.q, occTarget.position.r, "BLOCKED!", "text-muted-foreground");
+            }
+
+            // Emit spell particle effect
+            emitSpellEffect(
+              activePlayer.position.q,
+              activePlayer.position.r,
+              occSpell.id === 'eldritch_bolt' ? 'eldritch_bolt' : occSpell.id === 'mind_blast' ? 'mind_blast' : 'eldritch_bolt',
+              occTarget.position.q,
+              occTarget.position.r
+            );
+
+            triggerScreenShake();
+
+            const newOccEnemyHp = occTarget.hp - occDamage;
+            const occIsKilled = newOccEnemyHp <= 0;
+
+            // Apply horror damage if attack_horror
+            if (occSpell.effect === 'attack_horror' && occSpell.horrorDamage) {
+              addToLog(`The psychic assault also causes ${occSpell.horrorDamage} Horror damage!`);
+              addFloatingText(occTarget.position.q, occTarget.position.r, `-${occSpell.horrorDamage} SAN`, "text-insight");
+            }
+
+            if (occIsKilled) {
+              const bestiary = BESTIARY[occTarget.type];
+              addToLog(bestiary.defeatFlavor || `${occTarget.name} is destroyed by arcane power!`);
+              addFloatingText(occTarget.position.q, occTarget.position.r, "DESTROYED!", "text-accent");
+
+              const heroId = activePlayer.heroId || activePlayer.id;
+              incrementHeroKills(heroId);
+            }
+
+            // Update spell uses and player state
+            setState(prev => ({
+              ...prev,
+              enemies: prev.enemies.map(e => e.id === occTarget.id ? { ...e, hp: newOccEnemyHp, isDying: occIsKilled } : e).filter(e => e.hp > 0),
+              players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
+                ...p,
+                actions: p.actions - 1,
+                selectedSpells: p.selectedSpells?.map(s =>
+                  s.id === occSpell.id && s.usesPerScenario !== -1
+                    ? { ...s, currentUses: (s.currentUses ?? s.usesPerScenario) - 1 }
+                    : s
+                )
+              } : p),
+              activeOccultistSpell: null,
+              selectedEnemyId: occIsKilled ? null : prev.selectedEnemyId
+            }));
+
+          } else if (occSpell.effect === 'banish') {
+            // Banish uses Willpower check vs DC 5
+            const willpower = activePlayer.attributes?.willpower || 3;
+            const banishDice = 2 + willpower;
+            const banishRolls: number[] = [];
+            let successes = 0;
+            for (let i = 0; i < banishDice; i++) {
+              const roll = Math.floor(Math.random() * 6) + 1;
+              banishRolls.push(roll);
+              if (roll >= 5) successes++;
+            }
+
+            setState(prev => ({ ...prev, lastDiceRoll: banishRolls }));
+
+            if (successes > 0 && occTarget.hp <= 3) {
+              addToLog(`${activePlayer.name} casts ${occSpell.name}! Rolled ${banishDice}🎲: [${banishRolls.join(', ')}] = ${successes} successes! ${occTarget.name} is banished to the void!`);
+              addFloatingText(occTarget.position.q, occTarget.position.r, "BANISHED!", "text-sanity");
+
+              emitSpellEffect(occTarget.position.q, occTarget.position.r, 'banish');
+              triggerScreenShake();
+
+              const heroId = activePlayer.heroId || activePlayer.id;
+              incrementHeroKills(heroId);
+
+              setState(prev => ({
+                ...prev,
+                enemies: prev.enemies.filter(e => e.id !== occTarget.id),
+                players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
+                  ...p,
+                  actions: p.actions - 1,
+                  selectedSpells: p.selectedSpells?.map(s =>
+                    s.id === occSpell.id ? { ...s, currentUses: (s.currentUses ?? s.usesPerScenario) - 1 } : s
+                  )
+                } : p),
+                activeOccultistSpell: null,
+                selectedEnemyId: null
+              }));
+            } else if (occTarget.hp > 3) {
+              addToLog(`${occTarget.name} is too powerful to banish! Only enemies with 3 or less HP can be banished.`);
+              addFloatingText(activePlayer.position.q, activePlayer.position.r, "TOO POWERFUL", "text-muted-foreground");
+            } else {
+              addToLog(`${activePlayer.name} casts ${occSpell.name} but fails! Rolled ${banishDice}🎲: [${banishRolls.join(', ')}] = ${successes} successes (need 1+).`);
+              addFloatingText(activePlayer.position.q, activePlayer.position.r, "FAILED!", "text-muted-foreground");
+
+              // Still consume the use
+              setState(prev => ({
+                ...prev,
+                players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
+                  ...p,
+                  actions: p.actions - 1,
+                  selectedSpells: p.selectedSpells?.map(s =>
+                    s.id === occSpell.id ? { ...s, currentUses: (s.currentUses ?? s.usesPerScenario) - 1 } : s
+                  )
+                } : p),
+                activeOccultistSpell: null
+              }));
+            }
+          }
+
+        } else if (occSpell.effect === 'defense') {
+          // Dark Shield - +2 defense this round
+          addToLog(`${activePlayer.name} casts ${occSpell.name}! Shadows coalesce into a protective barrier. +${occSpell.defenseBonus} Defense this round.`);
+          addFloatingText(activePlayer.position.q, activePlayer.position.r, `+${occSpell.defenseBonus} DEFENSE`, "text-blue-400");
+
+          emitSpellEffect(activePlayer.position.q, activePlayer.position.r, 'dark_shield');
+
+          setState(prev => ({
+            ...prev,
+            players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
+              ...p,
+              actions: p.actions - 1,
+              tempDefenseBonus: (p.tempDefenseBonus || 0) + (occSpell.defenseBonus || 0),
+              selectedSpells: p.selectedSpells?.map(s =>
+                s.id === occSpell.id ? { ...s, currentUses: (s.currentUses ?? s.usesPerScenario) - 1 } : s
+              )
+            } : p),
+            activeOccultistSpell: null
+          }));
+
+        } else if (occSpell.effect === 'utility') {
+          // Glimpse Beyond - reveal tiles in range
+          addToLog(`${activePlayer.name} casts ${occSpell.name}! Visions of the unseen flood your mind...`);
+          addFloatingText(activePlayer.position.q, activePlayer.position.r, "REVELATION!", "text-cyan-400");
+
+          emitSpellEffect(activePlayer.position.q, activePlayer.position.r, 'true_sight');
+
+          const revealedOccTiles = state.board.filter(t =>
+            hexDistance(activePlayer.position, { q: t.q, r: t.r }) <= occSpell.range
+          );
+
+          const newOccExplored = new Set(state.exploredTiles || []);
+          revealedOccTiles.forEach(t => {
+            newOccExplored.add(`${t.q},${t.r}`);
+          });
+
+          setState(prev => ({
+            ...prev,
+            players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
+              ...p,
+              actions: p.actions - 1,
+              selectedSpells: p.selectedSpells?.map(s =>
+                s.id === occSpell.id ? { ...s, currentUses: (s.currentUses ?? s.usesPerScenario) - 1 } : s
+              )
+            } : p),
+            exploredTiles: Array.from(newOccExplored),
+            activeOccultistSpell: null
+          }));
+
+          addToLog(`Revealed ${revealedOccTiles.length} areas within range ${occSpell.range}.`);
+        }
         break;
 
       case 'enemy_click':
         // If we have an active spell that needs a target, cast it on this enemy
         if (state.activeSpell) {
           handleAction('cast', state.activeSpell);
+          return;
+        }
+        // If we have an active occultist spell that needs a target, cast it on this enemy
+        if (state.activeOccultistSpell) {
+          handleAction('cast_occultist', state.activeOccultistSpell);
           return;
         }
         setState(prev => ({ ...prev, selectedEnemyId: payload.id }));
@@ -2580,7 +2816,7 @@ const ShadowsGame: React.FC = () => {
       // Show Mythos phase overlay
       setShowMythosOverlay(true);
     } else {
-      setState(prev => ({ ...prev, activePlayerIndex: nextIndex, activeSpell: null }));
+      setState(prev => ({ ...prev, activePlayerIndex: nextIndex, activeSpell: null, activeOccultistSpell: null }));
     }
   };
 
@@ -2706,6 +2942,7 @@ const ShadowsGame: React.FC = () => {
       doom: newDoom,
       round: newRound,
       activeSpell: null,
+      activeOccultistSpell: null,
       activeScenario: updatedScenario,
       weatherState: newWeatherState
     }));
@@ -3266,7 +3503,9 @@ const ShadowsGame: React.FC = () => {
               actionsRemaining={activePlayer?.actions || 0}
               isInvestigatorPhase={state.phase === GamePhase.INVESTIGATOR}
               spells={activePlayer?.spells || []}
+              occultistSpells={activePlayer?.selectedSpells}
               activeSpell={state.activeSpell}
+              activeOccultistSpell={state.activeOccultistSpell}
               showCharacter={showLeftPanel}
               onToggleCharacter={() => setShowLeftPanel(!showLeftPanel)}
               showInfo={showRightPanel}

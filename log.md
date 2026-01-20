@@ -1,5 +1,93 @@
 # Development Log
 
+## 2026-01-20: Magic UI Button for Occultist and Professor
+
+### Oppgave
+Implementere en UI-knapp for Occultist og Professor for å bruke magi/alternativ attack hvor de velger formel. Ifølge REGELBOK.MD:
+- **Professor** har 2 spells (True Sight, Mend Flesh) - Insight-kostnadsbasert
+- **Occultist** har 3 selvvalgte spells fra 5 tilgjengelige - Angrepsterninger med begrensede bruk
+
+### Problem
+ActionBar hadde allerede en "Cast" knapp som viste spells, men:
+1. Den brukte kun `spells: Spell[]` (legacy format for Professor)
+2. Occultist sine `selectedSpells: OccultistSpell[]` ble aldri sendt til ActionBar
+3. OccultistSpell har helt annen struktur (attackDice, usesPerScenario, etc.) enn Spell (cost, effectType)
+
+### Løsning
+
+#### 1. Utvidet ActionBar Props (`ActionBar.tsx`)
+```typescript
+interface ActionBarProps {
+  spells: Spell[];                        // Legacy spells (Professor)
+  occultistSpells?: OccultistSpell[];     // Hero Quest style (Occultist)
+  activeSpell: Spell | null;
+  activeOccultistSpell?: OccultistSpell | null;
+  // ...
+}
+```
+
+#### 2. Ny Grimoire UI
+ActionBar viser nå begge spell-typer i samme meny:
+- **Legacy Spells** (Professor): Viser navn, Insight-kostnad, beskrivelse
+- **Occultist Spells**: Viser navn, angrepsterninger (🎲), forsvarbonus (🛡), bruk igjen, range
+
+Fargekodet etter effekt:
+- Attack/Horror: Rød
+- Defense: Blå
+- Banish: Lilla
+- Utility: Cyan
+
+#### 3. Ny GameState Property (`types.ts`)
+```typescript
+interface GameState {
+  activeOccultistSpell: OccultistSpell | null;  // For target selection
+  // ...
+}
+```
+
+#### 4. Ny Handling: `cast_occultist` (`ShadowsGame.tsx`)
+Komplett implementasjon av OccultistSpell casting:
+
+**Attack Spells (eldritch_bolt, mind_blast)**:
+- Ruller attackDice terninger
+- Sammenligner skulls (4+) vs fiendens shields
+- Viser terningkast i UI
+- Støtter horror damage for mind_blast
+
+**Banish Spell**:
+- Bruker Willpower check (2 + WIL terninger, DC 5)
+- Kun mot fiender med HP ≤ 3
+- Viser suksess/feil med terningkast
+
+**Defense Spell (dark_shield)**:
+- Gir +2 forsvarsterninger denne runden
+- Lagrer i `player.tempDefenseBonus`
+
+**Utility Spell (glimpse_beyond)**:
+- Avslører tiles innenfor range
+- Oppdaterer exploredTiles
+
+#### 5. Bruksbegrensning
+Hver spell tracker `currentUses`:
+- `usesPerScenario: -1` = Ubegrenset (Eldritch Bolt)
+- Andre har 2-3 bruk per scenario
+- UI viser `∞` eller `2/3` format
+
+### Filer Endret
+- `src/game/components/ActionBar.tsx` - Utvidet med OccultistSpell støtte
+- `src/game/types.ts` - Lagt til `activeOccultistSpell` i GameState
+- `src/game/ShadowsGame.tsx` - Lagt til `cast_occultist` handling, oppdatert ActionBar props
+
+### Resultat
+- ✅ Professor kan caste True Sight og Mend Flesh via Grimoire-knappen
+- ✅ Occultist kan caste 5 forskjellige spells med Hero Quest-mekanikk
+- ✅ Spell-menyen viser riktig info for begge typer
+- ✅ Target selection fungerer for attack/banish spells
+- ✅ Bruksbegrensninger vises og håndheves
+- ✅ Build vellykket
+
+---
+
 ## 2026-01-20: Fix Magic for Occultist and Professor in Legacy Mode
 
 ### Problem
