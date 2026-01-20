@@ -1,5 +1,411 @@
 # Development Log
 
+## 2026-01-20: Implementert 30 nye tiles
+
+### Oppgave
+Implementere alle anbefalte nye tiles fra tile inventory-analysen.
+
+### Løsning
+Lagt til 30 nye TileTemplates i `src/game/tileConnectionSystem.ts` med full støtte for edge-connections, atmosfæriske beskrivelser, fiende-spawn og interaktive objekter.
+
+### Nye Tiles Implementert
+
+#### PRIORITET 1 - Essensielle (12 tiles)
+
+**Fasader (5):**
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `facade_asylum` | Arkham Asylum | Jernporter vokter Arkhams beryktede asyl |
+| `facade_hospital` | St. Mary's Hospital | Sykehuset er stille. For stille. |
+| `facade_museum` | Arkham Historical Museum | Utstillinger fra sivilisasjoner eldre enn kjent historie |
+| `facade_police` | Arkham Police Station | Saksmapper beskriver ting politiet ikke kan bekjempe |
+| `facade_witchhouse` | The Witch House | Keziah Masons hus med geometri som skader å forstå |
+
+**Rom (4):**
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `room_parlor` | Victorian Parlor | Velurfløyel og åndebrett på bordet |
+| `room_office` | Administrator's Office | Arkivskap med skuff merket "IKKE ÅPNE" |
+| `room_gallery` | Art Gallery | Portretter av folk som aldri eksisterte |
+| `room_conservatory` | Overgrown Conservatory | Planter har brutt pottene sine, ukjente arter |
+
+**Undergrunn (3):**
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `basement_mine` | Abandoned Mine Shaft | Tømmerstøtter stønner under jord |
+| `crypt_sanctum` | Inner Sanctum | Det innerste kammer der sløret er tynnest |
+| `crypt_massgrave` | Mass Grave | Bein på bein, pestens døde |
+
+#### PRIORITET 2 - God variasjon (10 tiles)
+
+**Urbane (4):** `urban_station`, `urban_market`, `urban_park`, `urban_dock`
+**Gater (2):** `street_bridge`, `street_deadend`
+**Natur (4):** `nature_ruins`, `nature_swamp`, `nature_cave`, `nature_blackpool`
+
+#### PRIORITET 3 - Atmosfære (8 tiles)
+
+`facade_hotel`, `facade_lighthouse`, `facade_funeral`, `facade_farmhouse`, `room_nursery`, `room_maproom`, `basement_boiler`, `crypt_starchamber`
+
+### Filer Endret
+- `src/game/tileConnectionSystem.ts` - Lagt til 30 nye TileTemplates og oppdatert TILE_TEMPLATES registry
+
+### Resultat
+- ✅ 30 nye tiles implementert med atmosfæriske Lovecraft-beskrivelser
+- ✅ Edge-konfigurasjon for korrekt tilkobling
+- ✅ Fiende-spawn definert for farlige områder
+- ✅ Build vellykket uten feil
+- ✅ **Totalt antall tiles: 43 → 73 tiles**
+
+### Ny Kategori-fordeling
+
+| Kategori | Før | Etter | Endring |
+|----------|-----|-------|---------|
+| Foyer | 3 | 3 | - |
+| Corridor | 5 | 5 | - |
+| Room | 8 | 14 | +6 |
+| Stairs | 3 | 3 | - |
+| Basement | 4 | 6 | +2 |
+| Crypt | 4 | 7 | +3 |
+| Facade | 4 | 13 | +9 |
+| Street | 4 | 6 | +2 |
+| Urban | 3 | 7 | +4 |
+| Nature | 5 | 9 | +4 |
+| **TOTALT** | **43** | **73** | **+30** |
+
+---
+
+## 2026-01-20: Tile Inventory og Utvidelsesforslag
+
+### Oppgave
+Kartlegge alle eksisterende tiles i spillet og lage forslag til nye tiles for større variasjon.
+
+### Analyse
+
+#### EKSISTERENDE TILES I KODEBASEN (43 totalt)
+
+Alle tiles er definert i `src/game/tileConnectionSystem.ts` som TileTemplates.
+
+---
+
+##### FOYER (3 tiles) - Inngangspartier
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `foyer_grand` | Grand Foyer | Storslått entré med doble trapper |
+| `foyer_small` | Dim Reception | Trang entréhall med gjesteboken |
+| `foyer_church` | Church Narthex | Kirkeforhall med tørre vievannskar |
+
+---
+
+##### CORRIDOR (5 tiles) - Korridorer og ganger
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `corridor_straight` | Dusty Corridor | Rett korridor med friske fotspor i støvet |
+| `corridor_t` | T-Junction | T-kryss, tre veier i mørket |
+| `corridor_corner` | Dark Corner | Hjørne der skygger samles |
+| `corridor_cross` | Crossroads | Firevegskryss, noe overvåker fra hver retning |
+| `corridor_wide` | Portrait Gallery | Bred gang med portretter som følger deg med blikket |
+
+---
+
+##### ROOM (8 tiles) - Rom
+| ID | Navn | Kategori | Beskrivelse |
+|----|------|----------|-------------|
+| `room_study` | Private Study | Kontor | Halvferdig brev med våt blekk |
+| `room_bedroom` | Master Bedroom | Soverom | Journal med drømmer som ikke er drømmer |
+| `room_kitchen` | Abandoned Kitchen | Kjøkken | Gryter med mat som fortsatt bobler |
+| `room_ritual` | Ritual Chamber | Okkult | Symboler malt i blod |
+| `room_library` | Library | Bibliotek | Bøker på ukjente språk |
+| `room_lab` | Hidden Laboratory | Laboratorium | Prøver i glass - noen nesten menneskelige |
+| `room_dining` | Dining Hall | Spisesal | Dekket for gjester som aldri kommer |
+| `room_living` | Drawing Room | Stue | Peis som knitrer uten ild |
+
+---
+
+##### STAIRS (3 tiles) - Trapper
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `stairs_down` | Cellar Stairs | Steintrapper ned i mørket |
+| `stairs_up` | Grand Staircase | Utskårne rekkverk, fottrinn ovenfra |
+| `stairs_spiral` | Spiral Stairs | Spiral som går dypere enn bygningen tillater |
+
+---
+
+##### BASEMENT (4 tiles) - Kjellere
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `basement_cellar` | Dark Cellar | Støvete flasker fra år som ikke eksisterer |
+| `basement_wine` | Wine Cellar | Vinkjeller med etiketter på ukjente språk |
+| `basement_tunnel` | Underground Tunnel | Jordtunnel som puster |
+| `basement_sewer` | Sewer Junction | Kloakk med noe stort i mørket |
+
+---
+
+##### CRYPT (4 tiles) - Krypter
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `crypt_tomb` | Forgotten Tomb | Steinkister med forskjøvne lokk |
+| `crypt_altar` | Sacrificial Altar | Alter flekkete av århundrer med offer |
+| `crypt_tunnel` | Bone Passage | Vegger pakket med bein |
+| `crypt_portal` | Eldritch Portal | Steinbue med stjerner fra en annen himmel |
+
+---
+
+##### FACADE (4 tiles) - Bygningsfasader
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `facade_manor` | Abandoned Manor | Herregård der alle vinduer er mørke |
+| `facade_shop` | Dusty Antique Shop | Antikvariat med spilledåse fra mareritt |
+| `facade_church` | Crumbling Church | Kirke med klokker som ringer selv |
+| `facade_warehouse` | Derelict Warehouse | Lagerbygning med nykuttede kjeder |
+
+---
+
+##### STREET (4 tiles) - Gater
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `street_main` | Main Street | Hovedgate med flimrende gasslykter |
+| `street_alley` | Shadowy Alley | Mørkt smug med symboler på veggen |
+| `street_crossing` | The Crossroads | Seksvegskryss der avtaler gjøres |
+| `street_corner` | Street Corner | Gatehjørne der skygger dveler |
+
+---
+
+##### URBAN (3 tiles) - Urbane områder
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `urban_square` | Town Square | Torget der klokketårnet teller ned |
+| `urban_harbor` | Arkham Harbor | Havn med fiskere med for store øyne |
+| `urban_cemetery` | Old Cemetery | Kirkegård med steiner eldre enn byen |
+
+---
+
+##### NATURE (5 tiles) - Naturområder
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `nature_forest` | Blackwood Forest | Tett skog uten dyrelyder |
+| `nature_clearing` | Moonlit Clearing | Lysning med runestein i midten |
+| `nature_path` | Forest Path | Smal sti der noe følger etter |
+| `nature_marsh` | Treacherous Marsh | Myr med villedende lys |
+| `nature_stones` | Ancient Stone Circle | Monolitter eldre enn menneskeheten |
+
+---
+
+### TILE-BILDER UTEN KODE-IMPLEMENTASJON (39 stykker)
+
+Disse bildene finnes i `src/assets/tiles/` men har ingen tilhørende TileTemplate:
+
+| Bilde | Foreslått kategori | Prioritet |
+|-------|-------------------|-----------|
+| tile-asylum.png | Facade | HØY |
+| tile-hospital.png | Facade | HØY |
+| tile-museum.png | Facade | HØY |
+| tile-hotel.png | Facade | MEDIUM |
+| tile-police.png | Facade/Urban | HØY |
+| tile-courthouse.png | Facade | MEDIUM |
+| tile-lighthouse.png | Facade/Nature | MEDIUM |
+| tile-station.png | Urban | HØY |
+| tile-campus.png | Urban | MEDIUM |
+| tile-market.png | Urban | MEDIUM |
+| tile-park.png | Urban/Nature | MEDIUM |
+| tile-dock.png | Urban | MEDIUM |
+| tile-shipyard.png | Urban | LAV |
+| tile-riverfront.png | Urban/Nature | MEDIUM |
+| tile-bridge.png | Street | HØY |
+| tile-deadend.png | Street/Corridor | MEDIUM |
+| tile-gate.png | Street/Facade | MEDIUM |
+| tile-parlor.png | Room | HØY |
+| tile-office.png | Room | HØY |
+| tile-gallery.png | Room | MEDIUM |
+| tile-billiard.png | Room | LAV |
+| tile-nursery.png | Room | MEDIUM |
+| tile-conservatory.png | Room | MEDIUM |
+| tile-trophy.png | Room | LAV |
+| tile-smoking.png | Room | LAV |
+| tile-music.png | Room | LAV |
+| tile-closet.png | Room | LAV |
+| tile-servants.png | Corridor | MEDIUM |
+| tile-maproom.png | Room | MEDIUM |
+| tile-records.png | Room | MEDIUM |
+| tile-boiler.png | Basement | HØY |
+| tile-mine.png | Basement/Crypt | HØY |
+| tile-cave.png | Basement/Crypt | HØY |
+| tile-underground-lake.png | Basement/Crypt | MEDIUM |
+| tile-sanctum.png | Crypt | HØY |
+| tile-starchamber.png | Crypt | HØY |
+| tile-idol.png | Crypt | MEDIUM |
+| tile-massgrave.png | Crypt | HØY |
+| tile-echo.png | Crypt | LAV |
+| tile-well.png | Nature/Urban | MEDIUM |
+| tile-pond.png | Nature | LAV |
+| tile-swamp.png | Nature | MEDIUM |
+| tile-orchard.png | Nature | LAV |
+| tile-quarry.png | Nature | LAV |
+| tile-petrified.png | Nature | MEDIUM |
+| tile-ruins.png | Nature | HØY |
+| tile-campsite.png | Nature | LAV |
+| tile-hangingtree.png | Nature | MEDIUM |
+| tile-gallows.png | Urban/Nature | MEDIUM |
+| tile-blackpool.png | Nature | MEDIUM |
+| tile-witchhouse.png | Facade | HØY |
+| tile-shack.png | Facade/Nature | LAV |
+| tile-farmhouse.png | Facade | MEDIUM |
+| tile-tenement.png | Facade | LAV |
+| tile-funeral.png | Facade/Room | HØY |
+| tile-newspaper.png | Room | LAV |
+| tile-cannery.png | Facade | LAV |
+| tile-gasworks.png | Facade/Urban | LAV |
+| tile-belltower.png | Room/Stairs | MEDIUM |
+| tile-fireescape.png | Corridor/Stairs | LAV |
+
+---
+
+### ANBEFALTE NYE TILES FOR VARIASJON
+
+#### PRIORITET 1 - Essensielle for spillvariasjon (12 tiles)
+
+**Facade (5):**
+1. **asylum_facade** - Arkham Asylum (tile-asylum.png)
+   - Ikonisk Lovecraft-lokasjon
+   - Edges: DOOR/FACADE, resten WALL
+   - Leads to: Foyer med celle-korridorer
+
+2. **hospital_facade** - St. Mary's Hospital (tile-hospital.png)
+   - Medisinsk lokasjon for Doctor-klassen
+   - Edge-konfig: Standard facade
+
+3. **museum_facade** - Arkham Historical Museum (tile-museum.png)
+   - Arkeologiske funn og okkulte gjenstander
+   - Edge-konfig: Standard facade
+
+4. **police_facade** - Arkham Police Station (tile-police.png)
+   - Kriminaletterforskning
+   - Edge-konfig: Standard facade
+
+5. **witchhouse_facade** - The Witch House (tile-witchhouse.png)
+   - Klassisk Lovecraft-referanse
+   - Edge-konfig: Isolert, få innganger
+
+**Room (4):**
+6. **room_parlor** - Victorian Parlor (tile-parlor.png)
+   - Séanser og okkulte sammenkomster
+   - Features: Okkultist kan utføre ritualer
+
+7. **room_office** - Administrator's Office (tile-office.png)
+   - Dokumenter og ledetråder
+   - Features: +1 Investigate
+
+8. **room_gallery** - Art Gallery (tile-gallery.png)
+   - Horror check fra malerier
+   - Features: Skjulte dører bak kunst
+
+9. **room_conservatory** - Overgrown Conservatory (tile-conservatory.png)
+   - Plantevekst som har tatt over
+   - Features: Nature-element innendørs
+
+**Basement/Crypt (3):**
+10. **basement_mine** - Abandoned Mine (tile-mine.png)
+    - Vertikale sjakter og ganger
+    - Features: Ustabile områder
+
+11. **crypt_sanctum** - Inner Sanctum (tile-sanctum.png)
+    - Kultisters hellige rom
+    - Features: Boss spawn, ritual location
+
+12. **crypt_massgrave** - Mass Grave (tile-massgrave.png)
+    - Massegrav med ghoul spawn
+    - Features: Horror check, loot fra lik
+
+---
+
+#### PRIORITET 2 - God variasjon (10 tiles)
+
+**Urban (4):**
+13. **urban_station** - Train Station (tile-station.png)
+    - Reise til andre scenarier
+14. **urban_market** - Night Market (tile-market.png)
+    - Handelsmuligheter
+15. **urban_park** - Arkham Park (tile-park.png)
+    - Overgang mellom urban og natur
+16. **urban_dock** - Harbor Dock (tile-dock.png)
+    - Deep One territory
+
+**Street (2):**
+17. **street_bridge** - Miskatonic Bridge (tile-bridge.png)
+    - Krysser elven, viktig forbindelse
+18. **street_deadend** - Dead End (tile-deadend.png)
+    - Blindgate med potensielt skjult inngang
+
+**Nature (4):**
+19. **nature_ruins** - Ancient Ruins (tile-ruins.png)
+    - Førhistoriske strukturer
+20. **nature_swamp** - Deep Swamp (tile-swamp.png)
+    - Vanskeligere terreng enn marsh
+21. **nature_cave_entrance** - Cave Entrance (tile-cave.png)
+    - Inngang til undergrunnen fra utendørs
+22. **nature_blackpool** - The Black Pool (tile-blackpool.png)
+    - Overnaturlig vannhull
+
+---
+
+#### PRIORITET 3 - Ekstra atmosfære (8 tiles)
+
+23. **facade_hotel** - Grand Hotel
+24. **facade_lighthouse** - Kingsport Lighthouse
+25. **facade_funeral** - Funeral Parlor
+26. **facade_farmhouse** - Isolated Farmhouse
+27. **room_nursery** - Abandoned Nursery
+28. **room_maproom** - Cartographer's Room
+29. **basement_boiler** - Boiler Room
+30. **crypt_starchamber** - Star Chamber
+
+---
+
+### KATEGORI-BALANSE
+
+**Nåværende fordeling:**
+- Foyer: 3
+- Corridor: 5
+- Room: 8
+- Stairs: 3
+- Basement: 4
+- Crypt: 4
+- Facade: 4
+- Street: 4
+- Urban: 3
+- Nature: 5
+- **TOTALT: 43**
+
+**Anbefalt fordeling etter utvidelse:**
+- Foyer: 5 (+2)
+- Corridor: 7 (+2)
+- Room: 16 (+8)
+- Stairs: 4 (+1)
+- Basement: 7 (+3)
+- Crypt: 8 (+4)
+- Facade: 12 (+8)
+- Street: 7 (+3)
+- Urban: 8 (+5)
+- Nature: 11 (+6)
+- **TOTALT: 85**
+
+---
+
+### KONKLUSJON
+
+Spillet har et solid grunnlag med 43 tiles, men for større variasjon anbefales:
+
+1. **Fase 1**: Implementer de 12 PRIORITET 1-tiles (bilder finnes allerede)
+2. **Fase 2**: Legg til de 10 PRIORITET 2-tiles
+3. **Fase 3**: Utvid med PRIORITET 3-tiles etter behov
+
+Viktige mangler å fylle:
+- Flere ikoniske Lovecraft-lokasjoner (Asylum, Witch House)
+- Flere profesjonsrelevante rom (Hospital for Doctor, Museum for Professor)
+- Bedre overganger mellom outdoor og indoor
+- Flere crypt/basement varianter for dungeon-crawling
+
+---
+
 ## 2026-01-20: Scenario Info Button in Header
 
 ### Oppgave
