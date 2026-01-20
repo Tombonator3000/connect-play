@@ -1,5 +1,60 @@
 # Development Log
 
+## 2026-01-20: Fix Magic for Occultist and Professor in Legacy Mode
+
+### Problem
+When creating Occultist or Professor characters in legacy mode, they received no magic spells. According to REGELBOK.MD:
+- **Professor** should have 2 scholarly spells: True Sight, Mend Flesh
+- **Occultist** should select 3 spells before scenario start
+
+### Root Cause
+The `legacyHeroToPlayer()` function in `legacyManager.ts` always sets `spells: []` without checking character class.
+The `handleStartGameWithLegacyHeroes()` function in `ShadowsGame.tsx` directly converts heroes to players without triggering spell selection modal for Occultist.
+
+### Solution
+1. **Professor**: Automatically assign "True Sight" and "Mend Flesh" spells in `legacyHeroToPlayer()`
+2. **Occultist**: Show SpellSelectionModal before scenario start when loading legacy Occultist heroes
+
+### Files Modified
+- `src/game/utils/legacyManager.ts` - Add spell assignment for Professor
+- `src/game/ShadowsGame.tsx` - Add spell selection flow for legacy Occultist heroes
+
+### Implementation Details
+
+#### 1. legacyManager.ts Changes
+Added import for `SPELLS` from constants and updated `legacyHeroToPlayer()`:
+```typescript
+// Professor gets scholarly spells (True Sight, Mend Flesh) automatically
+const characterSpells = hero.characterClass === 'professor'
+  ? SPELLS.filter(s => s.id === 'reveal' || s.id === 'mend')
+  : [];
+```
+
+#### 2. ShadowsGame.tsx Changes
+Added new state for legacy occultist spell selection:
+```typescript
+const [pendingLegacyOccultists, setPendingLegacyOccultists] = useState<LegacyHero[]>([]);
+const [currentLegacyOccultistIndex, setCurrentLegacyOccultistIndex] = useState(0);
+```
+
+Modified `handleStartGameWithLegacyHeroes()` to:
+1. Check if any selected heroes are Occultists
+2. If yes, convert non-occultist heroes first and show SpellSelectionModal
+3. Process each Occultist one by one
+
+Added new SpellSelectionModal for legacy Occultists that:
+- Shows spell selection for each legacy Occultist
+- Chains through multiple Occultists if more than one selected
+- Properly cancels and cleans up if user cancels
+
+### Testing
+Build completed successfully. The fix ensures:
+- **Professor** automatically gets "True Sight" and "Mend Flesh" spells in legacy mode
+- **Occultist** must select 3 spells before scenario start in legacy mode
+- Multiple Occultists can be selected and each will get spell selection
+
+---
+
 ## 2026-01-20: Monster AI Variation & NPC Survivor System
 
 ### Oppgave
