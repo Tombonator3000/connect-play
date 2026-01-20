@@ -1902,6 +1902,16 @@ const ShadowsGame: React.FC = () => {
         let boardUpdates: ((board: Tile[]) => Tile[])[] = [];
 
         const enteredTile = state.board.find(t => t.q === q && t.r === r);
+
+        // Log atmospheric description when entering a tile (for already explored tiles)
+        // New tiles log their description during generation, but revisited tiles need to show it again
+        if (enteredTile && enteredTile.explored) {
+          const description = enteredTile.description || LOCATION_DESCRIPTIONS[enteredTile.name];
+          if (description) {
+            addToLog(description);
+          }
+        }
+
         if (enteredTile?.isDarkRoom && !enteredTile.darkRoomIlluminated && hasLightSource(activePlayer.inventory)) {
           // Illuminate the dark room!
           addToLog(`${activePlayer.name} shines light into the darkness...`);
@@ -3083,7 +3093,7 @@ const ShadowsGame: React.FC = () => {
                     <EnemyPanel enemy={selectedEnemy} onClose={() => setState(prev => ({ ...prev, selectedEnemyId: null }))} />
                   ) : (
                     <div className="space-y-3">
-                      {state.log.map((entry, i) => <div key={i} className="text-xs font-serif italic text-muted-foreground leading-relaxed border-b border-border/30 pb-2">{entry}</div>)}
+                      {state.log.map((entry, i) => <div key={i} className="text-sm font-serif italic text-muted-foreground leading-relaxed border-b border-border/30 pb-2">{entry}</div>)}
                     </div>
                   )}
                 </div>
@@ -3099,7 +3109,7 @@ const ShadowsGame: React.FC = () => {
                       <h3 className="text-xs font-bold text-parchment uppercase tracking-[0.2em]">Field Journal</h3>
                     </div>
                     <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
-                      {state.log.map((entry, i) => <div key={i} className="text-xs font-serif italic text-muted-foreground leading-relaxed border-b border-border/30 pb-2">{entry}</div>)}
+                      {state.log.map((entry, i) => <div key={i} className="text-sm font-serif italic text-muted-foreground leading-relaxed border-b border-border/30 pb-2">{entry}</div>)}
                     </div>
                   </div>
                 )}

@@ -1305,6 +1305,7 @@ export function createTileFromTemplate(
     q,
     r,
     name: template.name,
+    description: template.description,  // Include atmospheric description from template
     type: getCategoryType(template.category),
     category: template.category,
     zoneLevel: template.zoneLevel,
