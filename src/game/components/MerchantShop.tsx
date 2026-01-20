@@ -27,7 +27,10 @@ import {
   purchaseShopItem,
   getAllEquippedItems,
   getXPProgress,
-  addItemToStash
+  addItemToStash,
+  getItemSellPrice,
+  sellItemToFence,
+  sellStashItem
 } from '../utils/legacyManager';
 import {
   ShoppingBag,
@@ -44,7 +47,9 @@ import {
   ChevronUp,
   Trophy,
   Skull,
-  Target
+  Target,
+  HandCoins,
+  Warehouse
 } from 'lucide-react';
 
 interface MerchantShopProps {
@@ -57,6 +62,8 @@ interface MerchantShopProps {
 }
 
 type ShopCategory = 'weapons' | 'tools' | 'armor' | 'consumables' | 'relics';
+type ShopMode = 'buy' | 'sell';
+type SellSource = 'inventory' | 'stash';
 
 const MerchantShop: React.FC<MerchantShopProps> = ({
   heroes,
@@ -71,6 +78,8 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
   const [shopInventory, setShopInventory] = useState<ShopInventory>(getDefaultShopInventory());
   const [showRewards, setShowRewards] = useState(!!scenarioResult);
   const [purchaseMessage, setPurchaseMessage] = useState<string | null>(null);
+  const [shopMode, setShopMode] = useState<ShopMode>('buy');
+  const [sellSource, setSellSource] = useState<SellSource>('inventory');
 
   const activeHero = useMemo(
     () => heroes.find(h => h.id === selectedHeroId),
@@ -165,6 +174,36 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
     setTimeout(() => setPurchaseMessage(null), 2000);
   };
 
+  // Handle selling items from hero inventory
+  const handleSellFromInventory = (item: Item) => {
+    if (!activeHero) return;
+
+    const result = sellItemToFence(activeHero, item);
+    if (result.success) {
+      onHeroUpdate(result.hero);
+      setPurchaseMessage(`Sold ${item.name} for ${result.goldEarned} gold!`);
+    } else {
+      setPurchaseMessage(result.message);
+    }
+    setTimeout(() => setPurchaseMessage(null), 2000);
+  };
+
+  // Handle selling items from stash
+  const handleSellFromStash = (itemIndex: number) => {
+    if (!activeHero) return;
+
+    const result = sellStashItem(stash, itemIndex);
+    if (result.success) {
+      // Add gold to the active hero
+      onHeroUpdate({ ...activeHero, gold: activeHero.gold + result.goldEarned });
+      onStashUpdate(result.stash);
+      setPurchaseMessage(`Sold for ${result.goldEarned} gold!`);
+    } else {
+      setPurchaseMessage(result.message);
+    }
+    setTimeout(() => setPurchaseMessage(null), 2000);
+  };
+
   const renderShopItem = (shopItem: ShopItem) => {
     const canAfford = activeHero && activeHero.gold >= shopItem.goldCost;
     const meetsLevel = !shopItem.requiredLevel || (activeHero && activeHero.level >= shopItem.requiredLevel);
@@ -223,6 +262,117 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
         >
           {!inStock ? 'Out of Stock' : !hasSpace ? 'Inventory Full' : !canAfford ? 'Not Enough Gold' : 'Purchase'}
         </button>
+      </div>
+    );
+  };
+
+  // Render an item for sale (from inventory or stash)
+  const renderSellItem = (item: Item, source: 'inventory' | 'stash', index?: number) => {
+    const sellPrice = getItemSellPrice(item);
+
+    return (
+      <div
+        key={`${source}-${item.id}-${index}`}
+        className="p-4 rounded-lg border-2 border-stone-600 bg-stone-800/50 hover:border-green-500 transition-all"
+      >
+        <div className="flex justify-between items-start mb-2">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-stone-200">{item.name}</span>
+            <span className="px-1.5 py-0.5 bg-stone-700 text-stone-400 text-[10px] rounded uppercase">
+              {item.type || 'item'}
+            </span>
+          </div>
+          <div className="text-right">
+            <div className="flex items-center gap-1 text-green-400">
+              <Coins size={14} />
+              <span className="font-bold">+{sellPrice}</span>
+            </div>
+          </div>
+        </div>
+
+        <p className="text-xs text-stone-400 mb-3">{item.effect || 'No special effect'}</p>
+
+        <button
+          onClick={() => {
+            if (source === 'inventory') {
+              handleSellFromInventory(item);
+            } else if (index !== undefined) {
+              handleSellFromStash(index);
+            }
+          }}
+          className="w-full py-2 rounded text-sm font-bold uppercase tracking-wider transition-all bg-green-700 hover:bg-green-600 text-green-100"
+        >
+          Sell for {sellPrice} gold
+        </button>
+      </div>
+    );
+  };
+
+  // Render the sell panel content
+  const renderSellPanel = () => {
+    const inventoryItems = activeHero ? getAllEquippedItems(activeHero.equipment) : [];
+    const stashItems = stash.items;
+
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Sell source tabs */}
+        <div className="flex gap-2 p-4 border-b border-stone-700 bg-stone-900">
+          <button
+            onClick={() => setSellSource('inventory')}
+            className={`
+              flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all
+              ${sellSource === 'inventory'
+                ? 'border-green-600 bg-green-900/30 text-green-400'
+                : 'border-stone-700 bg-stone-800 text-stone-400 hover:border-stone-600'
+              }
+            `}
+          >
+            <Package size={16} />
+            My Inventory ({inventoryItems.length})
+          </button>
+          <button
+            onClick={() => setSellSource('stash')}
+            className={`
+              flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all
+              ${sellSource === 'stash'
+                ? 'border-green-600 bg-green-900/30 text-green-400'
+                : 'border-stone-700 bg-stone-800 text-stone-400 hover:border-stone-600'
+              }
+            `}
+          >
+            <Warehouse size={16} />
+            Stash ({stashItems.length})
+          </button>
+        </div>
+
+        {/* Sell items grid */}
+        <div className="flex-1 p-4 overflow-y-auto">
+          {sellSource === 'inventory' ? (
+            inventoryItems.length > 0 ? (
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                {inventoryItems.map((item, idx) => renderSellItem(item, 'inventory', idx))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-stone-500">
+                <Package size={48} className="mb-4 opacity-50" />
+                <p className="text-lg">No items in inventory to sell</p>
+                <p className="text-sm">Find loot during scenarios or check your stash</p>
+              </div>
+            )
+          ) : (
+            stashItems.length > 0 ? (
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                {stashItems.map((item, idx) => renderSellItem(item, 'stash', idx))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-stone-500">
+                <Warehouse size={48} className="mb-4 opacity-50" />
+                <p className="text-lg">Stash is empty</p>
+                <p className="text-sm">Transfer items from your inventory or find loot</p>
+              </div>
+            )
+          )}
+        </div>
       </div>
     );
   };
@@ -433,32 +583,74 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
           {/* Right: Shop */}
           <div className="flex-1 flex flex-col overflow-hidden">
 
-            {/* Category tabs */}
-            <div className="flex gap-2 p-4 border-b border-stone-700 bg-stone-900">
-              {(['weapons', 'tools', 'armor', 'consumables', 'relics'] as ShopCategory[]).map(category => (
-                <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`
-                    flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all capitalize
-                    ${category === selectedCategory
-                      ? getCategoryColor(category)
-                      : 'border-stone-700 bg-stone-800 text-stone-400 hover:border-stone-600'
-                    }
-                  `}
-                >
-                  {getCategoryIcon(category)}
-                  {category}
-                </button>
-              ))}
+            {/* Buy/Sell Mode Toggle */}
+            <div className="flex gap-2 p-4 border-b border-stone-700 bg-stone-950">
+              <button
+                onClick={() => setShopMode('buy')}
+                className={`
+                  flex items-center gap-2 px-6 py-2 rounded-lg border-2 transition-all font-bold uppercase tracking-wider
+                  ${shopMode === 'buy'
+                    ? 'border-amber-500 bg-amber-900/30 text-amber-400'
+                    : 'border-stone-700 bg-stone-800 text-stone-400 hover:border-stone-600'
+                  }
+                `}
+              >
+                <ShoppingBag size={18} />
+                Buy
+              </button>
+              <button
+                onClick={() => setShopMode('sell')}
+                className={`
+                  flex items-center gap-2 px-6 py-2 rounded-lg border-2 transition-all font-bold uppercase tracking-wider
+                  ${shopMode === 'sell'
+                    ? 'border-green-500 bg-green-900/30 text-green-400'
+                    : 'border-stone-700 bg-stone-800 text-stone-400 hover:border-stone-600'
+                  }
+                `}
+              >
+                <HandCoins size={18} />
+                Sell
+              </button>
+              <div className="flex-1" />
+              {shopMode === 'sell' && (
+                <div className="flex items-center gap-2 text-sm text-stone-500 italic">
+                  <span>The Fence pays 50% of shop value</span>
+                </div>
+              )}
             </div>
 
-            {/* Items grid */}
-            <div className="flex-1 p-4 overflow-y-auto">
-              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                {categoryItems.map(renderShopItem)}
-              </div>
-            </div>
+            {shopMode === 'buy' ? (
+              <>
+                {/* Category tabs */}
+                <div className="flex gap-2 p-4 border-b border-stone-700 bg-stone-900">
+                  {(['weapons', 'tools', 'armor', 'consumables', 'relics'] as ShopCategory[]).map(category => (
+                    <button
+                      key={category}
+                      onClick={() => setSelectedCategory(category)}
+                      className={`
+                        flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all capitalize
+                        ${category === selectedCategory
+                          ? getCategoryColor(category)
+                          : 'border-stone-700 bg-stone-800 text-stone-400 hover:border-stone-600'
+                        }
+                      `}
+                    >
+                      {getCategoryIcon(category)}
+                      {category}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Items grid */}
+                <div className="flex-1 p-4 overflow-y-auto">
+                  <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                    {categoryItems.map(renderShopItem)}
+                  </div>
+                </div>
+              </>
+            ) : (
+              renderSellPanel()
+            )}
           </div>
         </div>
 

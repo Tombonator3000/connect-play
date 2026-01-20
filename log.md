@@ -1,5 +1,88 @@
 # Development Log
 
+## 2026-01-20: Sell Items to The Fence - Post-Mission Trading
+
+### Oppgave
+Implementere et system for å selge gjenstander hos "The Fence" etter oppdrag. Spillere skal kunne selge items de ikke trenger, men får ikke fullpris - Fence kjøper til redusert pris (50% av butikkverdi).
+
+### Design
+- **Salgspris**: 50% av butikkverdi (standard roguelite-mekanikk)
+- **Minimum pris**: 1 gull for alle items
+- **Sell-kilder**: Hero inventory + Equipment Stash
+- **UI**: Buy/Sell toggle i MerchantShop med egne faner
+
+### Implementasjon
+
+#### 1. Nye funksjoner i legacyManager.ts
+
+**Pris-system**:
+```typescript
+const SELL_PRICE_MODIFIER = 0.5; // 50% av butikkverdi
+
+// Komplett prisliste for alle item-typer
+const ITEM_BASE_PRICES: Record<string, number> = {
+  // Vapen: Revolver 30g, Shotgun 50g, Tommy Gun 100g, etc.
+  // Verktøy: Flashlight 10g, Lockpick 20g, Crowbar 15g, etc.
+  // Rustning: Leather 35g, Trench Coat 25g, Armored Vest 75g
+  // Forbruk: Medkit 20g, Whiskey 10g, Bandages 5g
+  // Relikvier: Elder Sign 150g, Ward 60g, Compass 80g
+  // Nøkler: Common 2g, Specific 5g, Master 25g
+};
+
+// Fallback-priser per item-type
+const DEFAULT_PRICES_BY_TYPE: Record<string, number> = {
+  weapon: 20, tool: 10, armor: 30, consumable: 8,
+  relic: 50, key: 2, clue: 5, artifact: 40
+};
+```
+
+**Nye eksporterte funksjoner**:
+- `getItemBasePrice(item)`: Henter butikkpris for et item
+- `getItemSellPrice(item)`: Beregner salgspris (50%, min 1g)
+- `sellItemToFence(hero, item)`: Selger fra hero inventory, legger til gull
+- `sellStashItem(stash, index)`: Selger fra stash, returnerer gullverdi
+
+#### 2. MerchantShop UI-oppdateringer
+
+**Nye states**:
+```typescript
+const [shopMode, setShopMode] = useState<'buy' | 'sell'>('buy');
+const [sellSource, setSellSource] = useState<'inventory' | 'stash'>('inventory');
+```
+
+**Buy/Sell Toggle**:
+- Øverst i shop-panelet med tydelige ikoner (ShoppingBag / HandCoins)
+- Viser "The Fence pays 50% of shop value" når Sell er aktiv
+
+**Sell Panel**:
+- Inventory/Stash toggle for å velge kilde
+- Grid med items som viser navn, type, effekt og salgspris
+- Grønne "Sell for X gold" knapper
+- Tom-tilstand med informative meldinger
+
+#### 3. Eksempel på salgspriser
+
+| Item | Butikkpris | Salgspris |
+|------|------------|-----------|
+| Revolver | 30g | 15g |
+| Shotgun | 50g | 25g |
+| Tommy Gun | 100g | 50g |
+| Elder Sign | 150g | 75g |
+| Medkit | 20g | 10g |
+| Bandages | 5g | 2g |
+
+### Filer endret
+- `src/game/utils/legacyManager.ts` - Lagt til sell-system (~220 linjer)
+- `src/game/components/MerchantShop.tsx` - Lagt til Sell UI (~150 linjer)
+
+### Resultat
+- Spillere kan nå selge uønskede items etter oppdrag
+- Logisk økonomisk system (kjøp dyrt, selg billig)
+- Fungerer for både hero inventory og shared stash
+- Build vellykket uten feil
+
+---
+
 ## 2026-01-20: Hex Tile Beskrivelser og Field Journal Forbedring
 
 ### Oppgave
