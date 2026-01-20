@@ -8257,3 +8257,77 @@ const handleContextActionEffect = useCallback((action: ContextAction, success: b
 - Build successful (922.66 kB bundle)
 - All action effects preserved with same behavior
 
+---
+
+## 2026-01-20: Refactor getThemedTilePreferences - Switch to Data-Driven Lookup
+
+### Problem
+The `getThemedTilePreferences` function in `scenarioGenerator.ts` was a **65-line switch statement** with 9 cases, each returning an object with identical structure. This pattern is:
+- Verbose and repetitive
+- Harder to maintain (must find the right case to edit)
+- Cannot be iterated or introspected
+- Prone to copy-paste errors when adding new themes
+
+### Solution
+Replaced the switch statement with a **data-driven configuration object** (`THEME_TILE_PREFERENCES`) that maps themes directly to their preferences.
+
+### Before (Switch Statement)
+```typescript
+export function getThemedTilePreferences(theme: ScenarioTheme): {...} {
+  switch (theme) {
+    case 'manor':
+      return { preferredNames: [...], avoidNames: [...], floorPreference: 'wood' };
+    case 'church':
+      return { preferredNames: [...], avoidNames: [...], floorPreference: 'stone' };
+    // ... 7 more cases ...
+    default:
+      return { preferredNames: [], avoidNames: [], floorPreference: 'wood' };
+  }
+}
+```
+
+### After (Data-Driven Lookup)
+```typescript
+// Configuration object - easy to read, extend, and test
+export const THEME_TILE_PREFERENCES: Record<ScenarioTheme, {...}> = {
+  manor: { preferredNames: [...], avoidNames: [...], floorPreference: 'wood' },
+  church: { preferredNames: [...], avoidNames: [...], floorPreference: 'stone' },
+  // ... all themes in one clear structure
+};
+
+const DEFAULT_TILE_PREFERENCES = {
+  preferredNames: [], avoidNames: [], floorPreference: 'wood'
+};
+
+// Function is now a simple lookup
+export function getThemedTilePreferences(theme: ScenarioTheme) {
+  return THEME_TILE_PREFERENCES[theme] ?? DEFAULT_TILE_PREFERENCES;
+}
+```
+
+### Benefits
+
+1. **Readability**: All theme configurations visible in one place
+2. **Maintainability**: Adding a theme = add one entry to the object
+3. **Extensibility**: Configuration can be imported/extended elsewhere
+4. **Testability**: Can iterate over `THEME_TILE_PREFERENCES` for automated testing
+5. **Type Safety**: TypeScript ensures all `ScenarioTheme` values have entries
+6. **Performance**: Object lookup is O(1) vs switch which is O(n) worst case
+
+### Files Modified
+- `src/game/utils/scenarioGenerator.ts`
+  - Added `THEME_TILE_PREFERENCES` configuration object (lines 96-157)
+  - Added `DEFAULT_TILE_PREFERENCES` constant
+  - Simplified `getThemedTilePreferences` function to 3-line lookup
+
+### Refactoring Pattern Applied
+**"Replace Switch with Object Literal"** - A common refactoring pattern where a switch statement over constants is replaced with an object lookup. This pattern is especially useful when:
+- All cases return the same type of data
+- The cases are based on string/enum values
+- The data might need to be accessed or iterated elsewhere
+
+### Verification
+- TypeScript compiles without errors
+- Build successful (922.66 kB bundle)
+- Same behavior preserved - function returns identical values for all themes
+

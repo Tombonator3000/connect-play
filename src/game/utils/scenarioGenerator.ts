@@ -90,6 +90,76 @@ function getThemeFromLocation(locationName: string, atmosphere: string): Scenari
 }
 
 /**
+ * Theme tile preferences configuration.
+ * Defines preferred/avoided tile names and floor types for each theme.
+ *
+ * REFACTORED: Previously a 65-line switch statement with 9 cases.
+ * Now a simple data-driven lookup table that's easier to:
+ * - Read and understand at a glance
+ * - Extend with new themes (just add an entry)
+ * - Test (can iterate over entries)
+ * - Maintain (changes are localized to this object)
+ */
+export const THEME_TILE_PREFERENCES: Record<ScenarioTheme, {
+  preferredNames: string[];
+  avoidNames: string[];
+  floorPreference: string;
+}> = {
+  manor: {
+    preferredNames: ['manor', 'mansion', 'study', 'library', 'bedroom', 'dining', 'gallery', 'parlor', 'foyer', 'cellar', 'wine'],
+    avoidNames: ['sewer', 'harbor', 'industrial', 'factory', 'asylum', 'cell'],
+    floorPreference: 'wood'
+  },
+  church: {
+    preferredNames: ['church', 'chapel', 'altar', 'crypt', 'vestibule', 'bell', 'sanctum', 'tomb'],
+    avoidNames: ['kitchen', 'bedroom', 'factory', 'harbor', 'sewer'],
+    floorPreference: 'stone'
+  },
+  asylum: {
+    preferredNames: ['asylum', 'hospital', 'cell', 'ward', 'corridor', 'reception', 'padded', 'dissection', 'records'],
+    avoidNames: ['manor', 'mansion', 'forest', 'harbor', 'wine'],
+    floorPreference: 'tile'
+  },
+  warehouse: {
+    preferredNames: ['warehouse', 'storage', 'factory', 'industrial', 'boiler', 'loading', 'crate', 'dock'],
+    avoidNames: ['manor', 'mansion', 'church', 'bedroom', 'parlor', 'forest'],
+    floorPreference: 'stone'
+  },
+  forest: {
+    preferredNames: ['forest', 'clearing', 'marsh', 'path', 'grove', 'stones', 'ruins', 'cabin', 'hollow'],
+    avoidNames: ['asylum', 'factory', 'warehouse', 'hospital', 'cell'],
+    floorPreference: 'dirt'
+  },
+  urban: {
+    preferredNames: ['street', 'alley', 'square', 'market', 'station', 'bridge', 'plaza', 'precinct'],
+    avoidNames: ['forest', 'marsh', 'cave', 'crypt', 'manor'],
+    floorPreference: 'cobblestone'
+  },
+  coastal: {
+    preferredNames: ['harbor', 'dock', 'wharf', 'lighthouse', 'coastal', 'cliff', 'boat', 'pier', 'fishmarket'],
+    avoidNames: ['forest', 'manor', 'asylum', 'church'],
+    floorPreference: 'cobblestone'
+  },
+  underground: {
+    preferredNames: ['crypt', 'catacomb', 'cave', 'tunnel', 'sewer', 'cellar', 'tomb', 'pit', 'altar', 'portal'],
+    avoidNames: ['street', 'square', 'market', 'forest', 'harbor'],
+    floorPreference: 'stone'
+  },
+  academic: {
+    preferredNames: ['library', 'university', 'campus', 'study', 'laboratory', 'lecture', 'museum', 'archive', 'office'],
+    avoidNames: ['sewer', 'marsh', 'harbor', 'factory', 'asylum'],
+    floorPreference: 'wood'
+  }
+};
+
+/** Default tile preferences for unknown themes */
+const DEFAULT_TILE_PREFERENCES = {
+  preferredNames: [] as string[],
+  avoidNames: [] as string[],
+  floorPreference: 'wood'
+};
+
+/**
  * Gets preferred tile names for a given theme.
  * Used by tile generation to select thematically appropriate tiles.
  */
@@ -98,68 +168,7 @@ export function getThemedTilePreferences(theme: ScenarioTheme): {
   avoidNames: string[];
   floorPreference: string;
 } {
-  switch (theme) {
-    case 'manor':
-      return {
-        preferredNames: ['manor', 'mansion', 'study', 'library', 'bedroom', 'dining', 'gallery', 'parlor', 'foyer', 'cellar', 'wine'],
-        avoidNames: ['sewer', 'harbor', 'industrial', 'factory', 'asylum', 'cell'],
-        floorPreference: 'wood'
-      };
-    case 'church':
-      return {
-        preferredNames: ['church', 'chapel', 'altar', 'crypt', 'vestibule', 'bell', 'sanctum', 'tomb'],
-        avoidNames: ['kitchen', 'bedroom', 'factory', 'harbor', 'sewer'],
-        floorPreference: 'stone'
-      };
-    case 'asylum':
-      return {
-        preferredNames: ['asylum', 'hospital', 'cell', 'ward', 'corridor', 'reception', 'padded', 'dissection', 'records'],
-        avoidNames: ['manor', 'mansion', 'forest', 'harbor', 'wine'],
-        floorPreference: 'tile'
-      };
-    case 'warehouse':
-      return {
-        preferredNames: ['warehouse', 'storage', 'factory', 'industrial', 'boiler', 'loading', 'crate', 'dock'],
-        avoidNames: ['manor', 'mansion', 'church', 'bedroom', 'parlor', 'forest'],
-        floorPreference: 'stone'
-      };
-    case 'forest':
-      return {
-        preferredNames: ['forest', 'clearing', 'marsh', 'path', 'grove', 'stones', 'ruins', 'cabin', 'hollow'],
-        avoidNames: ['asylum', 'factory', 'warehouse', 'hospital', 'cell'],
-        floorPreference: 'dirt'
-      };
-    case 'urban':
-      return {
-        preferredNames: ['street', 'alley', 'square', 'market', 'station', 'bridge', 'plaza', 'precinct'],
-        avoidNames: ['forest', 'marsh', 'cave', 'crypt', 'manor'],
-        floorPreference: 'cobblestone'
-      };
-    case 'coastal':
-      return {
-        preferredNames: ['harbor', 'dock', 'wharf', 'lighthouse', 'coastal', 'cliff', 'boat', 'pier', 'fishmarket'],
-        avoidNames: ['forest', 'manor', 'asylum', 'church'],
-        floorPreference: 'cobblestone'
-      };
-    case 'underground':
-      return {
-        preferredNames: ['crypt', 'catacomb', 'cave', 'tunnel', 'sewer', 'cellar', 'tomb', 'pit', 'altar', 'portal'],
-        avoidNames: ['street', 'square', 'market', 'forest', 'harbor'],
-        floorPreference: 'stone'
-      };
-    case 'academic':
-      return {
-        preferredNames: ['library', 'university', 'campus', 'study', 'laboratory', 'lecture', 'museum', 'archive', 'office'],
-        avoidNames: ['sewer', 'marsh', 'harbor', 'factory', 'asylum'],
-        floorPreference: 'wood'
-      };
-    default:
-      return {
-        preferredNames: [],
-        avoidNames: [],
-        floorPreference: 'wood'
-      };
-  }
+  return THEME_TILE_PREFERENCES[theme] ?? DEFAULT_TILE_PREFERENCES;
 }
 
 // ============================================================================
