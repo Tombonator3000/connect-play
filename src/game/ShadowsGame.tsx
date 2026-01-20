@@ -121,6 +121,10 @@ const ShadowsGame: React.FC = () => {
   const [showSpellSelection, setShowSpellSelection] = useState(false);
   const [pendingOccultistCharacter, setPendingOccultistCharacter] = useState<CharacterType | null>(null);
 
+  // Legacy Occultist Spell Selection state
+  const [pendingLegacyOccultists, setPendingLegacyOccultists] = useState<LegacyHero[]>([]);
+  const [currentLegacyOccultistIndex, setCurrentLegacyOccultistIndex] = useState(0);
+
   // Character Selection Screen state
   const [showCharacterSelection, setShowCharacterSelection] = useState(false);
 
@@ -543,6 +547,36 @@ const ShadowsGame: React.FC = () => {
 
     if (selectedHeroes.length === 0) return;
 
+    // Check if any selected heroes are Occultists (they need spell selection)
+    const occultistHeroes = selectedHeroes.filter(h => h.characterClass === 'occultist');
+
+    if (occultistHeroes.length > 0) {
+      // Convert non-occultist heroes to players first
+      const nonOccultistPlayers: Player[] = selectedHeroes
+        .filter(h => h.characterClass !== 'occultist')
+        .map(hero => legacyHeroToPlayer(hero));
+
+      // Initialize kill counts for all heroes
+      const initialKillCounts: Record<string, number> = {};
+      selectedHeroes.forEach(hero => {
+        initialKillCounts[hero.id] = 0;
+      });
+      setHeroKillCounts(initialKillCounts);
+
+      // Set non-occultist players to state
+      setState(prev => ({
+        ...prev,
+        players: nonOccultistPlayers
+      }));
+
+      // Start spell selection flow for occultists
+      setPendingLegacyOccultists(occultistHeroes);
+      setCurrentLegacyOccultistIndex(0);
+      setShowSpellSelection(true);
+      return;
+    }
+
+    // No occultists - proceed normally
     const players: Player[] = selectedHeroes.map(hero => legacyHeroToPlayer(hero));
 
     // Initialize kill counts tracking
@@ -3295,7 +3329,7 @@ const ShadowsGame: React.FC = () => {
         />
       )}
 
-      {/* Occultist Spell Selection Modal */}
+      {/* Occultist Spell Selection Modal (for new character creation) */}
       {showSpellSelection && pendingOccultistCharacter && (
         <SpellSelectionModal
           availableSpells={OCCULTIST_SPELLS}
@@ -3324,6 +3358,53 @@ const ShadowsGame: React.FC = () => {
           onCancel={() => {
             setShowSpellSelection(false);
             setPendingOccultistCharacter(null);
+          }}
+        />
+      )}
+
+      {/* Legacy Occultist Spell Selection Modal (for legacy heroes) */}
+      {showSpellSelection && pendingLegacyOccultists.length > 0 && !pendingOccultistCharacter && (
+        <SpellSelectionModal
+          availableSpells={OCCULTIST_SPELLS}
+          maxSelections={3}
+          heroName={pendingLegacyOccultists[currentLegacyOccultistIndex]?.name || 'The Occultist'}
+          onConfirm={(selectedSpells: OccultistSpell[]) => {
+            const currentOccultist = pendingLegacyOccultists[currentLegacyOccultistIndex];
+            if (!currentOccultist) return;
+
+            // Convert legacy hero to player with selected spells
+            const newPlayer = legacyHeroToPlayer(currentOccultist);
+            newPlayer.selectedSpells = selectedSpells;
+
+            setState(prev => ({
+              ...prev,
+              players: [...prev.players, newPlayer]
+            }));
+
+            // Check if there are more occultists to process
+            const nextIndex = currentLegacyOccultistIndex + 1;
+            if (nextIndex < pendingLegacyOccultists.length) {
+              // Move to next occultist
+              setCurrentLegacyOccultistIndex(nextIndex);
+            } else {
+              // All occultists have selected spells, finish setup
+              setShowSpellSelection(false);
+              setPendingLegacyOccultists([]);
+              setCurrentLegacyOccultistIndex(0);
+              setMainMenuView('title');
+            }
+          }}
+          onCancel={() => {
+            // Cancel all - remove already added players and reset
+            setState(prev => ({
+              ...prev,
+              players: prev.players.filter(p =>
+                !pendingLegacyOccultists.some(o => o.id === p.heroId)
+              )
+            }));
+            setShowSpellSelection(false);
+            setPendingLegacyOccultists([]);
+            setCurrentLegacyOccultistIndex(0);
           }}
         />
       )}

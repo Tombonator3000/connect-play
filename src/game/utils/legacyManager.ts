@@ -31,7 +31,7 @@ import {
   ShopItem,
   ShopInventory
 } from '../types';
-import { CHARACTERS } from '../constants';
+import { CHARACTERS, SPELLS } from '../constants';
 
 // Re-export for external consumers
 export { createDefaultLegacyData };
@@ -584,6 +584,12 @@ export function legacyHeroToPlayer(hero: LegacyHero): Player {
     willpower: hero.baseAttributes.willpower + hero.bonusAttributes.willpower
   };
 
+  // Professor gets scholarly spells (True Sight, Mend Flesh) automatically
+  // Occultist gets spells via SpellSelectionModal (handled in ShadowsGame.tsx)
+  const characterSpells = hero.characterClass === 'professor'
+    ? SPELLS.filter(s => s.id === 'reveal' || s.id === 'mend')
+    : [];
+
   return {
     id: hero.characterClass,  // Use character class as the id (CharacterType)
     heroId: hero.id,  // Store unique hero ID for tracking
@@ -601,7 +607,7 @@ export function legacyHeroToPlayer(hero: LegacyHero): Player {
     baseDefenseDice: character?.baseDefenseDice || 1,
     position: { q: 0, r: 0 },
     inventory: { ...hero.equipment, bag: [...hero.equipment.bag] },
-    spells: [],
+    spells: characterSpells,
     actions: 2,
     isDead: false,
     madness: [],
