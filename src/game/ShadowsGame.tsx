@@ -82,6 +82,16 @@ import {
   findNewlyCompletedSurvivalObjectives,
   processWeatherForNewRound
 } from './utils/mythosPhaseHelpers';
+import {
+  getCategoryTilePool,
+  getFloorTypeForCategory,
+  createFallbackEdges,
+  createFallbackTile,
+  selectRandomRoomName,
+  categoryMatchesTileSet,
+  processQuestItemOnNewTile,
+  calculateEnemySpawnPosition
+} from './utils/roomSpawnHelpers';
 
 const STORAGE_KEY = 'shadows_1920s_save';
 const SETTINGS_KEY = 'shadows_1920s_settings';
@@ -2078,16 +2088,10 @@ const ShadowsGame: React.FC = () => {
     // Find all valid templates that match the constraints
     const validMatches = findValidTemplates(constraints, sourceCategory as TileCategory);
 
-    // Filter by tile set preference
-    const filteredMatches = validMatches.filter(match => {
-      const cat = match.template.category;
-      if (tileSet === 'indoor') {
-        return ['foyer', 'corridor', 'room', 'stairs', 'basement', 'crypt', 'facade'].includes(cat);
-      } else if (tileSet === 'outdoor') {
-        return ['nature', 'urban', 'street'].includes(cat);
-      }
-      return true; // mixed accepts all
-    });
+    // Filter by tile set preference using helper
+    const filteredMatches = validMatches.filter(match =>
+      categoryMatchesTileSet(match.template.category as TileCategory, tileSet)
+    );
 
     // Use filtered if available, otherwise fall back to all valid
     const matchesToUse = filteredMatches.length > 0 ? filteredMatches : validMatches;
@@ -2096,100 +2100,22 @@ const ShadowsGame: React.FC = () => {
       // Fallback: Use legacy system if no templates match
       console.warn(`No valid templates for (${startQ},${startR}), using fallback`);
 
-      // Legacy fallback - create a simple corridor or room
+      // Select category and room name using helpers
       const newCategory = selectRandomConnectableCategory(
         sourceCategory as TileCategory,
         tileSet === 'indoor'
       );
+      const roomName = selectRandomRoomName(newCategory, tileSet);
 
-      const getCategoryPool = (cat: TileCategory) => {
-        switch (cat) {
-          case 'nature': return OUTDOOR_LOCATIONS.filter((_, i) => i < 15);
-          case 'urban': return OUTDOOR_LOCATIONS.filter((_, i) => i >= 15 && i < 35);
-          case 'street': return OUTDOOR_CONNECTORS;
-          case 'facade': return INDOOR_LOCATIONS.filter((_, i) => i < 14);
-          case 'foyer': return INDOOR_LOCATIONS.filter((_, i) => i >= 14 && i < 24);
-          case 'corridor': return INDOOR_CONNECTORS;
-          case 'room': return INDOOR_LOCATIONS.filter((_, i) => i >= 24 && i < 49);
-          case 'stairs': return INDOOR_LOCATIONS.filter((_, i) => i >= 49 && i < 59);
-          case 'basement': return INDOOR_LOCATIONS.filter((_, i) => i >= 59 && i < 74);
-          case 'crypt': return INDOOR_LOCATIONS.filter((_, i) => i >= 74);
-          default: return tileSet === 'indoor' ? INDOOR_LOCATIONS : OUTDOOR_LOCATIONS;
-        }
-      };
-
-      const pool = getCategoryPool(newCategory);
-      const roomName = pool[Math.floor(Math.random() * pool.length)] || 'Unknown Chamber';
-
-      const getFloorType = (cat: TileCategory): 'wood' | 'cobblestone' | 'tile' | 'stone' | 'grass' | 'dirt' | 'water' | 'ritual' => {
-        switch (cat) {
-          case 'nature': return Math.random() > 0.5 ? 'grass' : 'dirt';
-          case 'urban': case 'street': return 'cobblestone';
-          case 'facade': case 'foyer': case 'corridor': case 'room': return 'wood';
-          case 'stairs': return 'stone';
-          case 'basement': return 'stone';
-          case 'crypt': return Math.random() > 0.7 ? 'ritual' : 'stone';
-          default: return 'wood';
-        }
-      };
-
-      // Create edges based on category validation
-      const createFallbackEdges = (): [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData] => {
-        const edges: EdgeData[] = [];
-        const edgeDirections = [
-          { dq: 0, dr: -1 },  // 0: North
-          { dq: 1, dr: -1 },  // 1: North-East
-          { dq: 1, dr: 0 },   // 2: South-East
-          { dq: 0, dr: 1 },   // 3: South
-          { dq: -1, dr: 1 },  // 4: South-West
-          { dq: -1, dr: 0 }   // 5: North-West
-        ];
-
-        for (let i = 0; i < 6; i++) {
-          const neighborQ = startQ + edgeDirections[i].dq;
-          const neighborR = startR + edgeDirections[i].dr;
-          const neighborTile = boardMap.get(`${neighborQ},${neighborR}`);
-
-          if (neighborTile && neighborTile.category) {
-            const edgeValidation = validateTileConnection(
-              newCategory,
-              neighborTile.category as TileCategory,
-              false
-            );
-            if (edgeValidation.requiresDoor) {
-              edges.push({ type: 'door', doorState: 'closed' });
-            } else if (!edgeValidation.isValid) {
-              edges.push({ type: 'wall' });
-            } else {
-              edges.push({ type: 'open' });
-            }
-          } else {
-            edges.push({ type: 'open' });
-          }
-        }
-        return edges as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
-      };
-
-      const fallbackEdges = createFallbackEdges();
-      const exitCount = fallbackEdges.filter(e => e.type !== 'wall' && e.type !== 'blocked').length;
-
-      const fallbackTile: Tile = {
-        id: `tile-${Date.now()}-${Math.random()}`,
-        q: startQ,
-        r: startR,
-        name: roomName,
-        type: 'room',
-        category: newCategory,
-        zoneLevel: (CATEGORY_ZONE_LEVELS[newCategory] || 0) as ZoneLevel,
-        floorType: getFloorType(newCategory),
-        visibility: 'visible',
-        edges: fallbackEdges,
+      // Create fallback tile using helper
+      const fallbackTile = createFallbackTile({
+        startQ,
+        startR,
+        newCategory,
+        roomName,
         roomId,
-        explored: true,
-        searchable: !['facade', 'street', 'nature', 'corridor'].includes(newCategory),
-        searched: false,
-        isDeadEnd: exitCount <= 1
-      };
+        boardMap
+      });
 
       setState(prev => ({ ...prev, board: [...prev.board, fallbackTile] }));
       addToLog(`UTFORSKET: ${roomName}. [${newCategory.toUpperCase()}]`);
@@ -2233,9 +2159,8 @@ const ShadowsGame: React.FC = () => {
           if (shouldSpawnMonster(firstTile, state.doom, state.enemies, true)) {
             const enemyType = selectRandomEnemy(firstTile.category, state.doom);
             if (enemyType) {
-              const spawnQ = startQ + (Math.random() > 0.5 ? 1 : -1);
-              const spawnR = startR + (Math.random() > 0.5 ? 1 : 0);
-              spawnEnemy(enemyType, spawnQ, spawnR);
+              const spawnPos = calculateEnemySpawnPosition(startQ, startR);
+              spawnEnemy(enemyType, spawnPos.q, spawnPos.r);
             }
           }
 
@@ -2343,9 +2268,8 @@ const ShadowsGame: React.FC = () => {
         : selectRandomEnemy(newTile.category, state.doom);
 
       if (enemyType) {
-        const spawnQ = startQ + (Math.random() > 0.5 ? 1 : -1);
-        const spawnR = startR + (Math.random() > 0.5 ? 1 : 0);
-        spawnEnemy(enemyType, spawnQ, spawnR);
+        const spawnPos = calculateEnemySpawnPosition(startQ, startR);
+        spawnEnemy(enemyType, spawnPos.q, spawnPos.r);
       }
     }
   }, [state.board, state.doom, state.enemies, state.activeScenario, state.objectiveSpawnState, spawnEnemy]);
