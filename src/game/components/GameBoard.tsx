@@ -528,6 +528,7 @@ interface GameBoardProps {
   activeModifiers?: ScenarioModifier[];
   exploredTiles?: Set<string>;
   weatherState?: WeatherState;
+  activePlayerIndex?: number; // For highlighting valid moves
 }
 
 const HEX_SIZE = 95;
@@ -535,7 +536,18 @@ const VISIBILITY_RANGE = 2;
 // Mobile touch thresholds - increased for better tap detection on touchscreens
 const DRAG_THRESHOLD = 15; // px - increased from 5 to account for finger wobble
 const TAP_TIME_THRESHOLD = 250; // ms - max time for a tap vs hold
+const LONG_PRESS_THRESHOLD = 400; // ms - time for long press to trigger preview
 const HEX_POLY_POINTS = "25,0 75,0 100,50 75,100 25,100 0,50";
+
+// Hex neighbor directions (flat-top hexagon)
+const HEX_NEIGHBORS = [
+  { q: 1, r: 0 },   // East
+  { q: 0, r: 1 },   // Southeast
+  { q: -1, r: 1 },  // Southwest
+  { q: -1, r: 0 },  // West
+  { q: 0, r: -1 },  // Northwest
+  { q: 1, r: -1 },  // Northeast
+];
 
 // Hex edge endpoints for flat-top hexagon (0-100 scale)
 // Edges: [N, NE, SE, S, SW, NW]
@@ -698,7 +710,7 @@ const getDoomLighting = (doom: number) => {
 };
 
 const GameBoard: React.FC<GameBoardProps> = ({
-  tiles, players, enemies, selectedEnemyId, onTileClick, onEnemyClick, floatingTexts = [], spellParticles = [], doom, activeModifiers = [], exploredTiles = new Set(), weatherState
+  tiles, players, enemies, selectedEnemyId, onTileClick, onEnemyClick, floatingTexts = [], spellParticles = [], doom, activeModifiers = [], exploredTiles = new Set(), weatherState, activePlayerIndex = 0
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const hasDragged = useRef(false);
@@ -715,6 +727,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
   // Improved touch handling: timing and visual feedback
   const touchStartTime = useRef<number>(0);
   const [touchedTileKey, setTouchedTileKey] = useState<string | null>(null);
+
+  // Mobile movement enhancement: long-press preview and valid move highlighting
+  const longPressTimer = useRef<NodeJS.Timeout | null>(null);
+  const [longPressTile, setLongPressTile] = useState<{ q: number; r: number } | null>(null);
+  const [selectedMoveTarget, setSelectedMoveTarget] = useState<{ q: number; r: number } | null>(null);
 
   useEffect(() => {
     if (containerRef.current) {
@@ -784,6 +801,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
         hasDragged.current = true;
         // Clear touched tile feedback when dragging starts
         setTouchedTileKey(null);
+        // Cancel long-press when dragging
+        handleTileLongPressEnd();
       }
       setPosition({ x: touch.clientX - dragStart.x, y: touch.clientY - dragStart.y });
     } else if (e.touches.length === 2) {
@@ -816,6 +835,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
       lastTouchCenter.current = null;
       // Clear touched tile feedback
       setTouchedTileKey(null);
+      // Clear long-press state
+      handleTileLongPressEnd();
 
       // Check if this was a valid tap (short duration and small movement)
       const touchDuration = Date.now() - touchStartTime.current;
@@ -892,6 +913,70 @@ const GameBoard: React.FC<GameBoardProps> = ({
     return moves;
   }, [tiles, visibleTiles, exploredTiles]);
 
+  // Calculate valid move tiles for the active player (adjacent tiles they can move to)
+  const validMoves = useMemo(() => {
+    const activePlayer = players[activePlayerIndex];
+    if (!activePlayer || activePlayer.isDead) return new Set<string>();
+
+    const validSet = new Set<string>();
+    const playerPos = activePlayer.position;
+
+    // Get all adjacent tiles (neighbors)
+    HEX_NEIGHBORS.forEach(dir => {
+      const neighborQ = playerPos.q + dir.q;
+      const neighborR = playerPos.r + dir.r;
+      const key = `${neighborQ},${neighborR}`;
+
+      // Check if tile exists (can move to existing tiles)
+      const existingTile = tiles.find(t => t.q === neighborQ && t.r === neighborR);
+      if (existingTile) {
+        validSet.add(key);
+      }
+
+      // Also add unexplored/possible moves adjacent to player
+      const isPossibleMove = possibleMoves.some(m => m.q === neighborQ && m.r === neighborR);
+      if (isPossibleMove) {
+        validSet.add(key);
+      }
+    });
+
+    return validSet;
+  }, [players, activePlayerIndex, tiles, possibleMoves]);
+
+  // Handle long press for movement preview
+  const handleTileLongPressStart = (q: number, r: number) => {
+    // Clear any existing timer
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+    }
+
+    longPressTimer.current = setTimeout(() => {
+      const key = `${q},${r}`;
+      if (validMoves.has(key)) {
+        setLongPressTile({ q, r });
+        setSelectedMoveTarget({ q, r });
+        // Haptic feedback if available
+        if (navigator.vibrate) {
+          navigator.vibrate(50);
+        }
+      }
+    }, LONG_PRESS_THRESHOLD);
+  };
+
+  const handleTileLongPressEnd = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    setLongPressTile(null);
+  };
+
+  // Clear selected move target when player moves
+  useEffect(() => {
+    setSelectedMoveTarget(null);
+    setLongPressTile(null);
+  }, [players[activePlayerIndex]?.position?.q, players[activePlayerIndex]?.position?.r]);
+
   const lighting = getDoomLighting(doom);
 
   return (
@@ -948,6 +1033,9 @@ const GameBoard: React.FC<GameBoardProps> = ({
           const depthClass = tile.zoneLevel < 0 ? 'hex-3d-depth-sunken' : tile.zoneLevel > 0 ? 'hex-3d-depth-elevated' : 'hex-3d-depth';
 
           const isTouched = touchedTileKey === tileKey;
+          const isValidMove = validMoves.has(tileKey);
+          const isSelectedTarget = selectedMoveTarget?.q === tile.q && selectedMoveTarget?.r === tile.r;
+          const isLongPressPreview = longPressTile?.q === tile.q && longPressTile?.r === tile.r;
 
           return (
             <div
@@ -955,13 +1043,23 @@ const GameBoard: React.FC<GameBoardProps> = ({
               className="absolute flex items-center justify-center transition-all duration-500"
               style={{ width: `${HEX_SIZE * 2}px`, height: `${HEX_SIZE * 1.732}px`, left: `${x - HEX_SIZE}px`, top: `${y - HEX_SIZE * 0.866}px` }}
               onClick={() => { if (!hasDragged.current) onTileClick(tile.q, tile.r); }}
-              onTouchStart={() => setTouchedTileKey(tileKey)}
-              onTouchEnd={() => setTouchedTileKey(null)}
-              onTouchCancel={() => setTouchedTileKey(null)}
+              onTouchStart={() => {
+                setTouchedTileKey(tileKey);
+                handleTileLongPressStart(tile.q, tile.r);
+              }}
+              onTouchEnd={() => {
+                setTouchedTileKey(null);
+                handleTileLongPressEnd();
+              }}
+              onTouchCancel={() => {
+                setTouchedTileKey(null);
+                handleTileLongPressEnd();
+              }}
             >
               {/* Board game tile with AI-generated oil painting texture and 3D depth */}
               {/* Touch feedback: brighten tile and show pulse when touched */}
-              <div className={`absolute inset-0 hex-clip transition-all duration-150 ${visual.floorClass} ${visual.glowClass} ${isVisible ? depthClass : ''} overflow-hidden group ${isTouched ? 'brightness-125 scale-[1.02] touch-highlight' : ''}`}>
+              {/* Valid move highlighting for mobile: show where player can move */}
+              <div className={`absolute inset-0 hex-clip transition-all duration-150 ${visual.floorClass} ${visual.glowClass} ${isVisible ? depthClass : ''} overflow-hidden group ${isTouched ? 'brightness-125 scale-[1.02] touch-highlight' : ''} ${isValidMove && isVisible ? 'valid-move-tile' : ''} ${isSelectedTarget ? 'selected-move-target' : ''} ${isLongPressPreview ? 'long-press-preview' : ''}`}>
                 {/* AI-generated tile image - MUST be on top with z-index */}
                 {tileImage ? (
                   <img 
@@ -1627,45 +1725,66 @@ const GameBoard: React.FC<GameBoardProps> = ({
         {possibleMoves.map((move, i) => {
           const { x, y } = hexToPixel(move.q, move.r);
           const isExploreAction = move.isExplore;
-          
+          const moveKey = `${move.q},${move.r}`;
+          const isAdjacentToActivePlayer = validMoves.has(moveKey);
+          const isTouchedMove = touchedTileKey === moveKey;
+          const isSelectedMove = selectedMoveTarget?.q === move.q && selectedMoveTarget?.r === move.r;
+
           return (
             <div
               key={`move-${i}`}
-              className="absolute flex items-center justify-center cursor-pointer transition-all z-20 group"
+              className={`absolute flex items-center justify-center cursor-pointer transition-all z-20 group ${isTouchedMove ? 'scale-105' : ''}`}
               style={{ width: `${HEX_SIZE * 2}px`, height: `${HEX_SIZE * 1.732}px`, left: `${x - HEX_SIZE}px`, top: `${y - HEX_SIZE * 0.866}px` }}
               onClick={() => { if (!hasDragged.current) onTileClick(move.q, move.r); }}
+              onTouchStart={() => {
+                setTouchedTileKey(moveKey);
+                handleTileLongPressStart(move.q, move.r);
+              }}
+              onTouchEnd={() => {
+                setTouchedTileKey(null);
+                handleTileLongPressEnd();
+              }}
+              onTouchCancel={() => {
+                setTouchedTileKey(null);
+                handleTileLongPressEnd();
+              }}
             >
-              {/* Hex background */}
+              {/* Hex background - enhanced for touch with larger active area */}
               <div className={`absolute inset-0 hex-clip flex items-center justify-center transition-all duration-300 ${
-                isExploreAction 
-                  ? 'bg-primary/10 group-hover:bg-primary/25' 
+                isExploreAction
+                  ? 'bg-primary/10 group-hover:bg-primary/25'
                   : 'bg-white/5 group-hover:bg-white/15'
-              }`}>
+              } ${isAdjacentToActivePlayer && isExploreAction ? 'explore-tile-adjacent' : ''} ${isTouchedMove ? 'brightness-125 bg-primary/30' : ''} ${isSelectedMove ? 'bg-accent/30' : ''}`}>
                 {isExploreAction ? (
-                  <div className="flex flex-col items-center opacity-60 group-hover:opacity-100 transition-opacity">
-                    <Search size={24} className="text-primary mb-1" />
-                    <span className="text-[9px] font-bold text-primary uppercase tracking-[0.15em]">Utforsk</span>
+                  <div className={`flex flex-col items-center transition-opacity ${isTouchedMove ? 'opacity-100' : 'opacity-60 group-hover:opacity-100'}`}>
+                    <Search size={28} className={`text-primary mb-1 ${isAdjacentToActivePlayer ? 'move-arrow-indicator' : ''}`} />
+                    <span className="text-[10px] font-bold text-primary uppercase tracking-[0.15em]">Utforsk</span>
                   </div>
                 ) : (
-                  <MapPin className="text-white/30 group-hover:text-white/60 transition-colors" size={24} />
+                  <MapPin className={`transition-colors ${isTouchedMove ? 'text-white/80' : 'text-white/30 group-hover:text-white/60'}`} size={28} />
                 )}
               </div>
-              
-              {/* Hex border - dashed for unexplored, solid hover for explored */}
+
+              {/* Hex border - dashed for unexplored, enhanced glow for adjacent tiles */}
               <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full overflow-visible pointer-events-none">
-                <polygon 
-                  points={HEX_POLY_POINTS} 
-                  fill="none" 
-                  stroke={isExploreAction ? "hsl(var(--primary))" : "rgba(255,255,255,0.3)"} 
-                  strokeWidth={isExploreAction ? "2" : "1"} 
-                  strokeDasharray={isExploreAction ? "6,4" : "4,4"} 
-                  className={`transition-all duration-300 ${isExploreAction ? 'opacity-60 group-hover:opacity-100' : 'opacity-40 group-hover:opacity-80'}`}
+                <polygon
+                  points={HEX_POLY_POINTS}
+                  fill="none"
+                  stroke={isExploreAction ? "hsl(var(--primary))" : "rgba(255,255,255,0.3)"}
+                  strokeWidth={isAdjacentToActivePlayer ? "3" : isExploreAction ? "2" : "1"}
+                  strokeDasharray={isExploreAction ? "6,4" : "4,4"}
+                  className={`transition-all duration-300 ${isExploreAction ? 'opacity-60 group-hover:opacity-100' : 'opacity-40 group-hover:opacity-80'} ${isTouchedMove ? 'opacity-100' : ''}`}
                 />
               </svg>
-              
-              {/* Glow effect for explore tiles */}
+
+              {/* Glow effect for explore tiles - enhanced for adjacent */}
               {isExploreAction && (
-                <div className="absolute inset-4 hex-clip bg-primary/5 blur-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+                <div className={`absolute inset-4 hex-clip bg-primary/5 blur-xl transition-opacity pointer-events-none ${isAdjacentToActivePlayer ? 'opacity-60' : 'opacity-0 group-hover:opacity-100'}`} />
+              )}
+
+              {/* Touch active indicator */}
+              {isTouchedMove && (
+                <div className="absolute inset-2 hex-clip bg-white/10 animate-pulse pointer-events-none z-10" />
               )}
             </div>
           );

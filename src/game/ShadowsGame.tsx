@@ -4005,6 +4005,7 @@ const ShadowsGame: React.FC = () => {
               activeModifiers={state.activeModifiers}
               exploredTiles={new Set(state.exploredTiles || [])}
               weatherState={state.weatherState}
+              activePlayerIndex={state.activePlayerIndex}
             />
           </div>
 
