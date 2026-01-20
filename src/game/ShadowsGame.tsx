@@ -85,6 +85,7 @@ const DEFAULT_STATE: GameState = {
   activeScenario: null,
   activeModifiers: [],
   floatingTexts: [],
+  spellParticles: [],
   screenShake: false,
   activeSpell: null,
   currentStepIndex: 0,
@@ -164,7 +165,7 @@ const ShadowsGame: React.FC = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return { ...parsed, floatingTexts: [], screenShake: false, activeSpell: null };
+        return { ...parsed, floatingTexts: [], spellParticles: [], screenShake: false, activeSpell: null };
       } catch (e) { console.error(e); }
     }
     return DEFAULT_STATE;
@@ -345,6 +346,61 @@ const ShadowsGame: React.FC = () => {
     setTimeout(() => {
       setState(prev => ({ ...prev, floatingTexts: prev.floatingTexts.filter(t => t.id !== id) }));
     }, 2000);
+  };
+
+  // Emit spell particle effects
+  const emitSpellEffect = (
+    startQ: number,
+    startR: number,
+    type: 'wither' | 'eldritch_bolt' | 'mend_flesh' | 'true_sight' | 'banish' | 'mind_blast' | 'dark_shield' | 'explosion' | 'blood' | 'smoke' | 'sparkle',
+    targetQ?: number,
+    targetR?: number
+  ) => {
+    // Particle configuration per spell type
+    const particleConfig: Record<string, { duration: number; count: number; size: 'sm' | 'md' | 'lg'; animation: 'projectile' | 'burst' | 'radiate' | 'implode' | 'orbit' | 'float'; color: string }> = {
+      wither: { duration: 800, count: 8, size: 'md', animation: 'projectile', color: 'wither' },
+      eldritch_bolt: { duration: 600, count: 12, size: 'lg', animation: 'projectile', color: 'eldritch' },
+      mend_flesh: { duration: 1200, count: 15, size: 'sm', animation: 'burst', color: 'mend' },
+      true_sight: { duration: 1500, count: 20, size: 'sm', animation: 'radiate', color: 'sight' },
+      banish: { duration: 1000, count: 16, size: 'md', animation: 'implode', color: 'banish' },
+      mind_blast: { duration: 600, count: 10, size: 'md', animation: 'burst', color: 'mind' },
+      dark_shield: { duration: 1500, count: 12, size: 'md', animation: 'orbit', color: 'shield' },
+      explosion: { duration: 500, count: 12, size: 'md', animation: 'burst', color: 'banish' },
+      blood: { duration: 600, count: 8, size: 'sm', animation: 'burst', color: 'blood' },
+      smoke: { duration: 1200, count: 10, size: 'lg', animation: 'float', color: 'smoke' },
+      sparkle: { duration: 800, count: 6, size: 'sm', animation: 'burst', color: 'sparkle' }
+    };
+
+    const config = particleConfig[type] || particleConfig.sparkle;
+    const id = `sp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+    const particle = {
+      id,
+      type: type as any,
+      startQ,
+      startR,
+      targetQ,
+      targetR,
+      startTime: Date.now(),
+      duration: config.duration,
+      color: config.color,
+      size: config.size,
+      count: config.count,
+      animation: config.animation
+    };
+
+    setState(prev => ({
+      ...prev,
+      spellParticles: [...prev.spellParticles, particle]
+    }));
+
+    // Auto-remove particle after duration + buffer
+    setTimeout(() => {
+      setState(prev => ({
+        ...prev,
+        spellParticles: prev.spellParticles.filter(p => p.id !== id)
+      }));
+    }, config.duration + 200);
   };
 
   const checkMadness = (player: Player) => {
@@ -2074,6 +2130,17 @@ const ShadowsGame: React.FC = () => {
             addToLog(`${activePlayer.name} casts ${spell.name}! Eldritch energy strikes ${spellTarget.name} for ${spell.value} damage.`);
             addFloatingText(spellTarget.position.q, spellTarget.position.r, `-${spell.value} HP`, "text-sanity");
             addFloatingText(activePlayer.position.q, activePlayer.position.r, `-${spell.cost} INSIGHT`, "text-insight");
+
+            // Emit spell particle effect - wither uses dark purple projectile
+            const spellEffectType = spell.id === 'wither' ? 'wither' : 'eldritch_bolt';
+            emitSpellEffect(
+              activePlayer.position.q,
+              activePlayer.position.r,
+              spellEffectType,
+              spellTarget.position.q,
+              spellTarget.position.r
+            );
+
             triggerScreenShake();
 
             const newEnemyHp = spellTarget.hp - spell.value;
@@ -2125,6 +2192,14 @@ const ShadowsGame: React.FC = () => {
             addToLog(`${activePlayer.name} casts ${spell.name}! ${spellTarget.name} is banished to the void!`);
             addFloatingText(spellTarget.position.q, spellTarget.position.r, "BANISHED!", "text-sanity");
             addFloatingText(activePlayer.position.q, activePlayer.position.r, `-${spell.cost} INSIGHT`, "text-insight");
+
+            // Emit banish particle effect - red void implosion at target
+            emitSpellEffect(
+              spellTarget.position.q,
+              spellTarget.position.r,
+              'banish'
+            );
+
             triggerScreenShake();
 
             // Track kill for legacy
@@ -2155,6 +2230,13 @@ const ShadowsGame: React.FC = () => {
           addFloatingText(activePlayer.position.q, activePlayer.position.r, `+${healAmount} HP`, "text-health");
           addFloatingText(activePlayer.position.q, activePlayer.position.r, `-${spell.cost} INSIGHT`, "text-insight");
 
+          // Emit mend flesh particle effect - golden healing sparkles
+          emitSpellEffect(
+            activePlayer.position.q,
+            activePlayer.position.r,
+            'mend_flesh'
+          );
+
           setState(prev => ({
             ...prev,
             players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
@@ -2170,6 +2252,13 @@ const ShadowsGame: React.FC = () => {
           addToLog(`${activePlayer.name} casts ${spell.name}! Hidden truths are revealed...`);
           addFloatingText(activePlayer.position.q, activePlayer.position.r, "REVELATION!", "text-sanity");
           addFloatingText(activePlayer.position.q, activePlayer.position.r, `-${spell.cost} INSIGHT`, "text-insight");
+
+          // Emit true sight particle effect - blue mystical eye radiating outward
+          emitSpellEffect(
+            activePlayer.position.q,
+            activePlayer.position.r,
+            'true_sight'
+          );
 
           // Reveal all tiles within range
           const revealedTiles = state.board.filter(t =>
@@ -2930,6 +3019,7 @@ const ShadowsGame: React.FC = () => {
               onTileClick={(q, r) => handleAction('move', { q, r })}
               onEnemyClick={(id) => handleAction('enemy_click', { id })}
               floatingTexts={state.floatingTexts}
+              spellParticles={state.spellParticles}
               doom={state.doom}
               activeModifiers={state.activeModifiers}
               exploredTiles={new Set(state.exploredTiles || [])}

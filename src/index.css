@@ -1016,4 +1016,434 @@
       rgba(0, 0, 0, 0.85) 100%
     );
   }
+
+  /* ==========================================================================
+     SPELL PARTICLE EFFECTS - "The Arcane Manifestations"
+     Visual effects for magic spells
+     ========================================================================== */
+
+  /* WITHER - Dark purple energy drain projectile */
+  @keyframes wither-projectile {
+    0% {
+      transform: translate(0, 0) scale(1);
+      opacity: 1;
+      filter: blur(0px);
+    }
+    50% {
+      transform: translate(var(--tx), var(--ty)) scale(1.2);
+      opacity: 0.9;
+      filter: blur(1px);
+    }
+    100% {
+      transform: translate(calc(var(--tx) * 2), calc(var(--ty) * 2)) scale(0.8);
+      opacity: 0;
+      filter: blur(2px);
+    }
+  }
+
+  @keyframes wither-trail {
+    0% {
+      transform: scale(1) rotate(0deg);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(0.2) rotate(180deg);
+      opacity: 0;
+    }
+  }
+
+  .animate-wither-projectile {
+    animation: wither-projectile var(--duration, 800ms) ease-out forwards;
+  }
+
+  .animate-wither-trail {
+    animation: wither-trail 600ms ease-out forwards;
+  }
+
+  /* ELDRITCH BOLT - Glowing green/purple eldritch energy */
+  @keyframes eldritch-bolt {
+    0% {
+      transform: translate(0, 0) scale(0.5);
+      opacity: 0;
+      box-shadow: 0 0 10px rgba(100, 255, 150, 0.8);
+    }
+    20% {
+      transform: translate(calc(var(--tx) * 0.2), calc(var(--ty) * 0.2)) scale(1.2);
+      opacity: 1;
+      box-shadow: 0 0 30px rgba(100, 255, 150, 1);
+    }
+    80% {
+      transform: translate(calc(var(--tx) * 0.8), calc(var(--ty) * 0.8)) scale(1);
+      opacity: 0.9;
+      box-shadow: 0 0 25px rgba(150, 100, 255, 0.9);
+    }
+    100% {
+      transform: translate(var(--tx), var(--ty)) scale(1.5);
+      opacity: 0;
+      box-shadow: 0 0 50px rgba(150, 100, 255, 0.5);
+    }
+  }
+
+  .animate-eldritch-bolt {
+    animation: eldritch-bolt var(--duration, 600ms) ease-in-out forwards;
+  }
+
+  /* MEND FLESH - Golden healing sparkles */
+  @keyframes mend-sparkle {
+    0% {
+      transform: translate(0, 0) scale(0);
+      opacity: 0;
+    }
+    30% {
+      transform: translate(var(--tx), var(--ty)) scale(1.5);
+      opacity: 1;
+    }
+    100% {
+      transform: translate(calc(var(--tx) * 1.5), calc(var(--ty) - 40px)) scale(0);
+      opacity: 0;
+    }
+  }
+
+  @keyframes mend-glow {
+    0% {
+      box-shadow: 0 0 20px rgba(255, 215, 100, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 60px rgba(255, 215, 100, 0.8);
+    }
+    100% {
+      box-shadow: 0 0 20px rgba(255, 215, 100, 0);
+    }
+  }
+
+  .animate-mend-sparkle {
+    animation: mend-sparkle 1200ms ease-out forwards;
+  }
+
+  .animate-mend-glow {
+    animation: mend-glow 1000ms ease-in-out forwards;
+  }
+
+  /* TRUE SIGHT - Blue mystical eye/sight particles */
+  @keyframes true-sight-radiate {
+    0% {
+      transform: translate(0, 0) scale(0.5) rotate(0deg);
+      opacity: 0;
+    }
+    30% {
+      opacity: 1;
+    }
+    100% {
+      transform: translate(var(--tx), var(--ty)) scale(0.2) rotate(360deg);
+      opacity: 0;
+    }
+  }
+
+  @keyframes true-sight-eye {
+    0% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    30% {
+      transform: scale(1.5);
+      opacity: 1;
+    }
+    70% {
+      transform: scale(1);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(2);
+      opacity: 0;
+    }
+  }
+
+  .animate-true-sight-radiate {
+    animation: true-sight-radiate 1500ms ease-out forwards;
+  }
+
+  .animate-true-sight-eye {
+    animation: true-sight-eye 1200ms ease-in-out forwards;
+  }
+
+  /* BANISH - Red void implosion */
+  @keyframes banish-implode {
+    0% {
+      transform: translate(var(--tx), var(--ty)) scale(2);
+      opacity: 0;
+    }
+    30% {
+      transform: translate(calc(var(--tx) * 0.5), calc(var(--ty) * 0.5)) scale(1.5);
+      opacity: 0.8;
+    }
+    60% {
+      opacity: 1;
+    }
+    100% {
+      transform: translate(0, 0) scale(0);
+      opacity: 0;
+    }
+  }
+
+  @keyframes banish-vortex {
+    0% {
+      transform: rotate(0deg) scale(1.5);
+      opacity: 0;
+    }
+    50% {
+      transform: rotate(540deg) scale(1);
+      opacity: 1;
+    }
+    100% {
+      transform: rotate(1080deg) scale(0);
+      opacity: 0;
+    }
+  }
+
+  .animate-banish-implode {
+    animation: banish-implode 800ms ease-in forwards;
+  }
+
+  .animate-banish-vortex {
+    animation: banish-vortex 1000ms ease-in forwards;
+  }
+
+  /* MIND BLAST - Pink/purple shockwave */
+  @keyframes mind-blast-wave {
+    0% {
+      transform: scale(0.5);
+      opacity: 0.8;
+      border-width: 8px;
+    }
+    100% {
+      transform: scale(3);
+      opacity: 0;
+      border-width: 1px;
+    }
+  }
+
+  @keyframes mind-blast-core {
+    0% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.5);
+      opacity: 0.8;
+    }
+    100% {
+      transform: scale(0);
+      opacity: 0;
+    }
+  }
+
+  .animate-mind-blast-wave {
+    animation: mind-blast-wave 600ms ease-out forwards;
+  }
+
+  .animate-mind-blast-core {
+    animation: mind-blast-core 400ms ease-out forwards;
+  }
+
+  /* DARK SHIELD - Swirling dark protective aura */
+  @keyframes dark-shield-orbit {
+    0% {
+      transform: rotate(0deg) translateX(40px) rotate(0deg);
+      opacity: 0;
+    }
+    20% {
+      opacity: 0.8;
+    }
+    80% {
+      opacity: 0.8;
+    }
+    100% {
+      transform: rotate(360deg) translateX(40px) rotate(-360deg);
+      opacity: 0;
+    }
+  }
+
+  @keyframes dark-shield-glow {
+    0% {
+      box-shadow: inset 0 0 30px rgba(100, 0, 150, 0.3);
+    }
+    50% {
+      box-shadow: inset 0 0 60px rgba(100, 0, 150, 0.6);
+    }
+    100% {
+      box-shadow: inset 0 0 30px rgba(100, 0, 150, 0);
+    }
+  }
+
+  .animate-dark-shield-orbit {
+    animation: dark-shield-orbit 1500ms linear forwards;
+  }
+
+  .animate-dark-shield-glow {
+    animation: dark-shield-glow 1200ms ease-in-out forwards;
+  }
+
+  /* EXPLOSION - Impact burst */
+  @keyframes explosion-burst {
+    0% {
+      transform: translate(0, 0) scale(0);
+      opacity: 1;
+    }
+    50% {
+      transform: translate(var(--tx), var(--ty)) scale(1.5);
+      opacity: 0.8;
+    }
+    100% {
+      transform: translate(calc(var(--tx) * 1.5), calc(var(--ty) * 1.5)) scale(0.5);
+      opacity: 0;
+    }
+  }
+
+  @keyframes explosion-ring {
+    0% {
+      transform: scale(0.3);
+      opacity: 1;
+      border-width: 10px;
+    }
+    100% {
+      transform: scale(2);
+      opacity: 0;
+      border-width: 2px;
+    }
+  }
+
+  .animate-explosion-burst {
+    animation: explosion-burst 500ms ease-out forwards;
+  }
+
+  .animate-explosion-ring {
+    animation: explosion-ring 400ms ease-out forwards;
+  }
+
+  /* BLOOD - Blood splatter for damage */
+  @keyframes blood-splatter {
+    0% {
+      transform: translate(0, 0) scale(0.5);
+      opacity: 0;
+    }
+    20% {
+      opacity: 1;
+    }
+    100% {
+      transform: translate(var(--tx), var(--ty)) scale(0.3);
+      opacity: 0;
+    }
+  }
+
+  .animate-blood-splatter {
+    animation: blood-splatter 600ms ease-out forwards;
+  }
+
+  /* SMOKE - Dissipation/death effect */
+  @keyframes smoke-rise {
+    0% {
+      transform: translate(0, 0) scale(0.5);
+      opacity: 0;
+    }
+    30% {
+      opacity: 0.6;
+    }
+    100% {
+      transform: translate(var(--tx), calc(var(--ty) - 60px)) scale(1.5);
+      opacity: 0;
+    }
+  }
+
+  .animate-smoke-rise {
+    animation: smoke-rise 1200ms ease-out forwards;
+  }
+
+  /* SPARKLE - Generic magical sparkle */
+  @keyframes sparkle-twinkle {
+    0%, 100% {
+      transform: scale(0) rotate(0deg);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1) rotate(180deg);
+      opacity: 1;
+    }
+  }
+
+  .animate-sparkle-twinkle {
+    animation: sparkle-twinkle 800ms ease-in-out forwards;
+  }
+
+  /* Particle container with glow effect */
+  .spell-particle {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none;
+    will-change: transform, opacity;
+  }
+
+  .spell-particle-wither {
+    background: radial-gradient(circle, rgba(138, 43, 226, 0.9) 0%, rgba(75, 0, 130, 0.6) 50%, transparent 100%);
+    box-shadow: 0 0 15px rgba(138, 43, 226, 0.8), 0 0 30px rgba(75, 0, 130, 0.5);
+  }
+
+  .spell-particle-eldritch {
+    background: radial-gradient(circle, rgba(100, 255, 150, 0.9) 0%, rgba(150, 100, 255, 0.6) 50%, transparent 100%);
+    box-shadow: 0 0 20px rgba(100, 255, 150, 0.8), 0 0 40px rgba(150, 100, 255, 0.5);
+  }
+
+  .spell-particle-mend {
+    background: radial-gradient(circle, rgba(255, 215, 0, 0.9) 0%, rgba(255, 180, 50, 0.6) 50%, transparent 100%);
+    box-shadow: 0 0 15px rgba(255, 215, 0, 0.8);
+  }
+
+  .spell-particle-sight {
+    background: radial-gradient(circle, rgba(100, 180, 255, 0.9) 0%, rgba(50, 100, 200, 0.6) 50%, transparent 100%);
+    box-shadow: 0 0 15px rgba(100, 180, 255, 0.8), 0 0 25px rgba(50, 100, 200, 0.5);
+  }
+
+  .spell-particle-banish {
+    background: radial-gradient(circle, rgba(255, 50, 50, 0.9) 0%, rgba(150, 0, 50, 0.6) 50%, transparent 100%);
+    box-shadow: 0 0 20px rgba(255, 50, 50, 0.9), 0 0 40px rgba(150, 0, 50, 0.6);
+  }
+
+  .spell-particle-mind {
+    background: radial-gradient(circle, rgba(255, 100, 200, 0.9) 0%, rgba(200, 50, 150, 0.6) 50%, transparent 100%);
+    box-shadow: 0 0 20px rgba(255, 100, 200, 0.8);
+  }
+
+  .spell-particle-shield {
+    background: radial-gradient(circle, rgba(100, 0, 150, 0.8) 0%, rgba(50, 0, 100, 0.5) 50%, transparent 100%);
+    box-shadow: 0 0 15px rgba(100, 0, 150, 0.7);
+  }
+
+  .spell-particle-blood {
+    background: radial-gradient(circle, rgba(180, 0, 0, 0.9) 0%, rgba(100, 0, 0, 0.6) 50%, transparent 100%);
+    box-shadow: 0 0 10px rgba(180, 0, 0, 0.6);
+  }
+
+  .spell-particle-smoke {
+    background: radial-gradient(circle, rgba(80, 80, 80, 0.7) 0%, rgba(40, 40, 40, 0.4) 50%, transparent 100%);
+  }
+
+  .spell-particle-sparkle {
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.9) 0%, rgba(200, 200, 255, 0.5) 50%, transparent 100%);
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+  }
+
+  /* Particle sizes */
+  .spell-particle-sm {
+    width: 8px;
+    height: 8px;
+  }
+
+  .spell-particle-md {
+    width: 16px;
+    height: 16px;
+  }
+
+  .spell-particle-lg {
+    width: 24px;
+    height: 24px;
+  }
 }

@@ -857,6 +857,50 @@ export interface FloatingText {
   randomOffset: { x: number; y: number };
 }
 
+// ============================================================================
+// SPELL PARTICLE EFFECTS SYSTEM
+// ============================================================================
+
+/**
+ * Types of spell particle effects
+ * Each type has unique visuals and animations
+ */
+export type SpellParticleType =
+  | 'wither'           // Dark purple energy drain - flies from caster to target
+  | 'eldritch_bolt'    // Glowing eldritch projectile
+  | 'mend_flesh'       // Golden healing sparkles around target
+  | 'true_sight'       // Blue mystical eye particles radiating outward
+  | 'banish'           // Red void implosion effect at target
+  | 'mind_blast'       // Pink/purple shockwave
+  | 'dark_shield'      // Dark swirling protective aura
+  | 'explosion'        // General impact explosion
+  | 'blood'            // Blood splatter for damage
+  | 'smoke'            // Dissipation/death smoke
+  | 'sparkle';         // Generic magical sparkle
+
+/**
+ * A single spell particle for visual effects
+ */
+export interface SpellParticle {
+  id: string;
+  type: SpellParticleType;
+  // Starting position (hex coordinates)
+  startQ: number;
+  startR: number;
+  // Target position (hex coordinates) - for projectiles
+  targetQ?: number;
+  targetR?: number;
+  // Timing
+  startTime: number;           // When particle was created (Date.now())
+  duration: number;            // How long particle lasts (ms)
+  // Visual properties
+  color: string;               // Tailwind color class or hex
+  size: 'sm' | 'md' | 'lg';    // Particle size
+  count: number;               // Number of particles in this effect
+  // Animation type
+  animation: 'projectile' | 'burst' | 'radiate' | 'implode' | 'orbit' | 'float';
+}
+
 export interface ScenarioModifier {
   id: string;
   name: string;
@@ -1021,6 +1065,7 @@ export interface GameState {
   activeScenario: Scenario | null;
   activeModifiers: ScenarioModifier[];
   floatingTexts: FloatingText[];
+  spellParticles: SpellParticle[];  // Active spell visual effects
   screenShake: boolean;
   activeSpell: Spell | null;
   currentStepIndex: number;

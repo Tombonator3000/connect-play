@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { Tile, Player, Enemy, FloatingText, EnemyType, ScenarioModifier, WeatherState, EdgeData, CharacterType } from '../types';
+import { Tile, Player, Enemy, FloatingText, SpellParticle, EnemyType, ScenarioModifier, WeatherState, EdgeData, CharacterType } from '../types';
 import {
   User, Skull, DoorOpen, Lock, Flame, Hammer, Brain,
   BookOpen, Anchor, Church, MapPin, Building, ShoppingBag, Fish, PawPrint, Biohazard, Ghost, Bug, Search,
@@ -520,6 +520,7 @@ interface GameBoardProps {
   onTileClick: (q: number, r: number) => void;
   onEnemyClick?: (id: string) => void;
   floatingTexts?: FloatingText[];
+  spellParticles?: SpellParticle[];
   doom: number;
   activeModifiers?: ScenarioModifier[];
   exploredTiles?: Set<string>;
@@ -692,7 +693,7 @@ const getDoomLighting = (doom: number) => {
 };
 
 const GameBoard: React.FC<GameBoardProps> = ({
-  tiles, players, enemies, selectedEnemyId, onTileClick, onEnemyClick, floatingTexts = [], doom, activeModifiers = [], exploredTiles = new Set(), weatherState
+  tiles, players, enemies, selectedEnemyId, onTileClick, onEnemyClick, floatingTexts = [], spellParticles = [], doom, activeModifiers = [], exploredTiles = new Set(), weatherState
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const hasDragged = useRef(false);
@@ -1297,6 +1298,102 @@ const GameBoard: React.FC<GameBoardProps> = ({
         {floatingTexts.map(ft => {
           const { x, y } = hexToPixel(ft.q, ft.r);
           return <div key={ft.id} className={`absolute z-[60] pointer-events-none font-bold text-sm md:text-lg animate-float-up text-stroke-sm whitespace-nowrap ${ft.colorClass}`} style={{ left: `${x + ft.randomOffset.x}px`, top: `${y - 40 + ft.randomOffset.y}px` }}>{ft.content}</div>;
+        })}
+
+        {/* Spell Particle Effects */}
+        {spellParticles.map(particle => {
+          const startPos = hexToPixel(particle.startQ, particle.startR);
+          const hasTarget = particle.targetQ !== undefined && particle.targetR !== undefined;
+          const targetPos = hasTarget ? hexToPixel(particle.targetQ!, particle.targetR!) : startPos;
+
+          // Calculate direction vector for projectile particles
+          const dx = targetPos.x - startPos.x;
+          const dy = targetPos.y - startPos.y;
+
+          // Get particle type class
+          const particleTypeClass = {
+            wither: 'spell-particle-wither',
+            eldritch_bolt: 'spell-particle-eldritch',
+            mend_flesh: 'spell-particle-mend',
+            true_sight: 'spell-particle-sight',
+            banish: 'spell-particle-banish',
+            mind_blast: 'spell-particle-mind',
+            dark_shield: 'spell-particle-shield',
+            explosion: 'spell-particle-banish',
+            blood: 'spell-particle-blood',
+            smoke: 'spell-particle-smoke',
+            sparkle: 'spell-particle-sparkle'
+          }[particle.type] || 'spell-particle-sparkle';
+
+          const sizeClass = `spell-particle-${particle.size}`;
+
+          // Get animation class based on spell type
+          const getAnimationClass = () => {
+            switch (particle.type) {
+              case 'wither': return 'animate-wither-projectile';
+              case 'eldritch_bolt': return 'animate-eldritch-bolt';
+              case 'mend_flesh': return 'animate-mend-sparkle';
+              case 'true_sight': return 'animate-true-sight-radiate';
+              case 'banish': return 'animate-banish-vortex';
+              case 'mind_blast': return 'animate-mind-blast-wave';
+              case 'dark_shield': return 'animate-dark-shield-orbit';
+              case 'explosion': return 'animate-explosion-burst';
+              case 'blood': return 'animate-blood-splatter';
+              case 'smoke': return 'animate-smoke-rise';
+              case 'sparkle': return 'animate-sparkle-twinkle';
+              default: return 'animate-sparkle-twinkle';
+            }
+          };
+
+          // Generate multiple particles for the effect
+          return Array.from({ length: particle.count }).map((_, index) => {
+            // Randomize particle positions and trajectories
+            const angle = (index / particle.count) * Math.PI * 2;
+            const spreadRadius = 30 + Math.random() * 20;
+            const randomDelay = Math.random() * 200;
+
+            // Calculate individual particle offset
+            let offsetX, offsetY;
+            if (particle.animation === 'projectile' && hasTarget) {
+              // Projectile: slight spread along the path
+              const spread = (Math.random() - 0.5) * 20;
+              offsetX = spread;
+              offsetY = spread;
+            } else if (particle.animation === 'radiate') {
+              // Radiate: spread outward from center
+              offsetX = Math.cos(angle) * spreadRadius;
+              offsetY = Math.sin(angle) * spreadRadius;
+            } else if (particle.animation === 'implode') {
+              // Implode: start spread out, move to center
+              offsetX = Math.cos(angle) * spreadRadius;
+              offsetY = Math.sin(angle) * spreadRadius;
+            } else if (particle.animation === 'orbit') {
+              // Orbit: circular path around center
+              offsetX = Math.cos(angle + index * 0.5) * 40;
+              offsetY = Math.sin(angle + index * 0.5) * 40;
+            } else {
+              // Burst: random spread
+              offsetX = (Math.random() - 0.5) * 60;
+              offsetY = (Math.random() - 0.5) * 60;
+            }
+
+            return (
+              <div
+                key={`${particle.id}-${index}`}
+                className={`spell-particle ${particleTypeClass} ${sizeClass} ${getAnimationClass()}`}
+                style={{
+                  left: `${startPos.x + 50}px`,
+                  top: `${startPos.y + 50}px`,
+                  zIndex: 70,
+                  '--tx': `${hasTarget ? dx : offsetX}px`,
+                  '--ty': `${hasTarget ? dy : offsetY}px`,
+                  '--duration': `${particle.duration}ms`,
+                  animationDelay: `${randomDelay}ms`,
+                  animationDuration: `${particle.duration}ms`
+                } as React.CSSProperties}
+              />
+            );
+          });
         })}
       </div>
     </div>
