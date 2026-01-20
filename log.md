@@ -1,5 +1,99 @@
 # Development Log
 
+## 2026-01-20: Implementert klientside-system for autogenerering av spill-grafikk
+
+### Oppgave
+Implementere et klientside-system for autogenerering av spill-grafikk (tiles, monstre, karakterer) ved bruk av Google Gemini API og React. Systemet skal:
+- Bruke AssetLibrary med localStorage-caching
+- Ha batch processing UI i Options-menyen
+- Generere bilder med Gemini 2.0 Flash
+- Falle tilbake til standard-grafikk ved feil
+
+### Løsning
+Lagt til tre nye filer og oppdatert OptionsMenu.tsx:
+
+#### 1. AssetGenerationService.ts
+Komplett service for Gemini API-integrasjon:
+- **Prompt Templates**: Tre ulike maler for tiles (top-down), monstre (portrait), og karakterer (portrait)
+- **Asset Registry**: Samler alle 152+ entiteter (lokasjoner, monstre, karakterer) fra constants.ts
+- **API Integration**: Kommuniserer med `gemini-2.0-flash-exp` modellen
+- **Batch Processing**: Genererer flere assets med progress-tracking og rate limiting
+- **Storage Functions**: Full localStorage-håndtering med import/eksport-støtte
+- **API Key Management**: Lagrer nøkkel sikkert i localStorage
+
+#### 2. AssetLibrary.ts (Oppdatert)
+Utvidet med nye funksjoner:
+- Integrert med AssetGenerationService
+- Prioritetssystem: Generert bilde → Statisk fallback → null
+- Synkrone og asynkrone varianter for alle asset-typer
+- Fallback-mapping for alle 16 monstre og 6 karakterer
+
+#### 3. AssetStudioPanel.tsx
+Full React-komponent for Asset Studio UI:
+- **Statistikk-visning**: Viser antall genererte vs totale assets per kategori
+- **API-nøkkel input**: Sikker inndata med show/hide toggle
+- **Kategori-filter**: Velg mellom Alle/Tiles/Monstre/Karakterer
+- **Progress bar**: Sanntidsvisning av genereringsprosessen
+- **Kontrollknapper**: Start/Stopp/Eksporter/Importer
+- **Feilhåndtering**: Viser feil under generering med mulighet for retry
+
+#### 4. OptionsMenu.tsx (Oppdatert)
+- Erstattet gammel Asset Studio-fane med ny AssetStudioPanel-komponent
+- Fjernet ubrukte props (assetCount, onGenerateAssets, onExportAssets)
+
+### Tekniske Detaljer
+
+#### Prompt-strategi
+```
+TILES: Top-down 90-degree bird's-eye view, hexagonal tile format, dark Lovecraftian aesthetic
+MONSTERS: Dramatic portrait, eldritch horror, trading card game style
+CHARACTERS: 1920s period clothing, noir lighting, Call of Cthulhu RPG style
+```
+
+#### Genererings-flyt
+1. Bruker oppgir Gemini API-nøkkel (gratis fra Google AI Studio)
+2. System identifiserer manglende assets
+3. Batch-generering med 2 sek delay (rate limiting)
+4. Base64-bilder lagres i localStorage
+5. Spillet bruker genererte bilder, med fallback til statiske
+
+#### Fallback-håndtering
+- **Karakterer**: 6 statiske portretter (alltid tilgjengelig)
+- **Monstre**: 16 statiske portretter (alltid tilgjengelig)
+- **Lokasjoner**: Ingen fallback (152 lokasjoner, vises uten bilde)
+
+### Filer Endret
+| Fil | Handling |
+|-----|----------|
+| `src/game/utils/AssetGenerationService.ts` | Opprettet |
+| `src/game/utils/AssetLibrary.ts` | Refaktorert |
+| `src/game/components/AssetStudioPanel.tsx` | Opprettet |
+| `src/game/components/OptionsMenu.tsx` | Oppdatert |
+
+### Resultat
+- ✅ AssetGenerationService med full Gemini API-støtte
+- ✅ Batch processing med progress-tracking
+- ✅ localStorage-caching av Base64-bilder
+- ✅ Komplett UI i Options → Asset Studio
+- ✅ Import/eksport av asset-bibliotek
+- ✅ Build vellykket uten feil
+
+### Oppdatering: Standard-grafikk som default
+
+Endret systemet slik at **statiske bilder fra GitHub brukes som standard**:
+
+1. **GameSettings**: Lagt til `useGeneratedAssets: boolean` (default: `false`)
+2. **AssetLibrary**: Alle funksjoner tar nå `useGenerated` parameter (default: `false`)
+3. **AssetStudioPanel**: Lagt til toggle-switch for å aktivere/deaktivere genererte bilder
+
+**Nytt prioritetssystem:**
+- **Standard (default)**: Statiske bilder fra `/assets/` mappen
+- **Valgfritt**: AI-genererte bilder når `useGeneratedAssets` er aktivert
+
+Dette sikrer at spillet alltid fungerer med de ferdiglagde bildene fra GitHub, mens genererte bilder er et valgfritt tillegg for spillere som ønsker det.
+
+---
+
 ## 2026-01-20: Implementert hover tooltips for hex-tile objekter og kanter
 
 ### Oppgave
