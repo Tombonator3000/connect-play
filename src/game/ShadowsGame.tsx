@@ -2036,7 +2036,177 @@ const ShadowsGame: React.FC = () => {
         }));
         break;
 
+      case 'cast':
+        // Cast spell - payload is the Spell object
+        const spell = payload;
+        if (!spell) {
+          addToLog(`No spell selected.`);
+          return;
+        }
+
+        // Check if player has enough Insight
+        if (activePlayer.insight < spell.cost) {
+          addToLog(`Not enough Insight to cast ${spell.name}. Need ${spell.cost}, have ${activePlayer.insight}.`);
+          addFloatingText(activePlayer.position.q, activePlayer.position.r, "NOT ENOUGH INSIGHT", "text-muted-foreground");
+          return;
+        }
+
+        // For damage/banish spells, need a target enemy
+        if (spell.effectType === 'damage' || spell.effectType === 'banish') {
+          const spellTarget = state.enemies.find(e => e.id === state.selectedEnemyId);
+          if (!spellTarget) {
+            // Set active spell and wait for target selection
+            setState(prev => ({ ...prev, activeSpell: spell }));
+            addToLog(`Select a target for ${spell.name}. Range: ${spell.range} tiles.`);
+            return;
+          }
+
+          // Check range
+          const distance = hexDistance(activePlayer.position, spellTarget.position);
+          if (distance > spell.range) {
+            addToLog(`${spellTarget.name} is out of range for ${spell.name}. Max range: ${spell.range}, distance: ${distance}.`);
+            addFloatingText(activePlayer.position.q, activePlayer.position.r, "OUT OF RANGE", "text-muted-foreground");
+            return;
+          }
+
+          // Perform the spell effect
+          if (spell.effectType === 'damage') {
+            addToLog(`${activePlayer.name} casts ${spell.name}! Eldritch energy strikes ${spellTarget.name} for ${spell.value} damage.`);
+            addFloatingText(spellTarget.position.q, spellTarget.position.r, `-${spell.value} HP`, "text-sanity");
+            addFloatingText(activePlayer.position.q, activePlayer.position.r, `-${spell.cost} INSIGHT`, "text-insight");
+            triggerScreenShake();
+
+            const newEnemyHp = spellTarget.hp - spell.value;
+            const isKilled = newEnemyHp <= 0;
+
+            if (isKilled) {
+              const bestiary = BESTIARY[spellTarget.type];
+              addToLog(bestiary.defeatFlavor || `${spellTarget.name} is destroyed by arcane power!`);
+              addFloatingText(spellTarget.position.q, spellTarget.position.r, "DESTROYED!", "text-accent");
+
+              // Track kill for legacy
+              const heroId = activePlayer.heroId || activePlayer.id;
+              incrementHeroKills(heroId);
+
+              // Update kill objectives
+              if (state.activeScenario) {
+                const killCheck = checkKillObjectives(state.activeScenario, spellTarget.type);
+                if (killCheck.objective) {
+                  const updatedScenario = killCheck.shouldComplete
+                    ? completeObjective(state.activeScenario, killCheck.objective.id)
+                    : updateObjectiveProgress(state.activeScenario, killCheck.objective.id, 1);
+                  setState(prev => ({ ...prev, activeScenario: updatedScenario }));
+                  if (killCheck.shouldComplete) {
+                    addToLog(`OBJECTIVE COMPLETE: ${killCheck.objective.shortDescription}`);
+                  }
+                }
+              }
+            }
+
+            setState(prev => ({
+              ...prev,
+              enemies: prev.enemies.map(e => e.id === spellTarget.id ? { ...e, hp: newEnemyHp, isDying: isKilled } : e).filter(e => e.hp > 0),
+              players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
+                ...p,
+                insight: p.insight - spell.cost,
+                actions: p.actions - 1
+              } : p),
+              activeSpell: null,
+              selectedEnemyId: isKilled ? null : prev.selectedEnemyId
+            }));
+          } else if (spell.effectType === 'banish') {
+            // Banish only works on weak enemies (HP <= spell.value)
+            if (spellTarget.hp > spell.value) {
+              addToLog(`${spellTarget.name} is too powerful to banish. Max HP for banish: ${spell.value}.`);
+              addFloatingText(activePlayer.position.q, activePlayer.position.r, "TOO POWERFUL", "text-muted-foreground");
+              return;
+            }
+
+            addToLog(`${activePlayer.name} casts ${spell.name}! ${spellTarget.name} is banished to the void!`);
+            addFloatingText(spellTarget.position.q, spellTarget.position.r, "BANISHED!", "text-sanity");
+            addFloatingText(activePlayer.position.q, activePlayer.position.r, `-${spell.cost} INSIGHT`, "text-insight");
+            triggerScreenShake();
+
+            // Track kill for legacy
+            const heroId = activePlayer.heroId || activePlayer.id;
+            incrementHeroKills(heroId);
+
+            setState(prev => ({
+              ...prev,
+              enemies: prev.enemies.filter(e => e.id !== spellTarget.id),
+              players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
+                ...p,
+                insight: p.insight - spell.cost,
+                actions: p.actions - 1
+              } : p),
+              activeSpell: null,
+              selectedEnemyId: null
+            }));
+          }
+        } else if (spell.effectType === 'heal') {
+          // Heal spell - heals the caster
+          const healAmount = Math.min(spell.value, activePlayer.maxHp - activePlayer.hp);
+          if (healAmount <= 0) {
+            addToLog(`${activePlayer.name} is already at full health.`);
+            return;
+          }
+
+          addToLog(`${activePlayer.name} casts ${spell.name}! Wounds knit together, healing ${healAmount} HP.`);
+          addFloatingText(activePlayer.position.q, activePlayer.position.r, `+${healAmount} HP`, "text-health");
+          addFloatingText(activePlayer.position.q, activePlayer.position.r, `-${spell.cost} INSIGHT`, "text-insight");
+
+          setState(prev => ({
+            ...prev,
+            players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
+              ...p,
+              hp: Math.min(p.maxHp, p.hp + spell.value),
+              insight: p.insight - spell.cost,
+              actions: p.actions - 1
+            } : p),
+            activeSpell: null
+          }));
+        } else if (spell.effectType === 'reveal') {
+          // Reveal spell - reveals hidden clues/areas
+          addToLog(`${activePlayer.name} casts ${spell.name}! Hidden truths are revealed...`);
+          addFloatingText(activePlayer.position.q, activePlayer.position.r, "REVELATION!", "text-sanity");
+          addFloatingText(activePlayer.position.q, activePlayer.position.r, `-${spell.cost} INSIGHT`, "text-insight");
+
+          // Reveal all tiles within range
+          const revealedTiles = state.board.filter(t =>
+            hexDistance(activePlayer.position, { q: t.q, r: t.r }) <= spell.range
+          );
+
+          const newExplored = new Set(state.exploredTiles || []);
+          revealedTiles.forEach(t => {
+            newExplored.add(`${t.q},${t.r}`);
+          });
+
+          setState(prev => ({
+            ...prev,
+            players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
+              ...p,
+              insight: p.insight - spell.cost + spell.value, // Gain insight from revelation
+              actions: p.actions - 1
+            } : p),
+            exploredTiles: Array.from(newExplored),
+            activeSpell: null
+          }));
+
+          addToLog(`Revealed ${revealedTiles.length} areas. Gained ${spell.value} Insight from the revelation.`);
+        }
+        break;
+
+      case 'cancel_cast':
+        setState(prev => ({ ...prev, activeSpell: null }));
+        addToLog(`Spell casting cancelled.`);
+        break;
+
       case 'enemy_click':
+        // If we have an active spell that needs a target, cast it on this enemy
+        if (state.activeSpell) {
+          handleAction('cast', state.activeSpell);
+          return;
+        }
         setState(prev => ({ ...prev, selectedEnemyId: payload.id }));
         break;
     }
@@ -2670,9 +2840,17 @@ const ShadowsGame: React.FC = () => {
                     return (
                       <button key={type} onClick={() => {
                         const char = CHARACTERS[type];
+                        // Assign spells based on character class (Hero Quest style)
+                        // Occultist (Elf) = Full spell access (Ritual Master)
+                        // Professor (Wizard) = Limited scholarly spells (True Sight, Mend Flesh)
+                        const characterSpells = type === 'occultist'
+                          ? SPELLS  // All 4 spells
+                          : type === 'professor'
+                            ? SPELLS.filter(s => s.id === 'reveal' || s.id === 'mend')  // 2 scholarly spells
+                            : [];
                         setState(prev => ({
                           ...prev,
-                          players: isSelected ? prev.players.filter(p => p.id !== type) : [...prev.players, { ...char, position: { q: 0, r: 0 }, inventory: createEmptyInventory(), spells: (type === 'occultist' ? [SPELLS[0]] : []), actions: 2, isDead: false, madness: [], activeMadness: null, traits: [] }]
+                          players: isSelected ? prev.players.filter(p => p.id !== type) : [...prev.players, { ...char, position: { q: 0, r: 0 }, inventory: createEmptyInventory(), spells: characterSpells, actions: 2, isDead: false, madness: [], activeMadness: null, traits: [] }]
                         }));
                       }} className={`p-4 bg-background border-2 rounded-xl transition-all ${isSelected ? 'border-primary shadow-[var(--shadow-doom)] scale-105' : 'border-border opacity-60'}`}>
                         <div className="text-lg font-bold text-foreground uppercase tracking-tighter">{CHARACTERS[type].name}</div>

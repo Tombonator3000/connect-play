@@ -89,14 +89,14 @@ Skade = 2 - 1 = 1 HP mot spiller
 
 Alle karakterer er mappet fra Hero Quest-klasser:
 
-| 1920s Klasse | Hero Quest | Rolle | Base Attack | Base Defense | HP | Sanity |
-|--------------|------------|-------|-------------|--------------|-----|--------|
-| **Veteran** | Barbarian | Fighter | 3 | 2 | 6 | 3 |
-| **Detective** | Dwarf | Investigator | 2 | 3 | 5 | 4 |
-| **Professor** | Wizard | Scholar | 1 | 2 | 3 | 6 |
-| **Occultist** | Elf | Hybrid (spells) | 2 | 2 | 3 | 5 |
-| **Journalist** | Rogue | Scout | 2 | 2 | 4 | 4 |
-| **Doctor** | Healer | Support | 1 | 2 | 4 | 5 |
+| 1920s Klasse | Hero Quest | Rolle | Base Attack | Base Defense | HP | Sanity | Spells |
+|--------------|------------|-------|-------------|--------------|-----|--------|--------|
+| **Veteran** | Barbarian | Fighter | 3 | 2 | 6 | 3 | - |
+| **Detective** | Dwarf | Investigator | 2 | 3 | 5 | 4 | - |
+| **Professor** | Wizard | Scholar | 1 | 2 | 3 | 6 | 2 (scholarly) |
+| **Occultist** | Elf | Hybrid (spells) | 2 | 2 | 3 | 5 | 4 (full) |
+| **Journalist** | Rogue | Scout | 2 | 2 | 4 | 4 | - |
+| **Doctor** | Healer | Support | 1 | 2 | 4 | 5 | - |
 
 ## 2.2 Attributter
 
@@ -143,8 +143,15 @@ Hver karakter har fire attributter (verdi 2-5):
 **Spesialiteter:**
 - Kan lese okkulte tekster uten Sanity-tap
 - **Knowledge**: +2 terninger pa puzzles
+- **Scholarly Magic**: 2 spells (True Sight, Mend Flesh)
 
 **Vapenrestriksjoner**: Kan KUN bruke Derringer og Knife
+
+**Spells (Hero Quest Wizard-stil):**
+| Spell | Insight Cost | Effekt |
+|-------|--------------|--------|
+| True Sight | 1 | Avslører skjulte ledetråder, +1 Insight |
+| Mend Flesh | 2 | Healer 2 HP |
 
 ---
 

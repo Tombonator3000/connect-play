@@ -317,19 +317,21 @@ export const CHARACTERS: Record<CharacterType, Character> = {
     weaponRestrictions: ['tommy_gun']
   },
 
-  // PROFESSOR (Wizard) - Scholar class
+  // PROFESSOR (Wizard) - Scholar class with LIMITED SPELLS
   // Can ONLY use Derringer, Knife
   // Can read occult texts without Sanity loss
   // Special: "Knowledge" - +2 dice on puzzles
+  // Has 2 scholarly spells: True Sight, Mend Flesh (Hero Quest Wizard style)
   professor: {
     id: 'professor', name: 'The Professor',
     hp: 3, maxHp: 3, sanity: 6, maxSanity: 6, insight: 3,
     attributes: { strength: 2, agility: 2, intellect: 5, willpower: 4 },
-    special: 'Read occult safely. Knowledge (+2 puzzle dice). Limited weapons',
+    special: 'Read occult safely. Knowledge (+2 puzzle dice). 2 scholarly spells',
     specialAbility: 'occult_immunity',
     baseAttackDice: 1,    // Lowest attack (like Wizard)
     baseDefenseDice: 2,   // Standard defense
-    weaponRestrictions: ['revolver', 'shotgun', 'tommy_gun', 'rifle', 'machete'] // Can only use derringer, knife
+    weaponRestrictions: ['revolver', 'shotgun', 'tommy_gun', 'rifle', 'machete'], // Can only use derringer, knife
+    canCastSpells: true   // Has limited spells (True Sight, Mend Flesh)
   },
 
   // OCCULTIST (Elf) - Hybrid class with SPELLS
