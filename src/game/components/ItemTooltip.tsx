@@ -8,6 +8,7 @@ import {
   DoorOpen, DoorClosed, KeyRound, Ban, ArrowUpRight, ArrowDownRight, Square, Minus, Info
 } from 'lucide-react';
 import { getItemIcon as getSpecificItemIcon } from './ItemIcons';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ItemTooltipProps {
   item: Item;
@@ -153,7 +154,13 @@ interface EnemyTooltipProps {
 
 export const EnemyTooltip: React.FC<EnemyTooltipProps> = ({ enemy, children }) => {
   const info = BESTIARY[enemy.type];
-  
+  const isMobile = useIsMobile();
+
+  // On mobile, don't show tooltips - prevents "free" information gathering via touch
+  if (isMobile) {
+    return <>{children}</>;
+  }
+
   return (
     <TooltipProvider delayDuration={300}>
       <Tooltip>
@@ -400,7 +407,15 @@ interface TileObjectTooltipProps {
 
 export const TileObjectTooltip: React.FC<TileObjectTooltipProps> = ({ object, children }) => {
   const info = TILE_OBJECT_INFO[object.type];
+  const isMobile = useIsMobile();
+
   if (!info) return <>{children}</>;
+
+  // On mobile, don't show tooltips - prevents "free" information gathering via touch
+  // Player must investigate the tile to learn what's there
+  if (isMobile) {
+    return <>{children}</>;
+  }
 
   const IconComponent = info.icon;
 
@@ -594,6 +609,13 @@ interface EdgeFeatureTooltipProps {
 }
 
 export const EdgeFeatureTooltip: React.FC<EdgeFeatureTooltipProps> = ({ edge, children }) => {
+  const isMobile = useIsMobile();
+
+  // On mobile, don't show tooltips - prevents "free" information gathering via touch
+  if (isMobile) {
+    return <>{children}</>;
+  }
+
   // Determine what type of feature this edge has
   const edgeType = edge.type?.toLowerCase();
 
