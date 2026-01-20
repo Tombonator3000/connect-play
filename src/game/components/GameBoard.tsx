@@ -532,7 +532,9 @@ interface GameBoardProps {
 
 const HEX_SIZE = 95;
 const VISIBILITY_RANGE = 2;
-const DRAG_THRESHOLD = 5;
+// Mobile touch thresholds - increased for better tap detection on touchscreens
+const DRAG_THRESHOLD = 15; // px - increased from 5 to account for finger wobble
+const TAP_TIME_THRESHOLD = 250; // ms - max time for a tap vs hold
 const HEX_POLY_POINTS = "25,0 75,0 100,50 75,100 25,100 0,50";
 
 // Hex edge endpoints for flat-top hexagon (0-100 scale)
@@ -710,6 +712,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const lastTouchDistance = useRef<number | null>(null);
   const lastTouchCenter = useRef<{ x: number; y: number } | null>(null);
 
+  // Improved touch handling: timing and visual feedback
+  const touchStartTime = useRef<number>(0);
+  const [touchedTileKey, setTouchedTileKey] = useState<string | null>(null);
+
   useEffect(() => {
     if (containerRef.current) {
       const { width, height } = containerRef.current.getBoundingClientRect();
@@ -757,11 +763,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
       setDragStart({ x: e.touches[0].clientX - position.x, y: e.touches[0].clientY - position.y });
       setDragStartRaw({ x: e.touches[0].clientX, y: e.touches[0].clientY });
       hasDragged.current = false;
+      // Record touch start time for tap detection
+      touchStartTime.current = Date.now();
     } else if (e.touches.length === 2) {
       // Two touches - prepare for pinch zoom
       lastTouchDistance.current = getTouchDistance(e.touches);
       lastTouchCenter.current = getTouchCenter(e.touches);
       setIsDragging(false);
+      // Clear any touched tile feedback
+      setTouchedTileKey(null);
     }
   };
 
@@ -769,8 +779,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
     if (e.touches.length === 1 && isDragging) {
       // Single touch - drag/pan
       const touch = e.touches[0];
-      if (Math.hypot(touch.clientX - dragStartRaw.x, touch.clientY - dragStartRaw.y) > DRAG_THRESHOLD) {
+      const moveDistance = Math.hypot(touch.clientX - dragStartRaw.x, touch.clientY - dragStartRaw.y);
+      if (moveDistance > DRAG_THRESHOLD) {
         hasDragged.current = true;
+        // Clear touched tile feedback when dragging starts
+        setTouchedTileKey(null);
       }
       setPosition({ x: touch.clientX - dragStart.x, y: touch.clientY - dragStart.y });
     } else if (e.touches.length === 2) {
@@ -801,6 +814,18 @@ const GameBoard: React.FC<GameBoardProps> = ({
       setIsDragging(false);
       lastTouchDistance.current = null;
       lastTouchCenter.current = null;
+      // Clear touched tile feedback
+      setTouchedTileKey(null);
+
+      // Check if this was a valid tap (short duration and small movement)
+      const touchDuration = Date.now() - touchStartTime.current;
+      const wasQuickTap = touchDuration < TAP_TIME_THRESHOLD;
+      // hasDragged.current is set if movement exceeded DRAG_THRESHOLD
+      // If quick tap AND no drag, this is a valid tile tap (handled by onClick)
+      if (wasQuickTap && !hasDragged.current) {
+        // The actual click will be handled by the tile onClick handler
+        // We just ensure hasDragged.current is false for quick taps
+      }
     } else if (e.touches.length === 1) {
       // Went from 2 fingers to 1 - restart single-touch drag
       setIsDragging(true);
@@ -808,6 +833,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
       setDragStartRaw({ x: e.touches[0].clientX, y: e.touches[0].clientY });
       lastTouchDistance.current = null;
       lastTouchCenter.current = null;
+      touchStartTime.current = Date.now();
     }
   };
 
@@ -871,7 +897,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
   return (
     <div
       ref={containerRef}
-      className="w-full h-full overflow-hidden relative cursor-move bg-background touch-none select-none"
+      className="game-board-container w-full h-full overflow-hidden relative cursor-move bg-background touch-none select-none"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={() => setIsDragging(false)}
@@ -921,15 +947,21 @@ const GameBoard: React.FC<GameBoardProps> = ({
           // Determine 3D depth class based on zone level
           const depthClass = tile.zoneLevel < 0 ? 'hex-3d-depth-sunken' : tile.zoneLevel > 0 ? 'hex-3d-depth-elevated' : 'hex-3d-depth';
 
+          const isTouched = touchedTileKey === tileKey;
+
           return (
             <div
               key={tile.id}
               className="absolute flex items-center justify-center transition-all duration-500"
               style={{ width: `${HEX_SIZE * 2}px`, height: `${HEX_SIZE * 1.732}px`, left: `${x - HEX_SIZE}px`, top: `${y - HEX_SIZE * 0.866}px` }}
               onClick={() => { if (!hasDragged.current) onTileClick(tile.q, tile.r); }}
+              onTouchStart={() => setTouchedTileKey(tileKey)}
+              onTouchEnd={() => setTouchedTileKey(null)}
+              onTouchCancel={() => setTouchedTileKey(null)}
             >
               {/* Board game tile with AI-generated oil painting texture and 3D depth */}
-              <div className={`absolute inset-0 hex-clip transition-all duration-500 ${visual.floorClass} ${visual.glowClass} ${isVisible ? depthClass : ''} overflow-hidden group`}>
+              {/* Touch feedback: brighten tile and show pulse when touched */}
+              <div className={`absolute inset-0 hex-clip transition-all duration-150 ${visual.floorClass} ${visual.glowClass} ${isVisible ? depthClass : ''} overflow-hidden group ${isTouched ? 'brightness-125 scale-[1.02] touch-highlight' : ''}`}>
                 {/* AI-generated tile image - MUST be on top with z-index */}
                 {tileImage ? (
                   <img 
