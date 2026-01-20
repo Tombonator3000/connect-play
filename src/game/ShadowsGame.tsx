@@ -2840,9 +2840,17 @@ const ShadowsGame: React.FC = () => {
                     return (
                       <button key={type} onClick={() => {
                         const char = CHARACTERS[type];
+                        // Assign spells based on character class (Hero Quest style)
+                        // Occultist (Elf) = Full spell access (Ritual Master)
+                        // Professor (Wizard) = Limited scholarly spells (True Sight, Mend Flesh)
+                        const characterSpells = type === 'occultist'
+                          ? SPELLS  // All 4 spells
+                          : type === 'professor'
+                            ? SPELLS.filter(s => s.id === 'reveal' || s.id === 'mend')  // 2 scholarly spells
+                            : [];
                         setState(prev => ({
                           ...prev,
-                          players: isSelected ? prev.players.filter(p => p.id !== type) : [...prev.players, { ...char, position: { q: 0, r: 0 }, inventory: createEmptyInventory(), spells: (type === 'occultist' ? SPELLS : []), actions: 2, isDead: false, madness: [], activeMadness: null, traits: [] }]
+                          players: isSelected ? prev.players.filter(p => p.id !== type) : [...prev.players, { ...char, position: { q: 0, r: 0 }, inventory: createEmptyInventory(), spells: characterSpells, actions: 2, isDead: false, madness: [], activeMadness: null, traits: [] }]
                         }));
                       }} className={`p-4 bg-background border-2 rounded-xl transition-all ${isSelected ? 'border-primary shadow-[var(--shadow-doom)] scale-105' : 'border-border opacity-60'}`}>
                         <div className="text-lg font-bold text-foreground uppercase tracking-tighter">{CHARACTERS[type].name}</div>

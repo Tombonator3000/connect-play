@@ -1,9 +1,61 @@
 # Development Log
 
+## 2026-01-20: Professor Scholarly Spells - "Hero Quest Wizard Style"
+
+### Oppgave
+Gi Professor (mappet til Wizard fra Hero Quest) begrenset spell-tilgang for å være mer tro til originalspillet.
+
+### Implementasjon
+
+#### 1. Spell Assignment (`src/game/ShadowsGame.tsx`)
+
+**Endring:** Oppdatert logikk for å tildele spells basert på karakterklasse.
+
+```typescript
+const characterSpells = type === 'occultist'
+  ? SPELLS  // All 4 spells (Ritual Master)
+  : type === 'professor'
+    ? SPELLS.filter(s => s.id === 'reveal' || s.id === 'mend')  // 2 scholarly spells
+    : [];
+```
+
+#### 2. Professor Character Update (`src/game/constants.ts`)
+
+**Endring:** Lagt til `canCastSpells: true` og oppdatert special-beskrivelse.
+
+```typescript
+professor: {
+  special: 'Read occult safely. Knowledge (+2 puzzle dice). 2 scholarly spells',
+  canCastSpells: true   // Has limited spells (True Sight, Mend Flesh)
+}
+```
+
+#### 3. REGELBOK.MD Oppdatering
+
+Lagt til spells-kolonne i karakteroversikt og detaljert Professor-seksjon.
+
+### Spell Fordeling (Hero Quest Style)
+
+| Karakter | Spells | Tilgjengelige |
+|----------|--------|---------------|
+| **Occultist** (Elf) | 4 | Wither, Mend Flesh, True Sight, Banish |
+| **Professor** (Wizard) | 2 | True Sight, Mend Flesh |
+| Andre | 0 | - |
+
+### Filer Endret
+
+| Fil | Handling | Beskrivelse |
+|-----|----------|-------------|
+| `src/game/ShadowsGame.tsx` | ENDRET | Spell assignment per karakterklasse |
+| `src/game/constants.ts` | ENDRET | Professor får `canCastSpells: true` |
+| `REGELBOK.MD` | ENDRET | Dokumentert Professor spells |
+
+---
+
 ## 2026-01-20: Cast Spell Action - "The Arcane Arts"
 
 ### Oppgave
-Implementere en "Cast Spell" action i action bar for hero-karakterer som kan bruke magi (Occultist). Denne handlingen lar spillere velge en spell fra karakterens spell-liste, forbruke nødvendig Insight-kostnad, og anvende spell-effekten.
+Implementere en "Cast Spell" action i action bar for hero-karakterer som kan bruke magi (Occultist, Professor). Denne handlingen lar spillere velge en spell fra karakterens spell-liste, forbruke nødvendig Insight-kostnad, og anvende spell-effekten.
 
 ### Implementasjon
 
