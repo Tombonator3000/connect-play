@@ -2,9 +2,8 @@
  * Asset Library - Manages game assets with caching and fallback
  *
  * Provides a unified interface for retrieving game graphics:
- * 1. First checks localStorage cache for AI-generated images
- * 2. Falls back to static assets in /assets/ folders
- * 3. Returns null if no asset is available
+ * - Default: Uses static assets from /assets/ folders (GitHub images)
+ * - Optional: Can use AI-generated images from localStorage when enabled
  */
 
 import { INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, BESTIARY } from '../constants';
@@ -15,7 +14,7 @@ import {
   getAssetFromLibrary
 } from './AssetGenerationService';
 
-// Import static assets for fallback
+// Import static assets (these are the default)
 import veteranImg from '@/assets/characters/veteran.png';
 import privateEyeImg from '@/assets/characters/private-eye.png';
 import professorImg from '@/assets/characters/professor.png';
@@ -41,10 +40,10 @@ import huntingHorrorImg from '@/assets/monsters/hunting_horror.png';
 import moonBeastImg from '@/assets/monsters/moon_beast.png';
 
 // ============================================================================
-// STATIC FALLBACK ASSETS
+// STATIC ASSETS (DEFAULT - from GitHub)
 // ============================================================================
 
-const CHARACTER_FALLBACKS: Record<CharacterType, string> = {
+export const CHARACTER_PORTRAITS: Record<CharacterType, string> = {
   veteran: veteranImg,
   detective: privateEyeImg,
   professor: professorImg,
@@ -53,7 +52,7 @@ const CHARACTER_FALLBACKS: Record<CharacterType, string> = {
   doctor: doctorImg
 };
 
-const MONSTER_FALLBACKS: Record<EnemyType, string> = {
+export const MONSTER_PORTRAITS: Record<EnemyType, string> = {
   cultist: cultistImg,
   deepone: deeponeImg,
   ghoul: ghoulImg,
@@ -134,20 +133,16 @@ const toFileName = (name: string) => {
 
 /**
  * Get asset for a tile/location
- * Priority: Generated (localStorage) -> Static file -> null
+ * @param locationName - The name of the location
+ * @param _type - The type of location (unused, for compatibility)
+ * @param useGenerated - Whether to use generated assets (default: false)
  */
 export const generateLocationAsset = async (
     locationName: string,
-    _type: 'room' | 'street' | 'building' = 'room'
+    _type: 'room' | 'street' | 'building' = 'room',
+    useGenerated: boolean = false
 ): Promise<string | null> => {
-    // 1. Check generated assets in localStorage
-    const assetId = nameToId(locationName);
-    const generated = getAssetFromLibrary(assetId);
-    if (generated) {
-        return generated;
-    }
-
-    // 2. Check static file
+    // 1. Check static file first (default)
     const fileName = toFileName(locationName);
     const localPath = `/assets/tiles/${fileName}.png`;
 
@@ -155,16 +150,34 @@ export const generateLocationAsset = async (
         return localPath;
     }
 
+    // 2. If useGenerated is enabled, check generated assets
+    if (useGenerated) {
+        const assetId = nameToId(locationName);
+        const generated = getAssetFromLibrary(assetId);
+        if (generated) {
+            return generated;
+        }
+    }
+
     // 3. No asset available
     return null;
 };
 
 /**
- * Get location asset synchronously (for immediate use, checks cache only)
+ * Get location asset synchronously
+ * @param locationName - The name of the location
+ * @param useGenerated - Whether to use generated assets (default: false)
  */
-export const getLocationAssetSync = (locationName: string): string | null => {
-    const assetId = nameToId(locationName);
-    return getAssetFromLibrary(assetId);
+export const getLocationAssetSync = (locationName: string, useGenerated: boolean = false): string | null => {
+    // Only return generated if explicitly enabled
+    if (useGenerated) {
+        const assetId = nameToId(locationName);
+        const generated = getAssetFromLibrary(assetId);
+        if (generated) {
+            return generated;
+        }
+    }
+    return null;
 };
 
 // ============================================================================
@@ -173,32 +186,44 @@ export const getLocationAssetSync = (locationName: string): string | null => {
 
 /**
  * Get visual asset for a player character
- * Priority: Generated -> Static fallback
+ * @param player - The player object
+ * @param useGenerated - Whether to use generated assets (default: false)
  */
-export const getCharacterVisual = async (player: Player): Promise<string | null> => {
-    // 1. Check generated assets
-    const generated = getAssetFromLibrary(player.id);
-    if (generated) {
-        return generated;
+export const getCharacterVisual = async (
+    player: Player,
+    useGenerated: boolean = false
+): Promise<string> => {
+    // If useGenerated is enabled, check generated assets first
+    if (useGenerated) {
+        const generated = getAssetFromLibrary(player.id);
+        if (generated) {
+            return generated;
+        }
     }
 
-    // 2. Return static fallback
-    const fallback = CHARACTER_FALLBACKS[player.id as CharacterType];
-    return fallback || null;
+    // Return static asset (default)
+    return CHARACTER_PORTRAITS[player.id as CharacterType] || privateEyeImg;
 };
 
 /**
  * Get character visual synchronously
+ * @param characterType - The type of character
+ * @param useGenerated - Whether to use generated assets (default: false)
  */
-export const getCharacterVisualSync = (characterType: CharacterType): string => {
-    // Check generated first
-    const generated = getAssetFromLibrary(characterType);
-    if (generated) {
-        return generated;
+export const getCharacterVisualSync = (
+    characterType: CharacterType,
+    useGenerated: boolean = false
+): string => {
+    // If useGenerated is enabled, check generated assets first
+    if (useGenerated) {
+        const generated = getAssetFromLibrary(characterType);
+        if (generated) {
+            return generated;
+        }
     }
 
-    // Return fallback
-    return CHARACTER_FALLBACKS[characterType] || privateEyeImg;
+    // Return static asset (default)
+    return CHARACTER_PORTRAITS[characterType] || privateEyeImg;
 };
 
 // ============================================================================
@@ -207,32 +232,44 @@ export const getCharacterVisualSync = (characterType: CharacterType): string => 
 
 /**
  * Get visual asset for an enemy
- * Priority: Generated -> Static fallback
+ * @param enemy - The enemy object
+ * @param useGenerated - Whether to use generated assets (default: false)
  */
-export const getEnemyVisual = async (enemy: Enemy): Promise<string | null> => {
-    // 1. Check generated assets
-    const generated = getAssetFromLibrary(enemy.type);
-    if (generated) {
-        return generated;
+export const getEnemyVisual = async (
+    enemy: Enemy,
+    useGenerated: boolean = false
+): Promise<string> => {
+    // If useGenerated is enabled, check generated assets first
+    if (useGenerated) {
+        const generated = getAssetFromLibrary(enemy.type);
+        if (generated) {
+            return generated;
+        }
     }
 
-    // 2. Return static fallback
-    const fallback = MONSTER_FALLBACKS[enemy.type];
-    return fallback || null;
+    // Return static asset (default)
+    return MONSTER_PORTRAITS[enemy.type] || cultistImg;
 };
 
 /**
  * Get enemy visual synchronously
+ * @param enemyType - The type of enemy
+ * @param useGenerated - Whether to use generated assets (default: false)
  */
-export const getEnemyVisualSync = (enemyType: EnemyType): string => {
-    // Check generated first
-    const generated = getAssetFromLibrary(enemyType);
-    if (generated) {
-        return generated;
+export const getEnemyVisualSync = (
+    enemyType: EnemyType,
+    useGenerated: boolean = false
+): string => {
+    // If useGenerated is enabled, check generated assets first
+    if (useGenerated) {
+        const generated = getAssetFromLibrary(enemyType);
+        if (generated) {
+            return generated;
+        }
     }
 
-    // Return fallback
-    return MONSTER_FALLBACKS[enemyType] || cultistImg;
+    // Return static asset (default)
+    return MONSTER_PORTRAITS[enemyType] || cultistImg;
 };
 
 // ============================================================================
@@ -276,16 +313,16 @@ export const hasGeneratedAsset = (assetId: string): boolean => {
 };
 
 /**
- * Check if asset has static fallback available
+ * Check if asset has static image available
  */
-export const hasStaticFallback = (assetId: string, category: 'tile' | 'monster' | 'character'): boolean => {
+export const hasStaticAsset = (assetId: string, category: 'tile' | 'monster' | 'character'): boolean => {
     switch (category) {
         case 'character':
-            return assetId in CHARACTER_FALLBACKS;
+            return assetId in CHARACTER_PORTRAITS;
         case 'monster':
-            return assetId in MONSTER_FALLBACKS;
+            return assetId in MONSTER_PORTRAITS;
         case 'tile':
-            // Tiles don't have comprehensive static fallbacks
+            // Would need to check file system - return false for now
             return false;
         default:
             return false;

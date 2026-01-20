@@ -11,8 +11,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   RefreshCw, Download, Upload, Key, Check, X, AlertCircle,
-  Image, MapPin, Skull, User, Play, Pause, Trash2, Eye, EyeOff
+  Image, MapPin, Skull, User, Play, Pause, Trash2, Eye, EyeOff,
+  Sparkles
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import {
   getAllAssetDefinitions,
   getAssetCounts,
@@ -37,14 +39,18 @@ import {
 type CategoryFilter = 'all' | AssetCategory;
 
 interface AssetStudioPanelProps {
-  onClose?: () => void;
+  useGeneratedAssets: boolean;
+  onToggleGeneratedAssets: (enabled: boolean) => void;
 }
 
 // ============================================================================
 // COMPONENT
 // ============================================================================
 
-const AssetStudioPanel: React.FC<AssetStudioPanelProps> = () => {
+const AssetStudioPanel: React.FC<AssetStudioPanelProps> = ({
+  useGeneratedAssets,
+  onToggleGeneratedAssets
+}) => {
   // State
   const [apiKey, setApiKey] = useState<string>('');
   const [showApiKey, setShowApiKey] = useState(false);
@@ -215,6 +221,27 @@ const AssetStudioPanel: React.FC<AssetStudioPanelProps> = () => {
         <div className="text-muted-foreground text-sm">
           {assetCounts.total.generated} / {assetCounts.total.total} Assets
         </div>
+      </div>
+
+      {/* Enable Generated Assets Toggle */}
+      <div className="flex items-center justify-between bg-accent/20 p-4 rounded-xl border border-accent/50">
+        <div className="flex items-center gap-4">
+          <div className="w-10 h-10 rounded-lg bg-accent/30 flex items-center justify-center">
+            <Sparkles className="text-accent" size={20} />
+          </div>
+          <div>
+            <div className="font-bold uppercase tracking-wider text-sm">Bruk AI-genererte bilder</div>
+            <div className="text-xs text-muted-foreground italic">
+              {useGeneratedAssets
+                ? 'Genererte bilder brukes i stedet for standard-grafikk'
+                : 'Standard-grafikk fra GitHub brukes (anbefalt)'}
+            </div>
+          </div>
+        </div>
+        <Switch
+          checked={useGeneratedAssets}
+          onCheckedChange={onToggleGeneratedAssets}
+        />
       </div>
 
       {/* Category Stats */}
@@ -429,14 +456,13 @@ const AssetStudioPanel: React.FC<AssetStudioPanelProps> = () => {
       {/* Info Section */}
       <div className="bg-card/30 p-4 rounded-xl border border-border/50 space-y-2">
         <p className="text-sm text-muted-foreground">
-          <strong className="text-foreground">Om Asset Studio:</strong> Dette verktøyet bruker Google Gemini 2.0 Flash
-          for å generere unike spillbilder. Bildene lagres i nettleserens cache (localStorage) og brukes
-          i stedet for standard-grafikken.
+          <strong className="text-foreground">Standard:</strong> Spillet bruker bildene fra GitHub som standard.
+          Alle monstre og karakterer har ferdiglagde bilder som alltid fungerer.
         </p>
         <p className="text-sm text-muted-foreground">
-          <strong className="text-foreground">Fallback:</strong> Hvis generering feiler eller API-nøkkel mangler,
-          brukes standard-grafikken som ligger i prosjektet for monstre og karakterer.
-          Lokasjoner vises uten bilde.
+          <strong className="text-foreground">AI-generert (valgfritt):</strong> Du kan generere egne bilder med
+          Google Gemini 2.0 Flash. Slå på "Bruk AI-genererte bilder" for å aktivere dem i spillet.
+          Bildene lagres i nettleserens cache (localStorage).
         </p>
       </div>
 

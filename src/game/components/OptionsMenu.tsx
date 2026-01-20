@@ -19,6 +19,8 @@ export interface GameSettings {
   // Gameplay
   showGrid: boolean;
   fastMode: boolean;
+  // Assets
+  useGeneratedAssets: boolean;
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -30,6 +32,7 @@ const DEFAULT_SETTINGS: GameSettings = {
   particles: true,
   showGrid: true,
   fastMode: false,
+  useGeneratedAssets: false,
 };
 
 type TabType = 'audio' | 'display' | 'gameplay' | 'assets' | 'system';
@@ -245,7 +248,10 @@ const OptionsMenu: React.FC<OptionsMenuProps> = ({
   );
 
   const renderAssetsTab = () => (
-    <AssetStudioPanel onClose={onClose} />
+    <AssetStudioPanel
+      useGeneratedAssets={settings.useGeneratedAssets}
+      onToggleGeneratedAssets={(enabled) => updateSetting('useGeneratedAssets', enabled)}
+    />
   );
 
   const renderSystemTab = () => (

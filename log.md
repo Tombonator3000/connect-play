@@ -75,9 +75,22 @@ CHARACTERS: 1920s period clothing, noir lighting, Call of Cthulhu RPG style
 - ✅ Batch processing med progress-tracking
 - ✅ localStorage-caching av Base64-bilder
 - ✅ Komplett UI i Options → Asset Studio
-- ✅ Fallback til standard-grafikk
 - ✅ Import/eksport av asset-bibliotek
 - ✅ Build vellykket uten feil
+
+### Oppdatering: Standard-grafikk som default
+
+Endret systemet slik at **statiske bilder fra GitHub brukes som standard**:
+
+1. **GameSettings**: Lagt til `useGeneratedAssets: boolean` (default: `false`)
+2. **AssetLibrary**: Alle funksjoner tar nå `useGenerated` parameter (default: `false`)
+3. **AssetStudioPanel**: Lagt til toggle-switch for å aktivere/deaktivere genererte bilder
+
+**Nytt prioritetssystem:**
+- **Standard (default)**: Statiske bilder fra `/assets/` mappen
+- **Valgfritt**: AI-genererte bilder når `useGeneratedAssets` er aktivert
+
+Dette sikrer at spillet alltid fungerer med de ferdiglagde bildene fra GitHub, mens genererte bilder er et valgfritt tillegg for spillere som ønsker det.
 
 ---
 
