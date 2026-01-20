@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mythos Quest</title>
+    <script>
+      // GitHub Pages SPA redirect script
+      // This script redirects 404 pages to index.html for client-side routing
+      // Based on: https://github.com/rafgraph/spa-github-pages
+
+      const segmentCount = 1; // Number of path segments to keep (1 for /connect-play/)
+      const location = window.location;
+      const path = location.pathname;
+
+      // Only redirect if we're on a subpath that should be handled by the SPA
+      if (path !== '/' && path !== '/index.html') {
+        const pathSegmentsToKeep = path.split('/').slice(0, segmentCount + 1).join('/');
+        const redirectPath = path.slice(pathSegmentsToKeep.length) || '/';
+        const search = location.search;
+        const hash = location.hash;
+
+        // Redirect to index with the route stored in sessionStorage
+        sessionStorage.setItem('spa-redirect', redirectPath + search + hash);
+        location.replace(pathSegmentsToKeep + '/');
+      }
+    </script>
+  </head>
+  <body>
+    <noscript>JavaScript is required to play Mythos Quest.</noscript>
+  </body>
+</html>

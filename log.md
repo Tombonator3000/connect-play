@@ -1,5 +1,127 @@
 # Development Log
 
+## 2026-01-20: GitHub Pages & Multi-Platform Development - "Deploy the Darkness"
+
+### Oppgave
+Gjøre spillet startbart fra GitHub Pages og sette opp synkron utvikling fra Lovable og Claude.
+
+### Problemanalyse
+1. **BrowserRouter**: Manglet basename-støtte for GitHub Pages subpath (`/connect-play/`)
+2. **SPA Routing**: GitHub Pages returnerer 404 for alle ruter unntatt `/`
+3. **Dokumentasjon**: Manglet `agents.md` for kontekst til AI-agenter
+4. **Synkronisering**: Trengte klarere retningslinjer for Lovable/Claude workflow
+
+### Implementasjon
+
+#### 1. BrowserRouter basename (`src/App.tsx`)
+
+**Endring:**
+- Lagt til dynamisk basename basert på Vite's BASE_URL
+- Fungerer for både Lovable (root `/`) og GitHub Pages (`/connect-play/`)
+
+```typescript
+// Get basename from Vite's base config
+const basename = import.meta.env.BASE_URL.replace(/\/$/, '') || '/';
+
+<BrowserRouter basename={basename}>
+```
+
+#### 2. SPA Routing for GitHub Pages (`public/404.html`)
+
+**Ny fil** som håndterer client-side routing:
+- Lagrer den faktiske URL-en i sessionStorage
+- Omdirigerer til index.html
+- index.html henter URL fra sessionStorage og bruker history.replaceState
+
+**404.html logikk:**
+```javascript
+const redirectPath = path.slice(pathSegmentsToKeep.length) || '/';
+sessionStorage.setItem('spa-redirect', redirectPath + search + hash);
+location.replace(pathSegmentsToKeep + '/');
+```
+
+**index.html handler:**
+```javascript
+const redirect = sessionStorage.getItem('spa-redirect');
+if (redirect) {
+  sessionStorage.removeItem('spa-redirect');
+  window.history.replaceState(null, '', redirect);
+}
+```
+
+#### 3. Agent Dokumentasjon (`agents.md`)
+
+**Ny fil** med kontekst for AI-agenter:
+- Prosjektoversikt og teknisk stack
+- Utviklingsplattformer (Lovable, Claude, GitHub Pages)
+- Synkron utvikling workflow
+- Viktige filer referanse
+- Kodestruktur
+- Build & deploy instruksjoner
+
+### Filer Endret/Opprettet
+
+| Fil | Handling | Beskrivelse |
+|-----|----------|-------------|
+| `src/App.tsx` | ENDRET | Lagt til dynamisk basename for BrowserRouter |
+| `public/404.html` | NY | SPA redirect handler for GitHub Pages |
+| `index.html` | ENDRET | Lagt til session storage redirect handler |
+| `agents.md` | NY | Kontekst og dokumentasjon for AI-agenter |
+
+### GitHub Pages Aktivering
+
+For å aktivere GitHub Pages:
+
+1. Gå til repository Settings → Pages
+2. Under "Build and deployment":
+   - Source: **GitHub Actions**
+3. Push til `main` branch for å trigge deployment
+4. Vent på at workflow kjører ferdig
+5. Spillet blir tilgjengelig på: `https://tombonator3000.github.io/connect-play/`
+
+### Utviklings-workflow
+
+```
+┌─────────────┐     push      ┌──────────┐
+│   Lovable   │ ──────────────▶│  GitHub  │
+└─────────────┘               └──────────┘
+                                   │
+                    pull ┌─────────┴─────────┐ auto-deploy
+                         │                   │
+                         ▼                   ▼
+                  ┌─────────────┐     ┌──────────────┐
+                  │   Claude    │     │ GitHub Pages │
+                  │    Code     │     │  (produksjon)│
+                  └─────────────┘     └──────────────┘
+                         │
+                         │ push
+                         ▼
+                  ┌──────────┐
+                  │  GitHub  │ ──▶ Lovable synker automatisk
+                  └──────────┘
+```
+
+### Testing
+
+```bash
+# Lokal utvikling (root path)
+npm run dev
+
+# Test GitHub Pages build
+VITE_BASE_PATH=/connect-play/ npm run build
+npm run preview
+```
+
+### Resultat
+
+- ✅ BrowserRouter fungerer med dynamisk basename
+- ✅ 404.html håndterer SPA routing på GitHub Pages
+- ✅ agents.md gir kontekst for fremtidige AI-agenter
+- ✅ Build vellykket med GitHub Pages base path
+- ✅ Dokumentert workflow for Lovable/Claude synkronisering
+
+---
+
 ## 2026-01-19: Mobile UI & Touch Controls Optimization - "Touch the Darkness"
 
 ### Oppgave
