@@ -10,6 +10,7 @@ import WeatherOverlay from './WeatherOverlay';
 import { calculateWeatherVision, weatherHidesEnemy, getDarkRoomDisplayState } from '../constants';
 import { Flashlight } from 'lucide-react';
 import { getCharacterPortrait } from '../utils/characterAssets';
+import { getMonsterPortrait } from '../utils/monsterAssets';
 
 // Import AI-generated tile images
 import tileLibrary from '@/assets/tiles/tile-library.png';
@@ -1256,7 +1257,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         {enemies.map(enemy => {
           if (!visibleTiles.has(`${enemy.position.q},${enemy.position.r}`)) return null;
           const { x, y } = hexToPixel(enemy.position.q, enemy.position.r);
-          const MonsterVisual = getMonsterIcon(enemy.type);
+          const monsterPortrait = getMonsterPortrait(enemy.type);
           const isSelected = selectedEnemyId === enemy.id;
 
           // Calculate distance from nearest player for weather hiding
@@ -1280,8 +1281,12 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 }}
                 onClick={(e) => { e.stopPropagation(); if (!hasDragged.current && onEnemyClick) onEnemyClick(enemy.id); }}
               >
-                <div className={`w-full h-full rounded-full bg-red-950 border-2 ${isSelected ? 'border-primary shadow-[var(--shadow-doom)]' : 'border-red-900 shadow-[0_0_20px_rgba(220,38,38,0.3)]'} flex items-center justify-center overflow-hidden relative`}>
-                  <MonsterVisual.Icon className={MonsterVisual.color} size={24} />
+                <div className={`w-full h-full rounded-full border-2 ${isSelected ? 'border-primary shadow-[var(--shadow-doom)]' : 'border-red-900 shadow-[0_0_20px_rgba(220,38,38,0.3)]'} overflow-hidden relative`}>
+                  <img 
+                    src={monsterPortrait} 
+                    alt={enemy.name}
+                    className="w-full h-full object-cover"
+                  />
                   <div className="absolute bottom-0 left-0 right-0 h-1 bg-black"><div className="h-full bg-health" style={{ width: `${(enemy.hp / enemy.maxHp) * 100}%` }} /></div>
                 </div>
               </div>
