@@ -1,5 +1,103 @@
 # Development Log
 
+## 2026-01-21: Tile Grafikk Validering
+
+### Oppsummering
+
+Gjennomført audit av alle tiles for å sjekke hvilke som mangler grafikk-mapping.
+
+---
+
+### Statistikk
+
+| Kategori | Antall |
+|----------|--------|
+| **Tile-bilder (PNG)** | 85 |
+| **Importerte bilder i GameBoard.tsx** | 84 |
+| **Tile-navn i tileConnectionSystem.ts** | ~100 |
+| **Tiles med fungerende mapping** | 98 |
+| **Tiles som mangler mapping** | 2 |
+
+---
+
+### Tiles som mangler mapping
+
+Følgende tiles har ikke en fungerende mapping i `TILE_IMAGES` objektet i `GameBoard.tsx`:
+
+| Tile-navn | Problem | Anbefalt løsning |
+|-----------|---------|------------------|
+| **Dining Hall** | "dining" er ikke i TILE_IMAGES | Legg til mapping: `dining: tileKitchen` eller lag nytt bilde `tile-dining.png` |
+| **Abandoned Farm Field** | "farm" alene matcher ikke | Legg til mapping: `farm: tileFarmhouse` |
+
+---
+
+### Eksisterende tile-bilder (85 stk)
+
+Alle disse bildene finnes i `src/assets/tiles/`:
+
+```
+alley, asylum, bedroom, belltower, billiard, blackpool, boiler, bridge,
+campsite, campus, cannery, cave, cellar, church, closet, conservatory,
+courthouse, crossroads, crypt, deadend, dock, drawing, echo, farmhouse,
+fireescape, forest, funeral, gallery, gallows, gasworks, gate, graveyard,
+hallway, hangingtree, hospital, hotel, idol, kitchen, lab, library,
+lighthouse, manor, maproom, market, massgrave, mine, museum, music,
+newspaper, nursery, office, orchard, park, parlor, petrified, police,
+pond, portal, quarry, records, ritual, riverfront, ruins, sanctum,
+servants, sewer, shack, shipyard, shop, smoking, square, starchamber,
+station, stonecircle, street, swamp, tenement, tomb, trophy,
+underground-lake, warehouse, well, witchhouse
+```
+
+---
+
+### Tiles fra game_design_bible.md som er implementert
+
+**NATURE tiles**: ✓ Mørk Skog, Skogslysning, Klippekyst, Myrområde, Gammel Steinsirkel
+
+**URBAN tiles**: ✓ Bytorget, Havna, Togstasjonen, Kirkegården, Universitetsområdet, Industriområdet, Markedsplassen
+
+**STREET tiles**: ✓ Hovedgaten, Mørkt Smug, Tåkete Bakgate, Kloakkgitter
+
+**FACADE tiles**: ✓ Herregård, Bibliotek, Kirke, Asyl, Lagerbygning
+
+**FOYER tiles**: ✓ Herregård-foyer, Bibliotek-foyer, Hotell-lobby
+
+**CORRIDOR tiles**: ✓ Støvete Korridor, Tjenergang, Mørklagt Gang, Celle-korridor
+
+**ROOM tiles**: ✓ Bibliotek, Ritualkammer, Laboratorium, Soveværelse, Kjøkken, Galleri
+
+**BASEMENT tiles**: ✓ Vinkjeller, Kuldelager, Kloakktunnel
+
+**CRYPT tiles**: ✓ Gravkammer, Offersted, Eldgammel Portal
+
+---
+
+### Anbefalt handling
+
+1. **Legg til mapping for "Dining Hall"** i `GameBoard.tsx`:
+   ```typescript
+   dining: tileKitchen,  // Dining Hall - uses kitchen image
+   ```
+
+2. **Legg til mapping for "Abandoned Farm Field"** i `GameBoard.tsx`:
+   ```typescript
+   farm: tileFarmhouse,  // Farm Field - uses farmhouse image
+   ```
+
+3. **Valgfritt**: Lag dedikerte bilder for disse tiles hvis ønskelig:
+   - `tile-dining.png` - Spisestue med langbord og kandelaber
+   - `tile-field.png` - Åkerlandskap med åker og låve i bakgrunnen
+
+---
+
+### Påvirkede filer
+
+- `src/game/components/GameBoard.tsx` - TILE_IMAGES mapping (hvis endring gjøres)
+- `src/assets/tiles/` - Hvis nye bilder legges til
+
+---
+
 ## 2026-01-21: Fix `as any` Type Assertion i MerchantShop
 
 ### Oppsummering
