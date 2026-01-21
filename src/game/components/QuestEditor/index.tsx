@@ -8,9 +8,9 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
-import { ArrowLeft, Download, Trash2, RotateCw, Save, Upload, Grid3X3, Eraser, MousePointer, Skull, Package, Target, Settings } from 'lucide-react';
+import { ArrowLeft, Download, Trash2, RotateCw, Save, Upload, Grid3X3, Eraser, MousePointer, Skull, Package, Target, Settings, CheckCircle, Play } from 'lucide-react';
 import { TileTemplate, ConnectionEdgeType, rotateEdges } from '../../tileConnectionSystem';
-import { TileCategory, FloorType, ZoneLevel, EdgeData, Item, EnemyType } from '../../types';
+import { TileCategory, FloorType, ZoneLevel, EdgeData, Item, EnemyType, DoorState } from '../../types';
 import { Button } from '@/components/ui/button';
 import EditorCanvas from './EditorCanvas';
 import TilePalette from './TilePalette';
@@ -18,16 +18,25 @@ import EdgeConfigPanel from './EdgeConfigPanel';
 import MonsterPalette, { MonsterPlacement } from './MonsterPalette';
 import ItemPalette, { QuestItemPlacement } from './ItemPalette';
 import ObjectivesPanel, { EditorObjective } from './ObjectivesPanel';
+import ValidationPanel, { validateScenario } from './ValidationPanel';
+import DoorConfigPanel from './DoorConfigPanel';
 
 // ============================================================================
 // RIGHT PANEL TABS
 // ============================================================================
 
-type RightPanelTab = 'properties' | 'monsters' | 'items' | 'objectives';
+type RightPanelTab = 'properties' | 'monsters' | 'items' | 'objectives' | 'validate';
 
 // ============================================================================
 // EDITOR TYPES
 // ============================================================================
+
+// Door configuration for DOOR edges
+export interface DoorConfig {
+  state: DoorState;
+  keyId?: string;        // ID of key required to unlock
+  lockDifficulty?: number; // DC for lockpicking (3-6)
+}
 
 export interface EditorTile {
   id: string;
@@ -38,11 +47,14 @@ export interface EditorTile {
   category: TileCategory;
   subType: string;
   edges: [ConnectionEdgeType, ConnectionEdgeType, ConnectionEdgeType, ConnectionEdgeType, ConnectionEdgeType, ConnectionEdgeType];
+  // Door configurations - only for edges that are DOOR type
+  doorConfigs?: { [edgeIndex: number]: DoorConfig };
   floorType: FloorType;
   zoneLevel: ZoneLevel;
   rotation: number; // 0-5, number of 60-degree rotations
   description?: string;
   watermarkIcon?: string;
+  customDescription?: string; // Custom description shown in-game
   // Placement data
   isStartLocation?: boolean;
   monsters?: { type: string; count: number }[];
@@ -196,6 +208,9 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
   const handleExport = useCallback(() => {
     const tilesArray = Array.from(tiles.values());
 
+    // Validate before export
+    const validation = validateScenario(tiles, objectives, metadata);
+
     // Convert to scenario-compatible format
     const exportData = {
       metadata,
@@ -209,17 +224,24 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
         category: tile.category,
         subType: tile.subType,
         edges: tile.edges,
+        doorConfigs: tile.doorConfigs,
         floorType: tile.floorType,
         zoneLevel: tile.zoneLevel,
         rotation: tile.rotation,
         description: tile.description,
+        customDescription: tile.customDescription,
         watermarkIcon: tile.watermarkIcon,
         isStartLocation: tile.isStartLocation,
         monsters: tile.monsters,
         items: tile.items,
       })),
+      validation: {
+        isValid: validation.isValid,
+        errorCount: validation.issues.filter(i => i.severity === 'error').length,
+        warningCount: validation.issues.filter(i => i.severity === 'warning').length,
+      },
       exportedAt: new Date().toISOString(),
-      version: '2.0'  // Updated version for Fase 2
+      version: '3.0'  // Updated version for Fase 3
     };
 
     const json = JSON.stringify(exportData, null, 2);
@@ -487,6 +509,17 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
               <Target className="w-3.5 h-3.5" />
               Goals
             </button>
+            <button
+              onClick={() => setRightPanelTab('validate')}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 text-xs font-medium transition-colors ${
+                rightPanelTab === 'validate'
+                  ? 'bg-slate-700 text-green-400 border-b-2 border-green-400'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <CheckCircle className="w-3.5 h-3.5" />
+              Validate
+            </button>
           </div>
 
           {/* Tab content */}
@@ -558,7 +591,14 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
                             if (tile) {
                               const newEdges = [...tile.edges] as typeof tile.edges;
                               newEdges[index] = newType;
-                              newTiles.set(key, { ...tile, edges: newEdges });
+                              // Also update doorConfigs when edge changes to/from DOOR
+                              let doorConfigs = { ...tile.doorConfigs };
+                              if (newType === 'DOOR' && !doorConfigs[index]) {
+                                doorConfigs[index] = { state: 'CLOSED' };
+                              } else if (newType !== 'DOOR' && doorConfigs[index]) {
+                                delete doorConfigs[index];
+                              }
+                              newTiles.set(key, { ...tile, edges: newEdges, doorConfigs });
                             }
                             return newTiles;
                           });
@@ -566,9 +606,57 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
                       />
                     </div>
 
+                    {/* Door Configuration (only if there are DOOR edges) */}
+                    {selectedTile.edges.some(e => e === 'DOOR') && (
+                      <div className="border-t border-slate-600 pt-3">
+                        <DoorConfigPanel
+                          edges={selectedTile.edges}
+                          doorConfigs={selectedTile.doorConfigs}
+                          onDoorConfigChange={(edgeIndex, config) => {
+                            const key = getTileKey(selectedTile.q, selectedTile.r);
+                            setTiles(prev => {
+                              const newTiles = new Map(prev);
+                              const tile = newTiles.get(key);
+                              if (tile) {
+                                const doorConfigs = { ...tile.doorConfigs };
+                                if (config) {
+                                  doorConfigs[edgeIndex] = config;
+                                } else {
+                                  delete doorConfigs[edgeIndex];
+                                }
+                                newTiles.set(key, { ...tile, doorConfigs });
+                              }
+                              return newTiles;
+                            });
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Custom Description */}
+                    <div className="border-t border-slate-600 pt-3">
+                      <label className="text-slate-400 text-xs block mb-1">Custom In-Game Description</label>
+                      <textarea
+                        value={selectedTile.customDescription || ''}
+                        onChange={(e) => {
+                          const key = getTileKey(selectedTile.q, selectedTile.r);
+                          setTiles(prev => {
+                            const newTiles = new Map(prev);
+                            const tile = newTiles.get(key);
+                            if (tile) {
+                              newTiles.set(key, { ...tile, customDescription: e.target.value || undefined });
+                            }
+                            return newTiles;
+                          });
+                        }}
+                        className="w-full bg-slate-700 text-white px-2 py-1 rounded text-sm border border-slate-600 h-16 resize-none"
+                        placeholder="Custom description shown when player enters this tile..."
+                      />
+                    </div>
+
                     {selectedTile.description && (
                       <div className="border-t border-slate-600 pt-3">
-                        <span className="text-slate-400 text-xs">Description</span>
+                        <span className="text-slate-400 text-xs">Template Description</span>
                         <div className="text-slate-300 text-sm italic mt-1">"{selectedTile.description}"</div>
                       </div>
                     )}
@@ -687,6 +775,24 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
               <ObjectivesPanel
                 objectives={objectives}
                 onObjectivesChange={setObjectives}
+              />
+            )}
+
+            {/* VALIDATE TAB */}
+            {rightPanelTab === 'validate' && (
+              <ValidationPanel
+                tiles={tiles}
+                objectives={objectives}
+                metadata={metadata}
+                onSelectTile={(tileId) => {
+                  // Find tile by id and select it
+                  const tile = Array.from(tiles.values()).find(t => t.id === tileId);
+                  if (tile) {
+                    const key = getTileKey(tile.q, tile.r);
+                    setSelectedTileId(key);
+                    setRightPanelTab('properties');
+                  }
+                }}
               />
             )}
           </div>

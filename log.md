@@ -11181,3 +11181,151 @@ Show MerchantShop
 
 ---
 
+
+## 2026-01-21: Quest Editor Fase 3 - Validering og Door Config
+
+### Oppsummering
+
+Implementert Fase 3 av Quest Editor med fokus på validering, dør-konfigurasjon og custom descriptions:
+- Komplett valideringssystem for scenarios
+- Dør-tilstand konfigurasjon per DOOR edge
+- Custom descriptions per tile
+
+---
+
+### Implementerte komponenter
+
+#### 1. ValidationPanel (`ValidationPanel.tsx`)
+Komplett valideringsssystem for scenarios:
+
+**Valideringssjekker:**
+- **Start Location**: Sjekker at én start location er definert
+- **Connectivity**: BFS-algoritme for å finne disconnected tiles
+- **Door Mismatches**: Sjekker at dør-edges matcher på begge sider
+- **Objectives**: Validerer at objectives er oppnåelige
+  - Boss-objectives: Sjekker at boss er plassert
+  - Find-item: Sjekker at item er plassert
+  - Collect: Sjekker at nok items er plassert
+  - Kill-enemies: Sjekker at nok fiender er plassert
+  - RevealedBy-references: Validerer at refererte objectives eksisterer
+- **Metadata**: Sjekker title og briefing
+- **Balance**: Advarer om høy monster-densitet eller lav doom
+
+**Severity-nivåer:**
+- Error (rød): Må fikses for gyldig scenario
+- Warning (gul): Bør fikses, men ikke kritisk
+- Info (blå): Forbedringsforslag
+
+**Features:**
+- Klikkbare issues som navigerer til relevant tile
+- Live stats (tiles, monsters, items, objectives)
+- Grønn/rød status-header basert på validitet
+- Kategoriserte issues med ikoner
+
+#### 2. DoorConfigPanel (`DoorConfigPanel.tsx`)
+Konfigurasjon av dør-tilstander for DOOR edges:
+
+**Dør-tilstander:**
+- OPEN: Åpen dør, fri passasje
+- CLOSED: Lukket dør, 1 AP å åpne
+- LOCKED: Låst, krever nøkkel eller lockpick
+- BARRICADED: Barrikadert, krever styrkesjekk
+- BROKEN: Ødelagt, permanent åpen
+- SEALED: Okkult forseglet, krever ritual
+- PUZZLE: Krever puzzle-løsning
+
+**Locked door options:**
+- Key ID: Spesifik nøkkel som kreves
+- Lock Difficulty (DC 3-6): Vanskelighetsgrad for lockpicking
+
+**Quick Actions:**
+- "All Closed" / "All Open" / "All Locked"
+
+#### 3. Custom Descriptions
+Felt for egendefinert beskrivelse per tile:
+- Vises in-game når spiller entrer tilen
+- Overskriver/supplerer template-beskrivelse
+
+---
+
+### Oppdateringer til eksisterende komponenter
+
+#### QuestEditor (index.tsx)
+- Ny "Validate" tab i høyre sidebar
+- DoorConfig interface lagt til EditorTile
+- customDescription felt på tiles
+- Export versjon oppdatert til 3.0
+- Validering kjøres ved eksport (inkludert i JSON)
+- EdgeConfigPanel oppdatert til å auto-opprette doorConfig
+
+#### Export Format (v3.0)
+```json
+{
+  "metadata": { ... },
+  "objectives": [ ... ],
+  "tiles": [
+    {
+      // ... eksisterende felt
+      "doorConfigs": {
+        "0": { "state": "LOCKED", "keyId": "master_key", "lockDifficulty": 4 }
+      },
+      "customDescription": "En mørk korridor..."
+    }
+  ],
+  "validation": {
+    "isValid": true,
+    "errorCount": 0,
+    "warningCount": 2
+  },
+  "version": "3.0"
+}
+```
+
+---
+
+### Funksjonalitet (Oppdatert)
+
+| Feature | Status |
+|---------|--------|
+| **Fase 1** | |
+| Hex-grid rendering | ✅ |
+| Tile placement/selection/deletion | ✅ |
+| Tile rotation | ✅ |
+| Pan/zoom | ✅ |
+| Tile palette med kategorier | ✅ |
+| Søk i tiles | ✅ |
+| JSON export/import | ✅ |
+| Start location marking | ✅ |
+| Properties panel | ✅ |
+| Scenario metadata | ✅ |
+| **Fase 2** | |
+| Edge-konfigurasjon per tile | ✅ |
+| Monster-plassering | ✅ |
+| Quest item-plassering | ✅ |
+| Objective editor | ✅ |
+| Tabbed interface | ✅ |
+| Visuelle indikatorer på canvas | ✅ |
+| **Fase 3** | |
+| Validering | ✅ |
+| Door state config | ✅ |
+| Custom descriptions | ✅ |
+
+---
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ ValidationPanel.tsx opprettet
+✅ DoorConfigPanel.tsx opprettet
+
+### Gjenstående Fase 3 (prioritert)
+- [ ] Preview/Test mode - Spill gjennom scenariet fra editoren
+- [ ] Trigger system - Events ved objective completion
+- [ ] NPC-plassering - Survivors, merchants, quest givers
+- [ ] Doom events editor
+
+### Gjenstående (lavere prioritet)
+- [ ] Undo/Redo system
+- [ ] Scenario loader (JSON til spillbart Scenario)
+- [ ] Tile-to-board converter
+
+---
