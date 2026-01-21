@@ -14,7 +14,7 @@
  * Final Damage = Skulls - Shields (minimum 0)
  */
 
-import { Player, Enemy, Item, SkillType, SkillCheckResult, getAllItems, OccultistSpell, Tile } from '../types';
+import { Player, Enemy, Item, SkillType, SkillCheckResult, getAllItems, OccultistSpell, Tile, CharacterType } from '../types';
 import { BESTIARY, CHARACTERS } from '../constants';
 import { hexDistance, hasLineOfSight } from '../hexUtils';
 
@@ -133,7 +133,7 @@ export function getAttackDice(player: Player): { attackDice: number; weaponName:
 }
 
 /**
- * Check if a player can use a specific weapon based on class restrictions
+ * Check if a character class can use a specific weapon based on class restrictions
  * Returns true if the weapon is allowed, false if restricted
  *
  * WEAPON RESTRICTIONS BY CLASS:
@@ -143,10 +143,13 @@ export function getAttackDice(player: Player): { attackDice: number; weaponName:
  * - Occultist: Can ONLY use knife, revolver (restricts: shotgun, tommy_gun, rifle, machete)
  * - Journalist: Cannot use shotgun, tommy_gun
  * - Doctor: Can ONLY use derringer, knife (same as Professor)
+ *
+ * This is the core implementation used by both canUseWeapon (for Player objects)
+ * and directly by components that only have access to characterClass (e.g., MerchantShop)
  */
-export function canUseWeapon(player: Player, weaponId: string): boolean {
+export function canCharacterClassUseWeapon(characterClass: CharacterType | string, weaponId: string): boolean {
   // Get character info
-  const character = CHARACTERS[player.id as keyof typeof CHARACTERS];
+  const character = CHARACTERS[characterClass as keyof typeof CHARACTERS];
   if (!character) return true; // No restrictions if character not found
 
   const restrictions = character.weaponRestrictions || [];
@@ -158,6 +161,16 @@ export function canUseWeapon(player: Player, weaponId: string): boolean {
   return !normalizedRestrictions.some(r =>
     normalizedId.includes(r) || r.includes(normalizedId)
   );
+}
+
+/**
+ * Check if a player can use a specific weapon based on class restrictions
+ * Returns true if the weapon is allowed, false if restricted
+ *
+ * Convenience wrapper around canCharacterClassUseWeapon for use with Player objects
+ */
+export function canUseWeapon(player: Player, weaponId: string): boolean {
+  return canCharacterClassUseWeapon(player.id, weaponId);
 }
 
 /**
