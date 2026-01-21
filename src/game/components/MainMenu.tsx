@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Skull, Settings, Users, Package, HardDrive, Map, FileText } from 'lucide-react';
+import { Play, Skull, Settings, Users, Package, HardDrive, Map, FileText, BookOpen } from 'lucide-react';
 
 interface MainMenuProps {
   onNewGame: () => void;
@@ -18,6 +18,9 @@ interface MainMenuProps {
   // Custom Quest Loader
   onCustomQuest?: () => void;
   customQuestCount?: number;
+  // Campaign Play
+  onCampaignPlay?: () => void;
+  campaignCount?: number;
 }
 
 const MainMenu: React.FC<MainMenuProps> = ({
@@ -33,7 +36,9 @@ const MainMenu: React.FC<MainMenuProps> = ({
   stashCount = 0,
   onQuestEditor,
   onCustomQuest,
-  customQuestCount = 0
+  customQuestCount = 0,
+  onCampaignPlay,
+  campaignCount = 0
 }) => {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background text-foreground overflow-hidden font-serif">
@@ -71,6 +76,24 @@ const MainMenu: React.FC<MainMenuProps> = ({
               <Skull size={20} className="group-hover:animate-wiggle" /> New Case
             </span>
           </button>
+
+          {/* Campaign Play Button */}
+          {onCampaignPlay && (
+            <button
+              onClick={onCampaignPlay}
+              className="group relative px-4 py-3 md:px-8 md:py-4 bg-purple-900/30 border-2 border-purple-600/60 hover:border-purple-500 hover:bg-purple-900/50 text-purple-300 hover:text-purple-200 transition-all uppercase tracking-[0.2em] font-bold text-sm md:text-lg rounded backdrop-blur-sm"
+            >
+              <span className="flex items-center justify-center gap-3">
+                <BookOpen size={20} className="group-hover:scale-110 transition-transform" />
+                Play Campaign
+                {campaignCount > 0 && (
+                  <span className="px-2 py-0.5 bg-purple-600 text-purple-100 rounded-full text-xs">
+                    {campaignCount}
+                  </span>
+                )}
+              </span>
+            </button>
+          )}
 
           {/* Legacy System Buttons */}
           {(onHeroArchive || onStash || onSaveLoad) && (
