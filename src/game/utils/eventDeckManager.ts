@@ -5,7 +5,7 @@
  */
 
 import { EventCard, GameState, Player, WeatherType, WeatherIntensity } from '../types';
-import { EVENTS, ENEMIES } from '../constants';
+import { EVENTS, BESTIARY } from '../constants';
 
 // ============================================================================
 // DECK INITIALIZATION
@@ -223,9 +223,9 @@ function applyEffect(
     }
 
     case 'health': {
-      const newHealth = Math.max(0, Math.min(targetPlayer.maxVitality, targetPlayer.vitality + value));
-      const actualChange = newHealth - targetPlayer.vitality;
-      players[targetIdx] = { ...targetPlayer, vitality: newHealth };
+      const newHealth = Math.max(0, Math.min(targetPlayer.maxHp, targetPlayer.hp + value));
+      const actualChange = newHealth - targetPlayer.hp;
+      players[targetIdx] = { ...targetPlayer, hp: newHealth };
       if (actualChange !== 0) {
         logMessages.push(`${targetPlayer.name} ${actualChange > 0 ? 'heals' : 'takes'} ${Math.abs(actualChange)} HP`);
       }
@@ -234,7 +234,7 @@ function applyEffect(
 
     case 'all_sanity': {
       players.forEach((player, idx) => {
-        if (player.vitality > 0) {
+        if (player.hp > 0) {
           const newSanity = Math.max(0, Math.min(player.maxSanity, player.sanity + value));
           players[idx] = { ...player, sanity: newSanity };
         }
@@ -245,9 +245,9 @@ function applyEffect(
 
     case 'all_health': {
       players.forEach((player, idx) => {
-        if (player.vitality > 0) {
-          const newHealth = Math.max(0, Math.min(player.maxVitality, player.vitality + value));
-          players[idx] = { ...player, vitality: newHealth };
+        if (player.hp > 0) {
+          const newHealth = Math.max(0, Math.min(player.maxHp, player.hp + value));
+          players[idx] = { ...player, hp: newHealth };
         }
       });
       logMessages.push(`All players ${value > 0 ? 'heal' : 'take'} ${Math.abs(value)} HP`);
@@ -268,7 +268,7 @@ function applyEffect(
     case 'spawn': {
       const spawnType = event.spawnType || 'cultist';
       const count = Math.abs(value);
-      const alivePlayers = players.filter(p => p.vitality > 0);
+      const alivePlayers = players.filter(p => p.hp > 0);
       const randomPlayer = alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
       logMessages.push(`${count} ${spawnType}(s) appear!`);
       return {

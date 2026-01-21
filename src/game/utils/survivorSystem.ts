@@ -646,7 +646,7 @@ export function useSurvivorAbility(
       break;
 
     case 'distraction':
-      effects.distraction = { ...survivor.position };
+      effects.distraction = { position: { ...survivor.position } };
       message = `${survivor.name} skaper en avledning! Fiender trekkes mot lyden.`;
       break;
 

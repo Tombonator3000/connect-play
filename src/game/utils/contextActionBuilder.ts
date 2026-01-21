@@ -5,7 +5,7 @@
  * Separates the building logic from the action definitions.
  */
 
-import type { ContextAction, Player, SkillType } from '../types';
+import type { ContextAction, ContextActionIconType, Player, SkillType } from '../types';
 import { hasKey, hasLightSource } from '../types';
 import type {
   ActionConfig,
@@ -57,7 +57,7 @@ export function buildStaticAction(config: ActionConfig): ContextAction {
   const action: ContextAction = {
     id: config.id,
     label: config.label,
-    icon: config.icon,
+    icon: config.icon as ContextActionIconType,
     apCost: config.apCost,
     enabled: true
   };
@@ -105,7 +105,7 @@ export function buildDynamicAction(
   const action: ContextAction = {
     id: config.id,
     label,
-    icon: config.icon,
+    icon: config.icon as ContextActionIconType,
     apCost: config.apCost,
     enabled,
     reason
@@ -202,7 +202,7 @@ export function buildLockedDoorActions(
     const action: ContextAction = {
       id: config.id,
       label,
-      icon: config.icon,
+      icon: config.icon as ContextActionIconType,
       apCost: config.apCost,
       enabled,
       reason
@@ -242,7 +242,7 @@ export function buildSealedDoorActions(
     const action: ContextAction = {
       id: config.id,
       label,
-      icon: config.icon,
+      icon: config.icon as ContextActionIconType,
       apCost: config.apCost,
       enabled,
       reason
@@ -286,7 +286,7 @@ export function buildBlockedEdgeActions(
       const action: ContextAction = {
         id: dynConfig.id,
         label,
-        icon: dynConfig.icon,
+        icon: dynConfig.icon as ContextActionIconType,
         apCost: dynConfig.apCost,
         enabled,
         reason

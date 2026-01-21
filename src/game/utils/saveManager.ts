@@ -266,7 +266,7 @@ export function saveToSlot(slotId: string, name: string, legacyData: LegacyData,
     timestamp: saveFile.timestamp,
     type: saveFile.type,
     heroCount: legacyData.heroes.length,
-    gold: legacyData.gold,
+    gold: legacyData.totalGoldEarned || 0,
     scenarioTitle: gameState?.activeScenario?.title
   };
 
@@ -364,16 +364,6 @@ function migrateSaveFile(data: SaveFile): SaveFile {
       if (!migrated.legacyData.stash) {
         migrated.legacyData.stash = { items: [], maxCapacity: 20 };
       }
-      // Ensure shop exists
-      if (!migrated.legacyData.shop) {
-        migrated.legacyData.shop = {
-          weapons: [],
-          tools: [],
-          armor: [],
-          consumables: [],
-          relics: []
-        };
-      }
     }
     migrated.version = 2;
   }
@@ -386,7 +376,7 @@ function migrateSaveFile(data: SaveFile): SaveFile {
  */
 function validateLegacyData(data: LegacyData): boolean {
   if (!data) return false;
-  if (typeof data.gold !== 'number') return false;
+  if (typeof data.totalGoldEarned !== 'number') return false;
   if (!Array.isArray(data.heroes)) return false;
   if (!data.stash || !Array.isArray(data.stash.items)) return false;
   return true;
