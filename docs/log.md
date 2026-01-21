@@ -2,6 +2,38 @@
 
 ## 2026-01-21
 
+### Session 13 - Audio Structure & Build Fixes
+
+#### Build-feil fikset:
+- **audioManager.ts:131** - Fjernet ugyldig `frequency` property fra MetalSynth
+- **eventDeckManager.ts** - Endret `ENEMIES` import til `BESTIARY`, fikset `vitality/maxVitality` → `hp/maxHp`
+- **contextActionEffects.ts** - Fikset `SpawnedQuestItem` import og `equipResult.inventory` → `newInventory`
+- **contextActionBuilder.ts** - La til type casting for `icon as ContextActionIconType`
+- **contextActions.ts** - Fjernet ugyldig `obstacle.searched` referanse
+- **monsterDecisionHelpers.ts** - Fikset `MonsterPersonality` import fra types.ts
+- **survivorSystem.ts** - Fikset `distraction` objekt-struktur
+- **SaveLoadModal.tsx** - Endret `legacyData.gold` → `legacyData.totalGoldEarned`
+- **saveManager.ts** - Oppdatert validering og migrering for LegacyData
+
+#### Audio mappestruktur opprettet:
+- `public/audio/sfx/` - Lydeffekter med README
+- `public/audio/music/` - Bakgrunnsmusikk med README
+- Lastet ned `rain-loop.ogg` fra OpenGameArt (CC0)
+- README-filer med liste over nødvendige SFX og gratis kilder
+
+#### Filer endret:
+- `src/game/utils/audioManager.ts`
+- `src/game/utils/eventDeckManager.ts`
+- `src/game/utils/contextActionEffects.ts`
+- `src/game/utils/contextActionBuilder.ts`
+- `src/game/utils/contextActions.ts`
+- `src/game/utils/monsterDecisionHelpers.ts`
+- `src/game/utils/survivorSystem.ts`
+- `src/game/utils/saveManager.ts`
+- `src/game/components/SaveLoadModal.tsx`
+
+---
+
 ### Session 12 - Bug Fixes & Game Mechanics
 
 #### TypeScript Build-feil fikset:

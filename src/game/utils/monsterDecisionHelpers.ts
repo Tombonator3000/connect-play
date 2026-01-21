@@ -14,7 +14,8 @@ import { Enemy, Player, Tile, WeatherCondition } from '../types';
 import { hexDistance, findPath } from '../hexUtils';
 import { AIDecision, findSmartTarget, TargetPriority } from './monsterAI';
 import { canEnemyPassTile } from './monsterObstacles';
-import { getMonsterBehavior, getMonsterPersonality, getCombatStyleModifiers, MonsterPersonality, CombatStyleModifiers } from './monsterConstants';
+import { getMonsterBehavior, getMonsterPersonality, getCombatStyleModifiers, CombatStyleModifiers } from './monsterConstants';
+import type { MonsterPersonality } from '../types';
 import { getWeatherMonsterModifiers, WeatherMonsterModifiers } from './monsterWeatherBehavior';
 import {
   getWaitMessage,

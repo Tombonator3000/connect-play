@@ -204,7 +204,8 @@ export function getObstacleActions(
   tile: Tile
 ): ContextAction[] {
   const context = createActionContext(player, {
-    searched: obstacle.searched
+    // Obstacles don't have 'searched' property - it's on TileObject instead
+    searched: false
   });
 
   let actions: ContextAction[] = [];

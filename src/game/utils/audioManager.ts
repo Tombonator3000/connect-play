@@ -128,7 +128,6 @@ export async function initializeAudio(): Promise<boolean> {
     }).connect(reverb);
 
     metalSynth = new Tone.MetalSynth({
-      frequency: 200,
       envelope: {
         attack: 0.001,
         decay: 0.1,

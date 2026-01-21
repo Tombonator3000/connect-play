@@ -373,7 +373,7 @@ const SaveLoadModal: React.FC<SaveLoadModalProps> = ({
                       <Users size={12} /> {legacyData.heroes.length} heroes
                     </span>
                     <span className="flex items-center gap-1 text-amber-400">
-                      <Coins size={12} /> {legacyData.gold} gold
+                      <Coins size={12} /> {legacyData.totalGoldEarned || 0} gold
                     </span>
                   </div>
                   <div className="mt-4 flex items-center gap-2 text-primary text-sm font-bold">
@@ -494,7 +494,7 @@ const SaveLoadModal: React.FC<SaveLoadModalProps> = ({
                         </div>
                         <div>
                           <span className="text-muted-foreground">Gold:</span>
-                          <span className="ml-2 text-amber-400">{importedFile.legacyData.gold}</span>
+                          <span className="ml-2 text-amber-400">{importedFile.legacyData.totalGoldEarned || 0}</span>
                         </div>
                       </>
                     )}

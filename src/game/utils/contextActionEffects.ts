@@ -17,8 +17,11 @@ import type {
   Scenario,
 } from '../types';
 import { equipItem } from '../types';
-import type { ObjectiveSpawnState, SpawnedQuestItem } from './objectiveSpawner';
+import type { ObjectiveSpawnState, QuestItem } from './objectiveSpawner';
 import { collectQuestItem } from './objectiveSpawner';
+
+// Alias for backward compatibility
+type SpawnedQuestItem = QuestItem;
 
 // ============================================================================
 // TYPES
@@ -321,7 +324,7 @@ export function handleSearchEffect(
       if (equipResult.success) {
         updatedPlayers = ctx.players.map((p, idx) => {
           if (idx === ctx.activePlayerIndex) {
-            return { ...p, inventory: equipResult.inventory };
+            return { ...p, inventory: equipResult.newInventory };
           }
           return p;
         });
@@ -575,7 +578,7 @@ export function handleQuestItemPickupEffect(
     if (equipResult.success) {
       updatedPlayers = ctx.players.map((p, idx) => {
         if (idx === ctx.activePlayerIndex) {
-          return { ...p, inventory: equipResult.inventory };
+          return { ...p, inventory: equipResult.newInventory };
         }
         return p;
       });
