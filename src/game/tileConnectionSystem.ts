@@ -1469,6 +1469,404 @@ export const NATURE_FARMFIELD: TileTemplate = {
   description: 'Crops grow in impossible patterns. The scarecrows have moved since morning.'
 };
 
+// ----- NEW FOREST VARIANTS -----
+
+export const NATURE_FOREST_DENSE: TileTemplate = {
+  id: 'nature_forest_dense',
+  name: 'Dense Thicket',
+  category: 'nature',
+  subType: 'forest',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 0,
+  watermarkIcon: 'TreeDeciduous',
+  spawnWeight: 18,
+  canRotate: false,
+  description: 'Branches interlock overhead like grasping fingers. Thorns tear at your clothes.'
+};
+
+export const NATURE_FOREST_BIRCH: TileTemplate = {
+  id: 'nature_forest_birch',
+  name: 'Birch Grove',
+  category: 'nature',
+  subType: 'forest',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'grass',
+  zoneLevel: 0,
+  watermarkIcon: 'TreeDeciduous',
+  spawnWeight: 12,
+  canRotate: false,
+  description: 'White bark gleams in the darkness. The trees seem to sway without wind.'
+};
+
+export const NATURE_FOREST_PINE: TileTemplate = {
+  id: 'nature_forest_pine',
+  name: 'Pine Woods',
+  category: 'nature',
+  subType: 'forest',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 0,
+  watermarkIcon: 'TreePine',
+  spawnWeight: 15,
+  canRotate: false,
+  description: 'Needle-covered ground muffles all sound. The resin smells faintly of decay.'
+};
+
+export const NATURE_FOREST_FALLEN: TileTemplate = {
+  id: 'nature_forest_fallen',
+  name: 'Fallen Giants',
+  category: 'nature',
+  subType: 'forest',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 0,
+  watermarkIcon: 'TreePine',
+  spawnWeight: 10,
+  canRotate: false,
+  description: 'Ancient trees lie where they fell. Fungi grow in shapes that suggest faces.',
+  possibleObjects: ['crate']
+};
+
+export const NATURE_FOREST_HAUNTED: TileTemplate = {
+  id: 'nature_forest_haunted',
+  name: 'Haunted Woods',
+  category: 'nature',
+  subType: 'forest',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 0,
+  watermarkIcon: 'Ghost',
+  spawnWeight: 5,
+  canRotate: false,
+  description: 'Translucent shapes drift between the trees. The temperature drops suddenly.',
+  enemySpawnChance: 30,
+  possibleEnemies: ['nightgaunt', 'cultist']
+};
+
+// ----- FOREST TRAILS AND CROSSINGS -----
+
+export const NATURE_TRAIL_CORNER: TileTemplate = {
+  id: 'nature_trail_corner',
+  name: 'Winding Trail',
+  category: 'nature',
+  subType: 'path',
+  edges: ['OPEN', 'NATURE', 'OPEN', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 0,
+  spawnWeight: 12,
+  canRotate: true,
+  description: 'The path turns sharply. Claw marks score the trees at the bend.'
+};
+
+export const NATURE_TRAIL_CROSSING: TileTemplate = {
+  id: 'nature_trail_crossing',
+  name: 'Forest Crossroads',
+  category: 'nature',
+  subType: 'path',
+  edges: ['OPEN', 'NATURE', 'OPEN', 'OPEN', 'NATURE', 'OPEN'],
+  floorType: 'dirt',
+  zoneLevel: 0,
+  watermarkIcon: 'Signpost',
+  spawnWeight: 6,
+  canRotate: false,
+  description: 'Four paths meet. A weathered signpost points in directions that make no sense.',
+  possibleObjects: ['statue']
+};
+
+export const NATURE_TRAIL_T: TileTemplate = {
+  id: 'nature_trail_t',
+  name: 'Trail Fork',
+  category: 'nature',
+  subType: 'path',
+  edges: ['OPEN', 'NATURE', 'OPEN', 'NATURE', 'OPEN', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 0,
+  spawnWeight: 10,
+  canRotate: true,
+  description: 'The trail splits in three directions. Fresh footprints lead down each path.'
+};
+
+export const NATURE_FOREST_STREAM: TileTemplate = {
+  id: 'nature_forest_stream',
+  name: 'Forest Stream',
+  category: 'nature',
+  subType: 'forest',
+  edges: ['NATURE', 'WATER', 'NATURE', 'NATURE', 'WATER', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 0,
+  watermarkIcon: 'Droplets',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'A stream cuts through the forest. The water runs too dark to see the bottom.'
+};
+
+// ----- NEW STREET VARIANTS -----
+
+export const STREET_T_JUNCTION: TileTemplate = {
+  id: 'street_t_junction',
+  name: 'T-Junction',
+  category: 'street',
+  subType: 'junction',
+  edges: ['STREET', 'FACADE', 'STREET', 'WALL', 'STREET', 'FACADE'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'Lamp',
+  spawnWeight: 10,
+  canRotate: true,
+  description: 'Three streets meet. The streetlamp flickers in a rhythm like Morse code.'
+};
+
+export const STREET_WIDE: TileTemplate = {
+  id: 'street_wide',
+  name: 'Grand Boulevard',
+  category: 'street',
+  subType: 'boulevard',
+  edges: ['STREET', 'FACADE', 'FACADE', 'STREET', 'FACADE', 'FACADE'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'Building2',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'A wide avenue lined with gas lamps. The shadows between them are too deep.'
+};
+
+export const STREET_COBBLED: TileTemplate = {
+  id: 'street_cobbled',
+  name: 'Old Quarter Lane',
+  category: 'street',
+  subType: 'lane',
+  edges: ['STREET', 'WALL', 'FACADE', 'STREET', 'WALL', 'FACADE'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  spawnWeight: 12,
+  canRotate: true,
+  description: 'Worn cobblestones from colonial times. Carriage tracks lead to doors that should not exist.'
+};
+
+export const STREET_NARROW: TileTemplate = {
+  id: 'street_narrow',
+  name: 'Cramped Passage',
+  category: 'street',
+  subType: 'passage',
+  edges: ['STREET', 'WALL', 'WALL', 'STREET', 'WALL', 'WALL'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  spawnWeight: 10,
+  canRotate: true,
+  description: 'Walls close in on both sides. You can almost touch them with outstretched arms.'
+};
+
+export const STREET_RAILWAY: TileTemplate = {
+  id: 'street_railway',
+  name: 'Railway Crossing',
+  category: 'street',
+  subType: 'crossing',
+  edges: ['STREET', 'WALL', 'WALL', 'STREET', 'WALL', 'WALL'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'Train',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Rails cross the street. No train has run here in years, but you hear a distant whistle.'
+};
+
+// ----- HOSPITAL INTERIOR TILES -----
+
+export const ROOM_HOSPITAL_WARD: TileTemplate = {
+  id: 'room_hospital_ward',
+  name: 'Hospital Ward',
+  category: 'room',
+  subType: 'hospital_ward',
+  edges: ['DOOR', 'WALL', 'DOOR', 'WALL', 'WALL', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'BedDouble',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'Empty beds with restraints. Charts describe symptoms no medical text recognizes.',
+  possibleObjects: ['cabinet']
+};
+
+export const ROOM_HOSPITAL_MORGUE: TileTemplate = {
+  id: 'room_hospital_morgue',
+  name: 'Hospital Morgue',
+  category: 'room',
+  subType: 'morgue',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Skull',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'Cold storage for the deceased. One drawer is labeled with tomorrow\'s date.',
+  enemySpawnChance: 20,
+  possibleEnemies: ['ghoul']
+};
+
+export const ROOM_HOSPITAL_OPERATING: TileTemplate = {
+  id: 'room_hospital_operating',
+  name: 'Operating Theater',
+  category: 'room',
+  subType: 'operating',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WINDOW'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Syringe',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Surgical tools laid out with precision. The drain is clogged with something organic.',
+  possibleObjects: ['cabinet', 'chest']
+};
+
+export const ROOM_HOSPITAL_RECEPTION: TileTemplate = {
+  id: 'room_hospital_reception',
+  name: 'Hospital Reception',
+  category: 'foyer',
+  subType: 'hospital_foyer',
+  edges: ['DOOR', 'WALL', 'DOOR', 'OPEN', 'DOOR', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'ClipboardList',
+  spawnWeight: 6,
+  canRotate: false,
+  description: 'A reception desk with patient files. The waiting area chairs face the wrong direction.'
+};
+
+export const CORRIDOR_HOSPITAL: TileTemplate = {
+  id: 'corridor_hospital',
+  name: 'Hospital Corridor',
+  category: 'corridor',
+  subType: 'hospital',
+  edges: ['OPEN', 'DOOR', 'DOOR', 'OPEN', 'DOOR', 'DOOR'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Stethoscope',
+  spawnWeight: 10,
+  canRotate: true,
+  description: 'Fluorescent lights hum overhead. Some doors have been welded shut.'
+};
+
+export const ROOM_HOSPITAL_PHARMACY: TileTemplate = {
+  id: 'room_hospital_pharmacy',
+  name: 'Hospital Pharmacy',
+  category: 'room',
+  subType: 'pharmacy',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Pill',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Shelves of medication. Some bottles contain liquids of impossible colors.',
+  possibleObjects: ['cabinet', 'chest']
+};
+
+// ----- POLICE STATION INTERIOR TILES -----
+
+export const ROOM_POLICE_CELLS: TileTemplate = {
+  id: 'room_police_cells',
+  name: 'Holding Cells',
+  category: 'room',
+  subType: 'cells',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: 1,
+  watermarkIcon: 'Lock',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Iron bars and concrete walls. Scratches on the ceiling spell out warnings.',
+  enemySpawnChance: 15,
+  possibleEnemies: ['cultist']
+};
+
+export const ROOM_POLICE_OFFICE: TileTemplate = {
+  id: 'room_police_office',
+  name: 'Detective\'s Office',
+  category: 'room',
+  subType: 'office',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WINDOW'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Search',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'Case files cover every surface. The evidence board connects to things that cannot be.',
+  possibleObjects: ['cabinet', 'bookshelf']
+};
+
+export const ROOM_POLICE_EVIDENCE: TileTemplate = {
+  id: 'room_police_evidence',
+  name: 'Evidence Room',
+  category: 'room',
+  subType: 'evidence',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Package',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'Tagged evidence from unsolved cases. Some items seem to move when unobserved.',
+  possibleObjects: ['crate', 'chest', 'cabinet']
+};
+
+export const ROOM_POLICE_LOBBY: TileTemplate = {
+  id: 'room_police_lobby',
+  name: 'Police Station Lobby',
+  category: 'foyer',
+  subType: 'police_foyer',
+  edges: ['DOOR', 'WALL', 'DOOR', 'OPEN', 'DOOR', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Badge',
+  spawnWeight: 6,
+  canRotate: false,
+  description: 'A duty desk behind reinforced glass. Wanted posters show faces that seem familiar.'
+};
+
+export const CORRIDOR_POLICE: TileTemplate = {
+  id: 'corridor_police',
+  name: 'Station Corridor',
+  category: 'corridor',
+  subType: 'police',
+  edges: ['OPEN', 'DOOR', 'DOOR', 'OPEN', 'DOOR', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Shield',
+  spawnWeight: 10,
+  canRotate: true,
+  description: 'Bulletin boards with missing person reports. Too many match descriptions of you.'
+};
+
+export const ROOM_POLICE_ARMORY: TileTemplate = {
+  id: 'room_police_armory',
+  name: 'Police Armory',
+  category: 'room',
+  subType: 'armory',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Target',
+  spawnWeight: 3,
+  canRotate: true,
+  description: 'Weapons rack with standard issue firearms. Some guns have been modified in unusual ways.',
+  possibleObjects: ['crate', 'cabinet']
+};
+
+export const ROOM_POLICE_INTERROGATION: TileTemplate = {
+  id: 'room_police_interrogation',
+  name: 'Interrogation Room',
+  category: 'room',
+  subType: 'interrogation',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WINDOW'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'MessageSquare',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'A bare table and two chairs. The one-way mirror reflects something that isn\'t there.'
+};
+
 // ----- NEW ROOM TILES -----
 
 export const ROOM_ATTIC: TileTemplate = {
@@ -1843,7 +2241,39 @@ export const TILE_TEMPLATES: Record<string, TileTemplate> = {
   nature_tidepools: NATURE_TIDEPOOLS,
   nature_hilltop: NATURE_HILLTOP,
   nature_deadtrees: NATURE_DEADTREES,
-  nature_farmfield: NATURE_FARMFIELD
+  nature_farmfield: NATURE_FARMFIELD,
+  // New forest variants
+  nature_forest_dense: NATURE_FOREST_DENSE,
+  nature_forest_birch: NATURE_FOREST_BIRCH,
+  nature_forest_pine: NATURE_FOREST_PINE,
+  nature_forest_fallen: NATURE_FOREST_FALLEN,
+  nature_forest_haunted: NATURE_FOREST_HAUNTED,
+  // Forest trails and crossings
+  nature_trail_corner: NATURE_TRAIL_CORNER,
+  nature_trail_crossing: NATURE_TRAIL_CROSSING,
+  nature_trail_t: NATURE_TRAIL_T,
+  nature_forest_stream: NATURE_FOREST_STREAM,
+  // New street variants
+  street_t_junction: STREET_T_JUNCTION,
+  street_wide: STREET_WIDE,
+  street_cobbled: STREET_COBBLED,
+  street_narrow: STREET_NARROW,
+  street_railway: STREET_RAILWAY,
+  // Hospital interior tiles
+  room_hospital_ward: ROOM_HOSPITAL_WARD,
+  room_hospital_morgue: ROOM_HOSPITAL_MORGUE,
+  room_hospital_operating: ROOM_HOSPITAL_OPERATING,
+  room_hospital_reception: ROOM_HOSPITAL_RECEPTION,
+  corridor_hospital: CORRIDOR_HOSPITAL,
+  room_hospital_pharmacy: ROOM_HOSPITAL_PHARMACY,
+  // Police station interior tiles
+  room_police_cells: ROOM_POLICE_CELLS,
+  room_police_office: ROOM_POLICE_OFFICE,
+  room_police_evidence: ROOM_POLICE_EVIDENCE,
+  room_police_lobby: ROOM_POLICE_LOBBY,
+  corridor_police: CORRIDOR_POLICE,
+  room_police_armory: ROOM_POLICE_ARMORY,
+  room_police_interrogation: ROOM_POLICE_INTERROGATION
 };
 
 /**
@@ -2174,6 +2604,70 @@ export const TILE_AFFINITIES: Record<string, TileAffinity> = {
     attractsTemplates: ['facade_farmhouse', 'nature_path', 'nature_deadtrees'],
     attractsSubTypes: ['farmhouse', 'path'],
     bonusMultiplier: 1.8
+  },
+
+  // New forest variants - attract other forest and path tiles
+  nature_forest_dense: {
+    attractsTemplates: ['nature_forest', 'nature_forest_pine', 'nature_forest_birch', 'nature_path', 'nature_trail_corner'],
+    attractsSubTypes: ['forest', 'path'],
+    attractsEdgeTypes: ['NATURE'],
+    bonusMultiplier: 1.6
+  },
+  nature_forest_birch: {
+    attractsTemplates: ['nature_clearing', 'nature_forest_birch', 'nature_trail_corner', 'nature_path'],
+    attractsSubTypes: ['clearing', 'path', 'forest'],
+    bonusMultiplier: 1.5
+  },
+  nature_forest_pine: {
+    attractsTemplates: ['nature_forest', 'nature_forest_pine', 'nature_forest_dense', 'nature_cave'],
+    attractsSubTypes: ['forest', 'cave'],
+    bonusMultiplier: 1.6
+  },
+  nature_forest_haunted: {
+    attractsTemplates: ['nature_stones', 'nature_clearing', 'crypt_tomb', 'nature_blackpool'],
+    attractsSubTypes: ['stones', 'ritual', 'tomb'],
+    attractsFloorTypes: ['ritual'],
+    bonusMultiplier: 1.8
+  },
+  nature_trail_crossing: {
+    attractsTemplates: ['nature_path', 'nature_trail_corner', 'nature_trail_t', 'nature_clearing'],
+    attractsSubTypes: ['path', 'clearing'],
+    bonusMultiplier: 1.5
+  },
+
+  // Hospital tiles attract medical/clinical themes
+  room_hospital_ward: {
+    attractsTemplates: ['corridor_hospital', 'room_hospital_morgue', 'room_hospital_operating', 'room_hospital_pharmacy'],
+    attractsSubTypes: ['hospital_ward', 'morgue', 'operating', 'pharmacy', 'hospital'],
+    attractsFloorTypes: ['tile'],
+    bonusMultiplier: 2.0
+  },
+  corridor_hospital: {
+    attractsTemplates: ['room_hospital_ward', 'room_hospital_morgue', 'room_hospital_operating', 'room_hospital_pharmacy', 'room_hospital_reception'],
+    attractsSubTypes: ['hospital_ward', 'morgue', 'operating', 'pharmacy', 'hospital_foyer'],
+    bonusMultiplier: 1.8
+  },
+  room_hospital_morgue: {
+    attractsTemplates: ['corridor_hospital', 'room_hospital_ward', 'basement_icehouse'],
+    attractsSubTypes: ['hospital', 'icehouse'],
+    bonusMultiplier: 1.6
+  },
+
+  // Police station tiles attract law enforcement themes
+  room_police_cells: {
+    attractsTemplates: ['corridor_police', 'room_police_office', 'room_police_evidence', 'room_police_interrogation'],
+    attractsSubTypes: ['cells', 'office', 'evidence', 'interrogation', 'police'],
+    bonusMultiplier: 2.0
+  },
+  corridor_police: {
+    attractsTemplates: ['room_police_cells', 'room_police_office', 'room_police_evidence', 'room_police_lobby', 'room_police_armory'],
+    attractsSubTypes: ['cells', 'office', 'evidence', 'police_foyer', 'armory'],
+    bonusMultiplier: 1.8
+  },
+  room_police_evidence: {
+    attractsTemplates: ['room_police_office', 'corridor_police', 'room_police_armory'],
+    attractsSubTypes: ['office', 'armory', 'police'],
+    bonusMultiplier: 1.5
   },
 
   // Attic connects upper floors

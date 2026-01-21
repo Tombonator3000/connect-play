@@ -1,5 +1,96 @@
 # Development Log
 
+## 2026-01-21: Add New Tile Variants - Forest, Street, Hospital, Police
+
+### Oppgave
+Legge til flere tile-varianter for mer variasjon i spillet: nye skog-tiles, skog med sti og kryss, vei-varianter, innendørs sykehus og politistasjon.
+
+---
+
+### Nye Tiles Lagt Til
+
+#### Skog-varianter (5 nye)
+| Tile ID | Navn | Beskrivelse |
+|---------|------|-------------|
+| `nature_forest_dense` | Dense Thicket | Tett skog med tornebusker |
+| `nature_forest_birch` | Birch Grove | Lysere bjørkeskog |
+| `nature_forest_pine` | Pine Woods | Furuskog med nåler |
+| `nature_forest_fallen` | Fallen Giants | Skog med fallne trær og sopp |
+| `nature_forest_haunted` | Haunted Woods | Hjemsøkt skog med spøkelser |
+
+#### Skog-stier og kryss (4 nye)
+| Tile ID | Navn | Edges | Beskrivelse |
+|---------|------|-------|-------------|
+| `nature_trail_corner` | Winding Trail | OPEN/NATURE sving | Sti som svinger |
+| `nature_trail_crossing` | Forest Crossroads | 4x OPEN | Veikryss i skogen |
+| `nature_trail_t` | Trail Fork | 3x OPEN | T-kryss i skogen |
+| `nature_forest_stream` | Forest Stream | Med WATER kanter | Skog med bekk |
+
+#### Vei-varianter (5 nye)
+| Tile ID | Navn | Beskrivelse |
+|---------|------|-------------|
+| `street_t_junction` | T-Junction | T-kryss gate |
+| `street_wide` | Grand Boulevard | Bred hovedgate |
+| `street_cobbled` | Old Quarter Lane | Gammel brosteinsgate |
+| `street_narrow` | Cramped Passage | Smal passasje |
+| `street_railway` | Railway Crossing | Jernbanekryssing |
+
+#### Sykehus innendørs (6 nye)
+| Tile ID | Navn | Kategori | Beskrivelse |
+|---------|------|----------|-------------|
+| `room_hospital_ward` | Hospital Ward | room | Sykestue med senger |
+| `room_hospital_morgue` | Hospital Morgue | room | Likhus (kan spawne ghoul) |
+| `room_hospital_operating` | Operating Theater | room | Operasjonssal |
+| `room_hospital_reception` | Hospital Reception | foyer | Resepsjon |
+| `corridor_hospital` | Hospital Corridor | corridor | Sykehuskorridor |
+| `room_hospital_pharmacy` | Hospital Pharmacy | room | Apotek |
+
+#### Politistasjon innendørs (7 nye)
+| Tile ID | Navn | Kategori | Beskrivelse |
+|---------|------|----------|-------------|
+| `room_police_cells` | Holding Cells | room | Arrestceller |
+| `room_police_office` | Detective's Office | room | Detektivkontor |
+| `room_police_evidence` | Evidence Room | room | Bevisrom |
+| `room_police_lobby` | Police Station Lobby | foyer | Resepsjon |
+| `corridor_police` | Station Corridor | corridor | Politistasjon-korridor |
+| `room_police_armory` | Police Armory | room | Våpenlager |
+| `room_police_interrogation` | Interrogation Room | room | Avhørsrom |
+
+---
+
+### Tekniske Detaljer
+
+**Fil endret:** `src/game/tileConnectionSystem.ts`
+
+**Endringer:**
+1. Lagt til 27 nye TileTemplate konstanter
+2. Alle templates registrert i `TILE_TEMPLATES` record
+3. Lagt til tile affinities for tematisk gruppering:
+   - Skog-tiles tiltrekker andre skog- og sti-tiles
+   - Sykehus-tiles tiltrekker andre medisinske tiles
+   - Politi-tiles tiltrekker andre politistasjon-tiles
+
+**Edge-typer brukt:**
+- `NATURE` - For skog og natur
+- `OPEN` - For stier og passasjer
+- `WATER` - For bekker
+- `STREET`/`FACADE` - For gater
+- `DOOR`/`WALL`/`WINDOW` - For innendørs rom
+
+**Build:** Vellykket - ingen TypeScript-feil
+
+---
+
+### Sammendrag
+Totalt **27 nye tiles** lagt til for bedre variasjon:
+- 5 skog-varianter
+- 4 skog-stier/kryss
+- 5 vei-varianter
+- 6 sykehus-tiles
+- 7 politistasjon-tiles
+
+---
+
 ## 2026-01-21: Refactor GameBoard.tsx - TileObjectRenderer Extraction
 
 ### Oppgave
