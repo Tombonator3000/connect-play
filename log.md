@@ -1,5 +1,117 @@
 # Development Log
 
+## 2026-01-21: Refaktorering av getTileVisuals-funksjonen
+
+### Oppgave
+Finne en kompleks funksjon i kodebasen og refaktorere den for bedre lesbarhet og vedlikeholdbarhet.
+
+---
+
+### Analyse
+
+Gjennomgikk kodebasen for komplekse funksjoner og identifiserte flere kandidater:
+
+| Funksjon/Komponent | Fil | Linjer | Hovedproblem |
+|---|---|---|---|
+| handleAction | ShadowsGame.tsx | 921 | Massiv med 20+ nøstede if-statements |
+| ShadowsGame (main) | ShadowsGame.tsx | 4591 | Gjør 10+ forskjellige ting, 50+ state vars |
+| resolveDiceResult | ShadowsGame.tsx | 166 | Multiple nøstede conditionals |
+| **getTileVisuals** | GameBoard.tsx | 89 | 8 if-statements, skjør string-matching |
+| getMonsterDecision | monsterAI.ts | 63 | Sekvensiell beslutningskjede |
+
+Valgte `getTileVisuals` som kandidat fordi:
+- God størrelse for en enkelt refaktorering
+- Tydelig forbedringspotensial (if-chain → data-drevet)
+- Lav risiko for å introdusere bugs
+
+---
+
+### Implementert
+
+#### Før (89 linjer, 8 if-statements):
+```typescript
+const getTileVisuals = (name: string, type: 'building' | 'room' | 'street') => {
+  const n = name.toLowerCase();
+
+  if (n.includes('hallway') || n.includes('corridor') || ...) {
+    return { floorClass: 'tile-darkwood', ... };
+  }
+  if (n.includes('square') || n.includes('market')) {
+    return { floorClass: 'tile-cobblestone', ... };
+  }
+  // ... 6 flere if-statements
+  return { floorClass: 'tile-stone', ... };
+};
+```
+
+#### Etter (data-drevet med lookup-tabell):
+```typescript
+// Konfigurasjon organisert etter kategori
+const TILE_VISUAL_CONFIGS = {
+  connector: { floorClass: 'tile-darkwood', ... },
+  marketplace: { floorClass: 'tile-cobblestone', ... },
+  library: { floorClass: 'tile-carpet', ... },
+  // ... resten av konfigurasjonene
+} as const;
+
+// Mønster-matching regler i prioritert rekkefølge
+const TILE_VISUAL_PATTERNS: TileVisualPattern[] = [
+  { patterns: ['hallway', 'corridor', 'passage', 'stair'], config: TILE_VISUAL_CONFIGS.connector },
+  { patterns: ['square', 'market'], config: TILE_VISUAL_CONFIGS.marketplace },
+  // ... resten av mønstrene
+];
+
+const getTileVisuals = (name: string, type: 'building' | 'room' | 'street'): TileVisualConfig => {
+  const n = name.toLowerCase();
+
+  for (const { patterns, config, iconOverride } of TILE_VISUAL_PATTERNS) {
+    const matchedPattern = patterns.find(pattern => n.includes(pattern));
+    if (matchedPattern) {
+      if (iconOverride) {
+        return { ...config, Icon: iconOverride(matchedPattern) };
+      }
+      return config;
+    }
+  }
+
+  if (type === 'street') return TILE_VISUAL_CONFIGS.street;
+  return TILE_VISUAL_CONFIGS.default;
+};
+```
+
+---
+
+### Fordeler med refaktoreringen
+
+| Aspekt | Før | Etter |
+|--------|-----|-------|
+| **Lesbarhet** | 8 if-statements med gjentatt struktur | Data og logikk separert |
+| **Vedlikeholdbarhet** | Legg til ny if-blokk | Legg til ny rad i array |
+| **Type-sikkerhet** | Ingen interfaces | TileVisualConfig, TileVisualPattern |
+| **Gjenbrukbarhet** | Konfig hardkodet i conditionals | TILE_VISUAL_CONFIGS kan brukes andre steder |
+| **Testbarhet** | Vanskelig å teste enkelttilfeller | Lett å teste patterns og configs separat |
+
+---
+
+### Tilleggsfiks
+
+Fikset også en syntax-feil i `tileConnectionSystem.ts:2260` hvor smart-apostrofer (`'`) i "mummy's" og "don't" brøt JavaScript-parseren.
+
+---
+
+### Build Status
+- **TypeScript kompilering:** ✅ Suksess
+- **Vite build:** ✅ Suksess (15.31s)
+- **Advarsel:** Chunk størrelse >500KB (kjent issue, ikke relatert)
+
+---
+
+### Filer Modifisert
+- `src/game/components/GameBoard.tsx` - Refaktorert getTileVisuals
+- `src/game/tileConnectionSystem.ts` - Fikset apostrof-syntaksfeil
+
+---
+
 ## 2026-01-21: Implementert 19 Nye Interior Tiles (Asyl, Museum, Hotell)
 
 ### Oppgave

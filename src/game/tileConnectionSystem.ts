@@ -2257,7 +2257,7 @@ export const ROOM_MUSEUM_EGYPTIAN: TileTemplate = {
   watermarkIcon: 'Pyramid',
   spawnWeight: 7,
   canRotate: true,
-  description: 'Sarcophagi stand sentinel. The mummy's wrappings twitch in drafts that don't exist.',
+  description: 'Sarcophagi stand sentinel. The mummy\'s wrappings twitch in drafts that don\'t exist.',
   possibleObjects: ['sarcophagus', 'statue', 'display_case'],
   enemySpawnChance: 30,
   possibleEnemies: ['cultist', 'nightgaunt']

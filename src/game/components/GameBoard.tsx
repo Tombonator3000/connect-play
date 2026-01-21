@@ -644,94 +644,144 @@ const getMonsterIcon = (type: EnemyType) => {
 };
 
 // Board Game Aesthetic - Tile Visual System with oil painting style
-const getTileVisuals = (name: string, type: 'building' | 'room' | 'street') => {
+// Data-driven lookup table for tile visuals (refactored for clarity)
+
+interface TileVisualConfig {
+  floorClass: string;
+  glowClass: string;
+  strokeColor: string;
+  Icon: typeof DoorOpen;
+  iconColor: string;
+}
+
+interface TileVisualPattern {
+  patterns: string[];
+  config: TileVisualConfig;
+  // For special cases where icon depends on the matched pattern
+  iconOverride?: (matchedPattern: string) => typeof DoorOpen;
+}
+
+// Visual configurations organized by category
+const TILE_VISUAL_CONFIGS = {
+  connector: {
+    floorClass: 'tile-darkwood',
+    glowClass: '',
+    strokeColor: 'hsl(25 30% 25%)',
+    Icon: DoorOpen,
+    iconColor: 'text-amber-700'
+  },
+  marketplace: {
+    floorClass: 'tile-cobblestone',
+    glowClass: 'animate-gaslight',
+    strokeColor: 'hsl(45 40% 30%)',
+    Icon: ShoppingBag,
+    iconColor: 'text-amber-600'
+  },
+  library: {
+    floorClass: 'tile-carpet',
+    glowClass: 'gaslight-glow',
+    strokeColor: 'hsl(35 50% 35%)',
+    Icon: BookOpen,
+    iconColor: 'text-amber-500'
+  },
+  supernatural: {
+    floorClass: 'tile-stone',
+    glowClass: 'ritual-glow',
+    strokeColor: 'hsl(348 50% 40%)',
+    Icon: Church,
+    iconColor: 'text-red-600'
+  },
+  water: {
+    floorClass: 'tile-water',
+    glowClass: '',
+    strokeColor: 'hsl(200 50% 35%)',
+    Icon: Anchor,
+    iconColor: 'text-blue-400'
+  },
+  outdoorSpooky: {
+    floorClass: 'tile-stone',
+    glowClass: 'eldritch-glow',
+    strokeColor: 'hsl(120 40% 25%)',
+    Icon: Trees,
+    iconColor: 'text-green-600'
+  },
+  street: {
+    floorClass: 'tile-cobblestone',
+    glowClass: '',
+    strokeColor: 'hsl(230 20% 25%)',
+    Icon: MapPin,
+    iconColor: 'text-slate-500'
+  },
+  default: {
+    floorClass: 'tile-stone',
+    glowClass: '',
+    strokeColor: 'hsl(230 20% 25%)',
+    Icon: Building,
+    iconColor: 'text-muted-foreground'
+  }
+} as const;
+
+// Pattern matching rules in priority order (first match wins)
+const TILE_VISUAL_PATTERNS: TileVisualPattern[] = [
+  // Connectors - Narrow passages
+  {
+    patterns: ['hallway', 'corridor', 'passage', 'stair'],
+    config: TILE_VISUAL_CONFIGS.connector
+  },
+  // Outdoor - Town squares and markets
+  {
+    patterns: ['square', 'market'],
+    config: TILE_VISUAL_CONFIGS.marketplace
+  },
+  // Indoor - Libraries and studies
+  {
+    patterns: ['library', 'study', 'manor'],
+    config: TILE_VISUAL_CONFIGS.library
+  },
+  // Supernatural - Churches, crypts, ritual chambers
+  {
+    patterns: ['church', 'crypt', 'ritual'],
+    config: TILE_VISUAL_CONFIGS.supernatural
+  },
+  // Water locations - Docks, rivers, harbors
+  {
+    patterns: ['dock', 'river', 'pier', 'harbor', 'lighthouse'],
+    config: TILE_VISUAL_CONFIGS.water
+  },
+  // Supernatural outdoor - Graveyard, swamp, forest (with dynamic icon)
+  {
+    patterns: ['graveyard', 'cemetery', 'swamp', 'forest'],
+    config: TILE_VISUAL_CONFIGS.outdoorSpooky,
+    iconOverride: (matched) => (matched === 'graveyard' || matched === 'cemetery') ? Skull : Trees
+  },
+  // Streets and alleys
+  {
+    patterns: ['alley', 'street'],
+    config: TILE_VISUAL_CONFIGS.street
+  }
+];
+
+const getTileVisuals = (name: string, type: 'building' | 'room' | 'street'): TileVisualConfig => {
   const n = name.toLowerCase();
 
-  // Connectors - Narrow passages
-  if (n.includes('hallway') || n.includes('corridor') || n.includes('passage') || n.includes('stair')) {
-    return {
-      floorClass: 'tile-darkwood',
-      glowClass: '',
-      strokeColor: 'hsl(25 30% 25%)',
-      Icon: DoorOpen,
-      iconColor: 'text-amber-700'
-    };
+  // Find first matching pattern
+  for (const { patterns, config, iconOverride } of TILE_VISUAL_PATTERNS) {
+    const matchedPattern = patterns.find(pattern => n.includes(pattern));
+    if (matchedPattern) {
+      // Apply icon override if specified
+      if (iconOverride) {
+        return { ...config, Icon: iconOverride(matchedPattern) };
+      }
+      return config;
+    }
   }
 
-  // Outdoor - Town squares and markets
-  if (n.includes('square') || n.includes('market')) {
-    return {
-      floorClass: 'tile-cobblestone',
-      glowClass: 'animate-gaslight',
-      strokeColor: 'hsl(45 40% 30%)',
-      Icon: ShoppingBag,
-      iconColor: 'text-amber-600'
-    };
+  // Special case: type-based matching for streets
+  if (type === 'street') {
+    return TILE_VISUAL_CONFIGS.street;
   }
 
-  // Indoor - Libraries and studies
-  if (n.includes('library') || n.includes('study') || n.includes('manor')) {
-    return {
-      floorClass: 'tile-carpet',
-      glowClass: 'gaslight-glow',
-      strokeColor: 'hsl(35 50% 35%)',
-      Icon: BookOpen,
-      iconColor: 'text-amber-500'
-    };
-  }
-
-  // Supernatural - Churches, crypts, ritual chambers
-  if (n.includes('church') || n.includes('crypt') || n.includes('ritual')) {
-    return {
-      floorClass: 'tile-stone',
-      glowClass: 'ritual-glow',
-      strokeColor: 'hsl(348 50% 40%)',
-      Icon: Church,
-      iconColor: 'text-red-600'
-    };
-  }
-
-  // Water locations - Docks, rivers, harbors
-  if (n.includes('dock') || n.includes('river') || n.includes('pier') || n.includes('harbor') || n.includes('lighthouse')) {
-    return {
-      floorClass: 'tile-water',
-      glowClass: '',
-      strokeColor: 'hsl(200 50% 35%)',
-      Icon: Anchor,
-      iconColor: 'text-blue-400'
-    };
-  }
-
-  // Supernatural outdoor - Graveyard, swamp, forest
-  if (n.includes('graveyard') || n.includes('cemetery') || n.includes('swamp') || n.includes('forest')) {
-    return {
-      floorClass: 'tile-stone',
-      glowClass: 'eldritch-glow',
-      strokeColor: 'hsl(120 40% 25%)',
-      Icon: n.includes('graveyard') || n.includes('cemetery') ? Skull : Trees,
-      iconColor: 'text-green-600'
-    };
-  }
-
-  // Streets and alleys
-  if (type === 'street' || n.includes('alley') || n.includes('street')) {
-    return {
-      floorClass: 'tile-cobblestone',
-      glowClass: '',
-      strokeColor: 'hsl(230 20% 25%)',
-      Icon: MapPin,
-      iconColor: 'text-slate-500'
-    };
-  }
-
-  // Default indoor
-  return { 
-    floorClass: 'tile-stone', 
-    glowClass: '', 
-    strokeColor: 'hsl(230 20% 25%)', 
-    Icon: Building, 
-    iconColor: 'text-muted-foreground'
-  };
+  return TILE_VISUAL_CONFIGS.default;
 };
 
 // Doom-based atmospheric lighting - Chiaroscuro effect
