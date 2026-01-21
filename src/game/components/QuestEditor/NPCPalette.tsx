@@ -11,7 +11,8 @@
  */
 
 import React, { useState } from 'react';
-import { Users, Plus, Trash2, ChevronDown, ChevronRight, User, ShoppingBag, MessageSquare, AlertTriangle, Heart } from 'lucide-react';
+import { Users, Plus, Trash2, ChevronDown, ChevronRight, User, ShoppingBag, MessageSquare, AlertTriangle, Heart, GitBranch } from 'lucide-react';
+import { DialogTree } from './DialogEditor';
 
 // ============================================================================
 // TYPES
@@ -26,6 +27,8 @@ export interface NPCPlacement {
   description?: string;
   // Dialogue
   greeting?: string;
+  dialogTree?: DialogTree; // Full conversation tree
+  hasComplexDialog?: boolean; // If true, use dialogTree instead of greeting
   // For merchants
   inventory?: { itemId: string; itemName: string; price?: number }[];
   // For quest givers
@@ -109,9 +112,10 @@ const PORTRAIT_OPTIONS = [
 interface NPCPaletteProps {
   npcs: NPCPlacement[];
   onNPCsChange: (npcs: NPCPlacement[]) => void;
+  onEditDialog?: (npc: NPCPlacement) => void;
 }
 
-const NPCPalette: React.FC<NPCPaletteProps> = ({ npcs, onNPCsChange }) => {
+const NPCPalette: React.FC<NPCPaletteProps> = ({ npcs, onNPCsChange, onEditDialog }) => {
   const [expandedNPCs, setExpandedNPCs] = useState<Set<string>>(new Set());
   const [showAddForm, setShowAddForm] = useState(false);
   const [newNPCType, setNewNPCType] = useState<NPCType>('survivor');
@@ -265,15 +269,43 @@ const NPCPalette: React.FC<NPCPaletteProps> = ({ npcs, onNPCsChange }) => {
                     />
                   </div>
 
-                  {/* Greeting */}
+                  {/* Greeting / Dialog */}
                   <div>
-                    <label className="text-[10px] text-slate-400 block mb-0.5">Greeting Dialogue</label>
-                    <textarea
-                      value={npc.greeting || ''}
-                      onChange={(e) => updateNPC(npc.id, { greeting: e.target.value })}
-                      className="w-full bg-slate-600 text-white text-xs px-2 py-1 rounded border border-slate-500 h-12 resize-none"
-                      placeholder="What they say when approached..."
-                    />
+                    <div className="flex items-center justify-between mb-0.5">
+                      <label className="text-[10px] text-slate-400">Dialogue</label>
+                      <label className="flex items-center gap-1 text-[10px] text-slate-400 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={npc.hasComplexDialog ?? false}
+                          onChange={(e) => updateNPC(npc.id, { hasComplexDialog: e.target.checked })}
+                          className="accent-cyan-500 w-3 h-3"
+                        />
+                        Complex Dialog
+                      </label>
+                    </div>
+                    {!npc.hasComplexDialog ? (
+                      <textarea
+                        value={npc.greeting || ''}
+                        onChange={(e) => updateNPC(npc.id, { greeting: e.target.value })}
+                        className="w-full bg-slate-600 text-white text-xs px-2 py-1 rounded border border-slate-500 h-12 resize-none"
+                        placeholder="What they say when approached..."
+                      />
+                    ) : (
+                      <div className="space-y-1">
+                        <button
+                          onClick={() => onEditDialog?.(npc)}
+                          className="w-full flex items-center justify-center gap-1 text-xs bg-cyan-700/50 hover:bg-cyan-600 text-white px-2 py-2 rounded border border-cyan-600"
+                        >
+                          <GitBranch className="w-3 h-3" />
+                          Edit Conversation Tree
+                        </button>
+                        {npc.dialogTree && (
+                          <div className="text-[10px] text-cyan-400 text-center">
+                            {npc.dialogTree.nodes.length} dialog node(s)
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Portrait */}

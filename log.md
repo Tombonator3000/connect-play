@@ -1,5 +1,60 @@
 # Development Log
 
+## 2026-01-21: Quest Editor - Campaign & Dialog Implementation (Sesjon 3)
+
+### Oppgave
+Implementere Campaign Play Integration, NPC Dialog System, og Scenario Templates.
+
+---
+
+### Implementert
+
+#### PRIORITET 1: Campaign Play Integration
+- **CampaignPlayManager.tsx** - Ny komponent for kampanje-spilling
+  - Kampanjeliste og detaljer-visning
+  - Hero-valg for kampanjer (integrert med Legacy system)
+  - Quest-progresjon med mellom-quest UI
+  - Shared gold pool tracking
+  - Campaign progress lagres i localStorage
+  - Integration med MerchantShop mellom quests
+- **MainMenu.tsx** - Lagt til "Play Campaign" knapp
+- **ShadowsGame.tsx** - Integrert CampaignPlayManager med campaign view mode
+
+#### PRIORITET 2: NPC Dialog System
+- **DialogEditor.tsx** - Komplett dialog-tree builder
+  - Visuelle dialog-noder med folding
+  - Branching conversations med multiple options
+  - Conditions: has_item, has_insight, has_gold, objective_complete, stat_check
+  - Effects: give_item, take_item, give_gold, give_insight, heal, reveal_objective
+  - Preview-modus for å teste dialogen
+- **NPCPalette.tsx** - Integrert dialog-toggle
+  - Støtte for kompleks dialog (dialogTree) eller enkel greeting
+  - Knapp for å åpne DialogEditor
+
+#### PRIORITET 3: Scenario Templates
+- **ScenarioTemplates.tsx** - Template browser med preview
+  - Quick Start templates: Escape the Manor, The Mystery, Boss Hunt
+  - Layout templates: Small Manor, Abandoned Church, Dockside Warehouse
+  - Kategori-filtrering og detaljert preview
+  - Alle templates har pre-definerte tiles og objectives
+
+### Endrede filer
+- `src/game/components/QuestEditor/CampaignPlayManager.tsx` (ny)
+- `src/game/components/QuestEditor/DialogEditor.tsx` (ny)
+- `src/game/components/QuestEditor/ScenarioTemplates.tsx` (ny)
+- `src/game/components/QuestEditor/index.tsx` (oppdatert eksporter)
+- `src/game/components/QuestEditor/NPCPalette.tsx` (dialog integration)
+- `src/game/components/QuestEditor/CustomQuestLoader.tsx` (eksportert funksjoner)
+- `src/game/components/MainMenu.tsx` (campaign button)
+- `src/game/ShadowsGame.tsx` (campaign view integration)
+- `editor-log.md` (dokumentasjon)
+
+### Resterende oppgaver (logget til editor-log.md)
+- Visual Improvements: Tile connections, Mini-map, Drag-and-drop, Bulk editing
+- Quality of Life: Keyboard shortcuts panel, Auto-save, Complexity estimator
+
+---
+
 ## 2026-01-21: Quest Editor - Forbedringsforslag (Sesjon 2)
 
 ### Oppgave

@@ -26,10 +26,14 @@ import TriggerPanel, { EditorTrigger } from './TriggerPanel';
 import NPCPalette, { NPCPlacement } from './NPCPalette';
 import DoomEventsPanel, { DoomEvent } from './DoomEventsPanel';
 import CampaignEditor from './CampaignEditor';
-import CustomQuestLoader from './CustomQuestLoader';
+import CustomQuestLoader, { convertQuestToScenario, SavedQuest } from './CustomQuestLoader';
+import CampaignPlayManager from './CampaignPlayManager';
+import DialogEditor, { DialogTree, DialogNode, DialogOption } from './DialogEditor';
+import ScenarioTemplates, { ScenarioTemplate, SCENARIO_TEMPLATES } from './ScenarioTemplates';
 
 // Re-export for external use
-export { CampaignEditor, CustomQuestLoader };
+export { CampaignEditor, CustomQuestLoader, CampaignPlayManager, convertQuestToScenario, DialogEditor, ScenarioTemplates, SCENARIO_TEMPLATES };
+export type { SavedQuest, DialogTree, DialogNode, DialogOption, ScenarioTemplate };
 
 // ============================================================================
 // RIGHT PANEL TABS

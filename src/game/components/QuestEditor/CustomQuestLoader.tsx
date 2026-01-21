@@ -24,7 +24,7 @@ import { Campaign, CampaignQuest } from './CampaignEditor';
 // TYPES
 // ============================================================================
 
-interface SavedQuest {
+export interface SavedQuest {
   id: string;
   metadata: ScenarioMetadata;
   tiles: EditorTile[];
@@ -124,7 +124,7 @@ function convertEditorDoomEvent(editorEvent: EditorDoomEvent): DoomEvent {
 /**
  * Convert saved quest to Scenario format
  */
-function convertQuestToScenario(quest: SavedQuest): { scenario: Scenario; tiles: Tile[] } {
+export function convertQuestToScenario(quest: SavedQuest): { scenario: Scenario; tiles: Tile[] } {
   // Find start tile
   const startTile = quest.tiles.find(t => t.isStartLocation);
   const startLocation = startTile ? `${startTile.q},${startTile.r}` : '0,0';

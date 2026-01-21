@@ -33,7 +33,7 @@ import SurvivorTraitModal from './components/SurvivorTraitModal';
 import FieldGuidePanel from './components/FieldGuidePanel';
 import CharacterSelectionScreen from './components/CharacterSelectionScreen';
 import SaveLoadModal from './components/SaveLoadModal';
-import QuestEditor, { CustomQuestLoader } from './components/QuestEditor';
+import QuestEditor, { CustomQuestLoader, CampaignPlayManager, convertQuestToScenario } from './components/QuestEditor';
 import { autoSave } from './utils/saveManager';
 import {
   loadLegacyData,
@@ -123,7 +123,7 @@ const LEGACY_STORAGE_KEY = 'shadows_1920s_legacy';
 const APP_VERSION = "1.0.0";
 
 // Menu view modes for main menu
-type MainMenuView = 'title' | 'heroArchive' | 'stash' | 'merchant' | 'questEditor' | 'customQuest';
+type MainMenuView = 'title' | 'heroArchive' | 'stash' | 'merchant' | 'questEditor' | 'customQuest' | 'campaign';
 
 const DEFAULT_STATE: GameState = {
   phase: GamePhase.SETUP,
@@ -3714,6 +3714,8 @@ const ShadowsGame: React.FC = () => {
           // Quest Editor and Custom Quest
           onQuestEditor={() => setMainMenuView('questEditor')}
           onCustomQuest={() => setMainMenuView('customQuest')}
+          // Campaign Play
+          onCampaignPlay={() => setMainMenuView('campaign')}
         />
       )}
 
@@ -3756,6 +3758,54 @@ const ShadowsGame: React.FC = () => {
             }));
             setMainMenuView('title');
             setIsMainMenuOpen(false);
+          }}
+        />
+      )}
+
+      {/* Campaign Play Manager */}
+      {isMainMenuOpen && mainMenuView === 'campaign' && (
+        <CampaignPlayManager
+          legacyData={legacyData}
+          onBack={() => setMainMenuView('title')}
+          onStartQuest={(questId, campaign, progress) => {
+            // Load the quest and start it
+            try {
+              const savedQuests = localStorage.getItem('quest_editor_quests');
+              if (savedQuests) {
+                const quests = JSON.parse(savedQuests);
+                const quest = quests.find((q: any) => q.id === questId);
+                if (quest) {
+                  // Convert quest to scenario and tiles
+                  const { scenario, tiles } = convertQuestToScenario(quest);
+
+                  // Store campaign context for post-quest handling
+                  localStorage.setItem('active_campaign_context', JSON.stringify({ campaign, progress }));
+
+                  setState(prev => ({
+                    ...DEFAULT_STATE,
+                    phase: GamePhase.SETUP,
+                    activeScenario: scenario,
+                    board: tiles,
+                  }));
+                  setMainMenuView('title');
+                  setIsMainMenuOpen(false);
+                }
+              }
+            } catch (error) {
+              console.error('Failed to start campaign quest:', error);
+            }
+          }}
+          onSelectHeroes={(heroes) => {
+            setSelectedLegacyHeroIds(heroes.map(h => h.id));
+          }}
+          onOpenMerchant={(heroes, sharedGold) => {
+            // Open merchant with campaign heroes
+            setSelectedLegacyHeroIds(heroes.map(h => h.id));
+            setShowMerchantShop(true);
+          }}
+          onUpdateLegacyData={(data) => {
+            setLegacyData(data);
+            saveLegacyData(data);
           }}
         />
       )}
