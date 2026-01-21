@@ -9745,3 +9745,82 @@ handleContextActionEffect (line ~1895) - now can access spawnRoom
 - ✅ No TypeScript errors
 - ✅ Committed and pushed to `claude/fix-uncaught-error-2ctjk`
 
+---
+
+## 2026-01-21 - Fix: Tiles Disappearing When Player Leaves Hex Location
+
+### Problem
+Tiles would disappear completely when the player moved away from a hex location. The tiles would be replaced with "ghost tiles" (either red "UTFORSK" or gray MapPin icons).
+
+### Root Cause
+In `spawnRoom()` function in ShadowsGame.tsx, at line 1748-1750, if `selectWeightedTemplate()` returned `null`, the function would return early WITHOUT creating any tile:
+
+```javascript
+const selected = selectWeightedTemplate(matchesToUse);
+if (!selected) {
+  console.warn('Failed to select template');
+  return;  // <-- BUG: Returns without creating a tile!
+}
+```
+
+This caused the following sequence:
+1. Player clicks on unexplored position (q, r)
+2. `spawnRoom(q, r, ...)` is called
+3. Template selection fails (rare edge case)
+4. `spawnRoom` returns WITHOUT adding a tile to the board
+5. Player still moves to position (q, r) via `handleAction`
+6. `exploredTiles` is updated to include (q, r)
+7. Result: Position (q, r) is in `exploredTiles` but has NO tile in `state.board`
+
+When the player moves away, the position shows as a ghost tile because it's in `exploredTiles` (gray MapPin) but there's no actual tile rendered.
+
+### Related Issue: Red vs Gray Ghost Tiles
+
+The user also asked why some unexplored tiles are marked with red ("UTFORSK") and some are gray (MapPin):
+
+- **Red "UTFORSK" tiles**: Positions NEVER visited (not in `exploredTiles`)
+- **Gray MapPin tiles**: Positions that WERE visited (in `exploredTiles`) but have no tile in `state.board`
+
+This is controlled by `GameBoard.tsx` line 957:
+```javascript
+const isExplore = !exploredTiles.has(`${n.q},${n.r}`);
+```
+
+### Solution
+Added fallback tile creation logic when `selectWeightedTemplate()` returns null (line 1748-1774):
+
+```javascript
+if (!selected) {
+  // Fallback: Create a basic tile if template selection fails
+  console.warn(`Template selection failed for (${startQ},${startR}), using fallback`);
+
+  const fallbackCategory = selectRandomConnectableCategory(
+    sourceCategory as TileCategory,
+    tileSet === 'indoor'
+  );
+  const fallbackRoomName = selectRandomRoomName(fallbackCategory, tileSet);
+  const fallbackTile = createFallbackTile({
+    startQ,
+    startR,
+    newCategory: fallbackCategory,
+    roomName: fallbackRoomName,
+    roomId,
+    boardMap
+  });
+
+  setState(prev => ({ ...prev, board: [...prev.board, fallbackTile] }));
+  addToLog(`UTFORSKET: ${fallbackRoomName}. [${fallbackCategory.toUpperCase()}]`);
+  // ... location description logging ...
+  return;
+}
+```
+
+Now a tile is ALWAYS created when `spawnRoom()` is called, preventing the "disappearing tile" bug.
+
+### Files Changed
+- `src/game/ShadowsGame.tsx` - Added fallback tile creation in `spawnRoom()` function
+
+### Verification
+- ✅ Build successful
+- ✅ No TypeScript errors
+

@@ -1746,7 +1746,31 @@ const ShadowsGame: React.FC = () => {
     // Select a template using weighted random selection
     const selected = selectWeightedTemplate(matchesToUse);
     if (!selected) {
-      console.warn('Failed to select template');
+      // Fallback: Create a basic tile if template selection fails (should never happen, but safety net)
+      console.warn(`Template selection failed for (${startQ},${startR}), using fallback`);
+
+      const fallbackCategory = selectRandomConnectableCategory(
+        sourceCategory as TileCategory,
+        tileSet === 'indoor'
+      );
+      const fallbackRoomName = selectRandomRoomName(fallbackCategory, tileSet);
+      const fallbackTile = createFallbackTile({
+        startQ,
+        startR,
+        newCategory: fallbackCategory,
+        roomName: fallbackRoomName,
+        roomId,
+        boardMap
+      });
+
+      setState(prev => ({ ...prev, board: [...prev.board, fallbackTile] }));
+      addToLog(`UTFORSKET: ${fallbackRoomName}. [${fallbackCategory.toUpperCase()}]`);
+
+      const locationDescription = LOCATION_DESCRIPTIONS[fallbackRoomName];
+      if (locationDescription) {
+        addToLog(locationDescription);
+      }
+
       return;
     }
 
