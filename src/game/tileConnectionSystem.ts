@@ -2100,6 +2100,313 @@ export const FACADE_OBSERVATORY: TileTemplate = {
   possibleEnemies: ['mi-go', 'byakhee']
 };
 
+// ----- ASYLUM INTERIOR TEMPLATES -----
+
+export const FOYER_ASYLUM: TileTemplate = {
+  id: 'foyer_asylum',
+  name: 'Asylum Reception',
+  category: 'foyer',
+  subType: 'asylum',
+  edges: ['DOOR', 'WALL', 'DOOR', 'OPEN', 'DOOR', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: 1,
+  watermarkIcon: 'ClipboardList',
+  spawnWeight: 8,
+  canRotate: false,
+  description: 'Iron bars separate visitors from patients. The reception desk is stained with old coffee and tears.',
+  possibleObjects: ['desk', 'cabinet']
+};
+
+export const CORRIDOR_ASYLUM: TileTemplate = {
+  id: 'corridor_asylum',
+  name: 'Asylum Corridor',
+  category: 'corridor',
+  subType: 'asylum',
+  edges: ['OPEN', 'DOOR', 'DOOR', 'OPEN', 'DOOR', 'DOOR'],
+  floorType: 'stone',
+  zoneLevel: 1,
+  watermarkIcon: 'Lock',
+  spawnWeight: 12,
+  canRotate: true,
+  description: 'Whitewashed walls. Numbered doors with small windows. Someone is always watching.',
+  enemySpawnChance: 20,
+  possibleEnemies: ['cultist']
+};
+
+export const ROOM_ASYLUM_CELL: TileTemplate = {
+  id: 'room_asylum_cell',
+  name: 'Padded Cell',
+  category: 'room',
+  subType: 'asylum_cell',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: 2,
+  watermarkIcon: 'Square',
+  spawnWeight: 10,
+  canRotate: true,
+  description: 'Soft walls absorb screams. Scratched into the padding: "IT SEES THROUGH YOUR EYES".',
+  enemySpawnChance: 30,
+  possibleEnemies: ['cultist']
+};
+
+export const ROOM_ASYLUM_WARD: TileTemplate = {
+  id: 'room_asylum_ward',
+  name: 'Disturbed Ward',
+  category: 'room',
+  subType: 'asylum_ward',
+  edges: ['DOOR', 'WALL', 'DOOR', 'WALL', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: 2,
+  watermarkIcon: 'Users',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'Iron beds in rows. Some patients rock silently. Others describe the same nightmare.',
+  possibleObjects: ['bed', 'cabinet'],
+  enemySpawnChance: 25,
+  possibleEnemies: ['cultist', 'formless_spawn']
+};
+
+export const ROOM_ASYLUM_OFFICE: TileTemplate = {
+  id: 'room_asylum_office',
+  name: "Director's Office",
+  category: 'room',
+  subType: 'asylum_office',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WINDOW', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'FileText',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Patient files fill the cabinets. One drawer is marked "SPECIAL CASES" and sealed with wax.',
+  possibleObjects: ['desk', 'bookshelf', 'cabinet']
+};
+
+export const ROOM_ASYLUM_THERAPY: TileTemplate = {
+  id: 'room_asylum_therapy',
+  name: 'Hydrotherapy Room',
+  category: 'room',
+  subType: 'asylum_therapy',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: 2,
+  watermarkIcon: 'Droplets',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Rusted tubs and restraints. The drains are clogged with something that moves.',
+  enemySpawnChance: 35,
+  possibleEnemies: ['formless_spawn', 'deep_one']
+};
+
+export const BASEMENT_ASYLUM: TileTemplate = {
+  id: 'basement_asylum',
+  name: 'Asylum Basement',
+  category: 'basement',
+  subType: 'asylum',
+  edges: ['OPEN', 'WALL', 'WALL', 'WALL', 'OPEN', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: 3,
+  watermarkIcon: 'FlaskConical',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Discontinued treatments. Jars of preserved specimens. Some jars are empty but still sealed.',
+  possibleObjects: ['crate', 'barrel'],
+  enemySpawnChance: 40,
+  possibleEnemies: ['ghoul', 'formless_spawn']
+};
+
+// ----- MUSEUM INTERIOR TEMPLATES -----
+
+export const FOYER_MUSEUM: TileTemplate = {
+  id: 'foyer_museum',
+  name: 'Museum Lobby',
+  category: 'foyer',
+  subType: 'museum',
+  edges: ['DOOR', 'WALL', 'OPEN', 'OPEN', 'OPEN', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: 1,
+  watermarkIcon: 'Landmark',
+  spawnWeight: 8,
+  canRotate: false,
+  description: 'Marble floors reflect gas lamps. The donation box overflows with foreign coins.',
+  possibleObjects: ['statue', 'bench']
+};
+
+export const CORRIDOR_MUSEUM: TileTemplate = {
+  id: 'corridor_museum',
+  name: 'Exhibition Hall',
+  category: 'corridor',
+  subType: 'museum',
+  edges: ['OPEN', 'DOOR', 'DOOR', 'OPEN', 'DOOR', 'DOOR'],
+  floorType: 'stone',
+  zoneLevel: 1,
+  watermarkIcon: 'Frame',
+  spawnWeight: 10,
+  canRotate: true,
+  description: 'Glass cases line the walls. The exhibits seem to rearrange when no one watches.',
+  possibleObjects: ['display_case', 'statue']
+};
+
+export const ROOM_MUSEUM_EGYPTIAN: TileTemplate = {
+  id: 'room_museum_egyptian',
+  name: 'Egyptian Wing',
+  category: 'room',
+  subType: 'museum_egyptian',
+  edges: ['DOOR', 'WALL', 'WALL', 'DOOR', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: 2,
+  watermarkIcon: 'Pyramid',
+  spawnWeight: 7,
+  canRotate: true,
+  description: 'Sarcophagi stand sentinel. The mummy's wrappings twitch in drafts that don't exist.',
+  possibleObjects: ['sarcophagus', 'statue', 'display_case'],
+  enemySpawnChance: 30,
+  possibleEnemies: ['cultist', 'nightgaunt']
+};
+
+export const ROOM_MUSEUM_NATURAL: TileTemplate = {
+  id: 'room_museum_natural',
+  name: 'Natural History Hall',
+  category: 'room',
+  subType: 'museum_natural',
+  edges: ['DOOR', 'WALL', 'DOOR', 'WALL', 'WALL', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Bone',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'Dinosaur bones tower overhead. Taxidermied eyes follow your movement.',
+  possibleObjects: ['display_case', 'skeleton']
+};
+
+export const ROOM_MUSEUM_OCCULT: TileTemplate = {
+  id: 'room_museum_occult',
+  name: 'Restricted Collection',
+  category: 'room',
+  subType: 'museum_occult',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 3,
+  watermarkIcon: 'Ban',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'Items too dangerous for public display. The warning signs are written in dead languages.',
+  possibleObjects: ['display_case', 'bookshelf', 'artifact'],
+  enemySpawnChance: 40,
+  possibleEnemies: ['cultist', 'dark_priest', 'mi-go']
+};
+
+export const ROOM_MUSEUM_ARCHIVE: TileTemplate = {
+  id: 'room_museum_archive',
+  name: "Curator's Archive",
+  category: 'room',
+  subType: 'museum_archive',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WINDOW', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 2,
+  watermarkIcon: 'Archive',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Acquisition records and provenance documents. Some artifacts have no origin listed.',
+  possibleObjects: ['desk', 'bookshelf', 'cabinet']
+};
+
+// ----- HOTEL INTERIOR TEMPLATES -----
+
+export const FOYER_HOTEL: TileTemplate = {
+  id: 'foyer_hotel',
+  name: 'Hotel Lobby',
+  category: 'foyer',
+  subType: 'hotel',
+  edges: ['DOOR', 'WALL', 'OPEN', 'OPEN', 'OPEN', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'ConciergeBell',
+  spawnWeight: 8,
+  canRotate: false,
+  description: 'Faded elegance. The guest register shows the same handwriting for decades of entries.',
+  possibleObjects: ['desk', 'couch', 'luggage']
+};
+
+export const CORRIDOR_HOTEL: TileTemplate = {
+  id: 'corridor_hotel',
+  name: 'Hotel Hallway',
+  category: 'corridor',
+  subType: 'hotel',
+  edges: ['OPEN', 'DOOR', 'DOOR', 'OPEN', 'DOOR', 'DOOR'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'DoorClosed',
+  spawnWeight: 12,
+  canRotate: true,
+  description: 'Numbered doors line the corridor. Room 313 has no number plate.',
+  enemySpawnChance: 15,
+  possibleEnemies: ['cultist']
+};
+
+export const ROOM_HOTEL_GUEST: TileTemplate = {
+  id: 'room_hotel_guest',
+  name: 'Guest Room',
+  category: 'room',
+  subType: 'hotel_guest',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WINDOW', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Bed',
+  spawnWeight: 15,
+  canRotate: true,
+  description: 'A modest room. Previous guests left behind more than just belongings.',
+  possibleObjects: ['bed', 'wardrobe', 'desk']
+};
+
+export const ROOM_HOTEL_SUITE: TileTemplate = {
+  id: 'room_hotel_suite',
+  name: 'Penthouse Suite',
+  category: 'room',
+  subType: 'hotel_suite',
+  edges: ['DOOR', 'WINDOW', 'WALL', 'DOOR', 'WINDOW', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 2,
+  watermarkIcon: 'Crown',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Luxurious and spacious. The permanent resident checked in forty years ago.',
+  possibleObjects: ['bed', 'couch', 'desk', 'safe'],
+  enemySpawnChance: 25,
+  possibleEnemies: ['cultist', 'ghoul']
+};
+
+export const ROOM_HOTEL_KITCHEN: TileTemplate = {
+  id: 'room_hotel_kitchen',
+  name: 'Hotel Kitchen',
+  category: 'room',
+  subType: 'hotel_kitchen',
+  edges: ['DOOR', 'WALL', 'DOOR', 'WALL', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: 1,
+  watermarkIcon: 'ChefHat',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Industrial stoves and meat lockers. The menu never changes, but the ingredients do.',
+  possibleObjects: ['stove', 'cabinet', 'crate']
+};
+
+export const BASEMENT_HOTEL: TileTemplate = {
+  id: 'basement_hotel',
+  name: 'Hotel Basement',
+  category: 'basement',
+  subType: 'hotel',
+  edges: ['OPEN', 'WALL', 'WALL', 'OPEN', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: 2,
+  watermarkIcon: 'Wine',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Wine cellar and storage. The oldest bottles predate the hotel itself.',
+  possibleObjects: ['barrel', 'crate', 'wine_rack'],
+  enemySpawnChance: 30,
+  possibleEnemies: ['ghoul', 'cultist']
+};
+
 // ============================================================================
 // 5. TEMPLATES REGISTRY
 // ============================================================================
@@ -2112,6 +2419,9 @@ export const TILE_TEMPLATES: Record<string, TileTemplate> = {
   foyer_grand: FOYER_GRAND,
   foyer_small: FOYER_SMALL,
   foyer_church: FOYER_CHURCH,
+  foyer_asylum: FOYER_ASYLUM,
+  foyer_museum: FOYER_MUSEUM,
+  foyer_hotel: FOYER_HOTEL,
 
   // Corridor
   corridor_straight: CORRIDOR_STRAIGHT,
@@ -2119,6 +2429,9 @@ export const TILE_TEMPLATES: Record<string, TileTemplate> = {
   corridor_corner: CORRIDOR_CORNER,
   corridor_cross: CORRIDOR_CROSS,
   corridor_wide: CORRIDOR_WIDE,
+  corridor_asylum: CORRIDOR_ASYLUM,
+  corridor_museum: CORRIDOR_MUSEUM,
+  corridor_hotel: CORRIDOR_HOTEL,
 
   // Room (original)
   room_study: ROOM_STUDY,
@@ -2143,6 +2456,20 @@ export const TILE_TEMPLATES: Record<string, TileTemplate> = {
   room_cellarwine: ROOM_CELLARWINE,
   room_trophy: ROOM_TROPHY,
   room_music: ROOM_MUSIC,
+  // Asylum interior rooms
+  room_asylum_cell: ROOM_ASYLUM_CELL,
+  room_asylum_ward: ROOM_ASYLUM_WARD,
+  room_asylum_office: ROOM_ASYLUM_OFFICE,
+  room_asylum_therapy: ROOM_ASYLUM_THERAPY,
+  // Museum interior rooms
+  room_museum_egyptian: ROOM_MUSEUM_EGYPTIAN,
+  room_museum_natural: ROOM_MUSEUM_NATURAL,
+  room_museum_occult: ROOM_MUSEUM_OCCULT,
+  room_museum_archive: ROOM_MUSEUM_ARCHIVE,
+  // Hotel interior rooms
+  room_hotel_guest: ROOM_HOTEL_GUEST,
+  room_hotel_suite: ROOM_HOTEL_SUITE,
+  room_hotel_kitchen: ROOM_HOTEL_KITCHEN,
 
   // Stairs
   stairs_down: STAIRS_DOWN,
@@ -2161,6 +2488,9 @@ export const TILE_TEMPLATES: Record<string, TileTemplate> = {
   basement_icehouse: BASEMENT_ICEHOUSE,
   basement_workshop: BASEMENT_WORKSHOP,
   basement_cistern: BASEMENT_CISTERN,
+  // Asylum and Hotel basements
+  basement_asylum: BASEMENT_ASYLUM,
+  basement_hotel: BASEMENT_HOTEL,
 
   // Crypt (original)
   crypt_tomb: CRYPT_TOMB,
