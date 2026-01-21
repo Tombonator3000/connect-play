@@ -44,6 +44,209 @@ export interface ObjectiveSpawnState {
 }
 
 // ============================================================================
+// DATA-DRIVEN LOOKUP TABLES
+// ============================================================================
+
+/**
+ * Room spawn bonus configuration.
+ * Maps room name patterns to spawn probability bonuses.
+ */
+interface RoomSpawnBonus {
+  patterns: string[];
+  bonus: number;
+}
+
+export const ROOM_SPAWN_BONUSES: RoomSpawnBonus[] = [
+  { patterns: ['ritual', 'altar', 'sanctum'], bonus: 0.25 },      // Occult items
+  { patterns: ['study', 'library', 'office'], bonus: 0.2 },       // Books and papers
+  { patterns: ['cellar', 'basement', 'vault'], bonus: 0.15 },     // Hidden things
+  { patterns: ['storage', 'cache', 'closet'], bonus: 0.1 },       // Supplies
+];
+
+/**
+ * Quest tile type lookup configuration.
+ * Maps targetId patterns to tile type and name.
+ */
+interface QuestTileTypeLookup {
+  patterns: string[];
+  type: 'exit' | 'altar' | 'ritual_point' | 'boss_room' | 'npc_location';
+  name: string;
+}
+
+export const QUEST_TILE_TYPE_LOOKUP: QuestTileTypeLookup[] = [
+  { patterns: ['exit'], type: 'exit', name: 'Exit' },
+  { patterns: ['altar', 'ritual'], type: 'altar', name: 'Ritual Altar' },
+  { patterns: ['point'], type: 'ritual_point', name: 'Ritual Point' },
+  { patterns: ['boss', 'sanctum'], type: 'boss_room', name: 'Dark Sanctum' },
+];
+
+/**
+ * Item room scoring configuration.
+ * Maps item types to room patterns and their scores.
+ */
+interface ItemRoomScoreEntry {
+  patterns: string[];
+  score: number;
+}
+
+interface ItemRoomScores {
+  [itemType: string]: ItemRoomScoreEntry[];
+}
+
+export const ITEM_ROOM_SCORES: ItemRoomScores = {
+  key: [
+    { patterns: ['study', 'office'], score: 3 },
+    { patterns: ['bedroom', 'guard'], score: 2 },
+  ],
+  clue: [
+    { patterns: ['library', 'study'], score: 3 },
+    { patterns: ['office', 'archive'], score: 2 },
+  ],
+  collectible: [
+    { patterns: ['ritual', 'altar'], score: 3 },
+    { patterns: ['vault', 'crypt'], score: 2 },
+  ],
+  artifact: [
+    { patterns: ['ritual', 'altar'], score: 3 },
+    { patterns: ['vault', 'crypt'], score: 2 },
+  ],
+};
+
+/**
+ * Quest tile location scoring configuration.
+ * Maps quest tile types to scoring rules.
+ */
+interface TileScoreRule {
+  category?: string;
+  patterns?: string[];
+  zoneLevel?: number | { min?: number; max?: number };
+  score: number;
+}
+
+interface QuestTileLocationScores {
+  [tileType: string]: TileScoreRule[];
+}
+
+export const QUEST_TILE_LOCATION_SCORES: QuestTileLocationScores = {
+  exit: [
+    { category: 'foyer', score: 5 },
+    { category: 'facade', score: 4 },
+    { patterns: ['entrance', 'door'], score: 3 },
+    { zoneLevel: { min: 0, max: 1 }, score: 2 },
+  ],
+  altar: [
+    { category: 'crypt', score: 5 },
+    { patterns: ['ritual', 'altar'], score: 5 },
+    { category: 'basement', score: 3 },
+    { patterns: ['chamber', 'sanctum'], score: 3 },
+    { zoneLevel: { max: -1 }, score: 2 },
+  ],
+  ritual_point: [
+    { category: 'crypt', score: 5 },
+    { patterns: ['ritual', 'altar'], score: 5 },
+    { category: 'basement', score: 3 },
+    { patterns: ['chamber', 'sanctum'], score: 3 },
+    { zoneLevel: { max: -1 }, score: 2 },
+  ],
+  boss_room: [
+    { category: 'crypt', score: 5 },
+    { zoneLevel: { max: -1 }, score: 4 },
+    { patterns: ['sanctum', 'throne'], score: 3 },
+  ],
+  npc_location: [
+    { category: 'room', score: 3 },
+    { patterns: ['cell', 'prison'], score: 2 },
+  ],
+};
+
+// ============================================================================
+// LOOKUP HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Finds the room spawn bonus for a given room name.
+ */
+export function getRoomSpawnBonus(roomName: string): number {
+  const lowerName = roomName.toLowerCase();
+  for (const entry of ROOM_SPAWN_BONUSES) {
+    if (entry.patterns.some(pattern => lowerName.includes(pattern))) {
+      return entry.bonus;
+    }
+  }
+  return 0;
+}
+
+/**
+ * Determines quest tile type and name from a target ID.
+ */
+export function getQuestTileTypeFromTargetId(targetId: string): { type: QuestTile['type']; name: string } {
+  for (const entry of QUEST_TILE_TYPE_LOOKUP) {
+    if (entry.patterns.some(pattern => targetId.includes(pattern))) {
+      return { type: entry.type, name: entry.name };
+    }
+  }
+  return { type: 'npc_location', name: 'Special Location' };
+}
+
+/**
+ * Calculates the room score for a quest item based on item type and room name.
+ */
+export function getItemRoomScore(itemType: string, roomName: string): number {
+  const lowerName = roomName.toLowerCase();
+  const scoreEntries = ITEM_ROOM_SCORES[itemType];
+  if (!scoreEntries) return 0;
+
+  let totalScore = 0;
+  for (const entry of scoreEntries) {
+    if (entry.patterns.some(pattern => lowerName.includes(pattern))) {
+      totalScore += entry.score;
+    }
+  }
+  return totalScore;
+}
+
+/**
+ * Calculates the location score for a quest tile based on tile properties.
+ */
+export function getQuestTileLocationScore(
+  questTileType: string,
+  tile: { category?: string; name: string; zoneLevel?: number }
+): number {
+  const rules = QUEST_TILE_LOCATION_SCORES[questTileType];
+  if (!rules) return 0;
+
+  const lowerName = tile.name.toLowerCase();
+  let totalScore = 0;
+
+  for (const rule of rules) {
+    // Check category match
+    if (rule.category && tile.category === rule.category) {
+      totalScore += rule.score;
+      continue;
+    }
+
+    // Check pattern match
+    if (rule.patterns && rule.patterns.some(pattern => lowerName.includes(pattern))) {
+      totalScore += rule.score;
+      continue;
+    }
+
+    // Check zone level match
+    if (rule.zoneLevel !== undefined && tile.zoneLevel !== undefined) {
+      const zoneMatch = typeof rule.zoneLevel === 'number'
+        ? tile.zoneLevel === rule.zoneLevel
+        : (rule.zoneLevel.min === undefined || tile.zoneLevel >= rule.zoneLevel.min) &&
+          (rule.zoneLevel.max === undefined || tile.zoneLevel <= rule.zoneLevel.max);
+      if (zoneMatch) {
+        totalScore += rule.score;
+      }
+    }
+  }
+
+  return totalScore;
+}
+
+// ============================================================================
 // QUEST ITEM DEFINITIONS
 // ============================================================================
 
@@ -176,22 +379,7 @@ function createQuestItem(
 
 function createQuestTile(objective: ScenarioObjective): QuestTile {
   const targetId = objective.targetId || '';
-  let type: QuestTile['type'] = 'npc_location';
-  let name = 'Special Location';
-
-  if (targetId.includes('exit')) {
-    type = 'exit';
-    name = 'Exit';
-  } else if (targetId.includes('altar') || targetId.includes('ritual')) {
-    type = 'altar';
-    name = 'Ritual Altar';
-  } else if (targetId.includes('point')) {
-    type = 'ritual_point';
-    name = 'Ritual Point';
-  } else if (targetId.includes('boss') || targetId.includes('sanctum')) {
-    type = 'boss_room';
-    name = 'Dark Sanctum';
-  }
+  const { type, name } = getQuestTileTypeFromTargetId(targetId);
 
   return {
     id: `quest_tile_${objective.id}`,
@@ -255,17 +443,7 @@ export function shouldSpawnQuestItem(
   const baseSpawnChance = behindSchedule ? 0.5 : 0.25;
 
   // Room type bonuses - some rooms are more likely to have items
-  let roomBonus = 0;
-  const roomName = tile.name.toLowerCase();
-  if (roomName.includes('study') || roomName.includes('library') || roomName.includes('office')) {
-    roomBonus = 0.2; // Books and papers here
-  } else if (roomName.includes('cellar') || roomName.includes('basement') || roomName.includes('vault')) {
-    roomBonus = 0.15; // Hidden things
-  } else if (roomName.includes('ritual') || roomName.includes('altar') || roomName.includes('sanctum')) {
-    roomBonus = 0.25; // Occult items
-  } else if (roomName.includes('storage') || roomName.includes('cache') || roomName.includes('closet')) {
-    roomBonus = 0.1; // Supplies
-  }
+  const roomBonus = getRoomSpawnBonus(tile.name);
 
   const finalChance = Math.min(0.8, baseSpawnChance + roomBonus);
 
@@ -664,26 +842,10 @@ export function findBestSpawnTile(
 
   if (validTiles.length === 0) return null;
 
-  // Score tiles by appropriateness
+  // Score tiles by appropriateness using data-driven lookup
   const scoredTiles = validTiles.map(tile => {
-    let score = 1;
-    const roomName = tile.name.toLowerCase();
-
-    // Boost score for appropriate room types
-    if (item.type === 'key') {
-      if (roomName.includes('study') || roomName.includes('office')) score += 3;
-      if (roomName.includes('bedroom') || roomName.includes('guard')) score += 2;
-    } else if (item.type === 'clue') {
-      if (roomName.includes('library') || roomName.includes('study')) score += 3;
-      if (roomName.includes('office') || roomName.includes('archive')) score += 2;
-    } else if (item.type === 'collectible' || item.type === 'artifact') {
-      if (roomName.includes('ritual') || roomName.includes('altar')) score += 3;
-      if (roomName.includes('vault') || roomName.includes('crypt')) score += 2;
-    }
-
-    // Slight randomization to prevent predictability
-    score += Math.random() * 0.5;
-
+    // Base score + item-type-specific room bonus
+    const score = 1 + getItemRoomScore(item.type, tile.name) + Math.random() * 0.5;
     return { tile, score };
   });
 
@@ -707,43 +869,9 @@ export function findBestQuestTileLocation(
 
   if (validTiles.length === 0) return null;
 
-  // Score tiles by type match
+  // Score tiles by type match using data-driven lookup
   const scoredTiles = validTiles.map(tile => {
-    let score = 0;
-    const roomName = tile.name.toLowerCase();
-
-    switch (questTile.type) {
-      case 'exit':
-        if (tile.category === 'foyer') score += 5;
-        if (tile.category === 'facade') score += 4;
-        if (roomName.includes('entrance') || roomName.includes('door')) score += 3;
-        if (tile.zoneLevel === 0 || tile.zoneLevel === 1) score += 2;
-        break;
-
-      case 'altar':
-      case 'ritual_point':
-        if (tile.category === 'crypt') score += 5;
-        if (roomName.includes('ritual') || roomName.includes('altar')) score += 5;
-        if (tile.category === 'basement') score += 3;
-        if (roomName.includes('chamber') || roomName.includes('sanctum')) score += 3;
-        if (tile.zoneLevel < 0) score += 2;
-        break;
-
-      case 'boss_room':
-        if (tile.category === 'crypt') score += 5;
-        if (tile.zoneLevel <= -1) score += 4;
-        if (roomName.includes('sanctum') || roomName.includes('throne')) score += 3;
-        break;
-
-      case 'npc_location':
-        if (tile.category === 'room') score += 3;
-        if (roomName.includes('cell') || roomName.includes('prison')) score += 2;
-        break;
-    }
-
-    // Add randomization
-    score += Math.random() * 0.5;
-
+    const score = getQuestTileLocationScore(questTile.type, tile) + Math.random() * 0.5;
     return { tile, score };
   });
 
