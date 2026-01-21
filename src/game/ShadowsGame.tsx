@@ -1486,12 +1486,16 @@ const ShadowsGame: React.FC = () => {
     if (action.id === 'solve_puzzle') {
       addToLog('You examine the puzzle mechanism...');
       const tile = state.board.find(t => t.id === activeContextTarget.tileId);
-      const puzzleDifficulty = tile?.edges[activeContextTarget.edgeIndex ?? 0]?.lockType === 'complex' ? 5 :
-                               tile?.edges[activeContextTarget.edgeIndex ?? 0]?.lockType === 'quality' ? 4 : 3;
+      const edge = tile?.edges[activeContextTarget.edgeIndex ?? 0];
+      const puzzleDifficulty = edge?.lockType === 'complex' ? 5 :
+                               edge?.lockType === 'quality' ? 4 : 3;
+      // Use puzzle type from edge, or pick a random type if not specified
+      const puzzleTypes: import('./types').PuzzleType[] = ['sequence', 'code_lock', 'symbol_match', 'pressure_plate', 'astronomy', 'mirror_light'];
+      const puzzleType = edge?.puzzleType || puzzleTypes[Math.floor(Math.random() * puzzleTypes.length)];
       setState(prev => ({
         ...prev,
         activePuzzle: {
-          type: 'sequence',
+          type: puzzleType,
           difficulty: puzzleDifficulty,
           targetTileId: activeContextTarget.tileId
         },

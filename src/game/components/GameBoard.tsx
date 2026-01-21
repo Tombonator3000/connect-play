@@ -501,7 +501,20 @@ const TILE_IMAGES: Record<string, string> = {
   echo: tileEcho,
   
   // Petrified Garden
-  petrified: tilePetrified
+  petrified: tilePetrified,
+
+  // Additional mappings for missing locations
+  townhouse: tileManor,      // Boarded-Up Townhouse
+  reception: tileManor,      // Dim Reception
+  service: tileHallway,      // Narrow Service Hall
+  floor: tileHallway,        // Creaking Floorboards
+  tasting: tileCellar,       // Wine Tasting Room
+  rats: tileSewer,           // Rats Nest
+  pit: tileCrypt,            // The Pit
+  standing: tileStonecircle, // The Standing Stones
+  devils: tileGraveyard,     // The Devils Acre
+  dead: tileDeadend,         // Dead End (whitespace handling)
+  hanging: tileHangingtree   // Hanging Tree (whitespace handling)
 };
 
 // Get tile image based on name

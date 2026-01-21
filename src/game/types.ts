@@ -202,6 +202,7 @@ export interface InventorySlots {
   rightHand: Item | null;  // Weapons, tools, light sources
   body: Item | null;       // Armor, cloaks, vests
   bag: (Item | null)[];    // 4 slots for keys, items, clues, consumables
+  questItems: Item[];      // Quest items - unlimited capacity, special display
 }
 
 /**
@@ -212,7 +213,8 @@ export function createEmptyInventory(): InventorySlots {
     leftHand: null,
     rightHand: null,
     body: null,
-    bag: [null, null, null, null]
+    bag: [null, null, null, null],
+    questItems: []
   };
 }
 
@@ -336,7 +338,21 @@ export function equipItem(
   item: Item,
   slotName?: InventorySlotName
 ): EquipResult {
-  const newInventory = { ...inventory, bag: [...inventory.bag] };
+  const newInventory = {
+    ...inventory,
+    bag: [...inventory.bag],
+    questItems: [...(inventory.questItems || [])]
+  };
+
+  // Quest items always go to the quest items slot - unlimited capacity
+  if (item.isQuestItem || item.type === 'quest_item') {
+    newInventory.questItems.push(item);
+    return {
+      success: true,
+      newInventory,
+      message: `Quest item collected: ${item.name}`
+    };
+  }
 
   // Auto-select slot if not specified
   const targetSlot = slotName || findAvailableSlot(inventory, item);
@@ -567,6 +583,7 @@ export interface EdgeData {
   lockType?: LockType;
   keyId?: string;
   puzzleId?: string;
+  puzzleType?: PuzzleType;      // Type of puzzle for puzzle doors
   isDiscovered?: boolean;       // For secret doors - true if player has found it
   // Blocked edge properties
   blockingType?: EdgeBlockingType;
@@ -1014,7 +1031,8 @@ export type PuzzleType =
   | 'symbol_match'   // Match 3 ancient symbols in correct order
   | 'blood_ritual'   // Sacrifice HP or Sanity to open
   | 'astronomy'      // Align rotating star dials
-  | 'pressure_plate'; // Co-op - someone must stand on plate
+  | 'pressure_plate' // Co-op - someone must stand on plate
+  | 'mirror_light';  // Rotate mirrors to direct light beam to target
 
 /**
  * Active puzzle state during puzzle interaction

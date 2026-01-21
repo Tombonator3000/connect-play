@@ -223,6 +223,25 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
               ))}
             </div>
           </div>
+
+          {/* Quest Items Section */}
+          {player.inventory.questItems && player.inventory.questItems.length > 0 && (
+            <div className="mt-4 pt-3 border-t border-yellow-600/30">
+              <h4 className="text-[9px] text-yellow-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                <Star size={10} className="text-yellow-400" /> Quest Items ({player.inventory.questItems.length})
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {player.inventory.questItems.map((item, index) => (
+                  <ItemTooltip key={item.id || index} item={item}>
+                    <div className="flex items-center gap-1.5 px-2 py-1 bg-yellow-900/30 border border-yellow-600/50 rounded-lg cursor-help hover:bg-yellow-900/50 transition-colors">
+                      <Star size={12} className="text-yellow-400" />
+                      <span className="text-xs text-yellow-200 font-medium">{item.name}</span>
+                    </div>
+                  </ItemTooltip>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Item Action Menu */}
