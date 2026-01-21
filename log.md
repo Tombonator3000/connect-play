@@ -1,5 +1,137 @@
 # Development Log
 
+## 2026-01-21: Refactor objectiveSpawner.ts - Data-Driven Lookup Pattern
+
+### Oppsummering
+
+Refaktorert fire komplekse funksjoner i `objectiveSpawner.ts` fra if/else og switch/case-kjeder til data-driven lookups. Dette forbedrer lesbarhet, vedlikeholdbarhet, og gjør det enklere å legge til nye rom-typer og spawn-regler.
+
+---
+
+### PROBLEMET IDENTIFISERT 🔴
+
+Fire funksjoner hadde gjentatte string-matching patterns med mange if/else eller switch/case statements:
+
+1. **shouldSpawnQuestItem** - Room bonus beregning med 4 if/else blokker
+2. **createQuestTile** - Tile type bestemmelse med 4 if/else blokker
+3. **findBestSpawnTile** - Room scoring med 6+ if statements i nested struktur
+4. **findBestQuestTileLocation** - Location scoring med 14+ if statements i switch/case
+
+Disse mønstrene var vanskelige å vedlikeholde og utvide.
+
+---
+
+### LØSNING IMPLEMENTERT ✅
+
+#### 1. Nye Data-strukturer
+
+Lagt til fire lookup-tabeller:
+
+```typescript
+// Room spawn bonuses for item spawning
+export const ROOM_SPAWN_BONUSES: RoomSpawnBonus[] = [
+  { patterns: ['ritual', 'altar', 'sanctum'], bonus: 0.25 },
+  { patterns: ['study', 'library', 'office'], bonus: 0.2 },
+  { patterns: ['cellar', 'basement', 'vault'], bonus: 0.15 },
+  { patterns: ['storage', 'cache', 'closet'], bonus: 0.1 },
+];
+
+// Quest tile type lookup
+export const QUEST_TILE_TYPE_LOOKUP: QuestTileTypeLookup[] = [
+  { patterns: ['exit'], type: 'exit', name: 'Exit' },
+  { patterns: ['altar', 'ritual'], type: 'altar', name: 'Ritual Altar' },
+  // ...
+];
+
+// Item room scores based on item type
+export const ITEM_ROOM_SCORES: ItemRoomScores = {
+  key: [{ patterns: ['study', 'office'], score: 3 }, ...],
+  clue: [{ patterns: ['library', 'study'], score: 3 }, ...],
+  // ...
+};
+
+// Quest tile location scores
+export const QUEST_TILE_LOCATION_SCORES: QuestTileLocationScores = {
+  exit: [{ category: 'foyer', score: 5 }, ...],
+  altar: [{ category: 'crypt', score: 5 }, ...],
+  // ...
+};
+```
+
+#### 2. Nye Hjelpefunksjoner
+
+```typescript
+getRoomSpawnBonus(roomName: string): number
+getQuestTileTypeFromTargetId(targetId: string): { type, name }
+getItemRoomScore(itemType: string, roomName: string): number
+getQuestTileLocationScore(questTileType: string, tile: Tile): number
+```
+
+#### 3. Refaktorerte Funksjoner
+
+**Før (shouldSpawnQuestItem):**
+```typescript
+if (roomName.includes('study') || roomName.includes('library') || roomName.includes('office')) {
+  roomBonus = 0.2;
+} else if (roomName.includes('cellar') || roomName.includes('basement') || roomName.includes('vault')) {
+  roomBonus = 0.15;
+} // ... etc
+```
+
+**Etter:**
+```typescript
+const roomBonus = getRoomSpawnBonus(tile.name);
+```
+
+**Før (findBestSpawnTile):**
+```typescript
+if (item.type === 'key') {
+  if (roomName.includes('study') || roomName.includes('office')) score += 3;
+  if (roomName.includes('bedroom') || roomName.includes('guard')) score += 2;
+} else if (item.type === 'clue') {
+  // ... 8 more conditions
+}
+```
+
+**Etter:**
+```typescript
+const score = 1 + getItemRoomScore(item.type, tile.name) + Math.random() * 0.5;
+```
+
+---
+
+### FILER ENDRET
+
+1. **src/game/utils/objectiveSpawner.ts**
+   - Lagt til 4 data-strukturer (interfaces + lookup-tabeller)
+   - Lagt til 4 hjelpefunksjoner
+   - Refaktorert `shouldSpawnQuestItem` - 12 linjer → 1 linje
+   - Refaktorert `createQuestTile` - 16 linjer → 2 linjer
+   - Refaktorert `findBestSpawnTile` - 12 linjer → 3 linjer
+   - Refaktorert `findBestQuestTileLocation` - 28 linjer → 3 linjer
+
+---
+
+### FORDELER
+
+| Før | Etter |
+|-----|-------|
+| 68 linjer med if/else og switch/case | 9 linjer med funksjonskall |
+| Vanskelig å legge til nye rom-typer | Legg til én linje i lookup-tabell |
+| Duplikert logikk for pattern-matching | Sentralisert pattern-matching |
+| Svak dokumentasjon | Selvdokumenterende data-strukturer |
+
+---
+
+### RESULTAT
+
+- ✅ Build vellykket (923KB bundle)
+- ✅ Samme funksjonalitet, bedre struktur
+- ✅ Følger prosjektets etablerte data-driven pattern
+- ✅ Enklere å utvide med nye rom-typer
+
+---
+
 ## 2026-01-20: Comprehensive Mobile Touch and Quest Item Fixes
 
 ### Oppsummering
