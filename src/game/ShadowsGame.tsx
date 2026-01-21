@@ -337,19 +337,26 @@ const ShadowsGame: React.FC = () => {
               }
             }
 
-            // Update state with new spawns
-            setState(prev => ({
-              ...prev,
-              board: updatedBoard,
-              objectiveSpawnState: updatedState,
-            }));
+            // Log urgency status before state update (addToLog updates state synchronously anyway)
+            // This ensures the log message appears in sequence with the state change
+            const urgencyMessage = spawnCheck.urgency === 'critical'
+              ? "📜 Doom nærmer seg! Kritiske elementer har blitt avslørt for å gi deg en sjanse..."
+              : spawnCheck.urgency === 'warning'
+                ? "📜 Tiden er knapp. Noen skjulte elementer har avslørt seg selv..."
+                : null;
 
-            // Log urgency status
-            if (spawnCheck.urgency === 'critical') {
-              addToLog("📜 Doom nærmer seg! Kritiske elementer har blitt avslørt for å gi deg en sjanse...");
-            } else if (spawnCheck.urgency === 'warning') {
-              addToLog("📜 Tiden er knapp. Noen skjulte elementer har avslørt seg selv...");
-            }
+            // Update state with new spawns and urgency log together
+            setState(prev => {
+              const newLog = urgencyMessage
+                ? [`[${new Date().toLocaleTimeString()}] ${urgencyMessage}`, ...prev.log].slice(0, 50)
+                : prev.log;
+              return {
+                ...prev,
+                board: updatedBoard,
+                objectiveSpawnState: updatedState,
+                log: newLog,
+              };
+            });
           }
         }
 
@@ -491,7 +498,14 @@ const ShadowsGame: React.FC = () => {
         triggerScreenShake();
 
         if (event.type === 'spawn_enemy' || event.type === 'spawn_boss') {
-          const spawnType = event.targetId as EnemyType;
+          // Runtime validation: ensure targetId is a valid EnemyType
+          const targetId = event.targetId;
+          if (!targetId || !(targetId in BESTIARY)) {
+            console.warn(`Invalid enemy type in doom event: ${targetId}. Falling back to 'cultist'.`);
+          }
+          const spawnType: EnemyType = (targetId && targetId in BESTIARY)
+            ? targetId as EnemyType
+            : 'cultist';
           const count = event.amount || 1;
 
           // Spawn near a random player
@@ -2202,7 +2216,7 @@ const ShadowsGame: React.FC = () => {
         }
 
         // Tile-based sanity triggers on first visit
-        const isFirstVisit = !state.exploredTiles?.has(`${q},${r}`);
+        const isFirstVisit = !state.exploredTiles?.includes(`${q},${r}`);
         let tileSanityLoss = 0;
         if (isFirstVisit && tileToEnter) {
           const tileName = tileToEnter.name?.toLowerCase() || '';
@@ -2738,7 +2752,7 @@ const ShadowsGame: React.FC = () => {
             setState(prev => ({ ...prev, lastDiceRoll: rolls }));
 
             // Calculate damage (skulls vs enemy defense)
-            const enemyDefense = BESTIARY[occTarget.type]?.defense || 1;
+            const enemyDefense = BESTIARY[occTarget.type]?.defenseDice || 1;
             const defenseRolls: number[] = [];
             let shields = 0;
             for (let i = 0; i < enemyDefense; i++) {

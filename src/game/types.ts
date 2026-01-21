@@ -149,6 +149,8 @@ export interface Player extends Character {
   traits: Trait[];
   // Legacy system - unique hero ID for persistent heroes
   heroId?: string;  // The unique LegacyHero.id for tracking between scenarios
+  // Temporary combat bonuses (reset at end of round)
+  tempDefenseBonus?: number;  // Temporary defense bonus from spells like Dark Shield
 }
 
 export interface Item {

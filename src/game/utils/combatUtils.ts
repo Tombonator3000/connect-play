@@ -258,8 +258,9 @@ export function getDefenseDice(player: Player): { defenseDice: number; armorName
  *
  * ATTACK FLOW:
  * 1. Roll weapon dice (determined by weapon, not attribute)
- * 2. Veteran gets +1 die with melee weapons
+ * 2. Veteran gets +1 die with melee weapons ONLY (from REGELBOK.MD)
  * 3. Count "skulls" (4, 5, 6)
+ * 4. Critical hit: All attack dice succeed = +1 bonus damage
  *
  * Enemy defense (if any) is handled separately
  */
@@ -270,11 +271,15 @@ export function performAttack(
 ): CombatResult {
   const dc = 4; // Standard Hero Quest DC (skulls)
 
-  // Get attack dice from weapon (Hero Quest style - weapon determines dice count)
-  const { attackDice, weaponName } = getAttackDice(player);
+  // Get weapon info including whether it's ranged
+  const weaponInfo = getWeaponAttackDice(player);
+  const attackDice = weaponInfo.attackDice;
+  const weaponName = weaponInfo.weaponName;
 
-  // Veteran class bonus: +1 attack die
-  const classBonusDice = player.specialAbility === 'combat_bonus' ? 1 : 0;
+  // Veteran class bonus: +1 attack die ONLY with melee weapons (REGELBOK.MD)
+  // "Veteran: +1 angrepsterning med narkampvapen (melee)"
+  const isVeteranWithMelee = player.specialAbility === 'combat_bonus' && !weaponInfo.isRanged;
+  const classBonusDice = isVeteranWithMelee ? 1 : 0;
   const totalAttackDice = attackDice + classBonusDice;
 
   // Roll player's attack dice
@@ -615,6 +620,7 @@ export function hasRangedWeapon(player: Player): boolean {
 /**
  * Get combat dice preview for UI (Hero Quest style)
  * Shows attack dice based on weapon + any class bonus
+ * Veteran only gets +1 die with melee weapons (per REGELBOK.MD)
  */
 export function getCombatPreview(player: Player): {
   attackDice: number;
@@ -624,19 +630,24 @@ export function getCombatPreview(player: Player): {
   breakdown: string[];
   totalDice: number;
 } {
-  const { attackDice, weaponName } = getAttackDice(player);
+  const weaponInfo = getWeaponAttackDice(player);
+  const attackDice = weaponInfo.attackDice;
+  const weaponName = weaponInfo.weaponName;
   const defenseDice = getPlayerDefenseDice(player);
   const items = getAllItems(player.inventory);
   const armor = items.find(item => item.type === 'armor');
   const armorName = armor?.name || 'Ingen rustning';
-  const classBonusDice = player.specialAbility === 'combat_bonus' ? 1 : 0;
+
+  // Veteran only gets +1 die with melee weapons (REGELBOK.MD)
+  const isVeteranWithMelee = player.specialAbility === 'combat_bonus' && !weaponInfo.isRanged;
+  const classBonusDice = isVeteranWithMelee ? 1 : 0;
 
   const breakdown: string[] = [
     `${weaponName}: ${attackDice}d6`
   ];
 
   if (classBonusDice > 0) {
-    breakdown.push(`Veteran bonus: +1d6`);
+    breakdown.push(`Veteran melee bonus: +1d6`);
   }
 
   return {
