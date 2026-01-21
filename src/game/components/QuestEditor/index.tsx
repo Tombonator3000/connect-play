@@ -1,17 +1,29 @@
 /**
- * QUEST EDITOR - Fase 1
+ * QUEST EDITOR - Fase 2
  *
  * Visuell hex-editor for å lage scenarios manuelt.
- * Lar brukeren plassere tiles på et grid og eksportere til JSON.
+ * Inkluderer:
+ * - Fase 1: Tile placement, rotation, export/import
+ * - Fase 2: Edge-konfigurasjon, monster/item placement, objectives
  */
 
 import React, { useState, useCallback, useRef } from 'react';
-import { ArrowLeft, Download, Trash2, RotateCw, Save, Upload, Grid3X3, Eraser, MousePointer } from 'lucide-react';
+import { ArrowLeft, Download, Trash2, RotateCw, Save, Upload, Grid3X3, Eraser, MousePointer, Skull, Package, Target, Settings } from 'lucide-react';
 import { TileTemplate, ConnectionEdgeType, rotateEdges } from '../../tileConnectionSystem';
-import { TileCategory, FloorType, ZoneLevel, EdgeData, Item } from '../../types';
+import { TileCategory, FloorType, ZoneLevel, EdgeData, Item, EnemyType } from '../../types';
 import { Button } from '@/components/ui/button';
 import EditorCanvas from './EditorCanvas';
 import TilePalette from './TilePalette';
+import EdgeConfigPanel from './EdgeConfigPanel';
+import MonsterPalette, { MonsterPlacement } from './MonsterPalette';
+import ItemPalette, { QuestItemPlacement } from './ItemPalette';
+import ObjectivesPanel, { EditorObjective } from './ObjectivesPanel';
+
+// ============================================================================
+// RIGHT PANEL TABS
+// ============================================================================
+
+type RightPanelTab = 'properties' | 'monsters' | 'items' | 'objectives';
 
 // ============================================================================
 // EDITOR TYPES
@@ -76,8 +88,12 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
     theme: 'investigation'
   });
 
+  // Objectives state
+  const [objectives, setObjectives] = useState<EditorObjective[]>([]);
+
   // View state
   const [showGrid, setShowGrid] = useState(true);
+  const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('properties');
 
   // Ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -183,6 +199,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
     // Convert to scenario-compatible format
     const exportData = {
       metadata,
+      objectives,
       tiles: tilesArray.map(tile => ({
         id: tile.id,
         q: tile.q,
@@ -202,7 +219,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
         items: tile.items,
       })),
       exportedAt: new Date().toISOString(),
-      version: '1.0'
+      version: '2.0'  // Updated version for Fase 2
     };
 
     const json = JSON.stringify(exportData, null, 2);
@@ -216,7 +233,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  }, [tiles, metadata]);
+  }, [tiles, metadata, objectives]);
 
   // ============================================================================
   // JSON IMPORT
@@ -248,6 +265,10 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
 
           if (data.metadata) {
             setMetadata(data.metadata);
+          }
+
+          if (data.objectives && Array.isArray(data.objectives)) {
+            setObjectives(data.objectives);
           }
 
           setSelectedTileId(null);
@@ -418,132 +439,256 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
           />
         </div>
 
-        {/* Right sidebar - Properties panel */}
-        <div className="w-72 bg-slate-800 border-l border-slate-700 p-4 overflow-y-auto">
-          <h3 className="text-white font-semibold mb-4">Properties</h3>
+        {/* Right sidebar - Tabbed panel */}
+        <div className="w-80 bg-slate-800 border-l border-slate-700 flex flex-col overflow-hidden">
+          {/* Tab buttons */}
+          <div className="flex border-b border-slate-700 shrink-0">
+            <button
+              onClick={() => setRightPanelTab('properties')}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 text-xs font-medium transition-colors ${
+                rightPanelTab === 'properties'
+                  ? 'bg-slate-700 text-amber-400 border-b-2 border-amber-400'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <Settings className="w-3.5 h-3.5" />
+              Tile
+            </button>
+            <button
+              onClick={() => setRightPanelTab('monsters')}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 text-xs font-medium transition-colors ${
+                rightPanelTab === 'monsters'
+                  ? 'bg-slate-700 text-red-400 border-b-2 border-red-400'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <Skull className="w-3.5 h-3.5" />
+              Monsters
+            </button>
+            <button
+              onClick={() => setRightPanelTab('items')}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 text-xs font-medium transition-colors ${
+                rightPanelTab === 'items'
+                  ? 'bg-slate-700 text-green-400 border-b-2 border-green-400'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <Package className="w-3.5 h-3.5" />
+              Items
+            </button>
+            <button
+              onClick={() => setRightPanelTab('objectives')}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 text-xs font-medium transition-colors ${
+                rightPanelTab === 'objectives'
+                  ? 'bg-slate-700 text-purple-400 border-b-2 border-purple-400'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <Target className="w-3.5 h-3.5" />
+              Goals
+            </button>
+          </div>
 
-          {selectedTile ? (
-            <div className="space-y-4">
-              <div>
-                <label className="text-slate-400 text-sm">Name</label>
-                <div className="text-white">{selectedTile.name}</div>
-              </div>
-
-              <div>
-                <label className="text-slate-400 text-sm">Category</label>
-                <div className="text-white capitalize">{selectedTile.category}</div>
-              </div>
-
-              <div>
-                <label className="text-slate-400 text-sm">Position</label>
-                <div className="text-white">q: {selectedTile.q}, r: {selectedTile.r}</div>
-              </div>
-
-              <div>
-                <label className="text-slate-400 text-sm">Zone Level</label>
-                <div className="text-white">{selectedTile.zoneLevel}</div>
-              </div>
-
-              <div>
-                <label className="text-slate-400 text-sm">Floor Type</label>
-                <div className="text-white capitalize">{selectedTile.floorType}</div>
-              </div>
-
-              <div>
-                <label className="text-slate-400 text-sm">Edges</label>
-                <div className="grid grid-cols-2 gap-1 text-xs">
-                  {['N', 'NE', 'SE', 'S', 'SW', 'NW'].map((dir, i) => (
-                    <div key={dir} className="text-slate-300">
-                      {dir}: <span className="text-amber-400">{selectedTile.edges[i]}</span>
+          {/* Tab content */}
+          <div className="flex-1 overflow-y-auto p-4">
+            {/* PROPERTIES TAB */}
+            {rightPanelTab === 'properties' && (
+              <>
+                {selectedTile ? (
+                  <div className="space-y-4">
+                    {/* Basic info */}
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div>
+                        <span className="text-slate-400 text-xs">Name</span>
+                        <div className="text-white truncate">{selectedTile.name}</div>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-xs">Category</span>
+                        <div className="text-white capitalize">{selectedTile.category}</div>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-xs">Position</span>
+                        <div className="text-white">q:{selectedTile.q}, r:{selectedTile.r}</div>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 text-xs">Zone</span>
+                        <div className="text-white">{selectedTile.zoneLevel}</div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
 
-              <div className="border-t border-slate-600 pt-4">
-                <label className="flex items-center gap-2 text-white cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={selectedTile.isStartLocation || false}
-                    onChange={(e) => {
+                    {/* Start location */}
+                    <div className="border-t border-slate-600 pt-3">
+                      <label className="flex items-center gap-2 text-white cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedTile.isStartLocation || false}
+                          onChange={(e) => {
+                            const key = getTileKey(selectedTile.q, selectedTile.r);
+                            setTiles(prev => {
+                              const newTiles = new Map(prev);
+                              const tile = newTiles.get(key);
+                              if (tile) {
+                                if (e.target.checked) {
+                                  newTiles.forEach((t, k) => {
+                                    if (t.isStartLocation) {
+                                      newTiles.set(k, { ...t, isStartLocation: false });
+                                    }
+                                  });
+                                }
+                                newTiles.set(key, { ...tile, isStartLocation: e.target.checked });
+                              }
+                              return newTiles;
+                            });
+                          }}
+                          className="accent-amber-500"
+                        />
+                        <span className="text-sm">Start Location</span>
+                      </label>
+                    </div>
+
+                    {/* Edge Configuration */}
+                    <div className="border-t border-slate-600 pt-3">
+                      <EdgeConfigPanel
+                        edges={selectedTile.edges}
+                        onEdgeChange={(index, newType) => {
+                          const key = getTileKey(selectedTile.q, selectedTile.r);
+                          setTiles(prev => {
+                            const newTiles = new Map(prev);
+                            const tile = newTiles.get(key);
+                            if (tile) {
+                              const newEdges = [...tile.edges] as typeof tile.edges;
+                              newEdges[index] = newType;
+                              newTiles.set(key, { ...tile, edges: newEdges });
+                            }
+                            return newTiles;
+                          });
+                        }}
+                      />
+                    </div>
+
+                    {selectedTile.description && (
+                      <div className="border-t border-slate-600 pt-3">
+                        <span className="text-slate-400 text-xs">Description</span>
+                        <div className="text-slate-300 text-sm italic mt-1">"{selectedTile.description}"</div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-slate-500 text-sm text-center py-8">
+                    Select a tile to view and edit its properties
+                  </div>
+                )}
+
+                {/* Scenario metadata section */}
+                <div className="mt-6 pt-4 border-t border-slate-600">
+                  <h3 className="text-white font-semibold mb-3">Scenario Settings</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-slate-400 text-xs block mb-1">Start Doom</label>
+                      <input
+                        type="number"
+                        value={metadata.startDoom}
+                        onChange={(e) => setMetadata(prev => ({ ...prev, startDoom: parseInt(e.target.value) || 12 }))}
+                        className="w-full bg-slate-700 text-white px-2 py-1 rounded text-sm border border-slate-600"
+                        min={1}
+                        max={20}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 text-xs block mb-1">Difficulty</label>
+                      <select
+                        value={metadata.difficulty}
+                        onChange={(e) => setMetadata(prev => ({ ...prev, difficulty: e.target.value as ScenarioMetadata['difficulty'] }))}
+                        className="w-full bg-slate-700 text-white px-2 py-1 rounded text-sm border border-slate-600"
+                      >
+                        <option value="easy">Easy</option>
+                        <option value="normal">Normal</option>
+                        <option value="hard">Hard</option>
+                        <option value="nightmare">Nightmare</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-slate-400 text-xs block mb-1">Briefing</label>
+                      <textarea
+                        value={metadata.briefing}
+                        onChange={(e) => setMetadata(prev => ({ ...prev, briefing: e.target.value }))}
+                        className="w-full bg-slate-700 text-white px-2 py-1 rounded text-sm border border-slate-600 h-16 resize-none"
+                        placeholder="Opening text shown to player..."
+                      />
+                    </div>
+                    <div>
+                      <label className="text-slate-400 text-xs block mb-1">Description</label>
+                      <textarea
+                        value={metadata.description}
+                        onChange={(e) => setMetadata(prev => ({ ...prev, description: e.target.value }))}
+                        className="w-full bg-slate-700 text-white px-2 py-1 rounded text-sm border border-slate-600 h-16 resize-none"
+                        placeholder="Scenario description..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* MONSTERS TAB */}
+            {rightPanelTab === 'monsters' && (
+              <>
+                {selectedTile ? (
+                  <MonsterPalette
+                    monsters={(selectedTile.monsters || []) as MonsterPlacement[]}
+                    onMonstersChange={(monsters) => {
                       const key = getTileKey(selectedTile.q, selectedTile.r);
                       setTiles(prev => {
                         const newTiles = new Map(prev);
                         const tile = newTiles.get(key);
                         if (tile) {
-                          // If setting as start, clear other start locations
-                          if (e.target.checked) {
-                            newTiles.forEach((t, k) => {
-                              if (t.isStartLocation) {
-                                newTiles.set(k, { ...t, isStartLocation: false });
-                              }
-                            });
-                          }
-                          newTiles.set(key, { ...tile, isStartLocation: e.target.checked });
+                          newTiles.set(key, { ...tile, monsters });
                         }
                         return newTiles;
                       });
                     }}
-                    className="accent-amber-500"
                   />
-                  Start Location
-                </label>
-              </div>
+                ) : (
+                  <div className="text-slate-500 text-sm text-center py-8">
+                    Select a tile to place monsters
+                  </div>
+                )}
+              </>
+            )}
 
-              {selectedTile.description && (
-                <div>
-                  <label className="text-slate-400 text-sm">Description</label>
-                  <div className="text-slate-300 text-sm italic">"{selectedTile.description}"</div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-slate-500 text-sm">
-              Select a tile to view its properties
-            </div>
-          )}
+            {/* ITEMS TAB */}
+            {rightPanelTab === 'items' && (
+              <>
+                {selectedTile ? (
+                  <ItemPalette
+                    items={(selectedTile.items || []) as QuestItemPlacement[]}
+                    onItemsChange={(items) => {
+                      const key = getTileKey(selectedTile.q, selectedTile.r);
+                      setTiles(prev => {
+                        const newTiles = new Map(prev);
+                        const tile = newTiles.get(key);
+                        if (tile) {
+                          newTiles.set(key, { ...tile, items });
+                        }
+                        return newTiles;
+                      });
+                    }}
+                  />
+                ) : (
+                  <div className="text-slate-500 text-sm text-center py-8">
+                    Select a tile to place items
+                  </div>
+                )}
+              </>
+            )}
 
-          {/* Scenario metadata section */}
-          <div className="mt-8 pt-4 border-t border-slate-600">
-            <h3 className="text-white font-semibold mb-4">Scenario Settings</h3>
-
-            <div className="space-y-3">
-              <div>
-                <label className="text-slate-400 text-sm block mb-1">Start Doom</label>
-                <input
-                  type="number"
-                  value={metadata.startDoom}
-                  onChange={(e) => setMetadata(prev => ({ ...prev, startDoom: parseInt(e.target.value) || 12 }))}
-                  className="w-full bg-slate-700 text-white px-2 py-1 rounded text-sm border border-slate-600"
-                  min={1}
-                  max={20}
-                />
-              </div>
-
-              <div>
-                <label className="text-slate-400 text-sm block mb-1">Difficulty</label>
-                <select
-                  value={metadata.difficulty}
-                  onChange={(e) => setMetadata(prev => ({ ...prev, difficulty: e.target.value as ScenarioMetadata['difficulty'] }))}
-                  className="w-full bg-slate-700 text-white px-2 py-1 rounded text-sm border border-slate-600"
-                >
-                  <option value="easy">Easy</option>
-                  <option value="normal">Normal</option>
-                  <option value="hard">Hard</option>
-                  <option value="nightmare">Nightmare</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="text-slate-400 text-sm block mb-1">Description</label>
-                <textarea
-                  value={metadata.description}
-                  onChange={(e) => setMetadata(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full bg-slate-700 text-white px-2 py-1 rounded text-sm border border-slate-600 h-20 resize-none"
-                  placeholder="Scenario description..."
-                />
-              </div>
-            </div>
+            {/* OBJECTIVES TAB */}
+            {rightPanelTab === 'objectives' && (
+              <ObjectivesPanel
+                objectives={objectives}
+                onObjectivesChange={setObjectives}
+              />
+            )}
           </div>
         </div>
       </div>

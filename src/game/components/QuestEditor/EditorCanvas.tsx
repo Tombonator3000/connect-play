@@ -222,6 +222,40 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
             <Star className="w-4 h-4" fill="#22c55e" stroke="#22c55e" />
           </g>
         )}
+
+        {/* Monster indicator */}
+        {tile.monsters && tile.monsters.length > 0 && (
+          <g transform="scale(0.8)" style={{ transformOrigin: '50px 50px' }}>
+            <circle cx={25} cy={75} r={10} fill="#ef4444" stroke="#1e293b" strokeWidth={2} />
+            <text
+              x={25}
+              y={79}
+              textAnchor="middle"
+              fill="white"
+              fontSize={10}
+              fontWeight="bold"
+            >
+              {tile.monsters.reduce((sum, m) => sum + m.count, 0)}
+            </text>
+          </g>
+        )}
+
+        {/* Items indicator */}
+        {tile.items && tile.items.length > 0 && (
+          <g transform="scale(0.8)" style={{ transformOrigin: '50px 50px' }}>
+            <circle cx={75} cy={75} r={10} fill="#22c55e" stroke="#1e293b" strokeWidth={2} />
+            <text
+              x={75}
+              y={79}
+              textAnchor="middle"
+              fill="white"
+              fontSize={10}
+              fontWeight="bold"
+            >
+              {tile.items.length}
+            </text>
+          </g>
+        )}
       </g>
     );
   };
