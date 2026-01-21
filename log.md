@@ -1,5 +1,102 @@
 # Development Log
 
+## 2026-01-21: Fix Event Card Effects
+
+### Oppsummering
+
+Fikset bug hvor event card-effekter (HP, Sanity, Insight, etc.) ikke ble faktisk applisert til spilleren.
+
+---
+
+### Problem: Event card-effekter ble ikke applisert
+
+**Problem:** Når spilleren klikket "I MUST FACE THIS..." på et event card (f.eks. "Respite" som gir +1 HP og +1 Sanity), ble effektene vist i UI men ikke faktisk applisert til spillerens stats.
+
+**Årsak (src/game/ShadowsGame.tsx:2273-2365):**
+```typescript
+// FEIL: handleEventResolve brukte state fra closure, ikke current state
+const handleEventResolve = useCallback(() => {
+  const event = state.activeEvent; // <-- stale closure state
+
+  // ...
+
+  // resolveEventEffect ble kalt med stale state
+  const { updatedState, ... } = resolveEventEffect(
+    event,
+    state,  // <-- FEIL: bruker closure state, ikke current state
+    state.activePlayerIndex,
+    skillCheckPassed
+  );
+
+  // Når updatedState ble spredt inn i setState, ble players
+  // beregnet fra gammel state, ikke current state
+  setState(prev => ({
+    ...prev,
+    ...updatedState, // <-- updatedState.players basert på gammel state
+    // ...
+  }));
+}, [state.activeEvent, state.players, ...]); // <-- closure dependencies
+```
+
+**Løsning:** Refaktorerte `handleEventResolve` til å gjøre all state-håndtering inne i en enkelt `setState` callback, ved å bruke `prev` (current state) i stedet for `state` (closure):
+```typescript
+const handleEventResolve = useCallback(() => {
+  setState(prev => {
+    const event = prev.activeEvent;
+    if (!event) return { ...prev, activeEvent: null };
+
+    const activePlayer = prev.players[prev.activePlayerIndex] ||
+                         prev.players.find(p => !p.isDead);
+
+    // Nå brukes prev (current state) for alle beregninger
+    const { updatedState, logMessages, ... } = resolveEventEffect(
+      event,
+      prev,  // <-- RIKTIG: bruker current state
+      prev.activePlayerIndex,
+      skillCheckPassed
+    );
+
+    // Build complete new state in one operation
+    let newState = {
+      ...prev,
+      ...updatedState, // <-- updatedState.players nå korrekt
+      activeEvent: null,
+      eventDiscardPile: discardEventCard(event, prev.eventDiscardPile)
+    };
+
+    // Handle weather change in same state update
+    if (weatherChange && !skillCheckPassed) {
+      newState = { ...newState, weatherState: { ... } };
+    }
+
+    return newState;
+  });
+}, [addToLog, addFloatingText, triggerScreenShake, spawnEnemy]);
+```
+
+**Endringer:**
+1. All logikk flyttes inn i `setState` callback
+2. Bruker `prev` (current state) i stedet for `state` (closure state)
+3. Konsoliderte multiple `setState` kall til én enkelt operasjon
+4. Side-effekter (logging, spawning) skjer via `setTimeout` for å unngå state-mutasjon
+
+**Fil:** `src/game/ShadowsGame.tsx`
+
+---
+
+### Påvirkede event-typer
+
+Alle event card-effekter fungerer nå korrekt:
+- `health` / `all_health` - HP endringer
+- `sanity` / `all_sanity` - Sanity endringer
+- `insight` - Insight økning
+- `doom` - Doom counter endringer
+- `spawn` - Fiende-spawning
+- `weather` - Værforhold
+- `debuff_player` - Spiller-debuffs
+
+---
+
 ## 2026-01-21: Fix Quest Item Pickup og Dør-håndtering
 
 ### Oppsummering
