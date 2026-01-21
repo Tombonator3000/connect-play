@@ -7,8 +7,9 @@
  * - Fase 2: Edge-konfigurasjon, monster/item placement, objectives
  */
 
-import React, { useState, useCallback, useRef } from 'react';
-import { ArrowLeft, Download, Trash2, RotateCw, Save, Upload, Grid3X3, Eraser, MousePointer, Skull, Package, Target, Settings, CheckCircle, Play, Zap, Users, AlertTriangle } from 'lucide-react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { ArrowLeft, Download, Trash2, RotateCw, Save, Upload, Grid3X3, Eraser, MousePointer, Skull, Package, Target, Settings, CheckCircle, Play, Zap, Users, AlertTriangle, Undo2, Redo2 } from 'lucide-react';
+import useUndoRedo, { UndoableState } from './useUndoRedo';
 import { TileTemplate, ConnectionEdgeType, rotateEdges } from '../../tileConnectionSystem';
 import { TileCategory, FloorType, ZoneLevel, EdgeData, Item, EnemyType, DoorState } from '../../types';
 import { Button } from '@/components/ui/button';
@@ -119,8 +120,139 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
   const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('properties');
   const [showPreview, setShowPreview] = useState(false);
 
+  // Undo/Redo
+  const {
+    canUndo,
+    canRedo,
+    undo,
+    redo,
+    pushState,
+    clear: clearHistory,
+    lastAction,
+    undoStack,
+    redoStack
+  } = useUndoRedo();
+
   // Ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ============================================================================
+  // UNDO/REDO HELPERS
+  // ============================================================================
+
+  // Get current state for undo/redo
+  const getCurrentState = useCallback((): UndoableState => ({
+    tiles,
+    objectives,
+    triggers,
+    doomEvents,
+    metadata,
+  }), [tiles, objectives, triggers, doomEvents, metadata]);
+
+  // Apply a state from undo/redo
+  const applyState = useCallback((state: UndoableState) => {
+    setTiles(state.tiles as Map<string, EditorTile>);
+    setObjectives(state.objectives as EditorObjective[]);
+    setTriggers(state.triggers as EditorTrigger[]);
+    setDoomEvents(state.doomEvents as DoomEvent[]);
+    setMetadata(state.metadata as ScenarioMetadata);
+  }, []);
+
+  // Push current state with action description (for tracking changes)
+  const recordAction = useCallback((action: string) => {
+    pushState(getCurrentState(), action);
+  }, [pushState, getCurrentState]);
+
+  // Handle undo
+  const handleUndo = useCallback(() => {
+    const previousState = undo();
+    if (previousState) {
+      applyState(previousState);
+    }
+  }, [undo, applyState]);
+
+  // Handle redo
+  const handleRedo = useCallback(() => {
+    const nextState = redo();
+    if (nextState) {
+      applyState(nextState);
+    }
+  }, [redo, applyState]);
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Undo: Ctrl/Cmd + Z
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      }
+      // Redo: Ctrl/Cmd + Shift + Z or Ctrl/Cmd + Y
+      if ((e.ctrlKey || e.metaKey) && ((e.key === 'z' && e.shiftKey) || e.key === 'y')) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleUndo, handleRedo]);
+
+  // Initialize undo history with initial state
+  useEffect(() => {
+    if (undoStack === 0) {
+      pushState(getCurrentState(), 'Initial state');
+    }
+  }, []);  // Only run once on mount
+
+  // Wrapper functions with undo tracking
+  const updateTileWithUndo = useCallback((
+    tileKey: string,
+    updater: (tile: EditorTile) => EditorTile,
+    actionDescription: string
+  ) => {
+    recordAction(actionDescription);
+    setTiles(prev => {
+      const newTiles = new Map(prev);
+      const tile = newTiles.get(tileKey);
+      if (tile) {
+        newTiles.set(tileKey, updater(tile));
+      }
+      return newTiles;
+    });
+  }, [recordAction]);
+
+  const updateObjectivesWithUndo = useCallback((
+    newObjectives: EditorObjective[],
+    actionDescription: string
+  ) => {
+    recordAction(actionDescription);
+    setObjectives(newObjectives);
+  }, [recordAction]);
+
+  const updateTriggersWithUndo = useCallback((
+    newTriggers: EditorTrigger[],
+    actionDescription: string
+  ) => {
+    recordAction(actionDescription);
+    setTriggers(newTriggers);
+  }, [recordAction]);
+
+  const updateDoomEventsWithUndo = useCallback((
+    newDoomEvents: DoomEvent[],
+    actionDescription: string
+  ) => {
+    recordAction(actionDescription);
+    setDoomEvents(newDoomEvents);
+  }, [recordAction]);
+
+  const updateMetadataWithUndo = useCallback((
+    newMetadata: ScenarioMetadata,
+    actionDescription: string
+  ) => {
+    recordAction(actionDescription);
+    setMetadata(newMetadata);
+  }, [recordAction]);
 
   // ============================================================================
   // TILE KEY HELPERS
@@ -142,6 +274,10 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
     }
 
     if (activeTool === 'erase') {
+      const existingTile = tiles.get(key);
+      if (existingTile) {
+        recordAction(`Delete tile: ${existingTile.name}`);
+      }
       setTiles(prev => {
         const newTiles = new Map(prev);
         newTiles.delete(key);
@@ -174,6 +310,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
         watermarkIcon: selectedTemplate.watermarkIcon,
       };
 
+      recordAction(`Place tile: ${selectedTemplate.name}`);
       setTiles(prev => {
         const newTiles = new Map(prev);
         newTiles.set(key, newTile);
@@ -182,7 +319,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
 
       setSelectedTileId(key);
     }
-  }, [activeTool, selectedTemplate, rotation, tiles, selectedTileId]);
+  }, [activeTool, selectedTemplate, rotation, tiles, selectedTileId, recordAction]);
 
   // ============================================================================
   // TEMPLATE SELECTION
@@ -207,11 +344,12 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
   // ============================================================================
 
   const handleClearAll = useCallback(() => {
-    if (tiles.size > 0 && window.confirm('Clear all tiles? This cannot be undone.')) {
+    if (tiles.size > 0 && window.confirm('Clear all tiles? You can undo this action.')) {
+      recordAction('Clear all tiles');
       setTiles(new Map());
       setSelectedTileId(null);
     }
-  }, [tiles.size]);
+  }, [tiles.size, recordAction]);
 
   // ============================================================================
   // JSON EXPORT
@@ -291,6 +429,8 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
 
         // Validate and import
         if (data.tiles && Array.isArray(data.tiles)) {
+          recordAction(`Import scenario: ${data.metadata?.title || file.name}`);
+
           const newTiles = new Map<string, EditorTile>();
 
           for (const tile of data.tiles) {
@@ -327,7 +467,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
 
     // Reset input
     e.target.value = '';
-  }, []);
+  }, [recordAction]);
 
   // ============================================================================
   // RENDER
@@ -431,6 +571,32 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
           <Play className="w-4 h-4 mr-1" />
           Preview
         </Button>
+
+        <div className="h-6 w-px bg-slate-600" />
+
+        {/* Undo/Redo */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleUndo}
+            disabled={!canUndo}
+            className="text-slate-300 hover:text-white disabled:opacity-30"
+            title="Undo (Ctrl+Z)"
+          >
+            <Undo2 className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleRedo}
+            disabled={!canRedo}
+            className="text-slate-300 hover:text-white disabled:opacity-30"
+            title="Redo (Ctrl+Shift+Z)"
+          >
+            <Redo2 className="w-4 h-4" />
+          </Button>
+        </div>
 
         <div className="h-6 w-px bg-slate-600" />
 
@@ -628,6 +794,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
                           checked={selectedTile.isStartLocation || false}
                           onChange={(e) => {
                             const key = getTileKey(selectedTile.q, selectedTile.r);
+                            recordAction(e.target.checked ? 'Set start location' : 'Remove start location');
                             setTiles(prev => {
                               const newTiles = new Map(prev);
                               const tile = newTiles.get(key);
@@ -656,6 +823,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
                         edges={selectedTile.edges}
                         onEdgeChange={(index, newType) => {
                           const key = getTileKey(selectedTile.q, selectedTile.r);
+                          recordAction(`Change edge ${index} to ${newType}`);
                           setTiles(prev => {
                             const newTiles = new Map(prev);
                             const tile = newTiles.get(key);
@@ -685,6 +853,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
                           doorConfigs={selectedTile.doorConfigs}
                           onDoorConfigChange={(edgeIndex, config) => {
                             const key = getTileKey(selectedTile.q, selectedTile.r);
+                            recordAction(`Change door ${edgeIndex} config`);
                             setTiles(prev => {
                               const newTiles = new Map(prev);
                               const tile = newTiles.get(key);
@@ -797,6 +966,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
                     monsters={(selectedTile.monsters || []) as MonsterPlacement[]}
                     onMonstersChange={(monsters) => {
                       const key = getTileKey(selectedTile.q, selectedTile.r);
+                      recordAction('Update monsters');
                       setTiles(prev => {
                         const newTiles = new Map(prev);
                         const tile = newTiles.get(key);
@@ -823,6 +993,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
                     items={(selectedTile.items || []) as QuestItemPlacement[]}
                     onItemsChange={(items) => {
                       const key = getTileKey(selectedTile.q, selectedTile.r);
+                      recordAction('Update items');
                       setTiles(prev => {
                         const newTiles = new Map(prev);
                         const tile = newTiles.get(key);
@@ -849,6 +1020,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
                     npcs={(selectedTile.npcs || []) as NPCPlacement[]}
                     onNPCsChange={(npcs) => {
                       const key = getTileKey(selectedTile.q, selectedTile.r);
+                      recordAction('Update NPCs');
                       setTiles(prev => {
                         const newTiles = new Map(prev);
                         const tile = newTiles.get(key);
@@ -871,7 +1043,10 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
             {rightPanelTab === 'objectives' && (
               <ObjectivesPanel
                 objectives={objectives}
-                onObjectivesChange={setObjectives}
+                onObjectivesChange={(newObjectives) => {
+                  recordAction('Update objectives');
+                  setObjectives(newObjectives);
+                }}
               />
             )}
 
@@ -879,7 +1054,10 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
             {rightPanelTab === 'triggers' && (
               <TriggerPanel
                 triggers={triggers}
-                onTriggersChange={setTriggers}
+                onTriggersChange={(newTriggers) => {
+                  recordAction('Update triggers');
+                  setTriggers(newTriggers);
+                }}
                 objectives={objectives}
               />
             )}
@@ -888,7 +1066,10 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
             {rightPanelTab === 'doom' && (
               <DoomEventsPanel
                 doomEvents={doomEvents}
-                onDoomEventsChange={setDoomEvents}
+                onDoomEventsChange={(newDoomEvents) => {
+                  recordAction('Update doom events');
+                  setDoomEvents(newDoomEvents);
+                }}
                 startDoom={metadata.startDoom}
               />
             )}
@@ -925,8 +1106,13 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
             ? 'Click to select tiles'
             : 'Select a tool'}
         </span>
-        <span className="ml-auto">
-          Keyboard: S=Select, P=Place, E=Erase, R=Rotate, Delete=Remove selected
+        {lastAction && (
+          <span className="ml-4 text-slate-500 text-xs">
+            Last: {lastAction}
+          </span>
+        )}
+        <span className="ml-auto text-xs">
+          Ctrl+Z=Undo | Ctrl+Shift+Z=Redo | S=Select | P=Place | E=Erase | R=Rotate
         </span>
       </div>
 
