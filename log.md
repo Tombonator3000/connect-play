@@ -1,5 +1,155 @@
 # Development Log
 
+## 2026-01-21: Quest Editor Fase 2 - Avansert redigering
+
+### Oppsummering
+
+Implementert Fase 2 av Quest Editor med full støtte for:
+- Edge-konfigurasjon per tile
+- Monster-plassering
+- Quest item-plassering
+- Objective editor
+
+---
+
+### Implementerte komponenter
+
+#### 1. EdgeConfigPanel (`EdgeConfigPanel.tsx`)
+Panel for å konfigurere kanter på valgt tile:
+- Visuell hex-diagram som viser alle 6 kanter
+- Dropdown for hver kant (N, NE, SE, S, SW, NW)
+- Støtter alle edge-typer: WALL, OPEN, DOOR, WINDOW, STREET, NATURE, WATER, FACADE, STAIRS_UP, STAIRS_DOWN
+- Quick actions: "All Walls" og "All Open"
+- Fargekoding for edge-typer
+
+#### 2. MonsterPalette (`MonsterPalette.tsx`)
+Panel for å plassere monstre på tiles:
+- Alle monstre fra BESTIARY gruppert i kategorier (Minion, Warrior, Elite, Boss)
+- Fargekodede kategorier for enkel identifikasjon
+- Viser stats: HP, Attack, Defense, Horror
+- +/- knapper for å justere antall
+- Traits-visning (flying, ranged, etc.)
+- Visuell indikator på tiles (rød sirkel med antall)
+
+#### 3. ItemPalette (`ItemPalette.tsx`)
+Panel for å plassere quest items:
+- 5 kategorier: Keys, Clues, Collectibles, Artifacts, Components
+- Ferdigdefinerte templates for vanlige quest items
+- Redigerbar navn og beskrivelse per item
+- Støtte for keyId på nøkler
+- Visuell indikator på tiles (grønn sirkel med antall)
+
+#### 4. ObjectivesPanel (`ObjectivesPanel.tsx`)
+Panel for å definere scenario-mål:
+- 10 objective-typer: find_item, kill_enemies, kill_boss, escape, survive, perform_ritual, explore, rescue, collect, investigate
+- Konfigurerbare felt: targetId, targetAmount, insightReward
+- Flagg: isRequired, isHidden, isBonus
+- Støtte for "revealedBy" - objectives som blir synlige når andre fullføres
+- Quick templates: Escape, Survival, Boss Kill, Collect
+
+---
+
+### Oppdateringer til eksisterende komponenter
+
+#### QuestEditor (index.tsx)
+- Ny tabbed interface i høyre sidebar: Tile | Monsters | Items | Goals
+- Objectives state management
+- Oppdatert export til v2.0 format med objectives
+- Import støtter nå objectives
+
+#### EditorCanvas (EditorCanvas.tsx)
+- Visuell indikator for monstre (rød sirkel)
+- Visuell indikator for items (grønn sirkel)
+
+---
+
+### Funksjonalitet (Oppdatert)
+
+| Feature | Status |
+|---------|--------|
+| **Fase 1** | |
+| Hex-grid rendering | ✅ |
+| Tile placement/selection/deletion | ✅ |
+| Tile rotation | ✅ |
+| Pan/zoom | ✅ |
+| Tile palette med kategorier | ✅ |
+| Søk i tiles | ✅ |
+| JSON export/import | ✅ |
+| Start location marking | ✅ |
+| Properties panel | ✅ |
+| Scenario metadata | ✅ |
+| **Fase 2** | |
+| Edge-konfigurasjon per tile | ✅ |
+| Monster-plassering | ✅ |
+| Quest item-plassering | ✅ |
+| Objective editor | ✅ |
+| Tabbed interface | ✅ |
+| Visuelle indikatorer på canvas | ✅ |
+
+---
+
+### JSON Export Format (v2.0)
+
+```json
+{
+  "metadata": {
+    "id": "custom_scenario_xxx",
+    "title": "Scenario Title",
+    "description": "...",
+    "briefing": "...",
+    "startDoom": 12,
+    "difficulty": "normal",
+    "theme": "investigation"
+  },
+  "objectives": [
+    {
+      "id": "obj_xxx",
+      "type": "find_item",
+      "description": "Find the key",
+      "targetId": "key_brass",
+      "isRequired": true,
+      "isHidden": false,
+      "isBonus": false
+    }
+  ],
+  "tiles": [
+    {
+      "id": "tile_0_0_xxx",
+      "q": 0, "r": 0,
+      "templateId": "foyer_grand",
+      "name": "Grand Foyer",
+      "edges": ["DOOR", "WALL", "DOOR", "DOOR", "DOOR", "WALL"],
+      "monsters": [{ "type": "cultist", "count": 2 }],
+      "items": [{ "id": "key_1", "name": "Brass Key", "type": "key" }],
+      "isStartLocation": true
+    }
+  ],
+  "version": "2.0"
+}
+```
+
+---
+
+### Nye filer
+
+- `src/game/components/QuestEditor/EdgeConfigPanel.tsx`
+- `src/game/components/QuestEditor/MonsterPalette.tsx`
+- `src/game/components/QuestEditor/ItemPalette.tsx`
+- `src/game/components/QuestEditor/ObjectivesPanel.tsx`
+
+---
+
+### Neste steg (Fase 3+)
+
+- Validering av scenario (sjekk start location, connectivity)
+- Preview/test mode
+- Trigger system (events når objectives fullføres)
+- NPC-plassering
+- Custom descriptions per tile
+- Undo/redo
+
+---
+
 ## 2026-01-21: Quest Editor Fase 1 - Implementasjon
 
 ### Oppsummering
