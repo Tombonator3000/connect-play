@@ -190,7 +190,7 @@ export const HQ_WEAPONS: HQWeapon[] = [
   { id: 'revolver', name: 'Revolver', attackDice: 3, weaponType: 'ranged', range: 3, ammo: 6, goldCost: 200, notes: 'Standard sidearm' },
   { id: 'shotgun', name: 'Shotgun', attackDice: 4, weaponType: 'ranged', range: 2, ammo: 2, goldCost: 400, notes: 'Devastating close range' },
   { id: 'rifle', name: 'Rifle', attackDice: 3, weaponType: 'ranged', range: 5, ammo: 5, goldCost: 350, notes: 'Long range precision' },
-  { id: 'tommy_gun', name: 'Tommy Gun', attackDice: 5, weaponType: 'ranged', range: 3, ammo: 20, goldCost: 800, requiredLevel: 2, notes: 'Rare, devastating' }
+  { id: 'tommy_gun', name: 'Tommy Gun', attackDice: 5, weaponType: 'ranged', range: 1, ammo: 20, goldCost: 800, requiredLevel: 2, notes: 'Rare, devastating at close range only (neighbor tiles)' }
 ];
 
 // ============================================================================
@@ -2282,8 +2282,8 @@ export const ITEMS: Item[] = [
   },
   {
     id: 'tommy', name: 'Tommy Gun', type: 'weapon',
-    effect: '5 Attack Dice, 20 shots, Rare',
-    attackDice: 5, weaponType: 'ranged', range: 3, ammo: 20,
+    effect: '5 Attack Dice, 20 shots, Close range only (neighbor tiles)',
+    attackDice: 5, weaponType: 'ranged', range: 1, ammo: 20,
     goldCost: 800, slotType: 'hand',
     // Legacy compatibility
     bonus: 3, cost: 10, statModifier: 'combat'

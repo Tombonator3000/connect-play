@@ -14,8 +14,9 @@
  * Final Damage = Skulls - Shields (minimum 0)
  */
 
-import { Player, Enemy, Item, SkillType, SkillCheckResult, getAllItems, OccultistSpell } from '../types';
+import { Player, Enemy, Item, SkillType, SkillCheckResult, getAllItems, OccultistSpell, Tile } from '../types';
 import { BESTIARY, CHARACTERS } from '../constants';
+import { hexDistance, hasLineOfSight } from '../hexUtils';
 
 // Combat result interface
 export interface CombatResult {
@@ -132,19 +133,64 @@ export function getAttackDice(player: Player): { attackDice: number; weaponName:
 }
 
 /**
+ * Check if a player can use a specific weapon based on class restrictions
+ * Returns true if the weapon is allowed, false if restricted
+ *
+ * WEAPON RESTRICTIONS BY CLASS:
+ * - Veteran: Can use ALL weapons (no restrictions)
+ * - Detective: Cannot use tommy_gun
+ * - Professor: Can ONLY use derringer, knife (restricts: revolver, shotgun, tommy_gun, rifle, machete)
+ * - Occultist: Can ONLY use knife, revolver (restricts: shotgun, tommy_gun, rifle, machete)
+ * - Journalist: Cannot use shotgun, tommy_gun
+ * - Doctor: Can ONLY use derringer, knife (same as Professor)
+ */
+export function canUseWeapon(player: Player, weaponId: string): boolean {
+  // Get character info
+  const character = CHARACTERS[player.id as keyof typeof CHARACTERS];
+  if (!character) return true; // No restrictions if character not found
+
+  const restrictions = character.weaponRestrictions || [];
+
+  // Normalize weapon ID for comparison (handle both 'tommy' and 'tommy_gun')
+  const normalizedId = weaponId.toLowerCase().replace(/_/g, '');
+  const normalizedRestrictions = restrictions.map(r => r.toLowerCase().replace(/_/g, ''));
+
+  return !normalizedRestrictions.some(r =>
+    normalizedId.includes(r) || r.includes(normalizedId)
+  );
+}
+
+/**
  * Get the equipped weapon's attack dice with full info
  * Hero Quest style: weapon DETERMINES total dice (not bonus)
+ *
+ * IMPORTANT: This function respects class weapon restrictions.
+ * If a player has a weapon they cannot use, they are treated as unarmed.
  */
-export function getWeaponAttackDice(player: Player): { attackDice: number; weaponName: string; isRanged: boolean; range: number } {
+export function getWeaponAttackDice(player: Player): {
+  attackDice: number;
+  weaponName: string;
+  isRanged: boolean;
+  range: number;
+  isRestricted?: boolean;
+  restrictedWeaponName?: string;
+} {
   const items = getAllItems(player.inventory);
 
-  // Find best weapon in hand slots
+  // Find best USABLE weapon in hand slots (respecting class restrictions)
   let bestWeapon: Item | null = null;
+  let restrictedWeapon: Item | null = null;
 
   for (const item of items) {
     if (item.type === 'weapon' && item.attackDice) {
-      if (!bestWeapon || (item.attackDice > (bestWeapon.attackDice || 0))) {
-        bestWeapon = item;
+      // Check if player can use this weapon
+      if (canUseWeapon(player, item.id)) {
+        if (!bestWeapon || (item.attackDice > (bestWeapon.attackDice || 0))) {
+          bestWeapon = item;
+        }
+      } else {
+        // Track restricted weapon for feedback
+        restrictedWeapon = item;
       }
     }
   }
@@ -158,8 +204,21 @@ export function getWeaponAttackDice(player: Player): { attackDice: number; weapo
     };
   }
 
-  // No weapon = use base attack dice (unarmed)
+  // No usable weapon = use base attack dice (unarmed)
   const baseAttack = player.baseAttackDice || 1;
+
+  // If there's a restricted weapon, include that info for feedback
+  if (restrictedWeapon) {
+    return {
+      attackDice: baseAttack,
+      weaponName: 'Unarmed',
+      isRanged: false,
+      range: 1,
+      isRestricted: true,
+      restrictedWeaponName: restrictedWeapon.name
+    };
+  }
+
   return {
     attackDice: baseAttack,
     weaponName: 'Unarmed',
@@ -471,36 +530,78 @@ export function calculateEnemyDamage(enemy: Enemy, player: Player): {
 }
 
 /**
- * Check if player can attack enemy (range check)
+ * Check if player can attack enemy (range check + weapon restrictions + line of sight)
+ * Uses proper hex distance calculation for accurate range checking
+ *
+ * CHECKS PERFORMED:
+ * 1. Weapon restrictions - class-based weapon limits
+ * 2. Range check based on weapon type:
+ *    - MELEE: Can only attack adjacent enemies (distance <= 1)
+ *    - RANGED: Can attack enemies within weapon range
+ * 3. Line of sight (for ranged weapons) - walls and closed doors block shots
+ * 4. Distance is calculated using hex grid distance (not Manhattan)
+ *
+ * @param player - The attacking player
+ * @param enemy - The target enemy
+ * @param board - Optional board tiles for line-of-sight checking (required for ranged)
  */
-export function canAttackEnemy(player: Player, enemy: Enemy): {
+export function canAttackEnemy(
+  player: Player,
+  enemy: Enemy,
+  board?: Tile[]
+): {
   canAttack: boolean;
   reason: string;
+  isRestricted?: boolean;
 } {
-  const distance = Math.abs(player.position.q - enemy.position.q) +
-                   Math.abs(player.position.r - enemy.position.r);
+  // Use proper hex distance calculation
+  const distance = hexDistance(player.position, enemy.position);
 
   const weaponInfo = getWeaponAttackDice(player);
 
-  // Melee range check
-  if (distance <= 1) {
-    return { canAttack: true, reason: '' };
+  // Check if player has a restricted weapon (class cannot use it)
+  if (weaponInfo.isRestricted) {
+    return {
+      canAttack: distance <= 1, // Can still attack if adjacent (unarmed)
+      reason: distance <= 1
+        ? `${weaponInfo.restrictedWeaponName} kan ikke brukes av denne klassen. Angriper ubevæpnet.`
+        : `${weaponInfo.restrictedWeaponName} kan ikke brukes av denne klassen. Må være i naborute for ubevæpnet angrep.`,
+      isRestricted: true
+    };
   }
 
-  // Ranged weapon check
-  if (weaponInfo.isRanged && distance <= weaponInfo.range) {
-    return { canAttack: true, reason: '' };
+  // Melee weapons: can only attack adjacent enemies (distance <= 1)
+  if (!weaponInfo.isRanged) {
+    if (distance <= 1) {
+      return { canAttack: true, reason: '' };
+    }
+    return {
+      canAttack: false,
+      reason: `For langt unna for nærkamp. ${weaponInfo.weaponName} kan bare angripe i samme eller nabo-rute.`
+    };
   }
 
-  if (distance > 1 && !weaponInfo.isRanged) {
-    return { canAttack: false, reason: 'For langt unna for nærkamp. Trenger skytevåpen.' };
-  }
-
+  // Ranged weapons: check weapon range first
   if (distance > weaponInfo.range) {
-    return { canAttack: false, reason: `For langt unna. ${weaponInfo.weaponName} har rekkevidde ${weaponInfo.range}.` };
+    return {
+      canAttack: false,
+      reason: `For langt unna. ${weaponInfo.weaponName} har rekkevidde ${weaponInfo.range} (avstand: ${Math.round(distance)}).`
+    };
   }
 
-  return { canAttack: false, reason: 'Kan ikke angripe fienden.' };
+  // For ranged weapons at distance > 1, check line of sight (if board is provided)
+  if (board && distance > 1) {
+    const hasLOS = hasLineOfSight(player.position, enemy.position, board, weaponInfo.range);
+    if (!hasLOS) {
+      return {
+        canAttack: false,
+        reason: `Ingen siktlinje til ${enemy.name}. Vegger eller lukkede dører blokkerer skuddet.`
+      };
+    }
+  }
+
+  // All checks passed
+  return { canAttack: true, reason: '' };
 }
 
 /**
