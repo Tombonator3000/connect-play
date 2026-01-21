@@ -12739,3 +12739,1598 @@ export function buildLockedDoorActions(context, configs) {
 ✅ Ingen breaking changes - alle eksporterte funksjoner opprettholder samme oppførsel
 
 ---
+
+## 2026-01-21: Partikkel- og Lyseffekter - Design Forslag
+
+### Oversikt
+
+Dette dokumentet beskriver forslag til partikkel-effekter og lyseffekter for Mythos Quest. Effektene er kategorisert etter bruksområde og inkluderer CSS-animasjoner, triggers, og prioritet.
+
+### Eksisterende Effekter (Allerede Implementert)
+
+| Kategori | Effekter |
+|----------|----------|
+| **Weather** | Fog, Rain, Miasma, Cosmic Static, Unnatural Glow, Darkness |
+| **Madness** | Hallucination, Paranoia, Hysteria, Catatonia, Obsession, Amnesia, Night Terrors, Dark Insight |
+| **Spells** | Wither, Eldritch Bolt, Mend Flesh, True Sight, Banish, Mind Blast, Dark Shield |
+| **Combat** | Blood splatter, Smoke rise, Explosion burst |
+| **Tiles** | 3D depth, Portal glow, Fog of war reveal |
+| **Ambient** | Dark clouds, Gaslight pulse |
+
+---
+
+## NYE FORSLAG: Partikkel- og Lyseffekter
+
+### 1. TILE-BASERTE ATMOSFÆRISKE EFFEKTER
+
+Effekter som aktiveres når spilleren trer inn på spesifikke tile-typer.
+
+#### 1.1 Kirke-tiles: Hellig Lys
+> *"Støvpartikler danser i lysstråler fra fargede glassvindu"*
+
+**Trigger:** Spiller trer inn på CHURCH tiles
+**Visuelt:** Diagonale lysstråler med gylne støvpartikler som flyter nedover
+
+```css
+/* Hellig lysstråle med støvpartikler */
+@keyframes divine-light-ray {
+  0%, 100% {
+    opacity: 0.15;
+    transform: translateX(0);
+  }
+  50% {
+    opacity: 0.3;
+    transform: translateX(5px);
+  }
+}
+
+@keyframes divine-dust-float {
+  0% {
+    transform: translate(0, -100%) rotate(0deg);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.8;
+  }
+  80% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(20px, 100%) rotate(180deg);
+    opacity: 0;
+  }
+}
+
+.tile-church-light {
+  background: linear-gradient(
+    135deg,
+    transparent 40%,
+    rgba(255, 215, 100, 0.08) 45%,
+    rgba(255, 215, 100, 0.15) 50%,
+    rgba(255, 215, 100, 0.08) 55%,
+    transparent 60%
+  );
+  animation: divine-light-ray 6s ease-in-out infinite;
+}
+
+.divine-dust-particle {
+  width: 3px;
+  height: 3px;
+  background: radial-gradient(circle, rgba(255, 230, 150, 0.9), transparent);
+  border-radius: 50%;
+  animation: divine-dust-float 8s linear infinite;
+}
+```
+
+**Prioritet:** 🟡 Medium
+**Stemning:** Kontrast mot det okkulte - et øyeblikk av relativ trygghet
+
+---
+
+#### 1.2 Ritual Chamber: Pulserende Okkulte Symboler
+> *"Tegn på gulvet gløder svakt, pulsererer i takt med en uhørbar rytme"*
+
+**Trigger:** Spiller er på RITUAL_CHAMBER tiles
+**Visuelt:** Lilla/røde glødende runer på gulvet som pulserer
+
+```css
+@keyframes occult-symbol-pulse {
+  0%, 100% {
+    opacity: 0.2;
+    filter: blur(2px) hue-rotate(0deg);
+    text-shadow: 0 0 10px rgba(128, 0, 255, 0.5);
+  }
+  33% {
+    opacity: 0.6;
+    filter: blur(1px) hue-rotate(20deg);
+    text-shadow: 0 0 30px rgba(150, 50, 255, 0.8);
+  }
+  66% {
+    opacity: 0.4;
+    filter: blur(1.5px) hue-rotate(-10deg);
+    text-shadow: 0 0 20px rgba(180, 0, 100, 0.7);
+  }
+}
+
+@keyframes rune-flicker {
+  0%, 90%, 100% { opacity: 0.3; }
+  92%, 98% { opacity: 0.9; }
+  95% { opacity: 0.1; }
+}
+
+.ritual-rune-glow {
+  animation: occult-symbol-pulse 4s ease-in-out infinite;
+}
+
+.ritual-rune-flicker {
+  animation: rune-flicker 5s ease-in-out infinite;
+}
+```
+
+**Prioritet:** 🔴 Høy
+**Stemning:** Ubehag og fare - noe gammelt og mektig våkner
+
+---
+
+#### 1.3 Crypt/Tomb: Ånde-tåke og Sjele-glimt
+> *"Kald tåke kryper langs gulvet. Øyeblikk av bleke ansikter glimter i periferien"*
+
+**Trigger:** Spiller er på CRYPT/TOMB tiles
+**Visuelt:** Lav tåke langs gulvet + sporadiske gjennomsiktige ansikter
+
+```css
+@keyframes crypt-mist-crawl {
+  0% {
+    transform: translateX(-100%) scaleY(0.8);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.6;
+  }
+  80% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: translateX(100%) scaleY(1.2);
+    opacity: 0;
+  }
+}
+
+@keyframes ghost-glimpse {
+  0%, 85%, 100% {
+    opacity: 0;
+    transform: scale(0.8) translateY(10px);
+  }
+  88%, 92% {
+    opacity: 0.4;
+    transform: scale(1) translateY(0);
+  }
+  90% {
+    opacity: 0.6;
+    transform: scale(1.05) translateY(-5px);
+  }
+}
+
+.crypt-floor-mist {
+  background: linear-gradient(
+    to top,
+    rgba(150, 160, 180, 0.4) 0%,
+    rgba(150, 160, 180, 0.2) 30%,
+    transparent 60%
+  );
+  animation: crypt-mist-crawl 15s linear infinite;
+}
+
+.ghost-face-glimpse {
+  animation: ghost-glimpse 12s ease-in-out infinite;
+  filter: blur(2px);
+}
+```
+
+**Prioritet:** 🔴 Høy
+**Stemning:** Dødelig stillhet, restless spirits
+
+---
+
+#### 1.4 Laboratory: Elektriske Gnister og Bobblende Væsker
+> *"Sporadiske gnister spruter fra utstyret. Glassbeholdere bobler med ukjente substanser"*
+
+**Trigger:** Spiller er på LABORATORY tiles
+**Visuelt:** Blå/hvite gnister + grønne boble-partikler
+
+```css
+@keyframes electric-spark {
+  0% {
+    opacity: 0;
+    transform: scale(0) rotate(0deg);
+  }
+  10% {
+    opacity: 1;
+    transform: scale(1) rotate(45deg);
+  }
+  20% {
+    opacity: 0.8;
+    transform: scale(0.8) rotate(90deg);
+  }
+  30% {
+    opacity: 0;
+    transform: scale(0) rotate(135deg);
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes bubble-rise {
+  0% {
+    transform: translateY(0) scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(-15px) scale(1.2);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-30px) scale(0.5);
+    opacity: 0;
+  }
+}
+
+.lab-spark {
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, #fff 20%, #88ccff 50%, transparent 70%);
+  box-shadow: 0 0 10px #88ccff, 0 0 20px #4488ff;
+  animation: electric-spark 0.3s ease-out;
+}
+
+.lab-bubble {
+  width: 6px;
+  height: 6px;
+  background: radial-gradient(circle at 30% 30%, rgba(100, 255, 150, 0.8), rgba(50, 200, 100, 0.4));
+  border-radius: 50%;
+  animation: bubble-rise 2s ease-out infinite;
+}
+```
+
+**Prioritet:** 🟡 Medium
+**Stemning:** Mad science, eksperimentell fare
+
+---
+
+#### 1.5 Harbor/Water: Bølgende Vannrefleksjoner
+> *"Lyset danser på vannoverflaten. Noe beveger seg under"*
+
+**Trigger:** Spiller er på HARBOR/WATER tiles
+**Visuelt:** Oscillerende lysbølger + sporadiske mørke skygger under
+
+```css
+@keyframes water-reflection {
+  0%, 100% {
+    background-position: 0% 50%;
+    opacity: 0.3;
+  }
+  25% {
+    background-position: 50% 25%;
+    opacity: 0.5;
+  }
+  50% {
+    background-position: 100% 50%;
+    opacity: 0.4;
+  }
+  75% {
+    background-position: 50% 75%;
+    opacity: 0.5;
+  }
+}
+
+@keyframes deep-shadow-pass {
+  0%, 70%, 100% {
+    opacity: 0;
+    transform: translateX(-100%) scale(0.8);
+  }
+  75%, 85% {
+    opacity: 0.3;
+    transform: translateX(0%) scale(1);
+  }
+  80% {
+    opacity: 0.5;
+    transform: translateX(50%) scale(1.1);
+  }
+}
+
+.water-light-dance {
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(100, 150, 200, 0.2) 35%,
+    rgba(150, 200, 255, 0.3) 40%,
+    transparent 45%
+  );
+  background-size: 200% 200%;
+  animation: water-reflection 4s ease-in-out infinite;
+}
+
+.deep-one-shadow {
+  background: radial-gradient(ellipse, rgba(0, 20, 40, 0.6), transparent 70%);
+  animation: deep-shadow-pass 20s ease-in-out infinite;
+}
+```
+
+**Prioritet:** 🟡 Medium
+**Stemning:** Dybden skjuler noe - Deep Ones lurker
+
+---
+
+### 2. HANDLINGS-BASERTE EFFEKTER
+
+#### 2.1 Bevegelse: Fotspor-støv
+> *"Støv virvler opp ved hvert steg"*
+
+**Trigger:** Spiller beveger seg til ny tile
+**Visuelt:** Små støvpartikler som sprer seg fra spillerens posisjon
+
+```css
+@keyframes footstep-dust {
+  0% {
+    transform: translate(0, 0) scale(0.5);
+    opacity: 0.8;
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) scale(0);
+    opacity: 0;
+  }
+}
+
+.footstep-dust-particle {
+  width: 4px;
+  height: 4px;
+  background: radial-gradient(circle, rgba(150, 130, 100, 0.8), transparent);
+  border-radius: 50%;
+  animation: footstep-dust 0.6s ease-out forwards;
+}
+```
+
+**Prioritet:** 🟢 Lav (nice-to-have)
+
+---
+
+#### 2.2 Dør Åpning: Knarke-støv og Lys-innstrømming
+> *"Døren knirker åpen. Støv faller fra hengsler. Lys strømmer inn fra det ukjente"*
+
+**Trigger:** Spiller åpner en dør
+**Visuelt:** Støvpartikler faller ned + lysglød fra den andre siden
+
+```css
+@keyframes door-dust-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(40px) rotate(180deg);
+    opacity: 0;
+  }
+}
+
+@keyframes door-light-reveal {
+  0% {
+    clip-path: polygon(50% 0%, 50% 0%, 50% 100%, 50% 100%);
+    opacity: 0;
+  }
+  100% {
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+    opacity: 0.6;
+  }
+}
+
+.door-opening-dust {
+  animation: door-dust-fall 1s ease-out forwards;
+}
+
+.door-light-spill {
+  background: linear-gradient(
+    var(--door-direction, 90deg),
+    rgba(255, 230, 180, 0.4),
+    transparent
+  );
+  animation: door-light-reveal 0.8s ease-out forwards;
+}
+```
+
+**Prioritet:** 🔴 Høy - skaper spenning ved utforskning
+
+---
+
+#### 2.3 Skill Check: Terning-glød
+> *"Terningene gløder med skjebnesvanger energi"*
+
+**Trigger:** Under skill check terningkast
+**Visuelt:** Gyllen/rød glød rundt terning-området basert på resultat
+
+```css
+@keyframes dice-anticipation-glow {
+  0% {
+    box-shadow: 0 0 10px rgba(255, 200, 50, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 200, 50, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(255, 200, 50, 0.3);
+  }
+}
+
+@keyframes dice-success-burst {
+  0% {
+    box-shadow: 0 0 20px rgba(50, 255, 100, 0.8);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 50px rgba(50, 255, 100, 1);
+    transform: scale(1.1);
+  }
+  100% {
+    box-shadow: 0 0 10px rgba(50, 255, 100, 0.3);
+    transform: scale(1);
+  }
+}
+
+@keyframes dice-fail-shake {
+  0%, 100% {
+    transform: translateX(0);
+    box-shadow: 0 0 20px rgba(255, 50, 50, 0.6);
+  }
+  20%, 60% {
+    transform: translateX(-5px);
+    box-shadow: 0 0 30px rgba(255, 50, 50, 0.8);
+  }
+  40%, 80% {
+    transform: translateX(5px);
+    box-shadow: 0 0 30px rgba(255, 50, 50, 0.8);
+  }
+}
+
+.dice-rolling {
+  animation: dice-anticipation-glow 0.5s ease-in-out infinite;
+}
+
+.dice-success {
+  animation: dice-success-burst 0.6s ease-out;
+}
+
+.dice-fail {
+  animation: dice-fail-shake 0.4s ease-in-out;
+}
+```
+
+**Prioritet:** 🔴 Høy - feedback på viktige handlinger
+
+---
+
+#### 2.4 Angrep: Våpen-trail og Impact
+> *"Våpenet etterlater et lysende spor i luften"*
+
+**Trigger:** Spiller eller fiende angriper
+**Visuelt:** Bue-formet trail + impact-stjerne ved treff
+
+```css
+@keyframes melee-slash-trail {
+  0% {
+    clip-path: polygon(50% 50%, 50% 0%, 50% 0%);
+    opacity: 0.9;
+  }
+  100% {
+    clip-path: polygon(50% 50%, 0% 0%, 100% 0%);
+    opacity: 0;
+  }
+}
+
+@keyframes ranged-tracer {
+  0% {
+    transform: translate(0, 0) scaleX(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+    transform: translate(20%, 0) scaleX(0.5);
+  }
+  100% {
+    transform: translate(var(--tx), var(--ty)) scaleX(1);
+    opacity: 0;
+  }
+}
+
+@keyframes impact-star {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.5) rotate(180deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0.5) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.melee-slash {
+  background: linear-gradient(
+    to right,
+    transparent,
+    rgba(255, 255, 255, 0.8),
+    transparent
+  );
+  animation: melee-slash-trail 0.3s ease-out forwards;
+}
+
+.ranged-tracer {
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #ffaa00, #ff6600);
+  animation: ranged-tracer 0.2s ease-out forwards;
+}
+
+.impact-star {
+  background: radial-gradient(circle, #fff, #ffcc00, transparent);
+  animation: impact-star 0.4s ease-out forwards;
+}
+```
+
+**Prioritet:** 🔴 Høy - kamp er en kjernemekanikk
+
+---
+
+### 3. FIENDE-EFFEKTER
+
+#### 3.1 Fiende Spawn: Portal-manifestasjon
+> *"Virkeligheten vrider seg. Noe trer gjennom fra den andre siden"*
+
+**Trigger:** Ny fiende spawner
+**Visuelt:** Liten portal åpner seg, fiende materialiserer
+
+```css
+@keyframes enemy-spawn-rift {
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 0;
+    filter: hue-rotate(0deg);
+  }
+  30% {
+    transform: scale(1.5) rotate(180deg);
+    opacity: 1;
+    filter: hue-rotate(60deg);
+  }
+  60% {
+    transform: scale(1.2) rotate(360deg);
+    opacity: 0.8;
+    filter: hue-rotate(-30deg);
+  }
+  100% {
+    transform: scale(0) rotate(540deg);
+    opacity: 0;
+    filter: hue-rotate(0deg);
+  }
+}
+
+@keyframes enemy-materialize {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+    filter: blur(10px) brightness(2);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+    filter: blur(5px) brightness(1.5);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0) brightness(1);
+  }
+}
+
+.spawn-rift {
+  background: radial-gradient(
+    circle,
+    rgba(150, 50, 255, 0.8) 0%,
+    rgba(100, 0, 200, 0.5) 30%,
+    transparent 70%
+  );
+  animation: enemy-spawn-rift 1s ease-out forwards;
+}
+
+.enemy-materializing {
+  animation: enemy-materialize 0.8s ease-out forwards;
+}
+```
+
+**Prioritet:** 🔴 Høy - dramatisk moment
+
+---
+
+#### 3.2 Fiende Død: Oppløsning basert på type
+> *"Fienden kollapser i sin essens"*
+
+**Trigger:** Fiende dør
+**Visuelt:** Forskjellig oppløsning basert på fiendetype
+
+```css
+/* Ghoul - kollapser til gravjord */
+@keyframes ghoul-dissolve {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    filter: grayscale(0);
+  }
+  50% {
+    transform: scale(0.8) translateY(10px);
+    opacity: 0.6;
+    filter: grayscale(0.5) sepia(0.3);
+  }
+  100% {
+    transform: scale(0) translateY(30px);
+    opacity: 0;
+    filter: grayscale(1) sepia(0.6);
+  }
+}
+
+/* Deep One - løses opp i saltvann */
+@keyframes deep-one-dissolve {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    transform: scale(1.1) translateY(-5px);
+    opacity: 0.5;
+    filter: hue-rotate(30deg) blur(3px);
+  }
+  100% {
+    transform: scale(1.5) translateY(-20px);
+    opacity: 0;
+    filter: hue-rotate(60deg) blur(10px);
+  }
+}
+
+/* Cultist - blod og skygge */
+@keyframes cultist-death {
+  0% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+  30% {
+    transform: scale(0.9) rotate(-5deg);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(0.7) rotate(-15deg) translateY(20px);
+    opacity: 0;
+  }
+}
+
+.ghoul-dying { animation: ghoul-dissolve 1.2s ease-out forwards; }
+.deep-one-dying { animation: deep-one-dissolve 1.5s ease-out forwards; }
+.cultist-dying { animation: cultist-death 0.8s ease-out forwards; }
+```
+
+**Prioritet:** 🟡 Medium - flavor
+
+---
+
+#### 3.3 Fiende Bevegelse: Uhyggelig Glidning
+> *"De beveger seg feil. Unaturlig. Hakkete."*
+
+**Trigger:** Fiende beveger seg
+**Visuelt:** Subtle distortion trail
+
+```css
+@keyframes creepy-movement-trail {
+  0% {
+    opacity: 0.6;
+    transform: scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.8);
+    filter: blur(4px);
+  }
+}
+
+.enemy-movement-ghost {
+  animation: creepy-movement-trail 0.5s ease-out forwards;
+}
+```
+
+**Prioritet:** 🟢 Lav
+
+---
+
+### 4. DOOM & SANITY EFFEKTER
+
+#### 4.1 Doom Tick: Klokke-puls
+> *"Tiden renner ut. Du føler det i beinmargen"*
+
+**Trigger:** Doom reduseres
+**Visuelt:** Rød puls som sprer seg fra Doom-trackeren + skjerm-vignette intensiveres
+
+```css
+@keyframes doom-tick-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(200, 0, 50, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 30px 15px rgba(200, 0, 50, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(200, 0, 50, 0);
+  }
+}
+
+@keyframes doom-screen-pulse {
+  0% {
+    box-shadow: inset 0 0 50px rgba(100, 0, 0, 0);
+  }
+  50% {
+    box-shadow: inset 0 0 100px rgba(100, 0, 0, 0.3);
+  }
+  100% {
+    box-shadow: inset 0 0 50px rgba(100, 0, 0, 0);
+  }
+}
+
+.doom-ticking {
+  animation: doom-tick-pulse 1s ease-out;
+}
+
+.doom-screen-effect {
+  animation: doom-screen-pulse 1s ease-out;
+}
+```
+
+**Prioritet:** 🔴 Høy - forsterker tidspresset
+
+---
+
+#### 4.2 Doom Kritisk (<=3): Konstant Trussel
+> *"Verden falmer. Kantene av synet ditt mørkner"*
+
+**Trigger:** Doom når kritisk nivå
+**Visuelt:** Permanent mørk vignette + sporadiske flicker
+
+```css
+@keyframes doom-critical-vignette {
+  0%, 100% {
+    box-shadow: inset 0 0 80px 30px rgba(0, 0, 0, 0.7);
+  }
+  50% {
+    box-shadow: inset 0 0 100px 40px rgba(50, 0, 0, 0.8);
+  }
+}
+
+@keyframes doom-critical-flicker {
+  0%, 95%, 100% {
+    filter: brightness(1);
+  }
+  96% {
+    filter: brightness(0.6);
+  }
+  97% {
+    filter: brightness(1.2);
+  }
+  98% {
+    filter: brightness(0.8);
+  }
+}
+
+.doom-critical-overlay {
+  animation:
+    doom-critical-vignette 4s ease-in-out infinite,
+    doom-critical-flicker 8s ease-in-out infinite;
+}
+```
+
+**Prioritet:** 🔴 Høy - kommuniserer desperasjon
+
+---
+
+#### 4.3 Sanity Tap: Forvrengning
+> *"Noe knekker inni deg. Verden forblir ikke stille"*
+
+**Trigger:** Spiller mister Sanity
+**Visuelt:** Kort forvrengning + farge-shift
+
+```css
+@keyframes sanity-loss-distort {
+  0% {
+    transform: scale(1);
+    filter: hue-rotate(0deg) saturate(1);
+  }
+  25% {
+    transform: scale(1.02) skewX(2deg);
+    filter: hue-rotate(30deg) saturate(1.3);
+  }
+  50% {
+    transform: scale(0.98) skewX(-2deg);
+    filter: hue-rotate(-20deg) saturate(0.8);
+  }
+  75% {
+    transform: scale(1.01) skewY(1deg);
+    filter: hue-rotate(15deg) saturate(1.1);
+  }
+  100% {
+    transform: scale(1);
+    filter: hue-rotate(0deg) saturate(1);
+  }
+}
+
+@keyframes sanity-loss-flash {
+  0%, 100% {
+    background: transparent;
+  }
+  10%, 30% {
+    background: rgba(128, 0, 255, 0.2);
+  }
+  20% {
+    background: rgba(128, 0, 255, 0.4);
+  }
+}
+
+.sanity-losing {
+  animation: sanity-loss-distort 0.6s ease-out;
+}
+
+.sanity-loss-overlay {
+  animation: sanity-loss-flash 0.6s ease-out;
+}
+```
+
+**Prioritet:** 🔴 Høy - Sanity er kjernemekanikk
+
+---
+
+#### 4.4 Sanity Gjenvinning: Klarhet
+> *"Et øyeblikk av klarhet. Verden faller på plass igjen"*
+
+**Trigger:** Spiller gjenoppretter Sanity
+**Visuelt:** Beroligende gyllen glød som pulserer utover
+
+```css
+@keyframes sanity-restore-wave {
+  0% {
+    box-shadow: 0 0 0 0 rgba(200, 180, 100, 0.6);
+    filter: brightness(1);
+  }
+  50% {
+    box-shadow: 0 0 40px 20px rgba(200, 180, 100, 0.3);
+    filter: brightness(1.1);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(200, 180, 100, 0);
+    filter: brightness(1);
+  }
+}
+
+.sanity-restoring {
+  animation: sanity-restore-wave 1s ease-out;
+}
+```
+
+**Prioritet:** 🟡 Medium - positiv feedback
+
+---
+
+### 5. ITEM-EFFEKTER
+
+#### 5.1 Item Pickup: Glimmer
+> *"Noe fanger øyet ditt. Skjebnen har gitt deg et verktøy"*
+
+**Trigger:** Spiller plukker opp item
+**Visuelt:** Gyllen ring som utvider seg + sparkles
+
+```css
+@keyframes item-pickup-ring {
+  0% {
+    transform: scale(0.5);
+    opacity: 1;
+    border-width: 3px;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+    border-width: 1px;
+  }
+}
+
+@keyframes item-pickup-sparkle {
+  0% {
+    transform: translate(0, 0) scale(0);
+    opacity: 0;
+  }
+  30% {
+    opacity: 1;
+    transform: translate(var(--tx), var(--ty)) scale(1);
+  }
+  100% {
+    transform: translate(calc(var(--tx) * 2), calc(var(--ty) * 2)) scale(0);
+    opacity: 0;
+  }
+}
+
+.item-pickup-ring {
+  border: 3px solid rgba(255, 215, 0, 0.8);
+  border-radius: 50%;
+  animation: item-pickup-ring 0.6s ease-out forwards;
+}
+
+.item-sparkle {
+  width: 6px;
+  height: 6px;
+  background: radial-gradient(circle, #fff, #ffd700);
+  border-radius: 50%;
+  animation: item-pickup-sparkle 0.8s ease-out forwards;
+}
+```
+
+**Prioritet:** 🟡 Medium
+
+---
+
+#### 5.2 Flashlight Bruk: Lyskjegle
+> *"Lyset kutter gjennom mørket. Men skyggene trekker seg bare tilbake - de forsvinner aldri"*
+
+**Trigger:** Spiller bruker lommelykt i mørkt rom
+**Visuelt:** Animert lyskjegle som avslører innhold
+
+```css
+@keyframes flashlight-sweep {
+  0% {
+    clip-path: polygon(50% 50%, 40% 0%, 60% 0%);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.8;
+  }
+  100% {
+    clip-path: polygon(50% 50%, 0% 0%, 100% 0%);
+    opacity: 0.6;
+  }
+}
+
+@keyframes flashlight-beam-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scaleY(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scaleY(1.05);
+  }
+}
+
+.flashlight-cone {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 250, 200, 0.5) 0%,
+    rgba(255, 250, 200, 0.2) 60%,
+    transparent 100%
+  );
+  animation: flashlight-sweep 0.8s ease-out forwards;
+}
+
+.flashlight-active {
+  animation: flashlight-beam-pulse 2s ease-in-out infinite;
+}
+```
+
+**Prioritet:** 🔴 Høy - dark rooms er en kjernemekanikk
+
+---
+
+#### 5.3 Occult Item Bruk: Eldritch Energi
+> *"Du føler kraften strømme gjennom deg. Den kjenner deg nå"*
+
+**Trigger:** Spiller bruker okkulte items (Elder Sign, etc.)
+**Visuelt:** Lilla energibølger + rune-manifestasjon
+
+```css
+@keyframes occult-item-activate {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    transform: scale(1.5);
+    opacity: 1;
+    filter: hue-rotate(30deg);
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+    filter: hue-rotate(-30deg);
+  }
+}
+
+@keyframes elder-sign-glow {
+  0%, 100% {
+    filter: drop-shadow(0 0 5px rgba(255, 215, 0, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(255, 215, 0, 1));
+  }
+}
+
+.occult-activate-wave {
+  background: radial-gradient(
+    circle,
+    rgba(150, 50, 255, 0.6) 0%,
+    rgba(100, 0, 200, 0.3) 50%,
+    transparent 100%
+  );
+  animation: occult-item-activate 1s ease-out forwards;
+}
+
+.elder-sign-active {
+  animation: elder-sign-glow 1s ease-in-out infinite;
+}
+```
+
+**Prioritet:** 🔴 Høy - okkulte items er viktige
+
+---
+
+### 6. AMBIENT LYS-EFFEKTER (Per-tile)
+
+#### 6.1 Gasslys Flicker
+> *"Gasslyktene flakker. Skyggene danser"*
+
+**Trigger:** Tiles med gaslys (STREET, FOYER, etc.)
+**Visuelt:** Varm flikkende glød
+
+```css
+@keyframes gaslight-flicker {
+  0%, 100% {
+    box-shadow: inset 0 0 30px hsla(35, 80%, 50%, 0.15);
+    filter: brightness(1);
+  }
+  10% {
+    box-shadow: inset 0 0 25px hsla(35, 80%, 45%, 0.12);
+    filter: brightness(0.98);
+  }
+  20% {
+    box-shadow: inset 0 0 35px hsla(35, 80%, 55%, 0.18);
+    filter: brightness(1.02);
+  }
+  30% {
+    box-shadow: inset 0 0 28px hsla(35, 80%, 48%, 0.14);
+    filter: brightness(0.99);
+  }
+  50% {
+    box-shadow: inset 0 0 40px hsla(35, 80%, 50%, 0.2);
+    filter: brightness(1.03);
+  }
+  70% {
+    box-shadow: inset 0 0 32px hsla(35, 80%, 52%, 0.16);
+    filter: brightness(1.01);
+  }
+  85% {
+    box-shadow: inset 0 0 22px hsla(35, 80%, 42%, 0.1);
+    filter: brightness(0.97);
+  }
+}
+
+.gaslight-ambience {
+  animation: gaslight-flicker 4s ease-in-out infinite;
+}
+```
+
+**Prioritet:** 🔴 Høy - definerer 1920-talls atmosfære
+
+---
+
+#### 6.2 Månelyskskinner
+> *"Månelys siver inn gjennom sprekker. Kaldt. Likegyldig"*
+
+**Trigger:** Exterior tiles om natten
+**Visuelt:** Blålig, kald glød
+
+```css
+@keyframes moonlight-shimmer {
+  0%, 100% {
+    opacity: 0.3;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    opacity: 0.5;
+    filter: hue-rotate(10deg);
+  }
+}
+
+.moonlight-overlay {
+  background: linear-gradient(
+    135deg,
+    rgba(180, 200, 255, 0.15) 0%,
+    transparent 50%,
+    rgba(150, 180, 230, 0.1) 100%
+  );
+  animation: moonlight-shimmer 8s ease-in-out infinite;
+}
+```
+
+**Prioritet:** 🟡 Medium
+
+---
+
+#### 6.3 Stearinlys-flimmer
+> *"Et ensomt stearinlys. Det eneste mellom deg og total mørke"*
+
+**Trigger:** Tiles med stearinlys
+**Visuelt:** Varm, ustabil lysglød med skyggebevegelse
+
+```css
+@keyframes candle-flame {
+  0%, 100% {
+    transform: scaleY(1) scaleX(1);
+    filter: brightness(1);
+  }
+  25% {
+    transform: scaleY(1.1) scaleX(0.95);
+    filter: brightness(1.1);
+  }
+  50% {
+    transform: scaleY(0.95) scaleX(1.05);
+    filter: brightness(0.95);
+  }
+  75% {
+    transform: scaleY(1.05) scaleX(0.98);
+    filter: brightness(1.05);
+  }
+}
+
+@keyframes candle-shadow-dance {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(2deg) scale(1.02);
+  }
+  50% {
+    transform: rotate(-1deg) scale(0.98);
+  }
+  75% {
+    transform: rotate(1deg) scale(1.01);
+  }
+}
+
+.candle-glow {
+  background: radial-gradient(
+    ellipse at 50% 70%,
+    rgba(255, 200, 100, 0.3) 0%,
+    rgba(255, 150, 50, 0.15) 30%,
+    transparent 60%
+  );
+  animation: candle-flame 2s ease-in-out infinite;
+}
+
+.candle-shadow {
+  animation: candle-shadow-dance 3s ease-in-out infinite;
+}
+```
+
+**Prioritet:** 🟡 Medium
+
+---
+
+### 7. UI EFFEKTER
+
+#### 7.1 Notification Pop
+> *"Noe viktig. Noe du må vite"*
+
+**Trigger:** Journal oppdatering, clue funnet, etc.
+**Visuelt:** Smooth slide-in med glød
+
+```css
+@keyframes notification-appear {
+  0% {
+    transform: translateX(100%) scale(0.8);
+    opacity: 0;
+  }
+  70% {
+    transform: translateX(-5%) scale(1.02);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes notification-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(255, 200, 50, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 200, 50, 0.6);
+  }
+}
+
+.notification-enter {
+  animation:
+    notification-appear 0.5s ease-out forwards,
+    notification-glow 2s ease-in-out infinite;
+}
+```
+
+**Prioritet:** 🟡 Medium
+
+---
+
+#### 7.2 Turn Transition
+> *"Tiden passerer. Neste trekk"*
+
+**Trigger:** Bytte mellom spillere/faser
+**Visuelt:** Subtle sweep-effekt
+
+```css
+@keyframes turn-transition-sweep {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.turn-sweep {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 200, 100, 0.2),
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  animation: turn-transition-sweep 0.8s ease-in-out;
+}
+```
+
+**Prioritet:** 🟢 Lav
+
+---
+
+### 8. SPESIELLE SITUASJONS-EFFEKTER
+
+#### 8.1 Horror Check: Ansikts-glimt
+> *"Du ser det. Det ser deg"*
+
+**Trigger:** Horror check mot sterk fiende
+**Visuelt:** Kort flash av uhyggelig ansikt/øyne
+
+```css
+@keyframes horror-face-flash {
+  0%, 90%, 100% {
+    opacity: 0;
+    transform: scale(0.8);
+    filter: blur(5px);
+  }
+  92%, 98% {
+    opacity: 0.7;
+    transform: scale(1);
+    filter: blur(0);
+  }
+  95% {
+    opacity: 0.9;
+    transform: scale(1.1);
+    filter: blur(0);
+  }
+}
+
+@keyframes horror-screen-flash {
+  0%, 100% {
+    background: transparent;
+  }
+  5%, 15% {
+    background: rgba(0, 0, 0, 0.8);
+  }
+  10% {
+    background: rgba(50, 0, 0, 0.9);
+  }
+}
+
+.horror-face-glimpse {
+  animation: horror-face-flash 0.5s ease-out;
+}
+
+.horror-screen-effect {
+  animation: horror-screen-flash 0.5s ease-out;
+}
+```
+
+**Prioritet:** 🔴 Høy - forsterker horror
+
+---
+
+#### 8.2 Madness Trigger: Realitets-sprekk
+> *"Noe brister. Virkeligheten er tynnere enn du trodde"*
+
+**Trigger:** Spiller får Madness Condition
+**Visuelt:** Skjerm-sprekk effekt + inversjon
+
+```css
+@keyframes reality-crack {
+  0% {
+    clip-path: polygon(50% 50%, 50% 50%, 50% 50%, 50% 50%);
+  }
+  50% {
+    clip-path: polygon(30% 0%, 70% 0%, 100% 50%, 70% 100%, 30% 100%, 0% 50%);
+  }
+  100% {
+    clip-path: polygon(0% 0%, 100% 0%, 100% 100%, 0% 100%);
+  }
+}
+
+@keyframes reality-invert {
+  0%, 100% {
+    filter: invert(0) hue-rotate(0deg);
+  }
+  25% {
+    filter: invert(0.3) hue-rotate(180deg);
+  }
+  50% {
+    filter: invert(0.5) hue-rotate(90deg);
+  }
+  75% {
+    filter: invert(0.2) hue-rotate(-90deg);
+  }
+}
+
+.reality-cracking {
+  background: linear-gradient(
+    var(--crack-angle, 45deg),
+    transparent 48%,
+    rgba(128, 0, 255, 0.8) 49%,
+    rgba(255, 0, 128, 0.8) 51%,
+    transparent 52%
+  );
+  animation: reality-crack 1s ease-out forwards;
+}
+
+.madness-onset {
+  animation: reality-invert 1.5s ease-in-out;
+}
+```
+
+**Prioritet:** 🔴 Høy - dramatisk vendepunkt
+
+---
+
+#### 8.3 Victory: Lysets Triumf
+> *"Mot alle odds. Du overlevde"*
+
+**Trigger:** Scenario fullført
+**Visuelt:** Gylden lys-eksplosjon som vasker over skjermen
+
+```css
+@keyframes victory-light-burst {
+  0% {
+    transform: scale(0);
+    opacity: 0;
+  }
+  30% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+@keyframes victory-golden-wash {
+  0% {
+    background: transparent;
+  }
+  30% {
+    background: rgba(255, 215, 0, 0.3);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+.victory-burst {
+  background: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 1) 0%,
+    rgba(255, 215, 0, 0.8) 30%,
+    rgba(255, 200, 50, 0.4) 60%,
+    transparent 100%
+  );
+  animation: victory-light-burst 2s ease-out forwards;
+}
+
+.victory-screen {
+  animation: victory-golden-wash 2s ease-in-out;
+}
+```
+
+**Prioritet:** 🟡 Medium - belønning
+
+---
+
+#### 8.4 Game Over: Mørkets Seier
+> *"Mørket vinner. Alltid"*
+
+**Trigger:** TPK eller Doom = 0
+**Visuelt:** Mørke tentakler som kryper inn fra kantene
+
+```css
+@keyframes darkness-consume {
+  0% {
+    clip-path: circle(100% at 50% 50%);
+    filter: brightness(1);
+  }
+  70% {
+    clip-path: circle(30% at 50% 50%);
+    filter: brightness(0.5);
+  }
+  100% {
+    clip-path: circle(0% at 50% 50%);
+    filter: brightness(0);
+  }
+}
+
+@keyframes tentacle-creep {
+  0% {
+    transform: translateX(-100%) scaleY(0.3);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(0%) scaleY(1);
+    opacity: 0.9;
+  }
+}
+
+.game-over-darkness {
+  background: black;
+  animation: darkness-consume 3s ease-in forwards;
+}
+
+.darkness-tentacle {
+  background: linear-gradient(
+    90deg,
+    rgba(20, 0, 30, 0.95) 0%,
+    rgba(40, 0, 60, 0.8) 50%,
+    transparent 100%
+  );
+  animation: tentacle-creep 2s ease-out forwards;
+}
+```
+
+**Prioritet:** 🟡 Medium - dramatisk avslutning
+
+---
+
+### IMPLEMENTERINGSPLAN
+
+#### Fase 1: Kritiske Effekter (Høy Prioritet)
+1. ✅ Doom tick pulse
+2. ✅ Sanity loss distortion
+3. ✅ Skill check dice glow
+4. ✅ Attack trails og impact
+5. ✅ Enemy spawn portal
+6. ✅ Horror check flash
+7. ✅ Madness onset
+8. ✅ Flashlight reveal
+9. ✅ Door opening effects
+10. ✅ Gaslight ambience
+
+#### Fase 2: Atmosfæriske Effekter (Medium Prioritet)
+1. Ritual chamber rune glow
+2. Crypt ghost glimpses
+3. Laboratory sparks og bubbles
+4. Water reflections
+5. Moonlight overlay
+6. Candle flicker
+7. Item pickup sparkle
+8. Sanity restore wave
+9. Victory burst
+10. Game over darkness
+
+#### Fase 3: Polish Effekter (Lav Prioritet)
+1. Footstep dust
+2. Enemy movement ghost
+3. Turn transition sweep
+4. Church divine light
+5. Notification glow
+6. Tile-spesifikke partikler
+
+---
+
+### TypeScript Interface Forslag
+
+```typescript
+interface ParticleEffect {
+  id: string;
+  type: 'dust' | 'spark' | 'glow' | 'splash' | 'trail' | 'burst';
+  color: string;
+  count: number;
+  size: { min: number; max: number };
+  duration: number;
+  spread: { x: number; y: number };
+  gravity?: number;
+  fadeOut?: boolean;
+}
+
+interface LightEffect {
+  id: string;
+  type: 'point' | 'cone' | 'ambient' | 'pulse';
+  color: string;
+  intensity: number;
+  radius: number;
+  flicker?: {
+    enabled: boolean;
+    speed: number;
+    intensity: number;
+  };
+  animation?: string; // CSS animation name
+}
+
+interface TileEffectConfig {
+  tileType: string;
+  particles?: ParticleEffect[];
+  lights?: LightEffect[];
+  overlay?: {
+    className: string;
+    opacity: number;
+  };
+}
+
+interface ActionEffectConfig {
+  action: string;
+  particles?: ParticleEffect[];
+  screenEffect?: {
+    className: string;
+    duration: number;
+  };
+  sound?: string;
+}
+```
+
+---
+
+### Ressurser Nødvendig
+
+1. **CSS Filer**: Utvide `src/index.css` med nye keyframes
+2. **React Components**:
+   - `ParticleEmitter.tsx` - Generisk partikkel-renderer
+   - `LightOverlay.tsx` - Lys-effekt overlay
+   - `ScreenEffects.tsx` - Fullskjerm-effekter (doom, sanity, etc.)
+3. **Data Filer**:
+   - `effectConfigs.ts` - Konfigurasjon for alle effekter
+   - `tileEffects.ts` - Tile-spesifikke effekt-mappings
+
+---
+
+### Neste Steg
+
+1. [ ] Implementere `ParticleEmitter` komponent
+2. [ ] Legge til Fase 1 CSS animasjoner
+3. [ ] Integrere med GameBoard for tile-effekter
+4. [ ] Integrere med ActionBar for handlings-effekter
+5. [ ] Testing på ulike enheter (performance)
+
+---
