@@ -43,12 +43,10 @@ const SkillCheckPanel: React.FC<SkillCheckPanelProps> = ({
   const [rolling, setRolling] = useState(false);
   const [result, setResult] = useState<SkillCheckResult | null>(null);
 
-  // Get attribute value - need to access player's character attributes
+  // Get attribute value from player's character attributes
   const getAttributeValue = (): number => {
-    // Player extends Character which has attributes
-    const attrs = (player as any).attributes;
-    if (!attrs) return 2; // fallback
-    return attrs[skill] || 2;
+    // Player extends Character which has attributes: CharacterAttributes
+    return player.attributes[skill] ?? 2;
   };
 
   const attributeValue = getAttributeValue();
