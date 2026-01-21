@@ -60,7 +60,8 @@ import {
   ROOM_CLUSTERS,
   RoomCluster,
   ConnectionEdgeType,
-  rotateEdges
+  rotateEdges,
+  getNeighborTiles
 } from './tileConnectionSystem';
 import {
   initializeObjectiveSpawns,
@@ -1795,8 +1796,11 @@ const ShadowsGame: React.FC = () => {
     // Gather edge constraints from all neighbors
     const constraints = gatherConstraints(boardMap, startQ, startR);
 
-    // Find all valid templates that match the constraints
-    const validMatches = findValidTemplates(constraints, sourceCategory as TileCategory);
+    // Get neighboring tiles for affinity calculations
+    const neighborTiles = getNeighborTiles(boardMap, startQ, startR);
+
+    // Find all valid templates that match the constraints (with affinity support)
+    const validMatches = findValidTemplates(constraints, sourceCategory as TileCategory, neighborTiles);
 
     // Filter by tile set preference using helper
     const filteredMatches = validMatches.filter(match =>
