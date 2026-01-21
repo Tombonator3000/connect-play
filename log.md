@@ -1,5 +1,183 @@
 # Development Log
 
+## 2026-01-21: Quest/Scenario Editor - Analyse og Plan
+
+### Oppgave
+Lage en visuell drag-and-drop quest/scenario editor der man kan:
+- Legge ut hex-tiles manuelt
+- Velge tiles og plassere dem på grid
+- Definere oppdragsparametre (objectives, victory conditions)
+- Legge ut quest items på tiles
+- Plassere monstre
+- Sette doom events
+
+### Analyse av eksisterende system
+
+#### Scenario-struktur (constants.ts linje 666+)
+```typescript
+Scenario {
+  id, title, description, briefing
+  startDoom, startLocation, specialRule
+  difficulty, tileSet, theme, goal, victoryType
+  objectives: ScenarioObjective[]
+  victoryConditions: VictoryCondition[]
+  defeatConditions: DefeatCondition[]
+  doomEvents: DoomEvent[]
+}
+```
+
+#### Tile-struktur
+- 6 kategorier: nature, urban, street, facade, foyer, corridor, room, stairs, basement, crypt
+- Forbindelsesregler mellom kategorier (CATEGORY_CONNECTIONS)
+- 85 tile-bilder tilgjengelig
+- Edge-system med 6 kanter per tile (open, wall, door, secret, etc.)
+
+#### Monster-system (BESTIARY)
+- 4 kategorier: MINIONS, WARRIORS, ELITES, BOSSES
+- 15+ monster-typer
+
+#### Quest items
+- Keys, clues, collectibles, special items
+- Spawn-system basert på exploration progress
+
+### Konklusjon: JA, dette lar seg gjennomføre!
+
+### Arkitektur-plan for Quest Editor
+
+#### 1. Hovedkomponenter
+
+| Komponent | Funksjon |
+|-----------|----------|
+| `QuestEditor.tsx` | Hovedcontainer med state management |
+| `EditorCanvas.tsx` | Hex-grid canvas for tile-plassering |
+| `TilePalette.tsx` | Sidebar med draggable tiles |
+| `PropertiesPanel.tsx` | Høyre panel for redigering av valgt element |
+| `ObjectiveEditor.tsx` | Modal/panel for objectives og victory conditions |
+| `MonsterPlacer.tsx` | Monster-plassering og doom events |
+| `EditorToolbar.tsx` | Verktøy: select, place, delete, pan, zoom |
+
+#### 2. Editor State
+
+```typescript
+EditorState {
+  // Canvas
+  tiles: Map<string, EditorTile>        // q,r -> tile
+  selectedTile: string | null
+  viewOffset: {x, y}
+  zoom: number
+
+  // Tools
+  activeTool: 'select' | 'place' | 'delete' | 'pan'
+  selectedPaletteTile: TileDefinition | null
+
+  // Scenario metadata
+  scenarioMeta: {
+    id, title, description, briefing
+    startDoom, difficulty, theme
+    startLocation: string
+  }
+
+  // Objectives
+  objectives: ScenarioObjective[]
+  victoryConditions: VictoryCondition[]
+  defeatConditions: DefeatCondition[]
+  doomEvents: DoomEvent[]
+
+  // Placements
+  monsters: MonsterPlacement[]
+  questItems: ItemPlacement[]
+}
+```
+
+#### 3. Funksjonalitet
+
+**Tile-plassering:**
+- Drag fra palette til canvas
+- Click på grid for å plassere
+- Automatisk edge-matching basert på kategorier
+- Roter tile (R-tast)
+- Slett tile (Delete-tast)
+
+**Tile-redigering (Properties Panel):**
+- Endre navn/beskrivelse
+- Sett kategori og floor type
+- Konfigurer 6 edges individuelt
+- Legg til objects (altar, chest, etc.)
+- Marker som start location
+
+**Quest items:**
+- Drag items til tiles
+- Sett item properties
+- Koble til objectives
+
+**Monster-plassering:**
+- Fast plassering (starter på tile)
+- Doom event spawning (spawn ved doom threshold)
+
+**Objectives:**
+- Legg til/fjern objectives
+- Sett type (find_item, kill_enemy, etc.)
+- Koble til tiles/items/monsters
+- Definer victory/defeat conditions
+
+#### 4. Export/Import
+
+**Export format:** JSON som matcher Scenario-interface
+```typescript
+// Lagres som egen fil eller i constants.ts
+const CUSTOM_SCENARIO: Scenario = { ... }
+```
+
+**Import:** Last inn eksisterende scenario for redigering
+
+#### 5. Teknisk implementasjon
+
+**Drag & Drop:** React DnD eller @dnd-kit/core
+**Canvas:**
+- Option A: SVG-basert (enklere, bedre for små maps)
+- Option B: Canvas API (bedre performance for store maps)
+- Option C: Gjenbruk eksisterende HexTile-komponenter
+
+**State:** Zustand eller useReducer for kompleks state
+
+#### 6. Estimert arbeidsmengde
+
+| Del | Kompleksitet |
+|-----|--------------|
+| EditorCanvas med hex-grid | Medium |
+| TilePalette med drag | Lav |
+| Edge-editor | Medium-Høy |
+| Properties panel | Medium |
+| Objective editor | Medium |
+| Monster/item placement | Lav |
+| Export/import | Lav |
+| Integration med spill | Medium |
+
+### Anbefalt fremgangsmåte
+
+**Fase 1 - Grunnleggende editor:**
+1. EditorCanvas med hex-grid
+2. TilePalette med alle tiles
+3. Enkel click-to-place
+4. Properties panel for valgt tile
+
+**Fase 2 - Avansert tile-redigering:**
+5. Edge-konfigurasjon
+6. Objects på tiles
+7. Start location marking
+
+**Fase 3 - Quest-elementer:**
+8. Monster-plassering
+9. Quest item-plassering
+10. Objective editor
+
+**Fase 4 - Polish:**
+11. Export/import JSON
+12. Preview/test modus
+13. Undo/redo
+
+---
+
 ## 2026-01-21: Tile Grafikk Validering
 
 ### Oppsummering
