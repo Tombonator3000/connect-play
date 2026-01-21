@@ -904,6 +904,218 @@ export interface FloatingText {
 }
 
 // ============================================================================
+// FIELD JOURNAL LOG SYSTEM
+// ============================================================================
+
+/**
+ * Categories for log entries - determines color and styling
+ */
+export type LogCategory =
+  | 'combat_hit'       // Successful attacks - red/orange
+  | 'combat_miss'      // Missed attacks - gray
+  | 'combat_critical'  // Critical hits - bright red/gold
+  | 'damage_taken'     // Player takes damage - dark red
+  | 'enemy_spawn'      // Enemy spawns - amber/warning
+  | 'enemy_death'      // Enemy defeated - green
+  | 'item_found'       // Items found/collected - gold/yellow
+  | 'quest_progress'   // Quest/objective progress - cyan
+  | 'exploration'      // New area discovered - blue
+  | 'sanity'          // Sanity changes - purple
+  | 'horror'          // Horror checks - dark purple
+  | 'madness'         // Madness effects - magenta
+  | 'doom'            // Doom events - crimson
+  | 'mythos'          // Mythos phase events - dark amber
+  | 'skill_success'   // Skill check passed - green
+  | 'skill_fail'      // Skill check failed - red
+  | 'blocked'         // Movement/action blocked - gray
+  | 'healing'         // Health/sanity restored - green
+  | 'phase'           // Phase changes - neutral
+  | 'info';           // General info - default gray
+
+/**
+ * Log entry with categorization for colored display
+ */
+export interface LogEntry {
+  timestamp: string;
+  message: string;
+  category: LogCategory;
+}
+
+/**
+ * Detects log category from message content using keywords
+ */
+export function detectLogCategory(message: string): LogCategory {
+  const lowerMsg = message.toLowerCase();
+
+  // Combat - hits
+  if (lowerMsg.includes('treff!') || lowerMsg.includes('hit!') ||
+      (lowerMsg.includes('skade') && !lowerMsg.includes('blokkert'))) {
+    if (lowerMsg.includes('kritisk') || lowerMsg.includes('critical')) {
+      return 'combat_critical';
+    }
+    return 'combat_hit';
+  }
+
+  // Combat - misses
+  if (lowerMsg.includes('bom') || lowerMsg.includes('miss') ||
+      lowerMsg.includes('treffer ikke') || lowerMsg.includes('blokkert')) {
+    return 'combat_miss';
+  }
+
+  // Damage taken
+  if (lowerMsg.includes('tar skade') || lowerMsg.includes('takes damage') ||
+      lowerMsg.includes('mister') && lowerMsg.includes('hp')) {
+    return 'damage_taken';
+  }
+
+  // Enemy spawn
+  if (lowerMsg.includes('emerges') || lowerMsg.includes('dukker opp') ||
+      lowerMsg.includes('spawn') || lowerMsg.includes('kryper ut') ||
+      lowerMsg.includes('appear') || lowerMsg.includes('rise')) {
+    return 'enemy_spawn';
+  }
+
+  // Enemy death
+  if (lowerMsg.includes('defeated') || lowerMsg.includes('beseiret') ||
+      lowerMsg.includes('falls') || lowerMsg.includes('kollapser') ||
+      lowerMsg.includes('shattering') || lowerMsg.includes('dissolves')) {
+    return 'enemy_death';
+  }
+
+  // Items found
+  if (lowerMsg.includes('materialisert') || lowerMsg.includes('plukker opp') ||
+      lowerMsg.includes('found') || lowerMsg.includes('collected') ||
+      lowerMsg.includes('equipped') || lowerMsg.includes('item')) {
+    return 'item_found';
+  }
+
+  // Quest progress
+  if (lowerMsg.includes('quest') || lowerMsg.includes('objective') ||
+      lowerMsg.includes('mål') || lowerMsg.includes('✨') || lowerMsg.includes('🌟')) {
+    return 'quest_progress';
+  }
+
+  // Exploration
+  if (lowerMsg.includes('discovered') || lowerMsg.includes('oppdaget') ||
+      lowerMsg.includes('enters') || lowerMsg.includes('beveger seg') ||
+      lowerMsg.includes('exploring')) {
+    return 'exploration';
+  }
+
+  // Sanity
+  if ((lowerMsg.includes('sanity') || lowerMsg.includes('fornuft')) &&
+      !lowerMsg.includes('horror') && !lowerMsg.includes('madness')) {
+    return 'sanity';
+  }
+
+  // Horror
+  if (lowerMsg.includes('horror') || lowerMsg.includes('skrekk') ||
+      lowerMsg.includes('fatningen')) {
+    return 'horror';
+  }
+
+  // Madness
+  if (lowerMsg.includes('madness') || lowerMsg.includes('galskap') ||
+      lowerMsg.includes('insanity') || lowerMsg.includes('catatonia') ||
+      lowerMsg.includes('hysteria') || lowerMsg.includes('paranoia')) {
+    return 'madness';
+  }
+
+  // Doom
+  if (lowerMsg.includes('doom') || lowerMsg.includes('undergang')) {
+    return 'doom';
+  }
+
+  // Mythos
+  if (lowerMsg.includes('mythos') || lowerMsg.includes('event:') ||
+      lowerMsg.includes('eldgamle') || lowerMsg.includes('📜')) {
+    return 'mythos';
+  }
+
+  // Skill checks
+  if (lowerMsg.includes('skill check') || lowerMsg.includes('ferdighetskast')) {
+    if (lowerMsg.includes('success') || lowerMsg.includes('lykkes') || lowerMsg.includes('passed')) {
+      return 'skill_success';
+    }
+    if (lowerMsg.includes('fail') || lowerMsg.includes('mislyktes')) {
+      return 'skill_fail';
+    }
+  }
+
+  // Blocked
+  if (lowerMsg.includes('blocked') || lowerMsg.includes('sperret') ||
+      lowerMsg.includes('cannot') || lowerMsg.includes('kan ikke') ||
+      lowerMsg.includes('not enough')) {
+    return 'blocked';
+  }
+
+  // Healing
+  if (lowerMsg.includes('heal') || lowerMsg.includes('restored') ||
+      lowerMsg.includes('gjenopprettet') || lowerMsg.includes('+') &&
+      (lowerMsg.includes('hp') || lowerMsg.includes('sanity'))) {
+    return 'healing';
+  }
+
+  // Phase changes
+  if (lowerMsg.includes('ny dag') || lowerMsg.includes('new day') ||
+      lowerMsg.includes('round') || lowerMsg.includes('turn') ||
+      lowerMsg.includes('runde')) {
+    return 'phase';
+  }
+
+  return 'info';
+}
+
+/**
+ * Gets CSS classes for a log category
+ */
+export function getLogCategoryClasses(category: LogCategory): string {
+  switch (category) {
+    case 'combat_hit':
+      return 'text-orange-400';
+    case 'combat_miss':
+      return 'text-slate-500';
+    case 'combat_critical':
+      return 'text-red-400 font-bold';
+    case 'damage_taken':
+      return 'text-red-500';
+    case 'enemy_spawn':
+      return 'text-amber-500';
+    case 'enemy_death':
+      return 'text-emerald-400';
+    case 'item_found':
+      return 'text-yellow-400';
+    case 'quest_progress':
+      return 'text-cyan-400';
+    case 'exploration':
+      return 'text-blue-400';
+    case 'sanity':
+      return 'text-violet-400';
+    case 'horror':
+      return 'text-purple-500';
+    case 'madness':
+      return 'text-fuchsia-500 font-semibold';
+    case 'doom':
+      return 'text-rose-600 font-semibold';
+    case 'mythos':
+      return 'text-amber-600';
+    case 'skill_success':
+      return 'text-green-400';
+    case 'skill_fail':
+      return 'text-red-400';
+    case 'blocked':
+      return 'text-slate-400';
+    case 'healing':
+      return 'text-green-400';
+    case 'phase':
+      return 'text-slate-300';
+    case 'info':
+    default:
+      return 'text-muted-foreground';
+  }
+}
+
+// ============================================================================
 // SPELL PARTICLE EFFECTS SYSTEM
 // ============================================================================
 
@@ -1310,7 +1522,7 @@ export interface GameState {
   enemies: Enemy[];
   encounteredEnemies: string[];
   cluesFound: number;
-  log: string[];
+  log: LogEntry[];
   lastDiceRoll: number[] | null;
   activeEvent: EventCard | null;
   eventDeck: EventCard[];           // Shuffled deck of event cards

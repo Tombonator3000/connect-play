@@ -7,6 +7,7 @@ import {
   Zap, Droplet, Key, Star, FileText, Gem
 } from 'lucide-react';
 import { EnemyTooltip, TileObjectTooltip, EdgeFeatureTooltip } from './ItemTooltip';
+import CursorTooltip, { HoverData } from './CursorTooltip';
 import WeatherOverlay from './WeatherOverlay';
 import { calculateWeatherVision, weatherHidesEnemy, getDarkRoomDisplayState } from '../constants';
 import { Flashlight } from 'lucide-react';
@@ -752,6 +753,9 @@ const GameBoard: React.FC<GameBoardProps> = ({
   const tileTouchStartTime = useRef<number>(0);
   const tileTouchStartPos = useRef<{ x: number; y: number } | null>(null);
 
+  // Cursor tooltip state
+  const [hoverData, setHoverData] = useState<HoverData | null>(null);
+
   useEffect(() => {
     if (containerRef.current) {
       const { width, height } = containerRef.current.getBoundingClientRect();
@@ -1065,6 +1069,12 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 // Desktop click handling - trigger movement if not dragging
                 if (!hasDragged.current) onTileClick(tile.q, tile.r);
               }}
+              onMouseEnter={() => {
+                if (isVisible) {
+                  setHoverData({ type: 'tile', tile });
+                }
+              }}
+              onMouseLeave={() => setHoverData(null)}
               onTouchStart={(e) => {
                 setTouchedTileKey(tileKey);
                 handleTileLongPressStart(tile.q, tile.r);
@@ -1968,6 +1978,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   filter: isHiddenByWeather ? 'blur(2px)' : 'none'
                 }}
                 onClick={(e) => { e.stopPropagation(); if (!hasDragged.current && onEnemyClick) onEnemyClick(enemy.id); }}
+                onMouseEnter={() => setHoverData({ type: 'enemy', enemy })}
+                onMouseLeave={() => setHoverData(null)}
               >
                 <div className={`w-full h-full rounded-full border-2 ${isSelected ? 'border-primary shadow-[var(--shadow-doom)]' : 'border-red-900 shadow-[0_0_20px_rgba(220,38,38,0.3)]'} overflow-hidden relative`}>
                   <img 
@@ -2083,6 +2095,9 @@ const GameBoard: React.FC<GameBoardProps> = ({
           });
         })}
       </div>
+
+      {/* Cursor-following tooltip for hover feedback */}
+      <CursorTooltip hoverData={hoverData} />
     </div>
   );
 };

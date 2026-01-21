@@ -1,5 +1,95 @@
 # Development Log
 
+## 2026-01-21: Field Journal Colors, Edge Functionality, Cursor Tooltips
+
+### Oppsummering
+
+Tre nye funksjoner implementert i denne økten:
+1. Fargekodet Field Journal for ulike hendelsestyper
+2. Pass-through funksjonalitet for vinduer, vann, ild etc.
+3. Cursor-følgende tooltips nær musepeker
+
+---
+
+### 1. Field Journal med Fargekodede Loggmeldinger
+
+**Problem:** Alle meldinger i Field Journal hadde samme farge, noe som gjorde det vanskelig å raskt identifisere hva som skjedde.
+
+**Løsning:**
+- **Fil: `src/game/types.ts`**
+  - La til `LogCategory` type med 20 ulike kategorier (combat_hit, combat_miss, enemy_spawn, item_found, etc.)
+  - La til `LogEntry` interface med timestamp, message og category
+  - La til `detectLogCategory()` funksjon som analyserer meldingsinnhold og tildeler kategori
+  - La til `getLogCategoryClasses()` funksjon som returnerer Tailwind CSS-klasser basert på kategori
+
+- **Fil: `src/game/ShadowsGame.tsx`**
+  - Oppdaterte `addToLog()` til å lage LogEntry-objekter med automatisk kategorideteksjon
+  - Oppdaterte log-visning til å bruke fargeklasser basert på kategori
+
+**Fargekategorier:**
+- Rød: Kritiske treff, skade
+- Oransje: Vanlige treff
+- Grå: Bom, blokkert
+- Grønn: Enemy death, healing, suksess
+- Amber: Enemy spawn, mythos
+- Gul: Items funnet
+- Lilla: Sanity, horror, madness
+- Cyan: Quest progress
+- Blå: Exploration
+
+---
+
+### 2. Pass-Through Funksjonalitet for Vinduer og Blokkerte Kanter
+
+**Problem:** Spiller kunne ikke fysisk flyttes gjennom vinduer eller andre passasjer som krever skill checks.
+
+**Løsning:**
+- **Fil: `src/game/utils/contextActionEffects.ts`**
+  - La til `movePlayerThroughEdge?: boolean` til ActionEffectResult interface
+  - La til liste over PASS_THROUGH_ACTIONS som trigger spillerbevegelse
+  - Returnerer `{ movePlayerThroughEdge: true }` for handlinger som climb_through_window, wade_through, etc.
+
+- **Fil: `src/game/ShadowsGame.tsx`**
+  - La til håndtering av `movePlayerThroughEdge` flag i handleContextActionEffect
+  - Flytter spiller til nabotile når flagget er satt
+  - Kaller spawnRoom hvis måltile ikke eksisterer
+
+**Støttede pass-through handlinger:**
+- climb_through_window (vindu)
+- wade_through, wade_through_edge (oversvømt)
+- swim_across (dypt vann)
+- jump_through_edge_fire, jump_fire (brann)
+- force_through_edge_spirits, force_through (åndesperre)
+- cross_ward, cross_edge_ward (magisk vern)
+- use_rope_chasm (avgrunn med tau)
+- pass_through_fog (tåkevegg)
+
+---
+
+### 3. Cursor-Følgende Tooltips
+
+**Problem:** Hover-informasjon vistes langt fra musepekeren, i stedet for nær der spilleren ser.
+
+**Løsning:**
+- **Ny fil: `src/game/components/CursorTooltip.tsx`**
+  - Laget `CursorTooltip` komponent som følger musepekeren
+  - Viser info om tiles, edges, enemies og objects
+  - Tilpasser posisjon ved kant av skjerm
+  - Deaktiveres automatisk på mobil
+
+- **Fil: `src/game/components/GameBoard.tsx`**
+  - La til `hoverData` state for å tracke hva spilleren holder musen over
+  - La til onMouseEnter/onMouseLeave handlers til tiles og enemies
+  - Integrerte CursorTooltip komponenten
+
+**Tooltips viser:**
+- Tile: navn, kategori, beskrivelse, om den kan undersøkes
+- Edge: dør-status, blokkeringstype, tilgjengelige handlinger
+- Enemy: navn, skade, horror, traits, lore
+- Object: type, beskrivelse, interaksjonsmuligheter
+
+---
+
 ## 2026-01-21: Multiple Bug Fixes and Feature Implementations
 
 ### Oppsummering

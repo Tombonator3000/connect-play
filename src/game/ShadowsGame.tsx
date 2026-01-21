@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package, X, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent, OccultistSpell, SpellParticleType } from './types';
+import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent, OccultistSpell, SpellParticleType, LogEntry, detectLogCategory, getLogCategoryClasses } from './types';
 import ContextActionBar from './components/ContextActionBar';
 import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
 import { performSkillCheck } from './utils/combatUtils';
@@ -578,7 +578,12 @@ const ShadowsGame: React.FC = () => {
   }, [state.activeScenario, state.players]);
 
   const addToLog = (message: string) => {
-    setState(prev => ({ ...prev, log: [`[${new Date().toLocaleTimeString()}] ${message}`, ...prev.log].slice(0, 50) }));
+    const entry: LogEntry = {
+      timestamp: new Date().toLocaleTimeString(),
+      message,
+      category: detectLogCategory(message)
+    };
+    setState(prev => ({ ...prev, log: [entry, ...prev.log].slice(0, 50) }));
   };
 
   const triggerScreenShake = () => {
@@ -1636,6 +1641,7 @@ const ShadowsGame: React.FC = () => {
           }));
         }
         break;
+
     }
   }, [activeContextTarget]);
 
@@ -1698,7 +1704,33 @@ const ShadowsGame: React.FC = () => {
         ...(result.questItemsCollected && { questItemsCollected: result.questItemsCollected })
       }));
     }
-  }, [activeContextTarget, state.board, state.activeScenario, state.objectiveSpawnState, state.questItemsCollected, state.players, state.activePlayerIndex]);
+
+    // Handle pass-through movement (climbing windows, wading through water, etc.)
+    if (result.movePlayerThroughEdge && activeContextTarget.edgeIndex !== undefined) {
+      const adjPos = getAdjacentPosition(tile, activeContextTarget.edgeIndex);
+      if (adjPos) {
+        const existingTile = state.board.find(t => t.q === adjPos.q && t.r === adjPos.r);
+        const activePlayer = state.players[state.activePlayerIndex];
+
+        // Spawn room if needed
+        if (!existingTile) {
+          spawnRoom(adjPos.q, adjPos.r, state.activeScenario?.tileSet || 'mixed');
+        }
+
+        // Move player to the adjacent position
+        setState(prev => ({
+          ...prev,
+          players: prev.players.map((p, i) =>
+            i === prev.activePlayerIndex ? { ...p, position: adjPos } : p
+          ),
+          exploredTiles: [...new Set([...(prev.exploredTiles || []), `${adjPos.q},${adjPos.r}`])]
+        }));
+
+        const targetName = existingTile?.name || 'ukjent område';
+        addToLog(`${activePlayer?.name || 'Investigator'} passerer gjennom til ${targetName}.`);
+      }
+    }
+  }, [activeContextTarget, state.board, state.activeScenario, state.objectiveSpawnState, state.questItemsCollected, state.players, state.activePlayerIndex, spawnRoom]);
 
   // NOTE: The following cases were part of the old 470-line switch statement
   // They have been refactored into contextActionEffects.ts - DO NOT REINTRODUCE
@@ -3971,7 +4003,11 @@ const ShadowsGame: React.FC = () => {
                     <EnemyPanel enemy={selectedEnemy} onClose={() => setState(prev => ({ ...prev, selectedEnemyId: null }))} />
                   ) : (
                     <div className="space-y-3">
-                      {state.log.map((entry, i) => <div key={i} className="text-sm font-serif italic text-muted-foreground leading-relaxed border-b border-border/30 pb-2">{entry}</div>)}
+                      {state.log.map((entry, i) => (
+                                        <div key={i} className={`text-sm font-serif italic leading-relaxed border-b border-border/30 pb-2 ${getLogCategoryClasses(entry.category)}`}>
+                                          <span className="text-muted-foreground/50">[{entry.timestamp}]</span> {entry.message}
+                                        </div>
+                                      ))}
                     </div>
                   )}
                 </div>
@@ -3987,7 +4023,11 @@ const ShadowsGame: React.FC = () => {
                       <h3 className="text-xs font-bold text-parchment uppercase tracking-[0.2em]">Field Journal</h3>
                     </div>
                     <div className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
-                      {state.log.map((entry, i) => <div key={i} className="text-sm font-serif italic text-muted-foreground leading-relaxed border-b border-border/30 pb-2">{entry}</div>)}
+                      {state.log.map((entry, i) => (
+                                        <div key={i} className={`text-sm font-serif italic leading-relaxed border-b border-border/30 pb-2 ${getLogCategoryClasses(entry.category)}`}>
+                                          <span className="text-muted-foreground/50">[{entry.timestamp}]</span> {entry.message}
+                                        </div>
+                                      ))}
                     </div>
                   </div>
                 )}
