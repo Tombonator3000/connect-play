@@ -10344,6 +10344,42 @@ Modal som vises når en permadeath-helt når 3 eller 6 overlevde scenarios:
 ✅ LevelUpModal.tsx opprettet
 ✅ SurvivorTraitModal.tsx opprettet
 
+### Integrert i ShadowsGame.tsx
+
+Modalene er nå fullt integrert i hovedspillet:
+
+**Nye state-variabler:**
+- `showLevelUpModal`, `levelUpQueue`, `currentLevelUpHero`
+- `showSurvivorTraitModal`, `survivorTraitQueue`, `currentSurvivorHero`
+
+**Nye callback-funksjoner:**
+- `handleLevelUpBonusSelect()` - Håndterer level-up valg, oppdaterer hero, går til neste i kø
+- `handleSurvivorTraitSelect()` - Håndterer survivor trait valg, appliserer effekter
+- `handleSkipSurvivorTrait()` - Hopp over survivor trait for nå
+
+**Integrasjon i handleScenarioComplete():**
+1. Helter som kan levle legges i `levelUpQueue`
+2. Permadeath-helter som når 3 eller 6 scenarios legges i `survivorTraitQueue`
+3. `scenariosSurvivedStreak` inkrementeres for permadeath-helter
+4. LevelUpModal vises først, deretter SurvivorTraitModal
+
+**Flow:**
+```
+Scenario Complete
+    ↓
+Calculate rewards, check level-ups
+    ↓
+Show LevelUpModal for each hero that leveled
+    ↓
+Show SurvivorTraitModal for permadeath heroes at milestones
+    ↓
+Show MerchantShop
+```
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Modalene integrert i ShadowsGame.tsx
+
 ### Gjenstående UI (lavere prioritet)
 - HeroStatsPanel - utvidet visning av alle bonuser
 - MilestoneNotification - toast ved milestone
