@@ -10311,12 +10311,42 @@ classBonuses: string[];
 ### Build Status
 ✅ TypeScript kompilerer uten feil
 
-### Neste steg (UI)
-For å bruke systemet fullt ut trengs følgende UI-komponenter:
-1. LevelUpModal - viser alle level-up valg
-2. SurvivorTraitModal - viser survivor trait valg ved milepæler
-3. HeroStatsPanel - viser alle bonuser og milestones
-4. MilestoneNotification - toast når milestone nås
+### UI-komponenter IMPLEMENTERT
+
+#### LevelUpModal.tsx
+Modal som vises når en helt levler opp:
+- Viser alle tilgjengelige bonuser basert på level
+- Grupperer bonuser i kategorier (Attributes, Vitality, Skill Masteries, Combat)
+- Viser automatisk milestone-bonus som er opplåst ved dette nivået
+- Filtrerer bort allerede valgte skill masteries
+
+**Features:**
+- Gule highlight for valgt bonus
+- Fargekodede ikoner for hver bonus-type
+- Beskrivelser for hver bonus
+- Bekreftelses-knapp aktiveres kun når valg er gjort
+
+#### SurvivorTraitModal.tsx
+Modal som vises når en permadeath-helt når 3 eller 6 overlevde scenarios:
+- Viser tilgjengelige survivor traits (Tier 1 ved 3, Tier 2 ved 6)
+- Viser nåværende streak-bonuser (XP%, Gold%, Title)
+- Viser allerede valgte traits
+- Advarsel om at dette er permadeath-helt
+
+**Features:**
+- Lilla/indigo tema for survivor-systemet
+- Tydelig tier-inndeling
+- Skip-knapp for å velge senere
+- Viser hvilke traits som allerede er valgt
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ LevelUpModal.tsx opprettet
+✅ SurvivorTraitModal.tsx opprettet
+
+### Gjenstående UI (lavere prioritet)
+- HeroStatsPanel - utvidet visning av alle bonuser
+- MilestoneNotification - toast ved milestone
 
 ---
 
