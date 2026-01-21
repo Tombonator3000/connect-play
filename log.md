@@ -9704,3 +9704,44 @@ Lyder lagt til på:
 - Mixed events gir trade-offs (insight vs sanity)
 - Weather events påvirker gameplay mekanikker
 
+
+---
+
+## 2026-01-21 - Fix: spawnRoom Temporal Dead Zone Error
+
+### Problem
+Runtime error: `Uncaught ReferenceError: Cannot access 'spawnRoom' before initialization`
+- Error occurred at line 1750 in ShadowsGame.tsx
+- Caused blank screen and game crash
+
+### Root Cause
+JavaScript "temporal dead zone" (TDZ) error. The `spawnRoom` and `spawnEnemy` useCallback hooks were defined AFTER `handleContextActionEffect`, but `spawnRoom` was referenced in `handleContextActionEffect`'s dependency array and function body.
+
+When React evaluates the dependency array of a useCallback, the referenced variables must already be initialized. Since `spawnRoom` was declared with `const` but defined later in the component, JavaScript threw a TDZ error.
+
+**Before (broken order):**
+```
+handleContextActionEffect (line ~1651) - uses spawnRoom in dependency array
+...
+spawnEnemy (line ~1937)
+spawnRoom (line ~1968) - defined too late!
+```
+
+### Solution
+Moved `spawnEnemy` and `spawnRoom` definitions to BEFORE `handleContextActionEffect`:
+
+**After (correct order):**
+```
+spawnEnemy (line ~1648)
+spawnRoom (line ~1680)
+handleContextActionEffect (line ~1895) - now can access spawnRoom
+```
+
+### Files Changed
+- `src/game/ShadowsGame.tsx` - Reordered function definitions
+
+### Verification
+- ✅ Build successful
+- ✅ No TypeScript errors
+- ✅ Committed and pushed to `claude/fix-uncaught-error-2ctjk`
+
