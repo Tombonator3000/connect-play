@@ -10178,10 +10178,145 @@ export interface LegacyHero {
 
 ### Spørsmål til bruker
 
-1. Skal AP-bonus være automatisk ved level 3/5, eller valgfri?
-2. Hvor kraftige skal survivor-bonusene være for permadeath?
+1. Skal AP-bonus være automatisk ved level 3/5, eller valgfri? **SVAR: AUTOMATISK**
+2. Hvor kraftige skal survivor-bonusene være for permadeath? **SVAR: PASSE**
 3. Skal alle bonuser være permanent, eller noen per-scenario?
-4. Ønskes noen klasse-spesifikke level-bonuser?
+4. Ønskes noen klasse-spesifikke level-bonuser? **SVAR: JA**
+
+---
+
+## 2026-01-21: XP- og Leveling-System IMPLEMENTERT
+
+### Implementerte endringer
+
+#### 1. types.ts - Nye typer
+
+**Nye typer lagt til:**
+```typescript
+// Skill mastery types
+export type SkillMasteryType = 'investigation' | 'combat' | 'occult' | 'athletics';
+
+// Utvidet LevelUpBonus
+export type LevelUpBonus =
+  | { type: 'attribute'; attribute: keyof CharacterAttributes }
+  | { type: 'maxHp'; value: 2 }
+  | { type: 'maxSanity'; value: 1 }
+  | { type: 'actionPoint'; value: 1 }
+  | { type: 'attackDie'; value: 1 }
+  | { type: 'defenseDie'; value: 1 }
+  | { type: 'skillMastery'; skill: SkillMasteryType };
+
+// Milestone system
+export interface MilestoneBonus { ... }
+export type MilestoneEffect = ...
+
+// Survivor system (permadeath)
+export interface SurvivorTrait { ... }
+export type SurvivorEffect = ...
+
+// Class-specific bonuses
+export interface ClassLevelBonus { ... }
+export type ClassBonusEffect = ...
+```
+
+**LegacyHero utvidet med:**
+```typescript
+// Extended leveling system (v2)
+bonusActionPoints: number;
+bonusAttackDice: number;
+bonusDefenseDice: number;
+skillMasteries: SkillMasteryType[];
+milestones: string[];
+
+// Survivor tracking (permadeath)
+scenariosSurvivedStreak: number;
+survivorTraits: string[];
+survivorTitle?: string;
+
+// Class-specific bonuses
+classBonuses: string[];
+```
+
+#### 2. constants.ts - Nye konstanter
+
+**MILESTONE_BONUSES:**
+- Level 2: Hardened (+1 die første Horror Check)
+- Level 3: Veteran's Instinct (+1 AP første runde)
+- Level 4: Iron Will (1 re-roll per runde)
+- Level 5: Legend (+1 Insight start, -1 DC)
+
+**SURVIVOR_TRAITS (Tier 1 - 3 scenarios):**
+- Scarred Survivor (+1 HP, -1 Sanity)
+- Paranoid Vigilance (kan ikke overraskes)
+- Death's Defiance (overlev dødelig skade én gang)
+
+**SURVIVOR_TRAITS (Tier 2 - 6 scenarios):**
+- Hardened Mind (immun mot valgt Madness)
+- Battle-Tested (+1 Attack Die)
+- Sixth Sense (detect secret doors)
+
+**SURVIVOR_STREAK_BONUSES:**
+- 3 scenarios: +5% XP
+- 5 scenarios: +10% XP, +5% Gold
+- 7 scenarios: +15% XP, +10% Gold
+- 10+ scenarios: +25% XP, +15% Gold, "Immortal" title
+
+**CLASS_LEVEL_BONUSES (for hver klasse ved level 2, 3, 5):**
+- Detective: Sharp Eye, Keen Intuition, Master Investigator
+- Professor: Arcane Knowledge, Scholarly Mind, Master Occultist
+- Occultist: Dark Arts, Ritual Master, Eldritch Power
+- Veteran: Combat Training, Marksman, War Hero
+- Journalist: Street Smart, Nimble, Scoop Master
+- Nurse: Field Medic, Trauma Specialist, Angel of Mercy
+
+**Hjelpefunksjoner:**
+- `getSurvivorStreakBonus()`
+- `getClassBonusesForLevel()`
+- `getMilestoneForLevel()`
+- `getAvailableSurvivorTraits()`
+- `getAutomaticAPBonus()`
+
+#### 3. legacyManager.ts - Oppdaterte funksjoner
+
+**createLegacyHero():**
+- Initialiserer alle nye felt (bonusActionPoints, skillMasteries, etc.)
+
+**applyLevelUpBonus():**
+- Støtter nå alle nye bonus-typer:
+  - actionPoint: +1 til bonusActionPoints
+  - attackDie: +1 til bonusAttackDice
+  - defenseDie: +1 til bonusDefenseDice
+  - skillMastery: Legger til skill i skillMasteries array
+
+**getLevelUpOptions(heroLevel):**
+- Skill mastery tilgjengelig fra level 2+
+- Attack/Defense dice tilgjengelig fra level 4+
+
+**legacyHeroToPlayer():**
+- Beregner automatisk AP-bonus (level 3 = +1, level 5 = +2)
+- Legger til manuelle AP-bonuser fra level-up valg
+- Beregner bonus attack/defense dice
+- Level 5 helter starter med +1 Insight (Legend milestone)
+
+### AP Progression (AUTOMATISK)
+
+| Level | Base AP | Auto Bonus | Total |
+|-------|---------|------------|-------|
+| 1 | 2 | 0 | 2 |
+| 2 | 2 | 0 | 2 |
+| 3 | 2 | +1 | 3 |
+| 4 | 2 | +1 | 3 |
+| 5 | 2 | +2 | 4 |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+### Neste steg (UI)
+For å bruke systemet fullt ut trengs følgende UI-komponenter:
+1. LevelUpModal - viser alle level-up valg
+2. SurvivorTraitModal - viser survivor trait valg ved milepæler
+3. HeroStatsPanel - viser alle bonuser og milestones
+4. MilestoneNotification - toast når milestone nås
 
 ---
 

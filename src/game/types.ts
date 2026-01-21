@@ -1593,18 +1593,91 @@ export const XP_THRESHOLDS: Record<number, number> = {
 };
 
 /**
+ * Skill mastery types - each gives +1 die on related checks
+ */
+export type SkillMasteryType = 'investigation' | 'combat' | 'occult' | 'athletics';
+
+/**
  * Stat bonuses per level
- * Each level grants +1 to a chosen stat or +2 max HP or +1 max Sanity
+ * Extended to include AP, attack/defense dice, and skill mastery
  */
 export type LevelUpBonus =
   | { type: 'attribute'; attribute: keyof CharacterAttributes }
   | { type: 'maxHp'; value: 2 }
-  | { type: 'maxSanity'; value: 1 };
+  | { type: 'maxSanity'; value: 1 }
+  | { type: 'actionPoint'; value: 1 }
+  | { type: 'attackDie'; value: 1 }
+  | { type: 'defenseDie'; value: 1 }
+  | { type: 'skillMastery'; skill: SkillMasteryType };
 
 export interface LevelUpChoice {
   level: number;
   bonus: LevelUpBonus;
 }
+
+/**
+ * Milestone effects - automatic bonuses at certain levels
+ */
+export type MilestoneEffect =
+  | { type: 'horror_die_bonus'; value: number }
+  | { type: 'first_round_ap'; value: number }
+  | { type: 'reroll_per_round'; value: number }
+  | { type: 'insight_start'; value: number; dcReduction: number };
+
+/**
+ * Milestone bonus - automatic reward at specific level
+ */
+export interface MilestoneBonus {
+  level: number;
+  id: string;
+  name: string;
+  description: string;
+  effect: MilestoneEffect;
+}
+
+/**
+ * Survivor trait effects for permadeath heroes
+ */
+export type SurvivorEffect =
+  | { type: 'bonus_hp'; value: number; sanityCost?: number }
+  | { type: 'no_surprise' }
+  | { type: 'death_defiance' }
+  | { type: 'madness_immunity'; madnessType: string }
+  | { type: 'bonus_attack_die'; value: number }
+  | { type: 'detect_secret_doors' };
+
+/**
+ * Survivor trait - reward for surviving scenarios with permadeath
+ */
+export interface SurvivorTrait {
+  id: string;
+  name: string;
+  description: string;
+  requirement: number;  // Scenarios survived to unlock
+  effect: SurvivorEffect;
+}
+
+/**
+ * Class-specific level bonus - unique bonuses for each character class
+ */
+export interface ClassLevelBonus {
+  characterClass: CharacterType;
+  level: number;
+  id: string;
+  name: string;
+  description: string;
+  effect: ClassBonusEffect;
+}
+
+export type ClassBonusEffect =
+  | { type: 'extra_spell_slot'; value: number }
+  | { type: 'extra_insight_per_clue'; value: number }
+  | { type: 'bonus_melee_damage'; value: number }
+  | { type: 'bonus_ranged_damage'; value: number }
+  | { type: 'horror_resistance'; value: number }
+  | { type: 'trap_detection' }
+  | { type: 'healing_bonus'; value: number }
+  | { type: 'stealth_bonus'; value: number };
 
 /**
  * A persistent hero that survives between scenarios
@@ -1647,6 +1720,21 @@ export interface LegacyHero {
   hasPermadeath: boolean;               // If true, death is permanent - hero goes to memorial and is unplayable
   deathScenario?: string;               // Scenario where hero died
   deathCause?: string;                  // How they died
+
+  // Extended leveling system (v2)
+  bonusActionPoints: number;            // From level bonuses (+1 at level 3, +1 at level 5)
+  bonusAttackDice: number;              // From level bonuses
+  bonusDefenseDice: number;             // From level bonuses
+  skillMasteries: SkillMasteryType[];   // Skill masteries chosen
+  milestones: string[];                 // IDs of achieved milestones
+
+  // Survivor tracking (permadeath bonus system)
+  scenariosSurvivedStreak: number;      // Consecutive scenarios survived (resets on death for non-permadeath)
+  survivorTraits: string[];             // IDs of chosen survivor traits
+  survivorTitle?: string;               // Special title for surviving many scenarios
+
+  // Class-specific bonuses
+  classBonuses: string[];               // IDs of unlocked class-specific bonuses
 }
 
 /**
