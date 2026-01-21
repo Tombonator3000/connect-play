@@ -33,6 +33,7 @@ import SurvivorTraitModal from './components/SurvivorTraitModal';
 import FieldGuidePanel from './components/FieldGuidePanel';
 import CharacterSelectionScreen from './components/CharacterSelectionScreen';
 import SaveLoadModal from './components/SaveLoadModal';
+import QuestEditor from './components/QuestEditor';
 import { autoSave } from './utils/saveManager';
 import {
   loadLegacyData,
@@ -122,7 +123,7 @@ const LEGACY_STORAGE_KEY = 'shadows_1920s_legacy';
 const APP_VERSION = "1.0.0";
 
 // Menu view modes for main menu
-type MainMenuView = 'title' | 'heroArchive' | 'stash' | 'merchant';
+type MainMenuView = 'title' | 'heroArchive' | 'stash' | 'merchant' | 'questEditor';
 
 const DEFAULT_STATE: GameState = {
   phase: GamePhase.SETUP,
@@ -3710,6 +3711,8 @@ const ShadowsGame: React.FC = () => {
           }}
           heroCount={getLivingHeroes(legacyData).length}
           stashCount={legacyData.stash.items.length}
+          // Quest Editor
+          onQuestEditor={() => setMainMenuView('questEditor')}
         />
       )}
 
@@ -3728,6 +3731,13 @@ const ShadowsGame: React.FC = () => {
           }}
           maxHeroesSelectable={4}
           selectedHeroIds={selectedLegacyHeroIds}
+        />
+      )}
+
+      {/* Quest Editor */}
+      {isMainMenuOpen && mainMenuView === 'questEditor' && (
+        <QuestEditor
+          onBack={() => setMainMenuView('title')}
         />
       )}
 
