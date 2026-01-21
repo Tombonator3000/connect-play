@@ -1,5 +1,82 @@
 # Development Log
 
+## 2026-01-21: Bug Hunt - Codebase Audit og Fix
+
+### Oppsummering
+
+Gjennomført en systematisk søk etter bugs og feilutsatt kode i kodebasen. Opprettet BUGS.MD for å spore alle funn. Fikset én kritisk type-safety bug.
+
+---
+
+### BUG-SØKET
+
+Søkte etter følgende mønstre:
+- `FIXME`, `TODO`, `BUG`, `HACK` kommentarer (ingen funnet)
+- `as any` type assertions (3 funnet)
+- Potensielle null/undefined tilganger
+- Array bounds issues
+- Race conditions i React state
+- Memory leaks i useEffect
+
+---
+
+### BUG FUNNET OG DOKUMENTERT
+
+**11 potensielle bugs identifisert** - se `BUGS.MD` for komplett liste.
+
+| Severity | Antall | Status |
+|----------|--------|--------|
+| FIKSET | 1 | ✅ |
+| BEKREFTET | 3 | Trenger fiks |
+| TIL VERIFISERING | 2 | Kan være OK |
+| LITEN RISIKO | 5 | Dokumentert |
+
+---
+
+### BUG-001 FIKSET: Unødvendig `as any` i SkillCheckPanel
+
+**Fil:** `src/game/components/SkillCheckPanel.tsx:49`
+
+**Problem:**
+```typescript
+// Før - unødvendig type assertion
+const attrs = (player as any).attributes;
+if (!attrs) return 2;
+return attrs[skill] || 2;
+```
+
+`Player` extends `Character` som har `attributes: CharacterAttributes`. Type assertion var helt unødvendig og skjulte potensielle type-feil.
+
+**Løsning:**
+```typescript
+// Etter - type-sikker direkte tilgang
+return player.attributes[skill] ?? 2;
+```
+
+**Forbedringer:**
+- Fjernet `as any` som omgikk TypeScript
+- Bruker nullish coalescing (`??`) i stedet for logical or (`||`)
+- Enklere og kortere kode
+- TypeScript kan nå fange type-feil
+
+---
+
+### FILER ENDRET
+
+1. `BUGS.MD` - NY FIL - Bug tracker for prosjektet
+2. `src/game/components/SkillCheckPanel.tsx` - Fjernet `as any`
+
+---
+
+### NESTE STEG
+
+Se `BUGS.MD` for andre bugs som bør fikses:
+- BUG-002: `as any` i ShadowsGame.tsx particle system
+- BUG-003: `as EnemyType` uten validering
+- BUG-004: Race condition i state updates + logging
+
+---
+
 ## 2026-01-21: Refactor objectiveSpawner.ts - Data-Driven Lookup Pattern
 
 ### Oppsummering
