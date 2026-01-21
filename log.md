@@ -1,5 +1,113 @@
 # Development Log
 
+## 2026-01-21: Fix Quest Item Pickup og Dør-håndtering
+
+### Oppsummering
+
+Fikset tre problemer:
+1. Quest items kunne ikke plukkes opp - spillere får nå kontekstmeny når de klikker på tilen de står på
+2. Dør-ikoner vistes dobbelt (på begge tilstøtende tiles) - nå rendres kun ett ikon per dør
+3. Låste dører synkroniserte ikke tilstand mellom tiles - nå oppdateres begge sider av døren
+
+---
+
+### Problem 1: Quest Item Pickup fungerte ikke
+
+**Problem:** Når spilleren klikket på tilen de sto på, returnerte `handleAction` tidlig uten å gjøre noe. Dette betydde at quest items som var synlige på tilen ikke kunne plukkes opp.
+
+**Årsak (src/game/ShadowsGame.tsx:2430-2434):**
+```typescript
+// FEIL: Klikk på egen tile gjorde ingenting
+if (distanceToTarget === 0) {
+  return;
+}
+```
+
+**Løsning:** Endret til å vise kontekstmeny hvis tilen har quest items, interaktive objekter, eller er søkbar:
+```typescript
+if (distanceToTarget === 0) {
+  const currentTile = state.board.find(t => t.q === q && t.r === r);
+  if (currentTile) {
+    const hasQuestItems = currentTile.items && currentTile.items.some(item => item.isQuestItem);
+    const hasInteractableObject = currentTile.object && !currentTile.object.blocking;
+    const isSearchable = currentTile.searchable && !currentTile.searched;
+
+    if (hasQuestItems || hasInteractableObject || isSearchable) {
+      setState(prev => ({ ...prev, selectedTileId: currentTile.id }));
+      showContextActions(currentTile);
+      return;
+    }
+  }
+  return;
+}
+```
+
+**Fil:** `src/game/ShadowsGame.tsx`
+
+---
+
+### Problem 2: Dør-ikoner vistes dobbelt
+
+**Problem:** Hver hex-tile rendrer sine egne kanter (edges). Når to tiles deler en dør, rendret BEGGE tiles dør-ikonet - noe som ga duplikate ikoner.
+
+**Løsning (src/game/components/GameBoard.tsx):** Lagt til logikk for å kun rendre dør-ikonet på ÉN av de to tilstøtende tiles:
+```typescript
+// For door edges: Only render the icon on ONE tile to avoid duplicates
+if (isDoor) {
+  const adjOffsets = { /* offset per edge index */ };
+  const offset = adjOffsets[edgeIndex];
+  if (offset) {
+    const adjQ = tile.q + offset.dq;
+    const adjR = tile.r + offset.dr;
+    // Only render if this tile has "higher" coordinates
+    if (tile.q < adjQ || (tile.q === adjQ && tile.r < adjR)) {
+      return null; // Let the other tile render this door
+    }
+  }
+}
+```
+
+**Fil:** `src/game/components/GameBoard.tsx`
+
+---
+
+### Problem 3: Dør-tilstand synkroniserte ikke
+
+**Problem:** Når en låst dør ble åpnet (via dirk eller nøkkel), ble kun den ene tiles edge oppdatert. Den tilstøtende tiles edge forble "låst", noe som kunne blokkere bevegelse.
+
+**Løsning (src/game/utils/contextActionEffects.ts):** Oppdatert `setDoorState` til å også oppdatere den tilstøtende tiles edge:
+```typescript
+export function setDoorState(board, tileId, edgeIndex, doorState) {
+  // First update the door on the source tile
+  let updatedBoard = updateTileEdge(board, tileId, edgeIndex, ...);
+
+  // Now find and update the adjacent tile's corresponding edge
+  const tile = board.find(t => t.id === tileId);
+  if (tile) {
+    const adjacentPos = getAdjacentPosition(tile, edgeIndex);
+    if (adjacentPos) {
+      const adjacentTile = updatedBoard.find(t => t.q === adjacentPos.q && t.r === adjacentPos.r);
+      if (adjacentTile) {
+        const oppositeEdgeIndex = (edgeIndex + 3) % 6;
+        if (adjacentTile.edges?.[oppositeEdgeIndex]?.type === 'door') {
+          updatedBoard = updateTileEdge(updatedBoard, adjacentTile.id, oppositeEdgeIndex, ...);
+        }
+      }
+    }
+  }
+  return updatedBoard;
+}
+```
+
+**Fil:** `src/game/utils/contextActionEffects.ts`
+
+---
+
+### Build Status
+✅ Build vellykket
+
+---
+
 ## 2026-01-21: Fix Ghost Tiles og Trapp-håndtering
 
 ### Oppsummering
