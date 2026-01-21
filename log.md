@@ -1,5 +1,169 @@
 # Development Log
 
+## 2026-01-21: Tile Analysis & Forslag til Nye Tiles
+
+### Oppgave
+Analysere eksisterende tiles og komme med forslag til hva som mangler/trengs for bedre gameplay-variasjon.
+
+---
+
+### Eksisterende Tiles (Oversikt)
+
+| Kategori | Antall | Eksempler |
+|----------|--------|-----------|
+| **Foyer** | 3 | Grand, Small, Church |
+| **Corridor** | 7 | Straight, T, Corner, Cross, Wide, Hospital, Police |
+| **Room** | ~30 | Study, Bedroom, Kitchen, Library, Hospital-rom, Police-rom, etc. |
+| **Stairs** | 3 | Down, Up, Spiral |
+| **Basement** | 8 | Cellar, Wine, Tunnel, Sewer, Mine, Icehouse, Workshop, Cistern |
+| **Crypt** | 10 | Tomb, Altar, Portal, Sanctum, Massgrave, Ossuary, Laboratory, Prison |
+| **Facade** | 17 | Manor, Church, Asylum, Hospital, Museum, Hotel, Tavern, etc. |
+| **Street** | 12 | Main, Alley, Crossing, Corner, Bridge, T-Junction, Railway, etc. |
+| **Urban** | 11 | Square, Harbor, Cemetery, Station, Market, Park, Dock, Pier, etc. |
+| **Nature** | 23 | Forest, Clearing, Path, Marsh, Cave, Shore, Hilltop, etc. |
+
+**Totalt: ~124 tiles**
+
+---
+
+### Analyse: Hva Mangler?
+
+#### 1. Bygninger med Fasade MEN Ingen Innvendige Rom
+
+| Fasade | Har Foyer? | Har Rom? | Status |
+|--------|------------|----------|--------|
+| Asylum | Nei | Nei | **MANGLER** |
+| Museum | Nei | Nei | **MANGLER** |
+| Hotel | Nei | Nei | **MANGLER** |
+| Tavern | Nei | Nei | **MANGLER** |
+| Bookshop | Nei | Nei | **MANGLER** |
+| Pawnshop | Nei | Nei | **MANGLER** |
+| Observatory | Nei | Nei | **MANGLER** |
+| Lighthouse | Nei | Nei | **MANGLER** |
+| Funeral Home | Nei | Nei | **MANGLER** |
+| Farmhouse | Nei | Noe | Delvis |
+
+#### 2. Tematiske Gaps (ifølge Game Design Bible)
+
+| Tema | Nevnt i Bible | Implementert | Status |
+|------|---------------|--------------|--------|
+| Miskatonic University | Ja (campus, bibliotek) | Kun facade | **MANGLER rom** |
+| Industriområde | Ja | Nei | **MANGLER** |
+| Jernbanestasjon innendørs | Ja | Kun street_railway | **MANGLER** |
+| Hotell-rom | Ja (lobby beskrevet) | Nei | **MANGLER** |
+| Asyl-celler/rom | Ja (detaljert) | Nei | **MANGLER** |
+| Kirke innvendig | Ja (nave, altar) | Kun narthex | **MANGLER** |
+
+---
+
+### FORSLAG: Prioriterte Nye Tiles
+
+#### Prioritet 1: Asyl (Arkham Asylum) - 7 tiles
+*Viktig for Lovecraft-tematikk*
+
+| Tile ID | Navn | Kategori | Beskrivelse |
+|---------|------|----------|-------------|
+| `foyer_asylum` | Asylum Reception | foyer | Inngangslobby med jernporter |
+| `corridor_asylum` | Asylum Corridor | corridor | Hvitmalte vegger, låste dører |
+| `room_asylum_cell` | Padded Cell | room | Polstret celle, galskap-trigger |
+| `room_asylum_ward` | Disturbed Ward | room | Fellesrom for pasienter |
+| `room_asylum_office` | Director's Office | room | Kontor med pasientjournaler |
+| `room_asylum_therapy` | Hydrotherapy Room | room | Skummel behandling |
+| `basement_asylum` | Asylum Basement | basement | Nedlagte eksperimenter |
+
+#### Prioritet 2: Museum (Lovecraft-klassiker) - 6 tiles
+*Artefakter og eldgamle skrekk*
+
+| Tile ID | Navn | Kategori | Beskrivelse |
+|---------|------|----------|-------------|
+| `foyer_museum` | Museum Lobby | foyer | Marmorgulv, informasjonsskranke |
+| `corridor_museum` | Exhibition Hall | corridor | Utstillingsgang |
+| `room_museum_egyptian` | Egyptian Wing | room | Mumier, sarkofager |
+| `room_museum_natural` | Natural History | room | Fossiler, preparerte dyr |
+| `room_museum_occult` | Restricted Collection | room | Låst, okkulte gjenstander |
+| `room_museum_archive` | Curator's Archive | room | Dokumenter, forskning |
+
+#### Prioritet 3: Hotell - 6 tiles
+*Klassisk setting for mysterier*
+
+| Tile ID | Navn | Kategori | Beskrivelse |
+|---------|------|----------|-------------|
+| `foyer_hotel` | Hotel Lobby | foyer | Resepsjon, sitteplasser |
+| `corridor_hotel` | Hotel Hallway | corridor | Teppebelagt gang, nummererte dører |
+| `room_hotel_guest` | Guest Room | room | Standard hotellrom |
+| `room_hotel_suite` | Penthouse Suite | room | Luksuriøst, skjulte rom? |
+| `room_hotel_kitchen` | Hotel Kitchen | room | Storkjøkken |
+| `basement_hotel` | Hotel Basement | basement | Lager, gammel vinkjeller |
+
+#### Prioritet 4: Kirke Innvendig - 5 tiles
+*Utvidelse av eksisterende Church*
+
+| Tile ID | Navn | Kategori | Beskrivelse |
+|---------|------|----------|-------------|
+| `room_church_nave` | Church Nave | room | Hovedskip med benker |
+| `room_church_altar` | High Altar | room | Alterområde, mulig ritual |
+| `room_church_vestry` | Vestry | room | Prestens rom, paramenter |
+| `room_church_belltower` | Bell Tower | room | Klokketårn, utsikt |
+| `basement_church` | Church Crypt | basement | Gravkammer under kirken |
+
+#### Prioritet 5: Tavern/Pub - 5 tiles
+*Sosialt hub, informasjonssamling*
+
+| Tile ID | Navn | Kategori | Beskrivelse |
+|---------|------|----------|-------------|
+| `foyer_tavern` | Tavern Entrance | foyer | Inngangsparti |
+| `room_tavern_bar` | Bar Room | room | Bardisk, drikkende gjester |
+| `room_tavern_private` | Private Booth | room | Hemmelige møter |
+| `room_tavern_cellar` | Beer Cellar | basement | Øltønner, smuglergang? |
+| `room_tavern_kitchen` | Tavern Kitchen | room | Matlaging |
+
+#### Prioritet 6: Universitet (Miskatonic) - 6 tiles
+*Professoren sin hjemmebane*
+
+| Tile ID | Navn | Kategori | Beskrivelse |
+|---------|------|----------|-------------|
+| `foyer_university` | University Hall | foyer | Akademisk inngang |
+| `corridor_university` | Academic Corridor | corridor | Oppslagstavler, kontordører |
+| `room_university_lecture` | Lecture Hall | room | Forelesningssal |
+| `room_university_archive` | Restricted Archives | room | Forbudte bøker |
+| `room_university_lab` | Research Laboratory | room | Vitenskapelige eksperimenter |
+| `room_university_office` | Professor's Office | room | Bøker, notater, ledetråder |
+
+#### Prioritet 7: Lighthouse - 4 tiles
+*Kystmystikk, isolasjon*
+
+| Tile ID | Navn | Kategori | Beskrivelse |
+|---------|------|----------|-------------|
+| `foyer_lighthouse` | Lighthouse Entry | foyer | Bunn av fyrtårnet |
+| `stairs_lighthouse` | Spiral Stairs | stairs | Lang vindeltrapp opp |
+| `room_lighthouse_keeper` | Keeper's Quarters | room | Fyrvokterens rom |
+| `room_lighthouse_lamp` | Lamp Room | room | Toppen, lyset, utsikt |
+
+---
+
+### Sammendrag Forslag
+
+| Prioritet | Tema | Antall Tiles |
+|-----------|------|--------------|
+| 1 | Asyl | 7 |
+| 2 | Museum | 6 |
+| 3 | Hotell | 6 |
+| 4 | Kirke | 5 |
+| 5 | Tavern | 5 |
+| 6 | Universitet | 6 |
+| 7 | Lighthouse | 4 |
+| **Total** | | **39 tiles** |
+
+---
+
+### Neste Steg
+1. Velg hvilke kategorier som skal implementeres først
+2. Implementer tiles i `tileConnectionSystem.ts`
+3. Test at edges matcher riktig
+4. Oppdater tile affinities for tematisk gruppering
+
+---
+
 ## 2026-01-21: Add New Tile Variants - Forest, Street, Hospital, Police
 
 ### Oppgave
