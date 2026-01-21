@@ -52,6 +52,8 @@ export interface ActionEffectResult {
   questItemsCollected?: string[];
   logMessages?: string[];
   floatingText?: { q: number; r: number; text: string; colorClass: string };
+  /** If true, move player through edge to adjacent tile after effect */
+  movePlayerThroughEdge?: boolean;
 }
 
 /**
@@ -713,6 +715,30 @@ export function processActionEffect(
   if (actionId.startsWith('pickup_quest_item_')) {
     const itemIndex = parseInt(actionId.replace('pickup_quest_item_', ''), 10);
     return handleQuestItemPickupEffect(ctx, itemIndex);
+  }
+
+  // Pass through actions (climbing windows, wading through water, etc.)
+  // These move the player to the adjacent tile after the action succeeds
+  const PASS_THROUGH_ACTIONS = [
+    'climb_through_window',
+    'wade_through',
+    'wade_through_edge',
+    'swim_across',
+    'jump_through_edge_fire',
+    'jump_fire',
+    'force_through_edge_spirits',
+    'force_through',
+    'cross_ward',
+    'cross_edge_ward',
+    'use_rope_chasm',
+    'pass_through_fog'
+  ];
+
+  if (PASS_THROUGH_ACTIONS.includes(actionId)) {
+    return {
+      movePlayerThroughEdge: true,
+      logMessages: []
+    };
   }
 
   // Unknown action - no effect
