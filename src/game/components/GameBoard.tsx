@@ -298,10 +298,11 @@ const TILE_IMAGES: Record<string, string> = {
   overpass: tileBridge,
   iron: tileBridge,
   
-  // Kitchen
+  // Kitchen and Dining
   kitchen: tileKitchen,
   pantry: tileKitchen,
   forgotten: tileKitchen,
+  dining: tileKitchen,        // Dining Hall
   
   // Park
   park: tilePark,
@@ -410,8 +411,10 @@ const TILE_IMAGES: Record<string, string> = {
   shack: tileShack,
   hermit: tileShack,
   
-  // Farmhouse
+  // Farmhouse and Farm
   farmhouse: tileFarmhouse,
+  farm: tileFarmhouse,        // Abandoned Farm Field
+  field: tileFarmhouse,       // Farm Field
   
   // Hanging Tree
   hangingtree: tileHangingtree,
