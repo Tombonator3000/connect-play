@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package, X, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent, OccultistSpell } from './types';
+import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent, OccultistSpell, SpellParticleType } from './types';
 import ContextActionBar from './components/ContextActionBar';
 import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
 import { performSkillCheck } from './utils/combatUtils';
@@ -598,7 +598,7 @@ const ShadowsGame: React.FC = () => {
   const emitSpellEffect = (
     startQ: number,
     startR: number,
-    type: 'wither' | 'eldritch_bolt' | 'mend_flesh' | 'true_sight' | 'banish' | 'mind_blast' | 'dark_shield' | 'explosion' | 'blood' | 'smoke' | 'sparkle',
+    type: SpellParticleType,
     targetQ?: number,
     targetR?: number
   ) => {
@@ -622,7 +622,7 @@ const ShadowsGame: React.FC = () => {
 
     const particle = {
       id,
-      type: type as any,
+      type,
       startQ,
       startR,
       targetQ,

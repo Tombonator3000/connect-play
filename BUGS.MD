@@ -8,8 +8,8 @@
 
 | Status | Antall |
 |--------|--------|
-| **FIKSET** | 1 |
-| **BEKREFTET** | 3 |
+| **FIKSET** | 2 |
+| **BEKREFTET** | 2 |
 | **TIL VERIFISERING** | 2 |
 | **LITEN RISIKO** | 5 |
 
@@ -34,26 +34,54 @@ const attrs = (player as any).attributes;
 
 ---
 
-## BEKREFTET (Trenger fiks)
-
-### BUG-002: `as any` i ShadowsGame.tsx particle system
+### BUG-002: `as any` i ShadowsGame.tsx particle system (FIKSET 2026-01-21)
 
 **Fil:** `src/game/ShadowsGame.tsx:625`
 
-**Kode:**
+**Kode før:**
 ```typescript
-const particle = {
-  id,
-  type: type as any,  // <-- Farlig type assertion
-  // ...
+const emitSpellEffect = (
+  startQ: number,
+  startR: number,
+  type: 'wither' | 'eldritch_bolt' | ...,  // inline union type
+  ...
+) => {
+  const particle = {
+    id,
+    type: type as any,  // <-- Farlig type assertion
+    // ...
+  };
 };
 ```
 
-**Problem:** `as any` brukes for å omgå type-sjekker. Hvis `type` ikke er en gyldig particle type, vil det ikke bli fanget av TypeScript.
+**Problem:** `as any` ble brukt for å omgå type-sjekker fordi funksjonsparameteren brukte en inline union type i stedet for den definerte `SpellParticleType`.
 
-**Severity:** MEDIUM
+**Løsning:**
+1. Importert `SpellParticleType` fra `types.ts`
+2. Endret funksjonssignaturen til å bruke `SpellParticleType` direkte
+3. Fjernet `as any` - TypeScript kan nå validere at alle particle typer er gyldige
+
+**Kode etter:**
+```typescript
+const emitSpellEffect = (
+  startQ: number,
+  startR: number,
+  type: SpellParticleType,  // <-- Bruker definert type
+  ...
+) => {
+  const particle = {
+    id,
+    type,  // <-- Ingen type assertion nødvendig
+    // ...
+  };
+};
+```
+
+**Severity:** MEDIUM (fikset)
 
 ---
+
+## BEKREFTET (Trenger fiks)
 
 ### BUG-003: `as EnemyType` uten validering
 
