@@ -231,7 +231,7 @@ const TILE_OBJECT_INFO: Record<TileObjectType, {
   name: string;
   description: string;
   interaction?: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
+  icon: React.ComponentType<{ size?: string | number; className?: string }>;
   color: string;
   bgColor: string;
   borderColor: string;

@@ -1,5 +1,55 @@
 # Shadows of the 1920s - Development Log
 
+## 2026-01-21
+
+### Session 12 - Bug Fixes & Game Mechanics
+
+#### TypeScript Build-feil fikset:
+- **ShadowsGame.tsx:2205** - Endret `state.exploredTiles?.has()` til `includes()` (exploredTiles er string[], ikke Set<string>)
+- **ShadowsGame.tsx:2741** - Endret `BESTIARY[occTarget.type]?.defense` til `defenseDice` for å matche BestiaryEntry interface
+- **types.ts:152** - La til `tempDefenseBonus?: number` i Player interface for midlertidige forsvarsbonus fra trylleformler
+- **EdgeIcons.tsx & ItemTooltip.tsx** - Fikset Lucide icon type-kompatibilitet (`size?: string | number`)
+
+#### BUG-003: EnemyType validering
+- La til runtime type guard for `event.targetId as EnemyType` i checkDoomEvents
+- Sjekker nå at targetId faktisk finnes i BESTIARY før casting
+- Fallback til 'cultist' ved ugyldig type med console.warn
+
+#### BUG-004: Race condition i logging
+- Flyttet urgency-logging inn i setState callback for å sikre korrekt timing
+- Kombinerer nå board-update og log-update i samme setState
+
+#### Kampmekanikker implementert (fra REGELBOK.MD):
+- **Veteran melee-bonus**: +1 angrepsterning kun med nærkampvåpen (ikke ranged)
+- **Kritiske treff**: Når ALLE angrepsterninger treffer (>=4) = +1 bonus skade
+- Begge funksjoner oppdatert i `performAttack()` og `getCombatPreview()` i combatUtils.ts
+
+#### Vapenrestriksjoner i MerchantShop:
+- Importert `canUseWeapon` fra combatUtils.ts
+- La til visuell feedback med "Restricted" badge og rød border for våpen helten ikke kan bruke
+- Deaktivert kjøp-knapp med "Cannot Use" tekst for restringerte våpen
+
+#### Verifiserte allerede implementerte systemer:
+- **PuzzleModal-integrasjon**: Fungerer via `state.activePuzzle` og `handlePuzzleSolve`
+- **Save/Load system**: SaveLoadModal er koblet til UI med eksport/import/auto-save
+- **Event Card basics**: EventModal og EVENTS konstanter finnes
+
+#### Pending (for fremtidige sesjoner):
+- Event Card deck cycling (shuffling og trekking ved doom-milepæler)
+- Audio (Tone.js / ElevenLabs)
+- Weather-effekter fra doom-nivå
+- Legacy XP/Leveling mellom scenarier
+
+### Filer endret denne sesjonen:
+- `src/game/ShadowsGame.tsx` - exploredTiles, defenseDice, EnemyType-validering, race condition fix
+- `src/game/types.ts` - tempDefenseBonus i Player interface
+- `src/game/components/EdgeIcons.tsx` - Lucide icon type fix
+- `src/game/components/ItemTooltip.tsx` - Lucide icon type fix
+- `src/game/utils/combatUtils.ts` - Veteran melee-only bonus, kritiske treff dokumentasjon
+- `src/game/components/MerchantShop.tsx` - Vapenrestriksjoner-feedback i UI
+
+---
+
 ## 2026-01-19
 
 ### Session 11 - Massive Tile Asset Expansion (52 nye tiles)

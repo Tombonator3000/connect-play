@@ -42,7 +42,7 @@ interface EdgeIconProps {
 
 // Determine icon based on edge type and door state
 export function getEdgeIconInfo(type: string, doorState?: string): {
-  Icon: React.ComponentType<{ size?: number; className?: string }>;
+  Icon: React.ComponentType<{ size?: string | number; className?: string }>;
   color: string;
   label: string;
   bgColor: string;

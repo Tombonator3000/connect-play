@@ -9,7 +9,7 @@
  * - Archive survivors after purchase
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   LegacyHero,
   Item,
@@ -32,6 +32,8 @@ import {
   sellItemToFence,
   sellStashItem
 } from '../utils/legacyManager';
+import { canUseWeapon } from '../utils/combatUtils';
+import { CHARACTERS } from '../constants';
 import {
   ShoppingBag,
   Sword,
@@ -49,7 +51,8 @@ import {
   Skull,
   Target,
   HandCoins,
-  Warehouse
+  Warehouse,
+  Ban
 } from 'lucide-react';
 
 interface MerchantShopProps {
@@ -204,12 +207,31 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
     setTimeout(() => setPurchaseMessage(null), 2000);
   };
 
+  // Helper to check if a weapon is restricted for the active hero
+  const isWeaponRestrictedForHero = useCallback((weaponId: string, itemType: string): boolean => {
+    if (!activeHero || itemType !== 'weapon') return false;
+
+    // Create a minimal player-like object for canUseWeapon check
+    const mockPlayer = {
+      id: activeHero.characterClass,
+      specialAbility: CHARACTERS[activeHero.characterClass as keyof typeof CHARACTERS]?.specialAbility || '',
+      inventory: { leftHand: null, rightHand: null, body: null, bag: [] },
+      attributes: { strength: 0, agility: 0, intelligence: 0, willpower: 0 }
+    } as any;
+
+    return !canUseWeapon(mockPlayer, weaponId);
+  }, [activeHero]);
+
   const renderShopItem = (shopItem: ShopItem) => {
     const canAfford = activeHero && activeHero.gold >= shopItem.goldCost;
     const meetsLevel = !shopItem.requiredLevel || (activeHero && activeHero.level >= shopItem.requiredLevel);
     const inStock = shopItem.stock !== 0;
     const hasSpace = activeHero && countInventoryItems(activeHero.equipment) < 7;
-    const canBuy = canAfford && meetsLevel && inStock && hasSpace;
+
+    // Check weapon restrictions for the active hero's class
+    const isWeaponRestricted = isWeaponRestrictedForHero(shopItem.item.id, shopItem.item.type);
+
+    const canBuy = canAfford && meetsLevel && inStock && hasSpace && !isWeaponRestricted;
 
     return (
       <div
@@ -218,7 +240,9 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
           p-4 rounded-lg border-2 transition-all
           ${canBuy
             ? 'border-stone-600 bg-stone-800/50 hover:border-amber-500'
-            : 'border-stone-700 bg-stone-900/50 opacity-60'
+            : isWeaponRestricted
+              ? 'border-red-800 bg-red-900/20 opacity-70'
+              : 'border-stone-700 bg-stone-900/50 opacity-60'
           }
         `}
       >
@@ -228,6 +252,11 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
             <span className="font-bold text-stone-200">{shopItem.item.name}</span>
             {shopItem.isNew && (
               <span className="px-1.5 py-0.5 bg-green-600 text-green-100 text-[10px] rounded uppercase">New</span>
+            )}
+            {isWeaponRestricted && (
+              <span className="px-1.5 py-0.5 bg-red-700 text-red-100 text-[10px] rounded uppercase flex items-center gap-1">
+                <Ban size={10} /> Restricted
+              </span>
             )}
           </div>
           <div className="text-right">
@@ -249,6 +278,12 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
           </div>
         )}
 
+        {isWeaponRestricted && (
+          <div className="text-xs text-red-400 mb-2 flex items-center gap-1">
+            <Ban size={12} /> {activeHero?.name || 'This class'} cannot use this weapon
+          </div>
+        )}
+
         <button
           onClick={() => handlePurchase(shopItem)}
           disabled={!canBuy}
@@ -260,7 +295,7 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
             }
           `}
         >
-          {!inStock ? 'Out of Stock' : !hasSpace ? 'Inventory Full' : !canAfford ? 'Not Enough Gold' : 'Purchase'}
+          {isWeaponRestricted ? 'Cannot Use' : !inStock ? 'Out of Stock' : !hasSpace ? 'Inventory Full' : !canAfford ? 'Not Enough Gold' : 'Purchase'}
         </button>
       </div>
     );
