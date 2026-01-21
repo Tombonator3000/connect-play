@@ -1645,6 +1645,250 @@ const ShadowsGame: React.FC = () => {
     }
   }, [activeContextTarget]);
 
+  // Spawn enemy helper - must be defined before functions that use it
+  const spawnEnemy = useCallback((type: EnemyType, q: number, r: number) => {
+    const bestiary = BESTIARY[type];
+    if (!bestiary) return;
+
+    const newEnemy: Enemy = {
+      id: `enemy-${Date.now()}-${Math.random()}`,
+      name: bestiary.name,
+      type: type,
+      hp: bestiary.hp,
+      maxHp: bestiary.hp,
+      damage: bestiary.damage,
+      horror: bestiary.horror,
+      speed: 1,
+      position: { q, r },
+      visionRange: 3,
+      attackRange: 1,
+      attackType: 'melee',
+      traits: bestiary.traits
+    };
+
+    setState(prev => ({ ...prev, enemies: [...prev.enemies, newEnemy] }));
+    playSound('enemySpawn');
+    addToLog(`A ${bestiary.name} emerges from the shadows!`);
+  }, []);
+
+  /**
+   * LOGICAL TILE CONNECTION SYSTEM
+   * Uses template-based tile generation with edge compatibility matching.
+   * Each tile template has predefined edges (WALL, DOOR, OPEN, etc.) that
+   * must match with neighboring tiles - like puzzle pieces.
+   */
+  const spawnRoom = useCallback((startQ: number, startR: number, tileSet: 'indoor' | 'outdoor' | 'mixed') => {
+    const roomId = `room-${Date.now()}`;
+
+    // Build a map of existing tiles for quick lookup
+    const boardMap = new Map<string, Tile>();
+    state.board.forEach(t => boardMap.set(`${t.q},${t.r}`, t));
+
+    // Check if position already has a tile
+    if (boardMap.has(`${startQ},${startR}`)) {
+      return;
+    }
+
+    // Find the tile we're coming from (source tile)
+    const adjacentTiles = state.board.filter(t => hexDistance({ q: t.q, r: t.r }, { q: startQ, r: startR }) === 1);
+    const sourceTile = adjacentTiles[0];
+    const sourceCategory = sourceTile?.category || (tileSet === 'indoor' ? 'foyer' : 'street');
+
+    // Gather edge constraints from all neighbors
+    const constraints = gatherConstraints(boardMap, startQ, startR);
+
+    // Get neighboring tiles for affinity calculations
+    const neighborTiles = getNeighborTiles(boardMap, startQ, startR);
+
+    // Find all valid templates that match the constraints (with affinity support)
+    const validMatches = findValidTemplates(constraints, sourceCategory as TileCategory, neighborTiles);
+
+    // Filter by tile set preference using helper
+    const filteredMatches = validMatches.filter(match =>
+      categoryMatchesTileSet(match.template.category as TileCategory, tileSet)
+    );
+
+    // Use filtered if available, otherwise fall back to all valid
+    const matchesToUse = filteredMatches.length > 0 ? filteredMatches : validMatches;
+
+    if (matchesToUse.length === 0) {
+      // Fallback: Use legacy system if no templates match
+      console.warn(`No valid templates for (${startQ},${startR}), using fallback`);
+
+      // Select category and room name using helpers
+      const newCategory = selectRandomConnectableCategory(
+        sourceCategory as TileCategory,
+        tileSet === 'indoor'
+      );
+      const roomName = selectRandomRoomName(newCategory, tileSet);
+
+      // Create fallback tile using helper
+      const fallbackTile = createFallbackTile({
+        startQ,
+        startR,
+        newCategory,
+        roomName,
+        roomId,
+        boardMap
+      });
+
+      setState(prev => ({ ...prev, board: [...prev.board, fallbackTile] }));
+      addToLog(`UTFORSKET: ${roomName}. [${newCategory.toUpperCase()}]`);
+
+      const locationDescription = LOCATION_DESCRIPTIONS[roomName];
+      if (locationDescription) {
+        addToLog(locationDescription);
+      }
+
+      return;
+    }
+
+    // Select a template using weighted random selection
+    const selected = selectWeightedTemplate(matchesToUse);
+    if (!selected) {
+      console.warn('Failed to select template');
+      return;
+    }
+
+    // Check if we should spawn a room cluster instead of single tile
+    // (30% chance when entering a building from facade or entering from street)
+    const shouldSpawnCluster =
+      (sourceCategory === 'facade' || sourceCategory === 'street') &&
+      ['foyer', 'facade'].includes(selected.template.category) &&
+      Math.random() < 0.3;
+
+    if (shouldSpawnCluster) {
+      // Try to spawn a room cluster
+      const clusters = getClustersForCategory(selected.template.category);
+      if (clusters.length > 0) {
+        const cluster = clusters[Math.floor(Math.random() * clusters.length)];
+        const clusterTiles = instantiateRoomCluster(cluster, startQ, startR, boardMap);
+
+        if (clusterTiles.length > 0) {
+          setState(prev => ({ ...prev, board: [...prev.board, ...clusterTiles] }));
+          addToLog(`UTFORSKET: ${cluster.name}. [BUILDING]`);
+          addToLog(cluster.description);
+
+          // Spawn enemies in cluster
+          const firstTile = clusterTiles[0];
+          if (shouldSpawnMonster(firstTile, state.doom, state.enemies, true)) {
+            const enemyType = selectRandomEnemy(firstTile.category, state.doom);
+            if (enemyType) {
+              const spawnPos = calculateEnemySpawnPosition(startQ, startR);
+              spawnEnemy(enemyType, spawnPos.q, spawnPos.r);
+            }
+          }
+
+          return;
+        }
+      }
+    }
+
+    // Create single tile from selected template
+    const newTile = createTileFromTemplate(selected.template, startQ, startR, selected.rotation);
+    newTile.roomId = roomId;
+    newTile.visibility = 'visible';
+    newTile.explored = true;
+
+    const newTiles: Tile[] = [newTile];
+
+    // Check for quest item/tile spawning on new tile
+    let updatedObjectiveSpawnState = state.objectiveSpawnState;
+    let finalTile = newTile;
+
+    if (state.objectiveSpawnState && state.activeScenario) {
+      const completedObjectiveIds = state.activeScenario.objectives
+        .filter(o => o.completed)
+        .map(o => o.id);
+
+      const exploreResult = onTileExplored(
+        state.objectiveSpawnState,
+        newTile,
+        state.activeScenario,
+        completedObjectiveIds
+      );
+
+      updatedObjectiveSpawnState = exploreResult.updatedState;
+
+      // If a quest item spawned, add it to the tile
+      if (exploreResult.spawnedItem) {
+        const questItem: Item = {
+          id: exploreResult.spawnedItem.id,
+          name: exploreResult.spawnedItem.name,
+          description: exploreResult.spawnedItem.description,
+          type: 'quest_item',
+          category: 'special',
+          isQuestItem: true,
+          questItemType: exploreResult.spawnedItem.type,
+          objectiveId: exploreResult.spawnedItem.objectiveId,
+        };
+        finalTile = {
+          ...finalTile,
+          items: [...(finalTile.items || []), questItem],
+          hasQuestItem: true,
+        };
+        addToLog(`📦 Noe viktig er gjemt i ${newTile.name}... Søk nøye!`);
+      }
+
+      // If a quest tile spawned, modify the tile
+      if (exploreResult.spawnedQuestTile && exploreResult.tileModifications) {
+        finalTile = { ...finalTile, ...exploreResult.tileModifications };
+        addToLog(`⭐ VIKTIG LOKASJON: ${exploreResult.spawnedQuestTile.name} funnet!`);
+      }
+    }
+
+    setState(prev => ({
+      ...prev,
+      board: [...prev.board, finalTile],
+      objectiveSpawnState: updatedObjectiveSpawnState
+    }));
+    addToLog(`UTFORSKET: ${finalTile.name}. [${finalTile.category?.toUpperCase() || 'UNKNOWN'}]`);
+
+    // Show atmospheric description from template or location descriptions
+    if (selected.template.description) {
+      addToLog(selected.template.description);
+    } else {
+      const locationDescription = LOCATION_DESCRIPTIONS[finalTile.name];
+      if (locationDescription) {
+        addToLog(locationDescription);
+      }
+    }
+
+    // Check explore objectives
+    if (state.activeScenario) {
+      const exploreCheck = checkExploreObjectives(state.activeScenario, finalTile.name, finalTile.id);
+      if (exploreCheck.objective) {
+        const updatedScenario = exploreCheck.shouldComplete
+          ? completeObjective(state.activeScenario, exploreCheck.objective.id)
+          : updateObjectiveProgress(state.activeScenario, exploreCheck.objective.id, 1);
+
+        setState(prev => ({ ...prev, activeScenario: updatedScenario }));
+
+        if (exploreCheck.shouldComplete) {
+          addToLog(`OBJECTIVE COMPLETE: ${exploreCheck.objective.shortDescription}`);
+        }
+      }
+    }
+
+    // Spawn enemies based on template settings
+    const template = selected.template;
+    const shouldSpawn = template.enemySpawnChance
+      ? Math.random() * 100 < template.enemySpawnChance
+      : shouldSpawnMonster(newTile, state.doom, state.enemies, true);
+
+    if (shouldSpawn) {
+      const possibleEnemies = template.possibleEnemies;
+      const enemyType = possibleEnemies && possibleEnemies.length > 0
+        ? possibleEnemies[Math.floor(Math.random() * possibleEnemies.length)] as EnemyType
+        : selectRandomEnemy(newTile.category, state.doom);
+
+      if (enemyType) {
+        const spawnPos = calculateEnemySpawnPosition(startQ, startR);
+        spawnEnemy(enemyType, spawnPos.q, spawnPos.r);
+      }
+    }
+  }, [state.board, state.doom, state.enemies, state.activeScenario, state.objectiveSpawnState, spawnEnemy]);
+
   // Handle specific action effects (opening doors, etc.)
   // REFACTORED: Now uses processActionEffect from contextActionEffects.ts
   // Original 470-line switch statement extracted into modular, testable functions
@@ -1933,249 +2177,6 @@ const ShadowsGame: React.FC = () => {
     }));
 
   }, [state.activeEvent, state.players, state.activePlayerIndex, state]);
-
-  const spawnEnemy = useCallback((type: EnemyType, q: number, r: number) => {
-    const bestiary = BESTIARY[type];
-    if (!bestiary) return;
-
-    const newEnemy: Enemy = {
-      id: `enemy-${Date.now()}-${Math.random()}`,
-      name: bestiary.name,
-      type: type,
-      hp: bestiary.hp,
-      maxHp: bestiary.hp,
-      damage: bestiary.damage,
-      horror: bestiary.horror,
-      speed: 1,
-      position: { q, r },
-      visionRange: 3,
-      attackRange: 1,
-      attackType: 'melee',
-      traits: bestiary.traits
-    };
-
-    setState(prev => ({ ...prev, enemies: [...prev.enemies, newEnemy] }));
-    playSound('enemySpawn');
-    addToLog(`A ${bestiary.name} emerges from the shadows!`);
-  }, []);
-
-  /**
-   * LOGICAL TILE CONNECTION SYSTEM
-   * Uses template-based tile generation with edge compatibility matching.
-   * Each tile template has predefined edges (WALL, DOOR, OPEN, etc.) that
-   * must match with neighboring tiles - like puzzle pieces.
-   */
-  const spawnRoom = useCallback((startQ: number, startR: number, tileSet: 'indoor' | 'outdoor' | 'mixed') => {
-    const roomId = `room-${Date.now()}`;
-
-    // Build a map of existing tiles for quick lookup
-    const boardMap = new Map<string, Tile>();
-    state.board.forEach(t => boardMap.set(`${t.q},${t.r}`, t));
-
-    // Check if position already has a tile
-    if (boardMap.has(`${startQ},${startR}`)) {
-      return;
-    }
-
-    // Find the tile we're coming from (source tile)
-    const adjacentTiles = state.board.filter(t => hexDistance({ q: t.q, r: t.r }, { q: startQ, r: startR }) === 1);
-    const sourceTile = adjacentTiles[0];
-    const sourceCategory = sourceTile?.category || (tileSet === 'indoor' ? 'foyer' : 'street');
-
-    // Gather edge constraints from all neighbors
-    const constraints = gatherConstraints(boardMap, startQ, startR);
-
-    // Get neighboring tiles for affinity calculations
-    const neighborTiles = getNeighborTiles(boardMap, startQ, startR);
-
-    // Find all valid templates that match the constraints (with affinity support)
-    const validMatches = findValidTemplates(constraints, sourceCategory as TileCategory, neighborTiles);
-
-    // Filter by tile set preference using helper
-    const filteredMatches = validMatches.filter(match =>
-      categoryMatchesTileSet(match.template.category as TileCategory, tileSet)
-    );
-
-    // Use filtered if available, otherwise fall back to all valid
-    const matchesToUse = filteredMatches.length > 0 ? filteredMatches : validMatches;
-
-    if (matchesToUse.length === 0) {
-      // Fallback: Use legacy system if no templates match
-      console.warn(`No valid templates for (${startQ},${startR}), using fallback`);
-
-      // Select category and room name using helpers
-      const newCategory = selectRandomConnectableCategory(
-        sourceCategory as TileCategory,
-        tileSet === 'indoor'
-      );
-      const roomName = selectRandomRoomName(newCategory, tileSet);
-
-      // Create fallback tile using helper
-      const fallbackTile = createFallbackTile({
-        startQ,
-        startR,
-        newCategory,
-        roomName,
-        roomId,
-        boardMap
-      });
-
-      setState(prev => ({ ...prev, board: [...prev.board, fallbackTile] }));
-      addToLog(`UTFORSKET: ${roomName}. [${newCategory.toUpperCase()}]`);
-
-      const locationDescription = LOCATION_DESCRIPTIONS[roomName];
-      if (locationDescription) {
-        addToLog(locationDescription);
-      }
-
-      return;
-    }
-
-    // Select a template using weighted random selection
-    const selected = selectWeightedTemplate(matchesToUse);
-    if (!selected) {
-      console.warn('Failed to select template');
-      return;
-    }
-
-    // Check if we should spawn a room cluster instead of single tile
-    // (30% chance when entering a building from facade or entering from street)
-    const shouldSpawnCluster =
-      (sourceCategory === 'facade' || sourceCategory === 'street') &&
-      ['foyer', 'facade'].includes(selected.template.category) &&
-      Math.random() < 0.3;
-
-    if (shouldSpawnCluster) {
-      // Try to spawn a room cluster
-      const clusters = getClustersForCategory(selected.template.category);
-      if (clusters.length > 0) {
-        const cluster = clusters[Math.floor(Math.random() * clusters.length)];
-        const clusterTiles = instantiateRoomCluster(cluster, startQ, startR, boardMap);
-
-        if (clusterTiles.length > 0) {
-          setState(prev => ({ ...prev, board: [...prev.board, ...clusterTiles] }));
-          addToLog(`UTFORSKET: ${cluster.name}. [BUILDING]`);
-          addToLog(cluster.description);
-
-          // Spawn enemies in cluster
-          const firstTile = clusterTiles[0];
-          if (shouldSpawnMonster(firstTile, state.doom, state.enemies, true)) {
-            const enemyType = selectRandomEnemy(firstTile.category, state.doom);
-            if (enemyType) {
-              const spawnPos = calculateEnemySpawnPosition(startQ, startR);
-              spawnEnemy(enemyType, spawnPos.q, spawnPos.r);
-            }
-          }
-
-          return;
-        }
-      }
-    }
-
-    // Create single tile from selected template
-    const newTile = createTileFromTemplate(selected.template, startQ, startR, selected.rotation);
-    newTile.roomId = roomId;
-    newTile.visibility = 'visible';
-    newTile.explored = true;
-
-    const newTiles: Tile[] = [newTile];
-
-    // Check for quest item/tile spawning on new tile
-    let updatedObjectiveSpawnState = state.objectiveSpawnState;
-    let finalTile = newTile;
-
-    if (state.objectiveSpawnState && state.activeScenario) {
-      const completedObjectiveIds = state.activeScenario.objectives
-        .filter(o => o.completed)
-        .map(o => o.id);
-
-      const exploreResult = onTileExplored(
-        state.objectiveSpawnState,
-        newTile,
-        state.activeScenario,
-        completedObjectiveIds
-      );
-
-      updatedObjectiveSpawnState = exploreResult.updatedState;
-
-      // If a quest item spawned, add it to the tile
-      if (exploreResult.spawnedItem) {
-        const questItem: Item = {
-          id: exploreResult.spawnedItem.id,
-          name: exploreResult.spawnedItem.name,
-          description: exploreResult.spawnedItem.description,
-          type: 'quest_item',
-          category: 'special',
-          isQuestItem: true,
-          questItemType: exploreResult.spawnedItem.type,
-          objectiveId: exploreResult.spawnedItem.objectiveId,
-        };
-        finalTile = {
-          ...finalTile,
-          items: [...(finalTile.items || []), questItem],
-          hasQuestItem: true,
-        };
-        addToLog(`📦 Noe viktig er gjemt i ${newTile.name}... Søk nøye!`);
-      }
-
-      // If a quest tile spawned, modify the tile
-      if (exploreResult.spawnedQuestTile && exploreResult.tileModifications) {
-        finalTile = { ...finalTile, ...exploreResult.tileModifications };
-        addToLog(`⭐ VIKTIG LOKASJON: ${exploreResult.spawnedQuestTile.name} funnet!`);
-      }
-    }
-
-    setState(prev => ({
-      ...prev,
-      board: [...prev.board, finalTile],
-      objectiveSpawnState: updatedObjectiveSpawnState
-    }));
-    addToLog(`UTFORSKET: ${finalTile.name}. [${finalTile.category?.toUpperCase() || 'UNKNOWN'}]`);
-
-    // Show atmospheric description from template or location descriptions
-    if (selected.template.description) {
-      addToLog(selected.template.description);
-    } else {
-      const locationDescription = LOCATION_DESCRIPTIONS[finalTile.name];
-      if (locationDescription) {
-        addToLog(locationDescription);
-      }
-    }
-
-    // Check explore objectives
-    if (state.activeScenario) {
-      const exploreCheck = checkExploreObjectives(state.activeScenario, finalTile.name, finalTile.id);
-      if (exploreCheck.objective) {
-        const updatedScenario = exploreCheck.shouldComplete
-          ? completeObjective(state.activeScenario, exploreCheck.objective.id)
-          : updateObjectiveProgress(state.activeScenario, exploreCheck.objective.id, 1);
-
-        setState(prev => ({ ...prev, activeScenario: updatedScenario }));
-
-        if (exploreCheck.shouldComplete) {
-          addToLog(`OBJECTIVE COMPLETE: ${exploreCheck.objective.shortDescription}`);
-        }
-      }
-    }
-
-    // Spawn enemies based on template settings
-    const template = selected.template;
-    const shouldSpawn = template.enemySpawnChance
-      ? Math.random() * 100 < template.enemySpawnChance
-      : shouldSpawnMonster(newTile, state.doom, state.enemies, true);
-
-    if (shouldSpawn) {
-      const possibleEnemies = template.possibleEnemies;
-      const enemyType = possibleEnemies && possibleEnemies.length > 0
-        ? possibleEnemies[Math.floor(Math.random() * possibleEnemies.length)] as EnemyType
-        : selectRandomEnemy(newTile.category, state.doom);
-
-      if (enemyType) {
-        const spawnPos = calculateEnemySpawnPosition(startQ, startR);
-        spawnEnemy(enemyType, spawnPos.q, spawnPos.r);
-      }
-    }
-  }, [state.board, state.doom, state.enemies, state.activeScenario, state.objectiveSpawnState, spawnEnemy]);
 
   /**
    * Instantiate a room cluster at the given world position
