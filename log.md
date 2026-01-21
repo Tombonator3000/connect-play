@@ -11550,7 +11550,172 @@ Plus Preview-knapp i toolbar.
 ✅ TypeScript kompilerer uten feil
 
 ### Gjenstående (lavere prioritet)
-- [ ] Undo/Redo system
+- [x] Undo/Redo system ✅ (2026-01-21)
+- [ ] Scenario loader (JSON til spillbart Scenario)
+- [ ] Tile-to-board converter
+
+---
+
+## 2026-01-21: Quest Editor - Undo/Redo System
+
+### Oppsummering
+
+Implementert komplett Undo/Redo system for Quest Editor som lar brukere angre og gjøre om endringer.
+
+---
+
+### Implementasjon
+
+#### Ny fil: `useUndoRedo.ts`
+
+Custom React hook for historikkbehandling:
+
+**Features:**
+- State snapshot-basert tilnærming
+- JSON serialisering for å unngå mutasjonsproblemer
+- Maks 50 tilstander i historikken
+- Automatisk håndtering av undo/redo stacks
+
+**API:**
+```typescript
+interface UndoRedoHook {
+  canUndo: boolean;           // Kan angre
+  canRedo: boolean;           // Kan gjøre om
+  undoStack: number;          // Antall tilstander i undo-stack
+  redoStack: number;          // Antall tilstander i redo-stack
+  undo: () => UndoableState | null;      // Angre siste handling
+  redo: () => UndoableState | null;      // Gjør om angret handling
+  pushState: (state, action) => void;    // Registrer ny tilstand
+  clear: () => void;          // Tøm historikk
+  lastAction: string;         // Beskrivelse av siste handling
+}
+```
+
+**UndoableState inneholder:**
+- tiles (Map)
+- objectives
+- triggers
+- doomEvents
+- metadata
+
+---
+
+### Integrasjon i Quest Editor
+
+#### Toolbar
+- Undo-knapp (Undo2 ikon) - deaktivert når ingenting å angre
+- Redo-knapp (Redo2 ikon) - deaktivert når ingenting å gjøre om
+
+#### Keyboard Shortcuts
+- **Ctrl+Z** / **Cmd+Z**: Angre
+- **Ctrl+Shift+Z** / **Cmd+Shift+Z**: Gjør om
+- **Ctrl+Y** / **Cmd+Y**: Gjør om (alternativ)
+
+#### Status Bar
+- Viser siste handling ("Last: Place tile: Manor Foyer")
+- Oppdatert shortcut-visning
+
+---
+
+### Handlinger som spores
+
+| Kategori | Handlinger |
+|----------|------------|
+| **Tiles** | Place tile, Delete tile, Clear all |
+| **Tile Properties** | Set start location, Change edge, Change door config |
+| **Content** | Update monsters, Update items, Update NPCs |
+| **Scenario** | Update objectives, Update triggers, Update doom events |
+| **File** | Import scenario |
+
+---
+
+### Tekniske detaljer
+
+**State Serialisering:**
+```typescript
+// Serialize Map til array for lagring
+function serializeState(state: UndoableState): string {
+  return JSON.stringify({
+    tiles: Array.from(state.tiles.entries()),
+    objectives: state.objectives,
+    // ...
+  });
+}
+
+// Deserialize tilbake til Map
+function deserializeState(json: string): UndoableState {
+  const parsed = JSON.parse(json);
+  return {
+    tiles: new Map(parsed.tiles),
+    // ...
+  };
+}
+```
+
+**Undo-logikk:**
+- Når handling utføres: `pushState(currentState, "action description")`
+- Redo-stack tømmes ved ny handling (standard oppførsel)
+- Ved undo: Pop fra undo-stack, push til redo-stack
+- Ved redo: Pop fra redo-stack, push til undo-stack
+
+---
+
+### Filer
+
+**Ny:**
+- `src/game/components/QuestEditor/useUndoRedo.ts`
+
+**Oppdatert:**
+- `src/game/components/QuestEditor/index.tsx`
+  - Importert useUndoRedo hook og Undo2/Redo2 ikoner
+  - Lagt til undo/redo knapper i toolbar
+  - Keyboard shortcuts med useEffect
+  - recordAction() for alle state-endrende operasjoner
+  - Oppdatert status bar med siste handling
+
+---
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,405 kB bundle)
+
+---
+
+### Quest Editor - Komplett funksjonsoversikt
+
+| Feature | Status |
+|---------|--------|
+| **Fase 1 - Grunnleggende** | |
+| Hex-grid rendering | ✅ |
+| Tile placement/selection/deletion | ✅ |
+| Tile rotation | ✅ |
+| Pan/zoom | ✅ |
+| Tile palette med kategorier | ✅ |
+| Søk i tiles | ✅ |
+| JSON export/import | ✅ |
+| Start location marking | ✅ |
+| Properties panel | ✅ |
+| Scenario metadata | ✅ |
+| **Fase 2 - Innhold** | |
+| Edge-konfigurasjon per tile | ✅ |
+| Monster-plassering | ✅ |
+| Quest item-plassering | ✅ |
+| Objective editor | ✅ |
+| Tabbed interface | ✅ |
+| Visuelle indikatorer på canvas | ✅ |
+| **Fase 3 - Avansert** | |
+| Validering | ✅ |
+| Door state config | ✅ |
+| Custom descriptions | ✅ |
+| Preview/Test mode | ✅ |
+| Trigger system | ✅ |
+| NPC-plassering | ✅ |
+| Doom events editor | ✅ |
+| **Undo/Redo** | ✅ |
+
+---
+
+### Gjenstående (lavere prioritet)
 - [ ] Scenario loader (JSON til spillbart Scenario)
 - [ ] Tile-to-board converter
 
