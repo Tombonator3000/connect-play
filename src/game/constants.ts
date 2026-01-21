@@ -2324,10 +2324,354 @@ export const ITEMS: Item[] = [
   { id: 'book', name: 'Necronomicon', type: 'relic', effect: '+3 Insight, -1 Sanity per read', bonus: 3, goldCost: 400, slotType: 'bag' }
 ];
 
+/**
+ * EVENT CARD DECK - Drawn during MYTHOS phase
+ * Inspired by Mansions of Madness and Arkham Horror
+ * Balance: ~40% negative, ~30% mixed, ~30% neutral/positive
+ */
 export const EVENTS: EventCard[] = [
-  { id: 'e1', title: 'Shadows in the Dark', description: 'You feel watched. Lose 1 Sanity.', effectType: 'sanity', value: -1 },
-  { id: 'e2', title: 'Hidden Diary', description: 'Found important notes! +1 Insight.', effectType: 'insight', value: 1 },
-  { id: 'e3', title: 'Dark Ritual', description: 'You stumble upon a ceremony!', effectType: 'spawn', value: 1 }
+  // === SANITY EVENTS (negative) ===
+  {
+    id: 'e01',
+    title: 'Shadows in the Dark',
+    description: 'You feel watched. Something moves just beyond the edge of your vision.',
+    effectType: 'sanity',
+    value: -1,
+    flavorText: 'The shadows have eyes...'
+  },
+  {
+    id: 'e02',
+    title: 'Whispers from Beyond',
+    description: 'Voices speak secrets no mortal should know. Your mind reels.',
+    effectType: 'sanity',
+    value: -2,
+    skillCheck: {
+      attribute: 'willpower',
+      dc: 4,
+      successDescription: 'You steel your mind and block out the voices.',
+      failureDescription: 'The whispers burrow into your thoughts...'
+    }
+  },
+  {
+    id: 'e03',
+    title: 'Nightmare Visions',
+    description: 'Terrible images flood your mind. Horrors that cannot be unseen.',
+    effectType: 'all_sanity',
+    value: -1,
+    flavorText: 'In sleep, the truth is revealed...'
+  },
+  {
+    id: 'e04',
+    title: 'The Watcher',
+    description: 'An eye. Vast. Ancient. It sees you. It KNOWS you.',
+    effectType: 'sanity',
+    value: -2,
+    doomThreshold: 6,
+    flavorText: 'Ph\'nglui mglw\'nafh...'
+  },
+  {
+    id: 'e05',
+    title: 'Creeping Dread',
+    description: 'A sense of wrongness pervades everything. Reality feels thin.',
+    effectType: 'sanity',
+    value: -1,
+    secondaryEffect: { type: 'doom', value: -1 }
+  },
+
+  // === HEALTH EVENTS (negative) ===
+  {
+    id: 'e06',
+    title: 'Toxic Fumes',
+    description: 'A cloud of noxious gas seeps from the walls.',
+    effectType: 'health',
+    value: -1,
+    skillCheck: {
+      attribute: 'agility',
+      dc: 4,
+      successDescription: 'You cover your face and escape the fumes.',
+      failureDescription: 'You inhale the poisonous vapors...'
+    }
+  },
+  {
+    id: 'e07',
+    title: 'Unstable Ground',
+    description: 'The floor gives way beneath your feet!',
+    effectType: 'health',
+    value: -2,
+    skillCheck: {
+      attribute: 'agility',
+      dc: 5,
+      successDescription: 'You leap clear of the collapsing floor.',
+      failureDescription: 'You fall, hitting the debris hard...'
+    }
+  },
+  {
+    id: 'e08',
+    title: 'Hidden Blade',
+    description: 'A trap springs from the wall! A rusty blade swings toward you.',
+    effectType: 'health',
+    value: -1,
+    skillCheck: {
+      attribute: 'agility',
+      dc: 3,
+      successDescription: 'You dodge the blade with ease.',
+      failureDescription: 'The blade cuts deep...'
+    }
+  },
+
+  // === SPAWN EVENTS ===
+  {
+    id: 'e09',
+    title: 'They Come',
+    description: 'A cultist patrol has found your trail!',
+    effectType: 'spawn',
+    value: 2,
+    spawnType: 'cultist',
+    flavorText: 'Ia! Ia!'
+  },
+  {
+    id: 'e10',
+    title: 'From the Depths',
+    description: 'Something claws its way up from below. The smell of the grave fills the air.',
+    effectType: 'spawn',
+    value: 1,
+    spawnType: 'ghoul'
+  },
+  {
+    id: 'e11',
+    title: 'The Deep Ones Stir',
+    description: 'Wet footsteps echo through the halls. The creatures of Innsmouth have come.',
+    effectType: 'spawn',
+    value: 1,
+    spawnType: 'deep_one',
+    doomThreshold: 8
+  },
+  {
+    id: 'e12',
+    title: 'Ambush!',
+    description: 'You walked right into their trap!',
+    effectType: 'spawn',
+    value: 3,
+    spawnType: 'cultist',
+    skillCheck: {
+      attribute: 'intellect',
+      dc: 4,
+      successDescription: 'You noticed the trap and prepared for the ambush.',
+      failureDescription: 'They surround you before you can react...'
+    }
+  },
+
+  // === DOOM EVENTS ===
+  {
+    id: 'e13',
+    title: 'The Stars Align',
+    description: 'A cosmic conjunction accelerates the ritual. Time grows short.',
+    effectType: 'doom',
+    value: -2,
+    flavorText: 'When the stars are right...'
+  },
+  {
+    id: 'e14',
+    title: 'Ritual Progress',
+    description: 'Somewhere in the darkness, cultists chant. The summoning continues.',
+    effectType: 'doom',
+    value: -1
+  },
+  {
+    id: 'e15',
+    title: 'Blood Sacrifice',
+    description: 'A scream in the distance. Another victim for the Old Ones.',
+    effectType: 'doom',
+    value: -1,
+    secondaryEffect: { type: 'all_sanity', value: -1 }
+  },
+
+  // === POSITIVE EVENTS ===
+  {
+    id: 'e16',
+    title: 'Hidden Cache',
+    description: 'You discover a hidden supply cache! Medical supplies and ammunition.',
+    effectType: 'health',
+    value: 2,
+    flavorText: 'Someone else tried to fight back...'
+  },
+  {
+    id: 'e17',
+    title: 'Moment of Clarity',
+    description: 'Your mind clears. The horror recedes, if only for a moment.',
+    effectType: 'sanity',
+    value: 2
+  },
+  {
+    id: 'e18',
+    title: 'Hidden Diary',
+    description: 'You find a researcher\'s journal. The notes are invaluable!',
+    effectType: 'insight',
+    value: 2
+  },
+  {
+    id: 'e19',
+    title: 'Disrupted Ritual',
+    description: 'Your presence has delayed their plans. You\'ve bought precious time.',
+    effectType: 'doom',
+    value: 1,
+    flavorText: 'Every second counts...'
+  },
+  {
+    id: 'e20',
+    title: 'Lucky Find',
+    description: 'You stumble upon useful supplies in the debris.',
+    effectType: 'item',
+    value: 1,
+    itemId: 'bandage'
+  },
+
+  // === WEATHER EVENTS ===
+  {
+    id: 'e21',
+    title: 'Unnatural Fog',
+    description: 'A thick, cloying fog rolls in. Visibility drops to nearly nothing.',
+    effectType: 'weather',
+    value: 3,
+    weatherType: 'fog'
+  },
+  {
+    id: 'e22',
+    title: 'Cosmic Storm',
+    description: 'Reality shimmers and cracks. Static fills the air.',
+    effectType: 'weather',
+    value: 2,
+    weatherType: 'cosmic_static',
+    doomThreshold: 5
+  },
+  {
+    id: 'e23',
+    title: 'Eldritch Glow',
+    description: 'An sickly light illuminates the area. It seems to come from everywhere and nowhere.',
+    effectType: 'weather',
+    value: 3,
+    weatherType: 'unnatural_glow'
+  },
+
+  // === MIXED/COMPLEX EVENTS ===
+  {
+    id: 'e24',
+    title: 'The Price of Knowledge',
+    description: 'Ancient texts reveal secrets, but reading them takes its toll.',
+    effectType: 'insight',
+    value: 3,
+    secondaryEffect: { type: 'sanity', value: -1 },
+    flavorText: 'Some knowledge is not meant for mortal minds...'
+  },
+  {
+    id: 'e25',
+    title: 'Dark Bargain',
+    description: 'A voice offers power... for a price.',
+    effectType: 'health',
+    value: 3,
+    secondaryEffect: { type: 'sanity', value: -2 },
+    skillCheck: {
+      attribute: 'willpower',
+      dc: 5,
+      successDescription: 'You reject the bargain. Your soul remains your own.',
+      failureDescription: 'The deal is struck...'
+    }
+  },
+  {
+    id: 'e26',
+    title: 'Fleeting Hope',
+    description: 'For a moment, you believe you can win. Then the darkness returns.',
+    effectType: 'sanity',
+    value: 1,
+    secondaryEffect: { type: 'doom', value: -1 }
+  },
+  {
+    id: 'e27',
+    title: 'The Hunted',
+    description: 'Something is tracking you. You can feel its hunger.',
+    effectType: 'spawn',
+    value: 1,
+    spawnType: 'hound_of_tindalos',
+    doomThreshold: 4
+  },
+  {
+    id: 'e28',
+    title: 'Echoes of the Past',
+    description: 'Ghostly images show what happened here. The truth is horrifying.',
+    effectType: 'insight',
+    value: 2,
+    secondaryEffect: { type: 'sanity', value: -1 }
+  },
+  {
+    id: 'e29',
+    title: 'Respite',
+    description: 'A moment of peace in the chaos. But it will not last.',
+    effectType: 'health',
+    value: 1,
+    secondaryEffect: { type: 'sanity', value: 1 }
+  },
+  {
+    id: 'e30',
+    title: 'The Gathering Storm',
+    description: 'Dark clouds gather. Thunder rolls in the distance.',
+    effectType: 'weather',
+    value: 4,
+    weatherType: 'rain',
+    secondaryEffect: { type: 'doom', value: -1 }
+  },
+
+  // === LATE GAME EVENTS (doom threshold) ===
+  {
+    id: 'e31',
+    title: 'The Veil Thins',
+    description: 'Reality tears. For a moment, you glimpse what lies beyond.',
+    effectType: 'all_sanity',
+    value: -2,
+    doomThreshold: 4,
+    flavorText: 'The Old Ones wait...'
+  },
+  {
+    id: 'e32',
+    title: 'Herald of Doom',
+    description: 'A terrible creature announces the coming apocalypse.',
+    effectType: 'spawn',
+    value: 1,
+    spawnType: 'byakhee',
+    doomThreshold: 5,
+    secondaryEffect: { type: 'all_sanity', value: -1 }
+  },
+  {
+    id: 'e33',
+    title: 'Final Warning',
+    description: 'The end approaches. You feel it in your bones.',
+    effectType: 'doom',
+    value: -2,
+    doomThreshold: 3,
+    secondaryEffect: { type: 'all_sanity', value: -1 }
+  },
+
+  // === BUFF/DEBUFF EVENTS ===
+  {
+    id: 'e34',
+    title: 'Empowered Darkness',
+    description: 'The creatures of the night grow stronger. Their eyes gleam with new malice.',
+    effectType: 'buff_enemies',
+    value: 1,
+    doomThreshold: 6
+  },
+  {
+    id: 'e35',
+    title: 'Weakening Resolve',
+    description: 'Exhaustion sets in. Your movements feel sluggish.',
+    effectType: 'debuff_player',
+    value: 1,
+    skillCheck: {
+      attribute: 'willpower',
+      dc: 4,
+      successDescription: 'You push through the fatigue.',
+      failureDescription: 'Your body betrays you...'
+    }
+  }
 ];
 
 export const MADNESS_CONDITIONS: Madness[] = [
