@@ -26,6 +26,7 @@ import { performAttack, performHorrorCheck, calculateEnemyDamage, hasRangedWeapo
 import { processEnemyTurn, selectRandomEnemy, createEnemy, shouldSpawnMonster } from './utils/monsterAI';
 import { checkVictoryConditions, checkDefeatConditions, updateObjectiveProgress, completeObjective, checkKillObjectives, checkExploreObjectives, updateSurvivalObjectives, getVisibleObjectives } from './utils/scenarioUtils';
 import PuzzleModal from './components/PuzzleModal';
+import EventModal from './components/EventModal';
 import SpellSelectionModal from './components/SpellSelectionModal';
 import FieldGuidePanel from './components/FieldGuidePanel';
 import CharacterSelectionScreen from './components/CharacterSelectionScreen';
@@ -79,6 +80,18 @@ import {
 } from './utils/objectiveSpawner';
 import { getThemedTilePreferences } from './utils/scenarioGenerator';
 import {
+  createShuffledEventDeck,
+  drawEventCard,
+  discardEventCard,
+  resolveEventEffect,
+  performEventSkillCheck,
+  getDeckState
+} from './utils/eventDeckManager';
+import {
+  initializeAudio,
+  playSound,
+} from './utils/audioManager';
+import {
   calculateDoomWithDarkInsightPenalty,
   findNewlyCompletedSurvivalObjectives,
   processWeatherForNewRound
@@ -121,6 +134,8 @@ const DEFAULT_STATE: GameState = {
   log: [],
   lastDiceRoll: null,
   activeEvent: null,
+  eventDeck: createShuffledEventDeck(),
+  eventDiscardPile: [],
   activeCombat: null,
   activePuzzle: null,
   selectedEnemyId: null,
@@ -446,10 +461,38 @@ const ShadowsGame: React.FC = () => {
         // Check for doom events
         checkDoomEvents(state.doom - 1);
 
+        // === EVENT CARD DRAWING ===
+        // Draw an event card at the end of MYTHOS phase (50% chance)
+        if (Math.random() < 0.5) {
+          const { card, newDeck, newDiscardPile, reshuffled } = drawEventCard(
+            state.eventDeck,
+            state.eventDiscardPile,
+            state.doom
+          );
+
+          if (card) {
+            if (reshuffled) {
+              addToLog("📜 Event-kortstokken ble blandet på nytt.");
+            }
+
+            // Update deck state and show event
+            setState(prev => ({
+              ...prev,
+              eventDeck: newDeck,
+              eventDiscardPile: newDiscardPile,
+              activeEvent: card
+            }));
+
+            playSound('eventCard');
+            addToLog(`📜 EVENT: ${card.title}`);
+          }
+        }
+
         // Check for game over after enemy attacks
         const allDead = updatedPlayers.every(p => p.isDead);
         if (allDead) {
           setTimeout(() => {
+            playSound('defeat');
             addToLog("All investigators have fallen. The darkness claims victory.");
             setGameOverType('defeat_death');
             setState(prev => ({
@@ -1760,6 +1803,101 @@ const ShadowsGame: React.FC = () => {
     setContextActions([]);
   }, [state.players, state.activePlayerIndex, state.activePuzzle, checkMadness]);
 
+  // Handle event card resolution
+  const handleEventResolve = useCallback(() => {
+    const event = state.activeEvent;
+    if (!event) {
+      setState(prev => ({ ...prev, activeEvent: null }));
+      return;
+    }
+
+    const activePlayer = state.players[state.activePlayerIndex] || state.players.find(p => !p.isDead);
+    if (!activePlayer) {
+      // No valid player, just dismiss the event
+      setState(prev => ({
+        ...prev,
+        activeEvent: null,
+        eventDiscardPile: discardEventCard(event, prev.eventDiscardPile)
+      }));
+      return;
+    }
+
+    // Check if event has a skill check
+    let skillCheckPassed = false;
+    if (event.skillCheck) {
+      const checkResult = performEventSkillCheck(
+        activePlayer,
+        event.skillCheck.attribute,
+        event.skillCheck.dc
+      );
+      skillCheckPassed = checkResult.success;
+
+      // Log the skill check result
+      const attrName = event.skillCheck.attribute.charAt(0).toUpperCase() + event.skillCheck.attribute.slice(1);
+      addToLog(`${activePlayer.name} makes a ${attrName} check (DC ${event.skillCheck.dc}): ${checkResult.rolls.join(', ')} = ${checkResult.successes} successes - ${skillCheckPassed ? 'SUCCESS!' : 'FAILED!'}`);
+    }
+
+    // Resolve the event effect
+    const { updatedState, logMessages, spawnEnemies, weatherChange } = resolveEventEffect(
+      event,
+      state,
+      state.activePlayerIndex,
+      skillCheckPassed
+    );
+
+    // Log all messages from the event
+    logMessages.forEach(msg => addToLog(msg));
+
+    // Handle enemy spawning
+    if (spawnEnemies && spawnEnemies.count > 0 && !skillCheckPassed) {
+      const alivePlayers = state.players.filter(p => !p.isDead);
+      const targetPlayer = spawnEnemies.nearPlayerId
+        ? state.players.find(p => p.id === spawnEnemies.nearPlayerId)
+        : alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+
+      if (targetPlayer) {
+        // Spawn enemies near the target player
+        const spawnType = (spawnEnemies.type in BESTIARY) ? spawnEnemies.type as EnemyType : 'cultist';
+        for (let i = 0; i < spawnEnemies.count; i++) {
+          const offsetQ = Math.floor(Math.random() * 3) - 1;
+          const offsetR = Math.floor(Math.random() * 3) - 1;
+          // Use setTimeout to spawn after state update
+          setTimeout(() => {
+            spawnEnemy(spawnType, targetPlayer.position.q + offsetQ + 1, targetPlayer.position.r + offsetR);
+          }, i * 200);
+        }
+        addFloatingText(targetPlayer.position.q, targetPlayer.position.r, `${spawnEnemies.count} ${spawnEnemies.type}!`, "text-primary");
+        triggerScreenShake();
+      }
+    }
+
+    // Handle weather change
+    if (weatherChange && !skillCheckPassed) {
+      const newWeatherCondition: WeatherCondition = {
+        type: weatherChange.type as WeatherType,
+        intensity: 'moderate',
+        duration: weatherChange.duration,
+      };
+
+      setState(prev => ({
+        ...prev,
+        weatherState: {
+          ...prev.weatherState,
+          activeWeather: newWeatherCondition,
+        }
+      }));
+    }
+
+    // Update state with event effects
+    setState(prev => ({
+      ...prev,
+      ...updatedState,
+      activeEvent: null,
+      eventDiscardPile: discardEventCard(event, prev.eventDiscardPile)
+    }));
+
+  }, [state.activeEvent, state.players, state.activePlayerIndex, state]);
+
   const spawnEnemy = useCallback((type: EnemyType, q: number, r: number) => {
     const bestiary = BESTIARY[type];
     if (!bestiary) return;
@@ -1781,6 +1919,7 @@ const ShadowsGame: React.FC = () => {
     };
 
     setState(prev => ({ ...prev, enemies: [...prev.enemies, newEnemy] }));
+    playSound('enemySpawn');
     addToLog(`A ${bestiary.name} emerges from the shadows!`);
   }, []);
 
@@ -2481,6 +2620,8 @@ const ShadowsGame: React.FC = () => {
 
         // Perform the attack using new combat system
         const combatResult = performAttack(activePlayer, targetEnemy, isRanged);
+        playSound('attack');
+        playSound('diceRoll');
         setState(prev => ({
           ...prev,
           lastDiceRoll: combatResult.rolls,
@@ -2529,6 +2670,7 @@ const ShadowsGame: React.FC = () => {
 
           // Perform the spell effect
           if (spell.effectType === 'damage') {
+            playSound('spellCast');
             addToLog(`${activePlayer.name} casts ${spell.name}! Eldritch energy strikes ${spellTarget.name} for ${spell.value} damage.`);
             addFloatingText(spellTarget.position.q, spellTarget.position.r, `-${spell.value} HP`, "text-sanity");
             addFloatingText(activePlayer.position.q, activePlayer.position.r, `-${spell.cost} INSIGHT`, "text-insight");
@@ -3198,6 +3340,7 @@ const ShadowsGame: React.FC = () => {
       });
 
       if (victoryResult.isVictory) {
+        playSound('victory');
         addToLog(victoryResult.message);
         setGameOverType('victory');
         setState(prev => ({
@@ -3219,6 +3362,7 @@ const ShadowsGame: React.FC = () => {
       });
 
       if (defeatResult.isDefeat) {
+        playSound('defeat');
         addToLog(defeatResult.message);
         setGameOverType(defeatResult.condition?.type === 'doom_zero' ? 'defeat_doom' : 'defeat_death');
         setState(prev => ({
@@ -3664,8 +3808,11 @@ const ShadowsGame: React.FC = () => {
         <ScenarioBriefingPopup
           scenario={state.activeScenario}
           playerCount={state.players.length}
-          onBegin={() => {
+          onBegin={async () => {
             setShowBriefing(false);
+            // Initialize audio system on game start (requires user interaction)
+            await initializeAudio();
+            playSound('success');
             // Initialize objective spawn state for quest items and tiles
             const objectiveSpawnState = initializeObjectiveSpawns(state.activeScenario!);
             setState(prev => ({
@@ -3910,6 +4057,14 @@ const ShadowsGame: React.FC = () => {
           symbols={state.activePuzzle.symbols}
           hint={state.activePuzzle.hint}
           playerClass={state.players[state.activePlayerIndex]?.id}
+        />
+      )}
+
+      {/* Event Card Modal - Shows drawn event cards during MYTHOS phase */}
+      {state.activeEvent && (
+        <EventModal
+          event={state.activeEvent}
+          onResolve={handleEventResolve}
         />
       )}
 

@@ -9216,3 +9216,230 @@ Hex: (|2| + |3| + |1|) / 2 = 3  ← Faktisk hex-avstand
 - Spells fungerer som "ranged weapon" alternative
 - Eldritch Bolt (range 3) erstatter rifle for Occultist
 - Begrenset bruk per scenario = taktisk valg
+
+---
+
+## 2026-01-21: Event Card Deck Cycling & Audio System
+
+### Oppgave
+Implementere de gjenværende funksjonene:
+1. Event Card deck cycling (shuffling/trekking)
+2. Audio system (Tone.js)
+3. Weather-effekter fra doom-nivå
+4. Legacy XP/Leveling mellom scenarier
+
+### Status etter undersøkelse
+
+**Allerede implementert (verifisert):**
+- Weather-effekter fra doom-nivå (`mythosPhaseHelpers.ts`, `constants.ts`, `WeatherOverlay.tsx`)
+- Legacy XP/Leveling (`legacyManager.ts`)
+
+**Måtte implementeres:**
+- Event Card deck cycling
+- Audio system
+
+---
+
+### 1. Event Card Deck Cycling System
+
+#### Utvidet EventCard Interface (types.ts)
+
+```typescript
+export type EventEffectType =
+  | 'sanity' | 'health' | 'spawn' | 'insight' | 'doom'
+  | 'item' | 'weather' | 'all_sanity' | 'all_health'
+  | 'buff_enemies' | 'debuff_player' | 'teleport';
+
+export interface EventCard {
+  id: string;
+  title: string;
+  description: string;
+  effectType: EventEffectType;
+  value: number;
+  secondaryEffect?: { type: EventEffectType; value: number };
+  spawnType?: string;
+  itemId?: string;
+  weatherType?: string;
+  doomThreshold?: number;
+  skillCheck?: {
+    attribute: 'strength' | 'agility' | 'intellect' | 'willpower';
+    dc: number;
+    successDescription: string;
+    failureDescription: string;
+  };
+  flavorText?: string;
+}
+```
+
+#### GameState Utvidelse
+
+Lagt til i GameState interface:
+```typescript
+eventDeck: EventCard[];           // Shuffled deck of event cards
+eventDiscardPile: EventCard[];    // Used event cards
+```
+
+#### Ny Fil: eventDeckManager.ts
+
+Komplett deck management system:
+- `createShuffledEventDeck()` - Fisher-Yates shuffle
+- `drawEventCard()` - Trekker kort, reshuffler hvis tomt
+- `discardEventCard()` - Legger kort i discard pile
+- `resolveEventEffect()` - Appliserer alle event-effekter
+- `performEventSkillCheck()` - Skill check for events med sjekk-mulighet
+
+#### 35 Event Cards Implementert
+
+Kategorier:
+- **Sanity events** (5): Shadows in the Dark, Whispers from Beyond, Nightmare Visions, The Watcher, Creeping Dread
+- **Health events** (3): Toxic Fumes, Unstable Ground, Hidden Blade
+- **Spawn events** (4): They Come, From the Depths, The Deep Ones Stir, Ambush!
+- **Doom events** (3): The Stars Align, Ritual Progress, Blood Sacrifice
+- **Positive events** (5): Hidden Cache, Moment of Clarity, Hidden Diary, Disrupted Ritual, Lucky Find
+- **Weather events** (4): Unnatural Fog, Cosmic Storm, Eldritch Glow, The Gathering Storm
+- **Mixed events** (6): The Price of Knowledge, Dark Bargain, Fleeting Hope, The Hunted, Echoes of the Past, Respite
+- **Late game events** (3): The Veil Thins, Herald of Doom, Final Warning
+- **Buff/debuff events** (2): Empowered Darkness, Weakening Resolve
+
+Balanse: ~40% negative, ~30% mixed, ~30% neutral/positive
+
+#### Event Modal Forbedret (EventModal.tsx)
+
+- Dynamiske ikoner basert på effekt-type
+- Bakgrunns-gradient basert på event-alvorlighet
+- Skill check warning-boks med attributt og DC
+- Sekundær effekt visning
+- Doom threshold indikator
+- Flavor text støtte
+
+#### MYTHOS Phase Integrasjon
+
+Event cards trekkes i MYTHOS phase med 50% sjanse:
+```typescript
+if (Math.random() < 0.5) {
+  const { card, newDeck, newDiscardPile, reshuffled } = drawEventCard(...);
+  if (card) {
+    playSound('eventCard');
+    setState(prev => ({ ...prev, eventDeck: newDeck, eventDiscardPile, activeEvent: card }));
+  }
+}
+```
+
+---
+
+### 2. Audio System (Tone.js)
+
+#### Installert Tone.js
+```bash
+npm install tone
+```
+
+#### Ny Fil: audioManager.ts
+
+Komplett audio system med:
+
+**Synthesizers:**
+- `PolySynth` - UI og action lyder
+- `NoiseSynth` - Atmosfæriske effekter
+- `MembraneSynth` - Bass/impact lyder
+- `MetalSynth` - Metaliske lyder
+- `FMSynth` - Horror effekter
+
+**Effects Chain:**
+- Reverb (decay: 4s)
+- FeedbackDelay (0.25s)
+- LowPass Filter (2000Hz)
+
+**21 Sound Effects:**
+| Effect | Funksjon |
+|--------|----------|
+| click | UI-klikk |
+| success | Positiv handling |
+| error | Feil/negativ |
+| damage | Skade tatt |
+| death | Spiller død |
+| footstep | Bevegelse |
+| doorOpen | Dør åpning |
+| diceRoll | Terningkast |
+| attack | Angrep |
+| spellCast | Magi |
+| pickup | Plukke opp item |
+| sanityLoss | Sanity tap |
+| horrorCheck | Horror check |
+| enemySpawn | Fiende spawn |
+| doomTick | Doom nedtelling |
+| eventCard | Event kort trukket |
+| victory | Seier |
+| defeat | Tap |
+| whispers | Hallucination madness |
+| heartbeat | Paranoia madness |
+| cosmicStatic | Cosmic weather |
+
+#### React Hook: useAudio.ts
+
+```typescript
+export function useAudio(options?: { autoInitialize?: boolean }): {
+  isInitialized: boolean;
+  play: (effect: SoundEffect) => void;
+  initialize: () => Promise<boolean>;
+  setVolume: (volume: number) => void;
+  setMuted: (muted: boolean) => void;
+  isMuted: boolean;
+}
+```
+
+#### Integrasjon i ShadowsGame.tsx
+
+Lyder lagt til på:
+- Spill start (success)
+- Angrep (attack + diceRoll)
+- Spell casting (spellCast)
+- Event kort (eventCard)
+- Fiende spawn (enemySpawn)
+- Seier (victory)
+- Tap (defeat)
+
+---
+
+### Filer Modifisert/Opprettet
+
+**Nye filer:**
+- `src/game/utils/eventDeckManager.ts` - Event deck management
+- `src/game/utils/audioManager.ts` - Audio system
+- `src/game/hooks/useAudio.ts` - React audio hook
+
+**Modifiserte filer:**
+- `src/game/types.ts` - EventCard interface utvidet, GameState utvidet
+- `src/game/constants.ts` - 35 event cards lagt til
+- `src/game/components/EventModal.tsx` - Komplett redesign
+- `src/game/ShadowsGame.tsx` - Event deck og audio integrasjon
+
+---
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,220 KB bundle - Tone.js økte ~260KB)
+
+---
+
+### Tekniske Detaljer
+
+**Deck Cycling:**
+- Fisher-Yates shuffle for unbiased permutation
+- Automatisk reshuffle når deck er tom
+- Doom threshold filtering (noen events kun på lav doom)
+- Skill check system for å unngå effekter
+
+**Audio System:**
+- Tone.js Web Audio synth-basert (ingen pre-recorded samples)
+- Lazy initialization (krever user interaction)
+- Volume control med master/sfx split
+- Mute støtte
+- Disposed cleanup for memory management
+
+**Event Balance:**
+- Negative events har ofte skill check mulighet
+- Late-game events har doom threshold
+- Mixed events gir trade-offs (insight vs sanity)
+- Weather events påvirker gameplay mekanikker
+

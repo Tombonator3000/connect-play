@@ -937,12 +937,49 @@ export interface ScenarioModifier {
   effect: 'reduced_vision' | 'extra_doom' | 'strong_enemies' | 'less_items';
 }
 
+/**
+ * Event Card effect types - what happens when the card is drawn
+ */
+export type EventEffectType =
+  | 'sanity'           // Affects player sanity (+/-)
+  | 'health'           // Affects player health (+/-)
+  | 'spawn'            // Spawns enemy(ies)
+  | 'insight'          // Grants insight points
+  | 'doom'             // Affects doom tracker
+  | 'item'             // Grants an item
+  | 'weather'          // Changes weather
+  | 'all_sanity'       // All players lose/gain sanity
+  | 'all_health'       // All players lose/gain health
+  | 'buff_enemies'     // Makes enemies stronger
+  | 'debuff_player'    // Temporary player debuff
+  | 'teleport';        // Moves player
+
+/**
+ * Event Card - drawn during MYTHOS phase
+ * Based on Mansions of Madness / Arkham Horror style events
+ */
 export interface EventCard {
   id: string;
   title: string;
   description: string;
-  effectType: 'sanity' | 'health' | 'spawn' | 'insight' | 'doom';
+  effectType: EventEffectType;
   value: number;
+  // Optional fields for complex effects
+  secondaryEffect?: {
+    type: EventEffectType;
+    value: number;
+  };
+  spawnType?: string;           // Enemy type for spawn effects
+  itemId?: string;              // Item ID for item effects
+  weatherType?: string;         // Weather type for weather effects
+  doomThreshold?: number;       // Only triggers if doom <= this value
+  skillCheck?: {                // Optional skill check to avoid effect
+    attribute: 'strength' | 'agility' | 'intellect' | 'willpower';
+    dc: number;
+    successDescription: string;
+    failureDescription: string;
+  };
+  flavorText?: string;          // Additional atmospheric text
 }
 
 export interface GameSettings {
@@ -1258,6 +1295,8 @@ export interface GameState {
   log: string[];
   lastDiceRoll: number[] | null;
   activeEvent: EventCard | null;
+  eventDeck: EventCard[];           // Shuffled deck of event cards
+  eventDiscardPile: EventCard[];    // Used event cards
   activeCombat: CombatState | null;
   activePuzzle: ActivePuzzle | null;
   selectedEnemyId: string | null;
