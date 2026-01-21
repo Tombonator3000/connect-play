@@ -1,5 +1,73 @@
 # Development Log
 
+## 2026-01-21: Tile System Fixes - Missing Mappings and Fog Visibility
+
+### Oppsummering
+
+Fikset to problemer med tile-systemet:
+1. Manglende tile-bildemappinger førte til at noen tiles ikke viste grafikk
+2. Fog of war overlay var for sterkt, noe som gjorde explored tiles nesten usynlige
+
+---
+
+### 1. Manglende Tile Image Mappings
+
+**Problem:** Flere rom-navn (som "Abandoned Boathouse", "Flooded Cistern", etc.) hadde ingen matchende keywords i `TILE_IMAGES`, noe som resulterte i at bare fallback-ikoner ble vist i stedet for tile-grafikk.
+
+**Løsning (`src/game/components/GameBoard.tsx`):**
+La til 18 nye keyword-mappinger:
+```typescript
+boathouse: tileDock,       // Abandoned Boathouse
+tide: tileDock,            // Eldritch Tide Pools
+sentinel: tileForest,      // Sentinel Hill
+shore: tileDock,           // Rocky Shore
+cistern: tileSewer,        // Flooded Cistern
+workshop: tileCellar,      // Underground Workshop
+prison: tileCrypt,         // Ancient Prison
+observatory: tileStarchamber, // Abandoned Observatory
+pawn: tileShop,            // Midnight Pawn Shop
+arms: tileHotel,           // The Miskatonic Arms
+attic: tileManor,          // Dusty Attic
+bathroom: tileHospital,    // Decrepit Bathroom
+apartment: tileTenement,   // Cramped Apartment
+junction: tileHallway,     // T-Junction, Sewer Junction
+almshouse: tileTenement,   // Derelict Almshouse
+stalls: tileMarket,        // Deserted Market Stalls
+fountain: tileSquare,      // Dry Fountain
+corner: tileStreet,        // Street Corner, Dark Corner
+// + flere
+```
+
+---
+
+### 2. Fog of War Visibility Forbedringer
+
+**Problem:** Når spilleren beveget seg bort fra en tile, ble tilen nesten usynlig pga. for høy fog-opacity (0.7). Radial gradient gjorde også at bare midten av tilen var synlig.
+
+**Løsning (`src/game/components/GameBoard.tsx`):**
+- Reduserte fog opacity for explored-men-ikke-visible tiles fra 0.7 til 0.5
+- Reduserte gradient fog for visible tiles i avstand fra 0.2 + (distance-1)*0.15 til 0.15 + (distance-1)*0.1
+- Justerte radial gradient til å gi mer uniform mørke med lettere senter for explored tiles
+- Endret unexplored tiles til å bruke solid mørke i stedet for radial gradient
+
+**Kode etter:**
+```typescript
+// Calculate fog opacity based on visibility and exploration
+let fogOpacity = 0;
+if (!isVisible) {
+  fogOpacity = isExplored ? 0.5 : 0.95; // Reduced from 0.7
+} else if (distance > 1) {
+  fogOpacity = 0.15 + (distance - 1) * 0.1; // Reduced gradient
+}
+```
+
+---
+
+### Build Status
+Build vellykket uten feil.
+
+---
+
 ## 2026-01-21: Field Journal Colors, Edge Functionality, Cursor Tooltips
 
 ### Oppsummering

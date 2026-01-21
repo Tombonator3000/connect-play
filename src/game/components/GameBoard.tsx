@@ -515,7 +515,34 @@ const TILE_IMAGES: Record<string, string> = {
   standing: tileStonecircle, // The Standing Stones
   devils: tileGraveyard,     // The Devils Acre
   dead: tileDeadend,         // Dead End (whitespace handling)
-  hanging: tileHangingtree   // Hanging Tree (whitespace handling)
+  hanging: tileHangingtree,  // Hanging Tree (whitespace handling)
+
+  // More missing mappings (2026-01-21)
+  boathouse: tileDock,       // Abandoned Boathouse
+  tide: tileDock,            // Eldritch Tide Pools
+  sentinel: tileForest,      // Sentinel Hill
+  shore: tileDock,           // Rocky Shore
+  cistern: tileSewer,        // Flooded Cistern
+  workshop: tileCellar,      // Underground Workshop
+  prison: tileCrypt,         // Ancient Prison
+  observatory: tileStarchamber, // Abandoned Observatory
+  pawn: tileShop,            // Midnight Pawn Shop
+  arms: tileHotel,           // The Miskatonic Arms
+  attic: tileManor,          // Dusty Attic
+  bathroom: tileHospital,    // Decrepit Bathroom
+  apartment: tileTenement,   // Cramped Apartment
+  junction: tileHallway,     // T-Junction, Sewer Junction
+  almshouse: tileTenement,   // Derelict Almshouse
+  stalls: tileMarket,        // Deserted Market Stalls
+  fountain: tileSquare,      // Dry Fountain
+  corner: tileStreet,        // Street Corner, Dark Corner
+  deserted: tileStreet,      // Deserted areas
+  shrouded: tileForest,      // Fog-Shrouded Lane
+  rocky: tileDock,           // Rocky areas
+  fetid: tileSwamp,          // Fetid Swamp
+  curious: tileShop,         // Curious Book Shop
+  ice: tileCellar,           // Ice Storage
+  midnight: tileShop         // Midnight locations
 };
 
 // Get tile image based on name
@@ -1045,9 +1072,9 @@ const GameBoard: React.FC<GameBoardProps> = ({
           // Calculate fog opacity based on visibility and exploration
           let fogOpacity = 0;
           if (!isVisible) {
-            fogOpacity = isExplored ? 0.7 : 0.95; // Explored but not visible vs never seen
+            fogOpacity = isExplored ? 0.5 : 0.95; // Explored but not visible (reduced from 0.7 for better visibility)
           } else if (distance > 1) {
-            fogOpacity = 0.2 + (distance - 1) * 0.15; // Gradient fog at edges
+            fogOpacity = 0.15 + (distance - 1) * 0.1; // Gradient fog at edges (reduced for better visibility)
           }
 
           const tileImage = getTileImage(tile.name);
@@ -1400,13 +1427,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   </div>
                 )}
 
-                {/* Enhanced fog of war overlay */}
-                <div 
+                {/* Enhanced fog of war overlay - uniform darkness with slight center brightness */}
+                <div
                   className="absolute inset-0 z-30 pointer-events-none transition-all duration-700"
-                  style={{ 
-                    background: fogOpacity > 0.5 
-                      ? `radial-gradient(circle at center, rgba(0,0,0,${fogOpacity * 0.8}) 0%, rgba(0,0,0,${fogOpacity}) 100%)`
-                      : `radial-gradient(circle at center, transparent 30%, rgba(0,0,0,${fogOpacity}) 100%)`,
+                  style={{
+                    background: fogOpacity > 0.6
+                      ? `rgba(0,0,0,${fogOpacity})` // Solid darkness for unexplored tiles
+                      : fogOpacity > 0
+                        ? `radial-gradient(circle at center, rgba(0,0,0,${fogOpacity * 0.6}) 0%, rgba(0,0,0,${fogOpacity}) 80%)` // Lighter center for explored tiles
+                        : 'transparent',
                     opacity: fogOpacity > 0 ? 1 : 0
                   }}
                 />
