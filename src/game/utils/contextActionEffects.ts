@@ -717,7 +717,7 @@ export function processActionEffect(
     return handleQuestItemPickupEffect(ctx, itemIndex);
   }
 
-  // Pass through actions (climbing windows, wading through water, etc.)
+  // Pass through actions (climbing windows, wading through water, stairs, etc.)
   // These move the player to the adjacent tile after the action succeeds
   const PASS_THROUGH_ACTIONS = [
     'climb_through_window',
@@ -731,7 +731,9 @@ export function processActionEffect(
     'cross_ward',
     'cross_edge_ward',
     'use_rope_chasm',
-    'pass_through_fog'
+    'pass_through_fog',
+    'use_stairs_up',
+    'use_stairs_down'
   ];
 
   if (PASS_THROUGH_ACTIONS.includes(actionId)) {
