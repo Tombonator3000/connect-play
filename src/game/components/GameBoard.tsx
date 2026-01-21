@@ -1046,10 +1046,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
           return (
             <div
               key={tile.id}
-              className="absolute flex items-center justify-center transition-all duration-500"
+              className="absolute flex items-center justify-center transition-all duration-500 cursor-pointer"
               style={{ width: `${HEX_SIZE * 2}px`, height: `${HEX_SIZE * 1.732}px`, left: `${x - HEX_SIZE}px`, top: `${y - HEX_SIZE * 0.866}px` }}
               onClick={(e) => {
-                // Desktop click handling
+                // Desktop click handling - trigger movement if not dragging
                 if (!hasDragged.current) onTileClick(tile.q, tile.r);
               }}
               onTouchStart={(e) => {
@@ -1105,10 +1105,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
               <div className={`absolute inset-0 hex-clip transition-all duration-150 ${visual.floorClass} ${visual.glowClass} ${isVisible ? depthClass : ''} overflow-hidden group ${isTouched ? 'brightness-125 scale-[1.02] touch-highlight' : ''} ${isValidMove && isVisible ? 'valid-move-tile' : ''} ${isSelectedTarget ? 'selected-move-target' : ''} ${isLongPressPreview ? 'long-press-preview' : ''}`}>
                 {/* AI-generated tile image - MUST be on top with z-index */}
                 {tileImage ? (
-                  <img 
+                  <img
                     src={tileImage}
                     alt={tile.name}
-                    className="absolute inset-0 w-full h-full object-cover z-[1]"
+                    className="absolute inset-0 w-full h-full object-cover z-[1] pointer-events-none"
                   />
                 ) : null}
                 

@@ -1,5 +1,56 @@
 # Development Log
 
+## 2026-01-21: PC Tile-Klikk Bevegelse Fikset
+
+### Oppsummering
+
+Fikset et problem der spillere ikke kunne flytte figurer ved å klikke på tiles på PC.
+
+---
+
+### Problem
+
+Når brukeren klikket på tiles på PC for å bevege spillerfiguren ("Hero"), skjedde ingenting. Det "gamle systemet" hvor man klikker på en tile og figuren beveger seg dit fungerte ikke.
+
+### Årsak
+
+Etter analyse ble følgende potensielle problemer identifisert:
+
+1. **Manglende `cursor-pointer`** på tile-div'en - gjorde det ikke visuelt klart at tiles var klikkbare
+2. **Manglende `pointer-events-none`** på tile-bildet (img) - bildet kunne potensielt fange opp klikk før de nådde forelder-div'en med onClick-handler
+
+### Løsning
+
+**Fil: `src/game/components/GameBoard.tsx`**
+
+1. Lagt til `cursor-pointer` på tile-div'en for visuell indikasjon:
+```typescript
+className="absolute flex items-center justify-center transition-all duration-500 cursor-pointer"
+```
+
+2. Lagt til `pointer-events-none` på tile-bildet for å sikre at klikk går gjennom til tile-div'en:
+```typescript
+<img
+  src={tileImage}
+  alt={tile.name}
+  className="absolute inset-0 w-full h-full object-cover z-[1] pointer-events-none"
+/>
+```
+
+### Teknisk bakgrunn
+
+Desktop klikkhåndtering fungerer via:
+1. `handleMouseDown` på container setter `hasDragged.current = false`
+2. `handleMouseMove` setter `hasDragged.current = true` hvis bevegelse > 25px (DRAG_THRESHOLD)
+3. `onClick` på tile sjekker `if (!hasDragged.current)` før den kaller `onTileClick`
+
+Mobil håndtering bruker onTouchEnd med egen logikk for tap-deteksjon (wasQuickTap, wasMinimalMovement).
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+---
+
 ## 2026-01-21: Bevegelsessystem Fikset - Adjacency Check
 
 ### Oppsummering
