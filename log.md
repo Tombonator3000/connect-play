@@ -8922,3 +8922,175 @@ function getThemeFromLocation(locationName: string, atmosphere: string): Scenari
 ✅ TypeScript kompilerer uten feil
 ✅ Build vellykket (922.43 kB bundle)
 ✅ Samme oppførsel bevart - funksjonen returnerer identiske verdier for alle lokasjoner
+
+---
+
+## 2026-01-21: Weapons Distance Mechanics & Spell Casting System
+
+### Oppgave
+Implementer logiske våpen- og avstandsmekanikker:
+1. **Våpen og avstand** - Nærkampvåpen (knife) kan kun treffe i samme/nabo hex, skytevåpen har varierende rekkevidde
+2. **Cast/magi** - Spell-velger system for Occultist og Professor
+3. **Heroklasse-restriksjoner** - Veteran kan bruke alle våpen, Occultist kun nærkamp + magi
+
+### Implementert
+
+#### 1. Korrekt Hex-avstand Beregning (combatUtils.ts)
+
+**Problem:** `canAttackEnemy()` brukte Manhattan-avstand (`Math.abs(q1-q2) + Math.abs(r1-r2)`) som er FEIL for hex-grids.
+
+**Løsning:** Importert og brukt `hexDistance()` fra `hexUtils.ts` som beregner korrekt hex-avstand:
+```typescript
+// Korrekt hex-avstand formel
+const distance = hexDistance(player.position, enemy.position);
+```
+
+#### 2. Oppdatert Våpen-rekkevidder (constants.ts)
+
+**Tommy Gun endret:** Range 3 → Range 1
+- Tematisk: Sprayshooting er effektiv kun på kort avstand
+- Balansering: 5 attack dice må kompenseres med kort rekkevidde
+
+**Alle våpen-rekkevidder:**
+| Våpen | Type | Range | Notes |
+|-------|------|-------|-------|
+| Unarmed | Melee | 1 | Alle klasser |
+| Knife | Melee | 1 | Stille |
+| Club/Pipe | Melee | 1 | Improvised |
+| Machete | Melee | 1 | Heavy |
+| Derringer | Ranged | 2 | 2 shots |
+| Revolver | Ranged | 3 | Standard |
+| Shotgun | Ranged | 2 | Close range |
+| Rifle | Ranged | 5 | Long range |
+| **Tommy Gun** | Ranged | **1** | Close range only |
+
+#### 3. Våpenrestriksjon-validering (combatUtils.ts)
+
+**Ny funksjon `canUseWeapon(player, weaponId)`:**
+- Sjekker `weaponRestrictions` fra CHARACTERS
+- Normaliserer weapon IDs for konsistent matching
+- Returnerer `true` hvis våpen er tillatt
+
+**Oppdatert `getWeaponAttackDice()`:**
+- Sjekker nå `canUseWeapon()` før våpen brukes
+- Hvis spiller har restricted våpen, behandles som unarmed
+- Returnerer `isRestricted` og `restrictedWeaponName` for feedback
+
+**Klasse-restriksjoner:**
+| Klasse | Kan bruke | Kan IKKE bruke |
+|--------|-----------|----------------|
+| Veteran | ALT | - |
+| Detective | Det meste | Tommy Gun |
+| Professor | Derringer, Knife | Revolver, Shotgun, Tommy Gun, Rifle, Machete |
+| Occultist | Knife, Revolver | Shotgun, Tommy Gun, Rifle, Machete |
+| Journalist | Det meste | Shotgun, Tommy Gun |
+| Doctor | Derringer, Knife | Revolver, Shotgun, Tommy Gun, Rifle, Machete |
+
+#### 4. Line-of-Sight for Ranged Attacks (combatUtils.ts)
+
+**Oppdatert `canAttackEnemy()` med LOS-sjekk:**
+- Tar nå `board?: Tile[]` som valgfri parameter
+- For ranged angrep på distanse > 1, sjekkes line of sight
+- Bruker `hasLineOfSight()` fra `hexUtils.ts`
+- Vegger og lukkede dører blokkerer skudd
+
+**Feilmeldinger:**
+- "For langt unna for nærkamp. {weapon} kan bare angripe i samme eller nabo-rute."
+- "For langt unna. {weapon} har rekkevidde {range} (avstand: {distance})."
+- "Ingen siktlinje til {enemy}. Vegger eller lukkede dører blokkerer skuddet."
+- "{weapon} kan ikke brukes av denne klassen. Angriper ubevæpnet."
+
+#### 5. ShadowsGame.tsx Integrasjon
+
+**Oppdatert attack-handling:**
+```typescript
+const { canAttack, reason, isRestricted } = canAttackEnemy(activePlayer, targetEnemy, state.board);
+if (!canAttack) {
+  addToLog(reason);
+  return;
+}
+if (isRestricted) {
+  addToLog(reason); // Warn about restricted weapon
+}
+```
+
+#### 6. Spell-casting System Verifisert ✓
+
+**Eksisterende system fungerer korrekt:**
+- ActionBar viser Grimoire-meny med tilgjengelige spells
+- Occultist velger 3 spells ved scenario-start (SpellSelectionModal)
+- Spells har attack dice, range, og begrenset bruk
+- Range sjekkes med `hexDistance()`
+- Partikkeleffekter vises ved casting
+
+**Occultist Spells:**
+| Spell | Attack Dice | Range | Uses | Effect |
+|-------|-------------|-------|------|--------|
+| Eldritch Bolt | 3 | 3 | ∞ (1/round) | Attack |
+| Mind Blast | 2 | 2 | 2/scenario | Attack + Horror |
+| Banish | WIL check | 2 | 2/scenario | Destroy weak enemy |
+| Dark Shield | 0 | Self | 3/scenario | +2 Defense |
+| Glimpse Beyond | 0 | 3 | 1/scenario | Reveal tiles |
+
+### Filer Modifisert
+
+**src/game/utils/combatUtils.ts:**
+- Import `hexDistance` og `hasLineOfSight` fra hexUtils
+- Import `Tile` type
+- Ny `canUseWeapon()` funksjon
+- Oppdatert `getWeaponAttackDice()` med weapon restrictions
+- Oppdatert `canAttackEnemy()` med:
+  - Hex-avstand beregning
+  - Weapon restriction check
+  - Line-of-sight check
+
+**src/game/constants.ts:**
+- Tommy Gun range: 3 → 1
+- Tommy Gun notes oppdatert: "Close range only (neighbor tiles)"
+- ITEMS[tommy] range: 3 → 1
+
+**src/game/ShadowsGame.tsx:**
+- Oppdatert attack-handling til å bruke `state.board` for LOS-sjekk
+- Lagt til logging for restricted weapons
+
+### Tekniske Detaljer
+
+**Hex Distance Calculation (hexUtils.ts):**
+```typescript
+// Axial cube distance - korrekt for hex grids
+const hexDistance = (a, b) => {
+  return (Math.abs(a.q - b.q) + Math.abs(a.q + a.r - b.q - b.r) + Math.abs(a.r - b.r)) / 2;
+};
+```
+
+**Manhattan vs Hex Distance:**
+```
+Manhattan: |q1-q2| + |r1-r2| = FEIL for hex
+Hex: (|dq| + |dq+dr| + |dr|) / 2 = RIKTIG
+
+Eksempel: (0,0) til (2,1)
+Manhattan: |2| + |1| = 3
+Hex: (|2| + |3| + |1|) / 2 = 3  ← Faktisk hex-avstand
+```
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+### Spillmekanikk Oppsummering
+
+**Våpen-avstand regler:**
+- Nærkampvåpen: Kan kun angripe i samme eller tilstøtende hex (distance ≤ 1)
+- Skytevåpen: Kan angripe innenfor våpenets rekkevidde MED klar siktlinje
+- Tommy Gun: Kraftig (5 dice) men kun nabo-ruter (range 1)
+- Rifle: Moderat (3 dice) men lang rekkevidde (range 5)
+
+**Klasse-våpen regler:**
+- Veteran: Kan bruke ALT - krigsveteranen er trent med alle våpen
+- Occultist: Kun Knife + Revolver - kompenserer med MAGI som "skytevåpen"
+- Professor/Doctor: Kun Derringer + Knife - akademikere, ikke krigere
+
+**Magi-system:**
+- Occultist velger 3 spells ved start
+- Spells fungerer som "ranged weapon" alternative
+- Eldritch Bolt (range 3) erstatter rifle for Occultist
+- Begrenset bruk per scenario = taktisk valg

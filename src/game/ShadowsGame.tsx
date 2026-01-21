@@ -2417,12 +2417,16 @@ const ShadowsGame: React.FC = () => {
         const targetEnemy = state.enemies.find(e => e.id === state.selectedEnemyId);
         if (!targetEnemy) return;
 
-        // Check if can attack
+        // Check if can attack (includes range, weapon restrictions, and line-of-sight)
         const isRanged = hasRangedWeapon(activePlayer);
-        const { canAttack, reason } = canAttackEnemy(activePlayer, targetEnemy);
+        const { canAttack, reason, isRestricted } = canAttackEnemy(activePlayer, targetEnemy, state.board);
         if (!canAttack) {
           addToLog(reason);
           return;
+        }
+        // Warn if player is attacking with restricted weapon (treated as unarmed)
+        if (isRestricted) {
+          addToLog(reason);
         }
 
         // Check for horror check first if not encountered
