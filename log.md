@@ -1,5 +1,80 @@
 # Development Log
 
+## 2026-01-21: Quest Editor - Forbedringsforslag (Sesjon 2)
+
+### Oppgave
+Fortsette utvikling av Quest Editor - identifisere forbedringer og nye features.
+
+---
+
+### Nåværende Status (OPPDATERT)
+
+Quest Editor er nå **svært komplett** med 16 komponenter:
+
+| Komponent | Status | Beskrivelse |
+|-----------|--------|-------------|
+| **index.tsx** | ✅ | Hoved-editor med 8 tabber |
+| **EditorCanvas** | ✅ | Hex-grid canvas med pan/zoom |
+| **TilePalette** | ✅ | 100+ tiles med søk og kategorier |
+| **EdgeConfigPanel** | ✅ | Konfigurer alle 6 kanter |
+| **DoorConfigPanel** | ✅ | Dør-states og låser |
+| **MonsterPalette** | ✅ | 15+ monstre fra BESTIARY |
+| **ItemPalette** | ✅ | 21 quest items med templates |
+| **NPCPalette** | ✅ | NPC-plassering |
+| **ObjectivesPanel** | ✅ | 10 objective-typer |
+| **TriggerPanel** | ✅ | 6 trigger-typer, 8 action-typer |
+| **DoomEventsPanel** | ✅ | Doom events med thresholds |
+| **ValidationPanel** | ✅ | 6 validerings-kategorier |
+| **PreviewPanel** | ✅ | AI-genererte tile-bilder, fog of war |
+| **CustomQuestLoader** | ✅ | **NYT!** Last og spill custom quests |
+| **CampaignEditor** | ✅ | **NYT!** Full kampanje-system |
+| **useUndoRedo** | ✅ | 50-state undo/redo |
+
+---
+
+### FORSLAG TIL FORBEDRINGER
+
+#### PRIORITET 1: Campaign Play Integration
+Campaign Editor finnes, men må integreres i main game:
+- [ ] Campaign-modus i hovedspillet
+- [ ] Hero persistence mellom quests
+- [ ] Equipment carry-over
+- [ ] Gold pooling system
+- [ ] Campaign progress tracking
+
+#### PRIORITET 2: NPC Dialog System
+NPCPalette eksisterer men mangler funksjonalitet:
+- [ ] Dialog-editor for NPCs
+- [ ] Quest-giving NPCs
+- [ ] Merchant NPCs (kjøp/salg)
+- [ ] Info NPCs med lore
+
+#### PRIORITET 3: Scenario Templates
+Gjør det enklere å komme i gang:
+- [ ] "Quick Start" templates (Escape, Investigation, Boss Hunt)
+- [ ] Pre-made tile layouts (Small Manor, Church, Warehouse)
+- [ ] Template browser med preview
+
+#### PRIORITET 4: Visual Improvements
+- [ ] Tile connection visualization (grønne linjer mellom koblede tiles)
+- [ ] Mini-map for store scenarios
+- [ ] Drag-and-drop tiles (i tillegg til click-place)
+- [ ] Bulk editing av monstre/items
+
+#### PRIORITET 5: Quality of Life
+- [ ] Keyboard shortcuts panel
+- [ ] Auto-save funksjon
+- [ ] Quest complexity estimator
+- [ ] Difficulty auto-calculator basert på monstre/items
+
+---
+
+### Valgt Forbedring for Denne Sesjonen
+
+**TBD - Venter på brukerens valg**
+
+---
+
 ## 2026-01-21: Quest Editor Analyse - Hva mangler?
 
 ### Oppgave
