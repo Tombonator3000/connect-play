@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { ConnectionEdgeType } from '../../tileConnectionSystem';
-import { DoorOpen, Wall, Square, ArrowUp, ArrowDown, Eye, Droplets, TreePine, Building2 } from 'lucide-react';
+import { DoorOpen, Square, ArrowUp, ArrowDown, Eye, Droplets, TreePine, Building2, Minus } from 'lucide-react';
 
 // ============================================================================
 // CONSTANTS
@@ -20,7 +20,7 @@ const EDGE_TYPES: ConnectionEdgeType[] = [
 const DIRECTION_NAMES = ['N', 'NE', 'SE', 'S', 'SW', 'NW'];
 
 const EDGE_INFO: Record<ConnectionEdgeType, { label: string; color: string; icon: React.ReactNode }> = {
-  WALL: { label: 'Wall', color: '#64748b', icon: <Wall className="w-3 h-3" /> },
+  WALL: { label: 'Wall', color: '#64748b', icon: <Minus className="w-3 h-3" /> },
   OPEN: { label: 'Open', color: '#22c55e', icon: <Square className="w-3 h-3" /> },
   DOOR: { label: 'Door', color: '#f59e0b', icon: <DoorOpen className="w-3 h-3" /> },
   WINDOW: { label: 'Window', color: '#06b6d4', icon: <Eye className="w-3 h-3" /> },
