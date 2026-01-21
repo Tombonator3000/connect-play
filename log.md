@@ -12049,3 +12049,133 @@ function deserializeState(json: string): UndoableState {
 | **Kampanje-spill** | 🔜 (UI klart, logikk gjenstår) |
 
 ---
+
+## 2026-01-21: Refactor contextActionBuilder.ts - Extract Generic Builder
+
+### Oppgave
+Refaktorere kompleks kode i `contextActionBuilder.ts` for bedre klarhet og vedlikeholdbarhet.
+
+### Problem Identifisert
+Tre spesialiserte builder-funksjoner hadde nesten identisk struktur med mye duplisert kode:
+
+1. **`buildLockedDoorActions()`** (36 linjer)
+2. **`buildSealedDoorActions()`** (37 linjer)
+3. **`buildBlockedEdgeActions()`** (40 linjer)
+
+Alle tre funksjoner gjorde det samme:
+- Loopet over configs
+- Hentet DC, enabled, reason fra config
+- Erstattet template-variabler i label
+- Bygget action-objekt med samme felt
+- La til skillCheck basert på ulike kriterier
+
+Den eneste forskjellen var:
+- Default DC-verdi (4, 5, eller context.blockingDC)
+- Hvordan skill type ble bestemt (ulik logikk for hver dør-type)
+
+### Løsning: Generisk Builder med Skill Resolvers
+
+#### 1. Ny Type: SkillResolver
+```typescript
+/**
+ * Callback type for resolving skill type from action id.
+ * Returns SkillType if skill check should be added, null to skip, undefined to auto-infer.
+ */
+type SkillResolver = (actionId: string) => SkillType | null | undefined;
+```
+
+#### 2. Ny Konfigurasjon: DynamicActionBuilderOptions
+```typescript
+interface DynamicActionBuilderOptions {
+  /** Default DC if config.getDC is not provided */
+  defaultDC: number | ((context: ActionContext) => number);
+  /** Callback to resolve skill type from action id */
+  skillResolver: SkillResolver;
+}
+```
+
+#### 3. Generisk Builder-funksjon
+```typescript
+function buildSingleDynamicAction(
+  config: DynamicActionConfig,
+  context: ActionContext,
+  options: DynamicActionBuilderOptions
+): ContextAction
+```
+
+#### 4. Skill Resolvers (data-drevet)
+```typescript
+const LOCKED_DOOR_SKILL_RESOLVER: SkillResolver = (actionId) => {
+  if (actionId === 'use_key') return null;
+  if (actionId === 'lockpick') return 'agility';
+  return 'strength';
+};
+
+const SEALED_DOOR_SKILL_RESOLVER: SkillResolver = (actionId) => {
+  if (actionId === 'break_seal') return 'willpower';
+  if (actionId === 'read_glyphs') return 'intellect';
+  if (actionId === 'use_elder_sign') return null;
+  return null;
+};
+
+const BLOCKED_EDGE_SKILL_RESOLVER: SkillResolver = () => undefined; // Auto-infer
+```
+
+### Refaktorerte Funksjoner
+
+**Før:** 113 linjer totalt (36 + 37 + 40)
+**Etter:** 55 linjer generisk + 35 linjer resolvers + 25 linjer wrappers = samme totalt, men langt bedre struktur
+
+**`buildLockedDoorActions` - Før:**
+```typescript
+export function buildLockedDoorActions(context, configs) {
+  return configs.map(config => {
+    // 30+ linjer duplisert kode
+    if (config.id !== 'use_key') {
+      const skillType = config.id === 'lockpick' ? 'agility' : 'strength';
+      action.skillCheck = { skill: skillType, dc };
+    }
+    return action;
+  });
+}
+```
+
+**`buildLockedDoorActions` - Etter:**
+```typescript
+export function buildLockedDoorActions(context, configs) {
+  return buildDynamicActionsWithSkill(configs, context, {
+    defaultDC: 4,
+    skillResolver: LOCKED_DOOR_SKILL_RESOLVER
+  });
+}
+```
+
+### Fordeler med Refaktoreringen
+
+| Aspekt | Før | Etter |
+|--------|-----|-------|
+| **Linjer per funksjon** | 36-40 | 4-8 |
+| **Duplisert kode** | ~80 linjer | 0 linjer |
+| **Å legge til ny dør-type** | Copy-paste 36 linjer | Lag ny SkillResolver (5 linjer) |
+| **Testing** | Vanskelig (inline logikk) | Lett (resolvers kan testes separat) |
+| **Lesbarhet** | Lav (må lese 40 linjer for å forstå) | Høy (intent er tydelig i 4 linjer) |
+| **Vedlikeholdbarhet** | Lav (endre på 3 steder) | Høy (endre på 1 sted) |
+
+### Prinsipper Anvendt
+
+1. **DRY (Don't Repeat Yourself)** - Duplisert kode ekstrahert til generisk funksjon
+2. **Configuration over Code** - Skill resolution definert som data (callbacks)
+3. **Single Responsibility** - `buildSingleDynamicAction` gjør én ting godt
+4. **Open/Closed** - Lett å legge til nye dør-typer uten å endre generisk kode
+5. **Strategy Pattern** - SkillResolvers fungerer som utbyttbare strategier
+
+### Fil Modifisert
+- `src/game/utils/contextActionBuilder.ts`
+  - Linjer 183-350 (SPECIALIZED BUILDERS seksjonen)
+  - Ingen endring i public API - alle eksporterte funksjoner har samme signatur
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Ingen breaking changes - alle eksporterte funksjoner opprettholder samme oppførsel
+
+---

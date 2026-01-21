@@ -184,130 +184,168 @@ export function withCancelAction(actions: ContextAction[]): ContextAction[] {
 // SPECIALIZED BUILDERS
 // ============================================================================
 
+// ----------------------------------------------------------------------------
+// Generic Dynamic Action Builder
+// ----------------------------------------------------------------------------
+
 /**
- * Builds locked door actions with context-aware DC and key checking
+ * Callback type for resolving skill type from action id.
+ * Returns SkillType if skill check should be added, null to skip, undefined to auto-infer.
+ */
+type SkillResolver = (actionId: string) => SkillType | null | undefined;
+
+/**
+ * Configuration for the generic dynamic action builder
+ */
+interface DynamicActionBuilderOptions {
+  /** Default DC if config.getDC is not provided */
+  defaultDC: number | ((context: ActionContext) => number);
+  /** Callback to resolve skill type from action id */
+  skillResolver: SkillResolver;
+}
+
+/**
+ * Builds a single ContextAction from a DynamicActionConfig with skill resolution.
+ * This is the core building block that eliminates duplication.
+ */
+function buildSingleDynamicAction(
+  config: DynamicActionConfig,
+  context: ActionContext,
+  options: DynamicActionBuilderOptions
+): ContextAction {
+  // Resolve default DC (can be static or context-dependent)
+  const defaultDC = typeof options.defaultDC === 'function'
+    ? options.defaultDC(context)
+    : options.defaultDC;
+
+  const dc = config.getDC ? config.getDC(context) : defaultDC;
+  const enabled = config.getEnabled ? config.getEnabled(context) : true;
+  const reason = config.getReason ? config.getReason(context) : undefined;
+
+  // Build label from template, replacing {dc} placeholder
+  let label = config.labelTemplate || '';
+  label = label.replace('{dc}', dc.toString());
+
+  // Build base action object
+  const action: ContextAction = {
+    id: config.id,
+    label,
+    icon: config.icon as ContextActionIconType,
+    apCost: config.apCost,
+    enabled,
+    reason
+  };
+
+  // Add optional fields
+  if (config.successMessage) action.successMessage = config.successMessage;
+  if (config.failureMessage) action.failureMessage = config.failureMessage;
+  if (config.itemRequired) action.itemRequired = config.itemRequired;
+  if (config.consequences) {
+    action.consequences = config.consequences as ContextAction['consequences'];
+  }
+
+  // Resolve and add skill check
+  const resolvedSkill = options.skillResolver(config.id);
+  if (resolvedSkill === undefined) {
+    // Auto-infer from action id/icon
+    const inferredSkill = inferSkillType(config);
+    if (inferredSkill) {
+      action.skillCheck = { skill: inferredSkill, dc };
+    }
+  } else if (resolvedSkill !== null) {
+    // Use explicitly resolved skill
+    action.skillCheck = { skill: resolvedSkill, dc };
+  }
+  // If resolvedSkill === null, skip skill check entirely
+
+  return action;
+}
+
+/**
+ * Generic builder for dynamic actions with configurable skill resolution.
+ * Replaces the duplicated code in buildLockedDoorActions, buildSealedDoorActions, etc.
+ */
+function buildDynamicActionsWithSkill(
+  configs: DynamicActionConfig[],
+  context: ActionContext,
+  options: DynamicActionBuilderOptions
+): ContextAction[] {
+  return configs.map(config => buildSingleDynamicAction(config, context, options));
+}
+
+// ----------------------------------------------------------------------------
+// Skill Resolvers for Different Door/Edge Types
+// ----------------------------------------------------------------------------
+
+/** Skill resolution for locked doors: lockpick → agility, force → strength, use_key → skip */
+const LOCKED_DOOR_SKILL_RESOLVER: SkillResolver = (actionId) => {
+  if (actionId === 'use_key') return null; // No skill check for key usage
+  if (actionId === 'lockpick') return 'agility';
+  return 'strength'; // force_door, break_door, etc.
+};
+
+/** Skill resolution for sealed doors: break_seal → willpower, read_glyphs → intellect */
+const SEALED_DOOR_SKILL_RESOLVER: SkillResolver = (actionId) => {
+  if (actionId === 'break_seal') return 'willpower';
+  if (actionId === 'read_glyphs') return 'intellect';
+  if (actionId === 'use_elder_sign') return null; // No skill check for item usage
+  return null; // No skill check by default
+};
+
+/** Skill resolution for blocked edges: auto-infer from action id */
+const BLOCKED_EDGE_SKILL_RESOLVER: SkillResolver = () => undefined; // Auto-infer
+
+// ----------------------------------------------------------------------------
+// Public Specialized Builders (now using generic builder)
+// ----------------------------------------------------------------------------
+
+/**
+ * Builds locked door actions with context-aware DC and key checking.
+ * Uses generic builder with locked door skill resolution.
  */
 export function buildLockedDoorActions(
   context: ActionContext,
   configs: DynamicActionConfig[]
 ): ContextAction[] {
-  return configs.map(config => {
-    const dc = config.getDC ? config.getDC(context) : 4;
-    const enabled = config.getEnabled ? config.getEnabled(context) : true;
-    const reason = config.getReason ? config.getReason(context) : undefined;
-
-    let label = config.labelTemplate || '';
-    label = label.replace('{dc}', dc.toString());
-
-    const action: ContextAction = {
-      id: config.id,
-      label,
-      icon: config.icon as ContextActionIconType,
-      apCost: config.apCost,
-      enabled,
-      reason
-    };
-
-    if (config.successMessage) action.successMessage = config.successMessage;
-    if (config.failureMessage) action.failureMessage = config.failureMessage;
-    if (config.itemRequired) action.itemRequired = config.itemRequired;
-    if (config.consequences) {
-      action.consequences = config.consequences as ContextAction['consequences'];
-    }
-
-    // Add skill check for non-key actions
-    if (config.id !== 'use_key') {
-      const skillType = config.id === 'lockpick' ? 'agility' : 'strength';
-      action.skillCheck = { skill: skillType, dc };
-    }
-
-    return action;
+  return buildDynamicActionsWithSkill(configs, context, {
+    defaultDC: 4,
+    skillResolver: LOCKED_DOOR_SKILL_RESOLVER
   });
 }
 
 /**
- * Builds sealed door actions
+ * Builds sealed door actions.
+ * Uses generic builder with sealed door skill resolution.
  */
 export function buildSealedDoorActions(
   context: ActionContext,
   configs: DynamicActionConfig[]
 ): ContextAction[] {
-  return configs.map(config => {
-    const dc = config.getDC ? config.getDC(context) : 5;
-    const enabled = config.getEnabled ? config.getEnabled(context) : true;
-    const reason = config.getReason ? config.getReason(context) : undefined;
-
-    let label = config.labelTemplate || '';
-
-    const action: ContextAction = {
-      id: config.id,
-      label,
-      icon: config.icon as ContextActionIconType,
-      apCost: config.apCost,
-      enabled,
-      reason
-    };
-
-    if (config.successMessage) action.successMessage = config.successMessage;
-    if (config.failureMessage) action.failureMessage = config.failureMessage;
-    if (config.itemRequired) action.itemRequired = config.itemRequired;
-    if (config.consequences) {
-      action.consequences = config.consequences as ContextAction['consequences'];
-    }
-
-    // Add skill check based on action type
-    if (config.id === 'break_seal') {
-      action.skillCheck = { skill: 'willpower', dc };
-    } else if (config.id === 'read_glyphs') {
-      action.skillCheck = { skill: 'intellect', dc };
-    }
-
-    return action;
+  return buildDynamicActionsWithSkill(configs, context, {
+    defaultDC: 5,
+    skillResolver: SEALED_DOOR_SKILL_RESOLVER
   });
 }
 
 /**
- * Builds edge actions with blocking DC support
+ * Builds edge actions with blocking DC support.
+ * Uses generic builder with auto-inferred skills and context-dependent default DC.
  */
 export function buildBlockedEdgeActions(
   context: ActionContext,
   configs: (ActionConfig | DynamicActionConfig)[]
 ): ContextAction[] {
   return configs.map(config => {
-    if ('getDC' in config || 'getEnabled' in config) {
-      const dynConfig = config as DynamicActionConfig;
-      const dc = dynConfig.getDC ? dynConfig.getDC(context) : context.blockingDC || 4;
-      const enabled = dynConfig.getEnabled ? dynConfig.getEnabled(context) : true;
-      const reason = dynConfig.getReason ? dynConfig.getReason(context) : undefined;
-
-      let label = dynConfig.labelTemplate || '';
-      label = label.replace('{dc}', dc.toString());
-
-      const action: ContextAction = {
-        id: dynConfig.id,
-        label,
-        icon: dynConfig.icon as ContextActionIconType,
-        apCost: dynConfig.apCost,
-        enabled,
-        reason
-      };
-
-      if (dynConfig.successMessage) action.successMessage = dynConfig.successMessage;
-      if (dynConfig.failureMessage) action.failureMessage = dynConfig.failureMessage;
-      if (dynConfig.itemRequired) action.itemRequired = dynConfig.itemRequired;
-      if (dynConfig.consequences) {
-        action.consequences = dynConfig.consequences as ContextAction['consequences'];
-      }
-
-      // Infer skill type and add check
-      const skillType = inferSkillType(dynConfig);
-      if (skillType) {
-        action.skillCheck = { skill: skillType, dc };
-      }
-
-      return action;
+    // Handle static configs separately
+    if (!('getDC' in config) && !('getEnabled' in config) && !('labelTemplate' in config)) {
+      return buildStaticAction(config as ActionConfig);
     }
-    return buildStaticAction(config as ActionConfig);
+
+    // Dynamic config - use generic builder
+    return buildSingleDynamicAction(config as DynamicActionConfig, context, {
+      defaultDC: (ctx) => ctx.blockingDC || 4,
+      skillResolver: BLOCKED_EDGE_SKILL_RESOLVER
+    });
   });
 }
 
