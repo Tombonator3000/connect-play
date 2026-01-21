@@ -1293,6 +1293,416 @@ export const CRYPT_STARCHAMBER: TileTemplate = {
 };
 
 // ============================================================================
+// PRIORITY 4 - NEW VARIETY TILES (20+)
+// ============================================================================
+
+// ----- NEW WATER/HARBOR TILES -----
+
+export const URBAN_PIER: TileTemplate = {
+  id: 'urban_pier',
+  name: 'Rotting Pier',
+  category: 'urban',
+  subType: 'pier',
+  edges: ['STREET', 'WATER', 'WATER', 'WATER', 'WATER', 'WATER'],
+  floorType: 'wood',
+  zoneLevel: 0,
+  watermarkIcon: 'Anchor',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Wooden planks creak under your weight. Some are missing, revealing black water below.',
+  enemySpawnChance: 35,
+  possibleEnemies: ['deepone']
+};
+
+export const URBAN_BOATHOUSE: TileTemplate = {
+  id: 'urban_boathouse',
+  name: 'Abandoned Boathouse',
+  category: 'urban',
+  subType: 'boathouse',
+  edges: ['STREET', 'WATER', 'WALL', 'WATER', 'WALL', 'WATER'],
+  floorType: 'wood',
+  zoneLevel: 0,
+  watermarkIcon: 'Ship',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'A ramshackle structure over the water. The boat inside has claw marks on the hull.',
+  possibleObjects: ['crate', 'chest'],
+  enemySpawnChance: 30,
+  possibleEnemies: ['deepone', 'ghoul']
+};
+
+export const NATURE_SHORE: TileTemplate = {
+  id: 'nature_shore',
+  name: 'Rocky Shore',
+  category: 'nature',
+  subType: 'shore',
+  edges: ['NATURE', 'WATER', 'WATER', 'WATER', 'NATURE', 'NATURE'],
+  floorType: 'stone',
+  zoneLevel: 0,
+  watermarkIcon: 'Waves',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'Waves crash against barnacle-covered rocks. Something glistens in the tide pools.'
+};
+
+export const NATURE_TIDEPOOLS: TileTemplate = {
+  id: 'nature_tidepools',
+  name: 'Eldritch Tide Pools',
+  category: 'nature',
+  subType: 'tidepools',
+  edges: ['WATER', 'WATER', 'NATURE', 'WATER', 'WATER', 'NATURE'],
+  floorType: 'water',
+  zoneLevel: 0,
+  watermarkIcon: 'Fish',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'Strange creatures move in the shallow pools. Some have too many eyes.',
+  enemySpawnChance: 20,
+  possibleEnemies: ['deepone']
+};
+
+// ----- NEW STREET/URBAN TILES -----
+
+export const STREET_FOGGY: TileTemplate = {
+  id: 'street_foggy',
+  name: 'Fog-Shrouded Lane',
+  category: 'street',
+  subType: 'foggy',
+  edges: ['STREET', 'WALL', 'WALL', 'STREET', 'WALL', 'WALL'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'Cloud',
+  spawnWeight: 10,
+  canRotate: true,
+  description: 'Thick fog swallows all sound. Shapes move just beyond visibility.'
+};
+
+export const STREET_MARKET: TileTemplate = {
+  id: 'street_market',
+  name: 'Deserted Market Stalls',
+  category: 'street',
+  subType: 'marketstalls',
+  edges: ['STREET', 'FACADE', 'STREET', 'STREET', 'FACADE', 'STREET'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'ShoppingBag',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Empty stalls with goods still displayed. The vendors vanished mid-transaction.',
+  possibleObjects: ['crate']
+};
+
+export const URBAN_FOUNTAIN: TileTemplate = {
+  id: 'urban_fountain',
+  name: 'Dry Fountain',
+  category: 'urban',
+  subType: 'fountain',
+  edges: ['STREET', 'STREET', 'STREET', 'STREET', 'STREET', 'STREET'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'Droplets',
+  spawnWeight: 4,
+  canRotate: false,
+  description: 'A fountain depicting nameless sea creatures. It runs with brackish water at midnight.'
+};
+
+export const URBAN_ALMSHOUSE: TileTemplate = {
+  id: 'urban_almshouse',
+  name: 'Derelict Almshouse',
+  category: 'urban',
+  subType: 'almshouse',
+  edges: ['STREET', 'FACADE', 'WALL', 'STREET', 'WALL', 'FACADE'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'Users',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Shelter for the poor. The residents speak of things that visit at night.',
+  enemySpawnChance: 15,
+  possibleEnemies: ['cultist']
+};
+
+// ----- NEW NATURE TILES -----
+
+export const NATURE_HILLTOP: TileTemplate = {
+  id: 'nature_hilltop',
+  name: 'Sentinel Hill',
+  category: 'nature',
+  subType: 'hilltop',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'grass',
+  zoneLevel: 0,
+  watermarkIcon: 'Mountain',
+  spawnWeight: 5,
+  canRotate: false,
+  description: 'The highest point for miles. On certain nights, lights dance on its crown.',
+  possibleObjects: ['altar'],
+  enemySpawnChance: 20,
+  possibleEnemies: ['cultist']
+};
+
+export const NATURE_DEADTREES: TileTemplate = {
+  id: 'nature_deadtrees',
+  name: 'Blighted Grove',
+  category: 'nature',
+  subType: 'deadtrees',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 0,
+  watermarkIcon: 'TreePine',
+  spawnWeight: 7,
+  canRotate: false,
+  description: 'Nothing grows here. The trees died standing and refuse to fall.'
+};
+
+export const NATURE_FARMFIELD: TileTemplate = {
+  id: 'nature_farmfield',
+  name: 'Abandoned Farm Field',
+  category: 'nature',
+  subType: 'farmfield',
+  edges: ['NATURE', 'NATURE', 'OPEN', 'NATURE', 'NATURE', 'OPEN'],
+  floorType: 'dirt',
+  zoneLevel: 0,
+  watermarkIcon: 'Wheat',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Crops grow in impossible patterns. The scarecrows have moved since morning.'
+};
+
+// ----- NEW ROOM TILES -----
+
+export const ROOM_ATTIC: TileTemplate = {
+  id: 'room_attic',
+  name: 'Dusty Attic',
+  category: 'room',
+  subType: 'attic',
+  edges: ['STAIRS_UP', 'WALL', 'WALL', 'WALL', 'WALL', 'WINDOW'],
+  floorType: 'wood',
+  zoneLevel: 2,
+  watermarkIcon: 'Archive',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'Generations of forgotten possessions. A trunk shakes though nothing disturbs it.',
+  possibleObjects: ['chest', 'crate']
+};
+
+export const ROOM_BATHROOM: TileTemplate = {
+  id: 'room_bathroom',
+  name: 'Decrepit Bathroom',
+  category: 'room',
+  subType: 'bathroom',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Droplets',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'Rust-stained fixtures. The mirror shows someone standing behind you.'
+};
+
+export const ROOM_CELLARWINE: TileTemplate = {
+  id: 'room_cellarwine',
+  name: 'Hidden Wine Vault',
+  category: 'room',
+  subType: 'cellarwine',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: 1,
+  watermarkIcon: 'Wine',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Rare vintages line the walls. One bottle contains something that moves.',
+  possibleObjects: ['cabinet']
+};
+
+export const ROOM_TROPHY: TileTemplate = {
+  id: 'room_trophy',
+  name: 'Trophy Room',
+  category: 'room',
+  subType: 'trophy',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Trophy',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Hunting trophies from three continents. Some species are unrecognizable.',
+  possibleObjects: ['statue']
+};
+
+export const ROOM_MUSIC: TileTemplate = {
+  id: 'room_music',
+  name: 'Music Room',
+  category: 'room',
+  subType: 'music',
+  edges: ['DOOR', 'WALL', 'WALL', 'DOOR', 'WALL', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Music',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'A grand piano plays by itself. The tune is not from any known composition.'
+};
+
+// ----- NEW BASEMENT TILES -----
+
+export const BASEMENT_ICEHOUSE: TileTemplate = {
+  id: 'basement_icehouse',
+  name: 'Ice Storage',
+  category: 'basement',
+  subType: 'icehouse',
+  edges: ['STAIRS_UP', 'WALL', 'WALL', 'OPEN', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: -1,
+  watermarkIcon: 'Snowflake',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Blocks of ice preserve things that should have rotted long ago.'
+};
+
+export const BASEMENT_WORKSHOP: TileTemplate = {
+  id: 'basement_workshop',
+  name: 'Underground Workshop',
+  category: 'basement',
+  subType: 'workshop',
+  edges: ['STAIRS_UP', 'WALL', 'DOOR', 'WALL', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: -1,
+  watermarkIcon: 'Wrench',
+  spawnWeight: 7,
+  canRotate: true,
+  description: 'Tools for crafts that have no name. The workbench shows signs of recent use.',
+  possibleObjects: ['chest', 'crate']
+};
+
+export const BASEMENT_CISTERN: TileTemplate = {
+  id: 'basement_cistern',
+  name: 'Flooded Cistern',
+  category: 'basement',
+  subType: 'cistern',
+  edges: ['OPEN', 'WATER', 'WATER', 'OPEN', 'WATER', 'WATER'],
+  floorType: 'water',
+  zoneLevel: -1,
+  watermarkIcon: 'Waves',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Black water fills the ancient cistern. Ripples appear without wind.',
+  enemySpawnChance: 35,
+  possibleEnemies: ['deepone', 'formless_spawn']
+};
+
+// ----- NEW CRYPT TILES -----
+
+export const CRYPT_OSSUARY: TileTemplate = {
+  id: 'crypt_ossuary',
+  name: 'Bone Ossuary',
+  category: 'crypt',
+  subType: 'ossuary',
+  edges: ['DOOR', 'WALL', 'WALL', 'DOOR', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: -2,
+  watermarkIcon: 'Skull',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Walls decorated with human bones in artistic patterns. Some arrangements form symbols.',
+  enemySpawnChance: 40,
+  possibleEnemies: ['ghoul']
+};
+
+export const CRYPT_LABORATORY: TileTemplate = {
+  id: 'crypt_laboratory',
+  name: 'Forbidden Laboratory',
+  category: 'crypt',
+  subType: 'laboratory',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: -2,
+  watermarkIcon: 'FlaskConical',
+  spawnWeight: 3,
+  canRotate: true,
+  description: 'Reanimation equipment. The operating table has fresh stains.',
+  possibleObjects: ['cabinet', 'chest'],
+  enemySpawnChance: 50,
+  possibleEnemies: ['formless_spawn', 'ghoul']
+};
+
+export const CRYPT_PRISON: TileTemplate = {
+  id: 'crypt_prison',
+  name: 'Ancient Prison',
+  category: 'crypt',
+  subType: 'prison',
+  edges: ['DOOR', 'WALL', 'DOOR', 'WALL', 'DOOR', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: -2,
+  watermarkIcon: 'Lock',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'Cells designed to hold things that walls cannot contain.',
+  enemySpawnChance: 60,
+  possibleEnemies: ['formless_spawn', 'shoggoth']
+};
+
+// ----- NEW FACADE TILES -----
+
+export const FACADE_TAVERN: TileTemplate = {
+  id: 'facade_tavern',
+  name: 'The Miskatonic Arms',
+  category: 'facade',
+  subType: 'tavern',
+  edges: ['DOOR', 'WALL', 'WALL', 'FACADE', 'WALL', 'WALL'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'Beer',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'A tavern for sailors and worse. They speak of things seen at sea.'
+};
+
+export const FACADE_BOOKSHOP: TileTemplate = {
+  id: 'facade_bookshop',
+  name: 'Curious Book Shop',
+  category: 'facade',
+  subType: 'bookshop',
+  edges: ['DOOR', 'WALL', 'WALL', 'FACADE', 'WALL', 'WALL'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'BookOpen',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Rare texts from around the world. The proprietor never shows his face in daylight.'
+};
+
+export const FACADE_PAWNSHOP: TileTemplate = {
+  id: 'facade_pawnshop',
+  name: 'Midnight Pawn Shop',
+  category: 'facade',
+  subType: 'pawnshop',
+  edges: ['DOOR', 'WALL', 'WALL', 'FACADE', 'WALL', 'WALL'],
+  floorType: 'cobblestone',
+  zoneLevel: 0,
+  watermarkIcon: 'DollarSign',
+  spawnWeight: 7,
+  canRotate: true,
+  description: 'Items of questionable origin. Some previous owners came to bad ends.'
+};
+
+export const FACADE_OBSERVATORY: TileTemplate = {
+  id: 'facade_observatory',
+  name: 'Abandoned Observatory',
+  category: 'facade',
+  subType: 'observatory',
+  edges: ['DOOR', 'NATURE', 'WALL', 'NATURE', 'WALL', 'NATURE'],
+  floorType: 'stone',
+  zoneLevel: 0,
+  watermarkIcon: 'Star',
+  spawnWeight: 3,
+  canRotate: true,
+  description: 'The telescope points at empty sky. But the astronomers saw something there.',
+  enemySpawnChance: 25,
+  possibleEnemies: ['mi-go', 'byakhee']
+};
+
+// ============================================================================
 // 5. TEMPLATES REGISTRY
 // ============================================================================
 
@@ -1321,13 +1731,20 @@ export const TILE_TEMPLATES: Record<string, TileTemplate> = {
   room_lab: ROOM_LAB,
   room_dining: ROOM_DINING,
   room_living: ROOM_LIVING,
-  // Room (new)
+  // Room (priority 1)
   room_parlor: ROOM_PARLOR,
   room_office: ROOM_OFFICE,
   room_gallery: ROOM_GALLERY,
   room_conservatory: ROOM_CONSERVATORY,
+  // Room (priority 3)
   room_nursery: ROOM_NURSERY,
   room_maproom: ROOM_MAPROOM,
+  // Room (priority 4)
+  room_attic: ROOM_ATTIC,
+  room_bathroom: ROOM_BATHROOM,
+  room_cellarwine: ROOM_CELLARWINE,
+  room_trophy: ROOM_TROPHY,
+  room_music: ROOM_MUSIC,
 
   // Stairs
   stairs_down: STAIRS_DOWN,
@@ -1339,54 +1756,76 @@ export const TILE_TEMPLATES: Record<string, TileTemplate> = {
   basement_wine: BASEMENT_WINE,
   basement_tunnel: BASEMENT_TUNNEL,
   basement_sewer: BASEMENT_SEWER,
-  // Basement (new)
+  // Basement (priority 2)
   basement_mine: BASEMENT_MINE,
   basement_boiler: BASEMENT_BOILER,
+  // Basement (priority 4)
+  basement_icehouse: BASEMENT_ICEHOUSE,
+  basement_workshop: BASEMENT_WORKSHOP,
+  basement_cistern: BASEMENT_CISTERN,
 
   // Crypt (original)
   crypt_tomb: CRYPT_TOMB,
   crypt_altar: CRYPT_ALTAR,
   crypt_tunnel: CRYPT_TUNNEL,
   crypt_portal: CRYPT_PORTAL,
-  // Crypt (new)
+  // Crypt (priority 1)
   crypt_sanctum: CRYPT_SANCTUM,
   crypt_massgrave: CRYPT_MASSGRAVE,
   crypt_starchamber: CRYPT_STARCHAMBER,
+  // Crypt (priority 4)
+  crypt_ossuary: CRYPT_OSSUARY,
+  crypt_laboratory: CRYPT_LABORATORY,
+  crypt_prison: CRYPT_PRISON,
 
   // Facade (original)
   facade_manor: FACADE_MANOR,
   facade_shop: FACADE_SHOP,
   facade_church: FACADE_CHURCH,
   facade_warehouse: FACADE_WAREHOUSE,
-  // Facade (new)
+  // Facade (priority 1)
   facade_asylum: FACADE_ASYLUM,
   facade_hospital: FACADE_HOSPITAL,
   facade_museum: FACADE_MUSEUM,
   facade_police: FACADE_POLICE,
   facade_witchhouse: FACADE_WITCHHOUSE,
+  // Facade (priority 3)
   facade_hotel: FACADE_HOTEL,
   facade_lighthouse: FACADE_LIGHTHOUSE,
   facade_funeral: FACADE_FUNERAL,
   facade_farmhouse: FACADE_FARMHOUSE,
+  // Facade (priority 4)
+  facade_tavern: FACADE_TAVERN,
+  facade_bookshop: FACADE_BOOKSHOP,
+  facade_pawnshop: FACADE_PAWNSHOP,
+  facade_observatory: FACADE_OBSERVATORY,
 
   // Street (original)
   street_main: STREET_MAIN,
   street_alley: STREET_ALLEY,
   street_crossing: STREET_CROSSING,
   street_corner: STREET_CORNER,
-  // Street (new)
+  // Street (priority 2)
   street_bridge: STREET_BRIDGE,
   street_deadend: STREET_DEADEND,
+  // Street (priority 4)
+  street_foggy: STREET_FOGGY,
+  street_market: STREET_MARKET,
 
   // Urban (original)
   urban_square: URBAN_SQUARE,
   urban_harbor: URBAN_HARBOR,
   urban_cemetery: URBAN_CEMETERY,
-  // Urban (new)
+  // Urban (priority 2)
   urban_station: URBAN_STATION,
   urban_market: URBAN_MARKET,
   urban_park: URBAN_PARK,
   urban_dock: URBAN_DOCK,
+  // Urban (priority 4)
+  urban_pier: URBAN_PIER,
+  urban_boathouse: URBAN_BOATHOUSE,
+  urban_fountain: URBAN_FOUNTAIN,
+  urban_almshouse: URBAN_ALMSHOUSE,
 
   // Nature (original)
   nature_forest: NATURE_FOREST,
@@ -1394,11 +1833,17 @@ export const TILE_TEMPLATES: Record<string, TileTemplate> = {
   nature_path: NATURE_PATH,
   nature_marsh: NATURE_MARSH,
   nature_stones: NATURE_STONES,
-  // Nature (new)
+  // Nature (priority 2)
   nature_ruins: NATURE_RUINS,
   nature_swamp: NATURE_SWAMP,
   nature_cave: NATURE_CAVE,
-  nature_blackpool: NATURE_BLACKPOOL
+  nature_blackpool: NATURE_BLACKPOOL,
+  // Nature (priority 4)
+  nature_shore: NATURE_SHORE,
+  nature_tidepools: NATURE_TIDEPOOLS,
+  nature_hilltop: NATURE_HILLTOP,
+  nature_deadtrees: NATURE_DEADTREES,
+  nature_farmfield: NATURE_FARMFIELD
 };
 
 /**
@@ -1428,6 +1873,520 @@ export function getTemplatesForTransition(fromCategory: TileCategory): TileTempl
 
   const validCategories = CATEGORY_CONNECTIONS[fromCategory] || [];
   return Object.values(TILE_TEMPLATES).filter(t => validCategories.includes(t.category));
+}
+
+// ============================================================================
+// 5.5 TILE AFFINITY SYSTEM
+// ============================================================================
+
+/**
+ * Tile Affinity System
+ *
+ * Tiles can "attract" other tiles based on thematic connections.
+ * When a tile with affinities is nearby, templates that match those affinities
+ * get bonus spawn weight.
+ *
+ * Example: A "Fishing Dock" attracts water tiles, more docks, harbor-related tiles
+ */
+
+/**
+ * Affinity definition - what tiles/features a template attracts
+ */
+export interface TileAffinity {
+  /** Template IDs that this tile attracts */
+  attractsTemplates?: string[];
+  /** Categories that get bonus weight when adjacent to this tile */
+  attractsCategories?: TileCategory[];
+  /** Floor types that get bonus weight */
+  attractsFloorTypes?: FloorType[];
+  /** SubTypes that get bonus weight */
+  attractsSubTypes?: string[];
+  /** Edge types - tiles with these edges get bonus */
+  attractsEdgeTypes?: ConnectionEdgeType[];
+  /** Bonus weight multiplier (default 1.5 = 50% bonus) */
+  bonusMultiplier?: number;
+}
+
+/**
+ * Map of template IDs to their affinities
+ * Templates with affinities "pull" similar tiles towards them
+ */
+export const TILE_AFFINITIES: Record<string, TileAffinity> = {
+  // Water/Harbor tiles attract water and aquatic themes
+  urban_dock: {
+    attractsTemplates: ['urban_dock', 'urban_harbor', 'street_bridge', 'nature_swamp', 'nature_marsh', 'basement_sewer'],
+    attractsFloorTypes: ['water'],
+    attractsEdgeTypes: ['WATER'],
+    attractsSubTypes: ['dock', 'harbor', 'bridge', 'sewer', 'marsh', 'swamp'],
+    bonusMultiplier: 2.0
+  },
+  urban_harbor: {
+    attractsTemplates: ['urban_dock', 'urban_harbor', 'street_bridge', 'facade_lighthouse', 'facade_warehouse'],
+    attractsFloorTypes: ['water'],
+    attractsEdgeTypes: ['WATER'],
+    attractsSubTypes: ['dock', 'harbor', 'warehouse', 'lighthouse'],
+    bonusMultiplier: 1.8
+  },
+  street_bridge: {
+    attractsTemplates: ['urban_dock', 'urban_harbor', 'nature_marsh', 'nature_swamp'],
+    attractsFloorTypes: ['water'],
+    attractsEdgeTypes: ['WATER'],
+    bonusMultiplier: 1.5
+  },
+  facade_lighthouse: {
+    attractsTemplates: ['urban_harbor', 'urban_dock', 'street_bridge'],
+    attractsFloorTypes: ['water'],
+    attractsEdgeTypes: ['WATER'],
+    bonusMultiplier: 1.8
+  },
+
+  // Cemetery/death tiles attract crypts, ghouls, undead themes
+  urban_cemetery: {
+    attractsTemplates: ['crypt_tomb', 'crypt_massgrave', 'crypt_altar', 'facade_funeral', 'facade_church'],
+    attractsCategories: ['crypt'],
+    attractsSubTypes: ['tomb', 'massgrave', 'funeral', 'church', 'altar'],
+    bonusMultiplier: 2.0
+  },
+  facade_funeral: {
+    attractsTemplates: ['urban_cemetery', 'crypt_tomb', 'crypt_massgrave'],
+    attractsCategories: ['crypt'],
+    attractsSubTypes: ['cemetery', 'tomb'],
+    bonusMultiplier: 1.8
+  },
+
+  // Church/religious tiles attract ritual and occult themes
+  facade_church: {
+    attractsTemplates: ['foyer_church', 'room_ritual', 'crypt_altar', 'urban_cemetery'],
+    attractsCategories: ['crypt'],
+    attractsSubTypes: ['church', 'ritual', 'altar', 'cemetery'],
+    bonusMultiplier: 1.6
+  },
+  room_ritual: {
+    attractsTemplates: ['crypt_altar', 'crypt_sanctum', 'crypt_portal', 'nature_stones'],
+    attractsFloorTypes: ['ritual'],
+    attractsSubTypes: ['altar', 'sanctum', 'portal', 'stones'],
+    bonusMultiplier: 2.0
+  },
+  crypt_altar: {
+    attractsTemplates: ['crypt_sanctum', 'crypt_portal', 'room_ritual', 'crypt_starchamber'],
+    attractsFloorTypes: ['ritual'],
+    attractsCategories: ['crypt'],
+    bonusMultiplier: 1.8
+  },
+
+  // Forest/nature tiles attract more nature
+  nature_forest: {
+    attractsTemplates: ['nature_forest', 'nature_clearing', 'nature_path', 'nature_ruins', 'nature_stones'],
+    attractsCategories: ['nature'],
+    attractsFloorTypes: ['dirt', 'grass'],
+    bonusMultiplier: 1.5
+  },
+  nature_marsh: {
+    attractsTemplates: ['nature_swamp', 'nature_blackpool', 'nature_marsh', 'basement_sewer'],
+    attractsFloorTypes: ['water'],
+    attractsEdgeTypes: ['WATER', 'NATURE'],
+    bonusMultiplier: 1.8
+  },
+  nature_swamp: {
+    attractsTemplates: ['nature_marsh', 'nature_blackpool', 'nature_swamp'],
+    attractsFloorTypes: ['water'],
+    attractsEdgeTypes: ['WATER'],
+    bonusMultiplier: 1.8
+  },
+
+  // Cave/underground attracts basement and crypt
+  nature_cave: {
+    attractsTemplates: ['basement_mine', 'basement_tunnel', 'crypt_tunnel'],
+    attractsCategories: ['basement', 'crypt'],
+    attractsSubTypes: ['mine', 'tunnel'],
+    bonusMultiplier: 2.0
+  },
+  basement_mine: {
+    attractsTemplates: ['basement_mine', 'basement_tunnel', 'nature_cave', 'crypt_tunnel'],
+    attractsSubTypes: ['mine', 'tunnel', 'cave'],
+    bonusMultiplier: 1.6
+  },
+
+  // Asylum/hospital medical theme
+  facade_asylum: {
+    attractsTemplates: ['facade_hospital', 'room_lab'],
+    attractsSubTypes: ['hospital', 'lab', 'asylum'],
+    bonusMultiplier: 1.5
+  },
+  facade_hospital: {
+    attractsTemplates: ['facade_asylum', 'room_lab'],
+    attractsSubTypes: ['asylum', 'lab'],
+    bonusMultiplier: 1.5
+  },
+
+  // Academic/scholarly theme
+  facade_museum: {
+    attractsTemplates: ['room_library', 'room_gallery', 'room_maproom', 'room_study'],
+    attractsSubTypes: ['library', 'gallery', 'study', 'maproom'],
+    bonusMultiplier: 1.6
+  },
+  room_library: {
+    attractsTemplates: ['room_study', 'room_maproom', 'facade_museum'],
+    attractsSubTypes: ['study', 'maproom', 'museum'],
+    bonusMultiplier: 1.4
+  },
+
+  // Occult theme clustering
+  facade_witchhouse: {
+    attractsTemplates: ['room_ritual', 'crypt_altar', 'crypt_portal', 'nature_stones'],
+    attractsFloorTypes: ['ritual'],
+    attractsCategories: ['crypt'],
+    bonusMultiplier: 2.0
+  },
+  nature_stones: {
+    attractsTemplates: ['nature_clearing', 'room_ritual', 'crypt_altar', 'facade_witchhouse'],
+    attractsFloorTypes: ['ritual'],
+    attractsSubTypes: ['clearing', 'ritual', 'witchhouse'],
+    bonusMultiplier: 1.8
+  },
+
+  // Warehouse/industrial theme
+  facade_warehouse: {
+    attractsTemplates: ['urban_dock', 'urban_harbor', 'basement_cellar', 'basement_boiler'],
+    attractsSubTypes: ['dock', 'harbor', 'cellar', 'boiler'],
+    bonusMultiplier: 1.5
+  },
+
+  // Street connectivity
+  street_main: {
+    attractsTemplates: ['street_main', 'street_corner', 'street_crossing', 'facade_shop'],
+    attractsCategories: ['street', 'facade'],
+    bonusMultiplier: 1.3
+  },
+  street_alley: {
+    attractsTemplates: ['street_alley', 'street_deadend', 'facade_warehouse'],
+    attractsSubTypes: ['alley', 'deadend', 'warehouse'],
+    bonusMultiplier: 1.4
+  },
+
+  // Park attracts nature
+  urban_park: {
+    attractsTemplates: ['nature_forest', 'nature_clearing', 'nature_path', 'urban_cemetery'],
+    attractsCategories: ['nature'],
+    attractsFloorTypes: ['grass'],
+    bonusMultiplier: 1.6
+  },
+
+  // Train station attracts urban
+  urban_station: {
+    attractsTemplates: ['street_main', 'urban_square', 'facade_hotel'],
+    attractsCategories: ['urban', 'street'],
+    bonusMultiplier: 1.4
+  },
+
+  // Hotel attracts rooms
+  facade_hotel: {
+    attractsTemplates: ['room_bedroom', 'corridor_wide', 'room_dining'],
+    attractsSubTypes: ['bedroom', 'dining', 'gallery'],
+    bonusMultiplier: 1.5
+  },
+
+  // Sewer attracts water and underground
+  basement_sewer: {
+    attractsTemplates: ['basement_sewer', 'basement_tunnel', 'crypt_tunnel', 'basement_cistern'],
+    attractsFloorTypes: ['water'],
+    attractsSubTypes: ['sewer', 'tunnel', 'cistern'],
+    bonusMultiplier: 1.8
+  },
+
+  // ----- NEW AFFINITIES FOR PRIORITY 4 TILES -----
+
+  // Pier and boathouse attract water tiles
+  urban_pier: {
+    attractsTemplates: ['urban_dock', 'urban_harbor', 'urban_boathouse', 'nature_shore', 'nature_tidepools'],
+    attractsFloorTypes: ['water'],
+    attractsEdgeTypes: ['WATER'],
+    attractsSubTypes: ['dock', 'harbor', 'boathouse', 'shore'],
+    bonusMultiplier: 2.0
+  },
+  urban_boathouse: {
+    attractsTemplates: ['urban_pier', 'urban_dock', 'urban_harbor', 'nature_shore'],
+    attractsFloorTypes: ['water'],
+    attractsEdgeTypes: ['WATER'],
+    bonusMultiplier: 1.8
+  },
+
+  // Shore and tidepools attract aquatic themes
+  nature_shore: {
+    attractsTemplates: ['nature_tidepools', 'urban_pier', 'urban_dock', 'nature_marsh'],
+    attractsFloorTypes: ['water', 'stone'],
+    attractsEdgeTypes: ['WATER', 'NATURE'],
+    bonusMultiplier: 1.6
+  },
+  nature_tidepools: {
+    attractsTemplates: ['nature_shore', 'nature_marsh', 'nature_swamp', 'urban_pier'],
+    attractsFloorTypes: ['water'],
+    attractsEdgeTypes: ['WATER'],
+    bonusMultiplier: 1.8
+  },
+
+  // Foggy street attracts atmosphere
+  street_foggy: {
+    attractsTemplates: ['street_alley', 'street_foggy', 'nature_marsh', 'urban_cemetery'],
+    attractsSubTypes: ['alley', 'foggy', 'marsh', 'cemetery'],
+    bonusMultiplier: 1.5
+  },
+
+  // Market attracts shops
+  street_market: {
+    attractsTemplates: ['facade_shop', 'facade_pawnshop', 'urban_market', 'facade_tavern'],
+    attractsSubTypes: ['shop', 'pawnshop', 'market', 'tavern'],
+    bonusMultiplier: 1.6
+  },
+
+  // Fountain attracts urban center
+  urban_fountain: {
+    attractsTemplates: ['urban_square', 'street_main', 'facade_hotel', 'urban_station'],
+    attractsCategories: ['urban', 'street'],
+    bonusMultiplier: 1.4
+  },
+
+  // Almshouse attracts poverty/desperation themes
+  urban_almshouse: {
+    attractsTemplates: ['facade_funeral', 'urban_cemetery', 'street_alley', 'facade_church'],
+    attractsSubTypes: ['funeral', 'cemetery', 'alley', 'church'],
+    bonusMultiplier: 1.5
+  },
+
+  // Hilltop attracts nature and ritual
+  nature_hilltop: {
+    attractsTemplates: ['nature_stones', 'nature_clearing', 'facade_observatory', 'nature_deadtrees'],
+    attractsFloorTypes: ['grass', 'ritual'],
+    attractsCategories: ['nature'],
+    bonusMultiplier: 1.6
+  },
+
+  // Dead trees attract dark nature
+  nature_deadtrees: {
+    attractsTemplates: ['nature_blackpool', 'nature_marsh', 'nature_hilltop', 'nature_swamp'],
+    attractsFloorTypes: ['dirt'],
+    attractsSubTypes: ['blackpool', 'marsh', 'swamp'],
+    bonusMultiplier: 1.5
+  },
+
+  // Farm field attracts farmhouse
+  nature_farmfield: {
+    attractsTemplates: ['facade_farmhouse', 'nature_path', 'nature_deadtrees'],
+    attractsSubTypes: ['farmhouse', 'path'],
+    bonusMultiplier: 1.8
+  },
+
+  // Attic connects upper floors
+  room_attic: {
+    attractsTemplates: ['room_bedroom', 'room_nursery', 'stairs_up'],
+    attractsSubTypes: ['bedroom', 'nursery'],
+    bonusMultiplier: 1.4
+  },
+
+  // Music room attracts entertainment
+  room_music: {
+    attractsTemplates: ['room_parlor', 'room_living', 'room_gallery'],
+    attractsSubTypes: ['parlor', 'living', 'gallery'],
+    bonusMultiplier: 1.4
+  },
+
+  // Trophy room attracts study
+  room_trophy: {
+    attractsTemplates: ['room_study', 'room_library', 'room_gallery'],
+    attractsSubTypes: ['study', 'library', 'gallery'],
+    bonusMultiplier: 1.4
+  },
+
+  // Ice house attracts cold storage
+  basement_icehouse: {
+    attractsTemplates: ['basement_cellar', 'basement_workshop', 'room_kitchen'],
+    attractsSubTypes: ['cellar', 'workshop', 'kitchen'],
+    bonusMultiplier: 1.4
+  },
+
+  // Workshop attracts practical spaces
+  basement_workshop: {
+    attractsTemplates: ['basement_boiler', 'basement_icehouse', 'basement_mine'],
+    attractsSubTypes: ['boiler', 'icehouse', 'mine'],
+    bonusMultiplier: 1.5
+  },
+
+  // Cistern attracts water underground
+  basement_cistern: {
+    attractsTemplates: ['basement_sewer', 'basement_tunnel', 'crypt_tunnel'],
+    attractsFloorTypes: ['water'],
+    attractsSubTypes: ['sewer', 'tunnel'],
+    bonusMultiplier: 1.8
+  },
+
+  // Ossuary attracts death
+  crypt_ossuary: {
+    attractsTemplates: ['crypt_tomb', 'crypt_massgrave', 'crypt_altar'],
+    attractsCategories: ['crypt'],
+    attractsSubTypes: ['tomb', 'massgrave'],
+    bonusMultiplier: 1.6
+  },
+
+  // Forbidden laboratory attracts science horror
+  crypt_laboratory: {
+    attractsTemplates: ['room_lab', 'crypt_prison', 'basement_icehouse'],
+    attractsFloorTypes: ['tile'],
+    attractsSubTypes: ['lab', 'prison', 'icehouse'],
+    bonusMultiplier: 1.8
+  },
+
+  // Prison attracts containment
+  crypt_prison: {
+    attractsTemplates: ['crypt_laboratory', 'crypt_tunnel', 'basement_tunnel'],
+    attractsSubTypes: ['laboratory', 'tunnel'],
+    bonusMultiplier: 1.6
+  },
+
+  // Tavern attracts social spaces
+  facade_tavern: {
+    attractsTemplates: ['street_main', 'facade_hotel', 'street_market', 'urban_dock'],
+    attractsSubTypes: ['main', 'hotel', 'market', 'dock'],
+    bonusMultiplier: 1.5
+  },
+
+  // Bookshop attracts academic
+  facade_bookshop: {
+    attractsTemplates: ['facade_museum', 'room_library', 'room_study'],
+    attractsSubTypes: ['museum', 'library', 'study'],
+    bonusMultiplier: 1.6
+  },
+
+  // Pawnshop attracts seedy areas
+  facade_pawnshop: {
+    attractsTemplates: ['street_alley', 'street_market', 'facade_tavern'],
+    attractsSubTypes: ['alley', 'market', 'tavern'],
+    bonusMultiplier: 1.5
+  },
+
+  // Observatory attracts cosmic horror
+  facade_observatory: {
+    attractsTemplates: ['nature_hilltop', 'crypt_starchamber', 'room_maproom'],
+    attractsFloorTypes: ['ritual'],
+    attractsSubTypes: ['hilltop', 'starchamber', 'maproom'],
+    bonusMultiplier: 2.0
+  }
+};
+
+/**
+ * Calculate affinity bonus for a template based on neighboring tiles
+ * @param template The template to calculate bonus for
+ * @param neighbors Array of neighboring tiles (null for empty positions)
+ * @returns Bonus multiplier (1.0 = no bonus)
+ */
+export function calculateAffinityBonus(
+  template: TileTemplate,
+  neighbors: (Tile | null)[]
+): number {
+  let totalBonus = 1.0;
+  let bonusCount = 0;
+
+  for (const neighbor of neighbors) {
+    if (!neighbor) continue;
+
+    // Find the template ID for this neighbor
+    // The template ID is based on category_subtype pattern
+    const neighborTemplateId = findNeighborTemplateId(neighbor);
+    const affinity = TILE_AFFINITIES[neighborTemplateId];
+
+    if (!affinity) continue;
+
+    const multiplier = affinity.bonusMultiplier ?? 1.5;
+    let matchFound = false;
+
+    // Check if template ID is in attractsTemplates
+    if (affinity.attractsTemplates?.includes(template.id)) {
+      totalBonus += (multiplier - 1.0);
+      matchFound = true;
+      bonusCount++;
+    }
+
+    // Check category match
+    if (!matchFound && affinity.attractsCategories?.includes(template.category)) {
+      totalBonus += (multiplier - 1.0) * 0.8; // Slightly less bonus for category match
+      matchFound = true;
+      bonusCount++;
+    }
+
+    // Check floor type match
+    if (!matchFound && affinity.attractsFloorTypes?.includes(template.floorType)) {
+      totalBonus += (multiplier - 1.0) * 0.6;
+      matchFound = true;
+      bonusCount++;
+    }
+
+    // Check subtype match
+    if (!matchFound && affinity.attractsSubTypes?.includes(template.subType)) {
+      totalBonus += (multiplier - 1.0) * 0.7;
+      matchFound = true;
+      bonusCount++;
+    }
+
+    // Check edge types
+    if (!matchFound && affinity.attractsEdgeTypes) {
+      const hasMatchingEdge = template.edges.some(edge =>
+        affinity.attractsEdgeTypes!.includes(edge)
+      );
+      if (hasMatchingEdge) {
+        totalBonus += (multiplier - 1.0) * 0.5;
+        bonusCount++;
+      }
+    }
+  }
+
+  // Diminishing returns: cap bonus at 3x
+  return Math.min(totalBonus, 3.0);
+}
+
+/**
+ * Find the template ID for a tile based on its properties
+ */
+function findNeighborTemplateId(tile: Tile): string {
+  // First try to find by name match
+  for (const [id, template] of Object.entries(TILE_TEMPLATES)) {
+    if (template.name === tile.name) {
+      return id;
+    }
+  }
+
+  // Fallback: construct ID from category and subType
+  if (tile.category) {
+    // Get subType from the tile if available, or derive from name
+    const subType = tile.name?.toLowerCase().split(' ').pop() || 'unknown';
+    const possibleId = `${tile.category}_${subType}`;
+    if (TILE_TEMPLATES[possibleId]) {
+      return possibleId;
+    }
+  }
+
+  return '';
+}
+
+/**
+ * Get neighboring tiles for a position
+ */
+export function getNeighborTiles(
+  board: Map<string, Tile>,
+  q: number,
+  r: number
+): (Tile | null)[] {
+  const neighborOffsets: [number, number][] = [
+    [0, -1],  // 0: North
+    [1, -1],  // 1: North-East
+    [1, 0],   // 2: South-East
+    [0, 1],   // 3: South
+    [-1, 1],  // 4: South-West
+    [-1, 0]   // 5: North-West
+  ];
+
+  return neighborOffsets.map(([dq, dr]) => {
+    const neighborPos = `${q + dq},${r + dr}`;
+    return board.get(neighborPos) || null;
+  });
 }
 
 // ============================================================================
@@ -1549,11 +2508,13 @@ export function templateMatchesConstraints(
  * Find all templates that can fit at a position given constraints
  * @param constraints Constraints from neighbors
  * @param preferredCategory Optional category to prefer (from the tile we came from)
+ * @param neighborTiles Optional array of neighboring tiles for affinity calculations
  * @returns Array of valid template matches with rotations
  */
 export function findValidTemplates(
   constraints: (EdgeConstraint | null)[],
-  preferredCategory?: TileCategory
+  preferredCategory?: TileCategory,
+  neighborTiles?: (Tile | null)[]
 ): TemplateMatch[] {
   const results: TemplateMatch[] = [];
 
@@ -1574,6 +2535,12 @@ export function findValidTemplates(
         // Bonus for matching preferred category
         if (preferredCategory && template.category === preferredCategory) {
           score += 10;
+        }
+
+        // Apply affinity bonus from neighboring tiles
+        if (neighborTiles && neighborTiles.length > 0) {
+          const affinityBonus = calculateAffinityBonus(template, neighborTiles);
+          score = Math.round(score * affinityBonus);
         }
 
         results.push({
@@ -1771,15 +2738,18 @@ export function generateAdjacentTile(
   // Gather constraints from all neighbors
   const constraints = gatherConstraints(board, q, r);
 
-  // Find valid templates
-  const validTemplates = findValidTemplates(constraints, fromTile.category);
+  // Get neighboring tiles for affinity calculations
+  const neighborTiles = getNeighborTiles(board, q, r);
+
+  // Find valid templates (now with affinity support)
+  const validTemplates = findValidTemplates(constraints, fromTile.category, neighborTiles);
 
   if (validTemplates.length === 0) {
     console.warn(`No valid templates found for position (${q},${r})`);
     return null;
   }
 
-  // Select template
+  // Select template (weighted selection considers affinity bonuses)
   const selected = selectWeightedTemplate(validTemplates);
   if (!selected) return null;
 
@@ -1952,7 +2922,8 @@ export function getPreviewForAdjacentTile(
   r: number
 ): TilePreview {
   const constraints = gatherConstraints(board, q, r);
-  const validTemplates = findValidTemplates(constraints);
+  const neighborTiles = getNeighborTiles(board, q, r);
+  const validTemplates = findValidTemplates(constraints, undefined, neighborTiles);
 
   // Count categories by weight
   const categoryCounts = new Map<TileCategory, number>();

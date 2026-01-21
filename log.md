@@ -1,5 +1,172 @@
 # Development Log
 
+## 2026-01-21: Hex Tiles Logikk Forbedret + Nye Tiles
+
+### Oppsummering
+
+Implementert nabo-basert sannsynlighetslogikk (Tile Affinity System) og lagt til 25+ nye tile-varianter for bedre variasjon i generert innhold.
+
+---
+
+### OPPGAVE 1: Tile Affinity System
+
+**Problem:**
+Når tiles som "Fishing Dock" plasseres, bør det være større sannsynlighet for at vannrelaterte tiles (sjø, andre docks, broer) dukker opp naturlig rundt dem.
+
+**Løsning: Tile Affinity System**
+
+Implementert et komplett affinitetssystem i `tileConnectionSystem.ts` som:
+
+1. **Definerer tile-affiniteter** - Hver tile kan "tiltrekke" andre tiles basert på:
+   - Spesifikke template IDs
+   - Kategorier (nature, urban, crypt, etc.)
+   - Gulvtyper (water, ritual, etc.)
+   - SubTypes (dock, harbor, etc.)
+   - Kanttyper (WATER, NATURE, etc.)
+
+2. **Beregner bonus-vekter** - `calculateAffinityBonus()` funksjonen:
+   - Sjekker alle naboer for affiniteter
+   - Gir bonus til templates som matcher
+   - Støtter konfigurerbar bonus-multiplikator (1.3x - 2.0x)
+   - Har diminishing returns (maks 3x bonus)
+
+3. **Integrert i generering** - `findValidTemplates()` og `generateAdjacentTile()` bruker nå affiniteter
+
+**Nye Funksjoner:**
+- `TILE_AFFINITIES` - Record med affinitetsdefinisjoner for 40+ tiles
+- `calculateAffinityBonus(template, neighbors)` - Beregner affinitetsbonus
+- `getNeighborTiles(board, q, r)` - Henter nabotiles for en posisjon
+
+**Eksempel på Affinity:**
+```typescript
+urban_dock: {
+  attractsTemplates: ['urban_dock', 'urban_harbor', 'street_bridge', 'nature_swamp', 'nature_marsh'],
+  attractsFloorTypes: ['water'],
+  attractsEdgeTypes: ['WATER'],
+  attractsSubTypes: ['dock', 'harbor', 'bridge', 'sewer', 'marsh', 'swamp'],
+  bonusMultiplier: 2.0  // 100% økt sannsynlighet
+}
+```
+
+**Tematiske Klynger Støttet:**
+| Tema | Tiles som tiltrekker hverandre |
+|------|-------------------------------|
+| **Vann/Havn** | dock, harbor, pier, boathouse, bridge, shore, tidepools |
+| **Kirkegård/Død** | cemetery, funeral, crypt, tomb, ossuary |
+| **Okkult/Ritual** | ritual, altar, witchhouse, stones, portal |
+| **Akademisk** | museum, library, study, bookshop, maproom |
+| **Skog/Natur** | forest, clearing, path, marsh, swamp |
+| **Underjordisk** | cave, mine, tunnel, sewer, cistern |
+
+---
+
+### OPPGAVE 2: Nye Tile-Varianter (25+)
+
+Lagt til 25+ nye tiles for mer variasjon:
+
+**Vann/Kyst Tiles (4):**
+| Tile | Beskrivelse |
+|------|-------------|
+| `urban_pier` | Rotting Pier - trebrygge over vann |
+| `urban_boathouse` | Abandoned Boathouse - forlatt båthus |
+| `nature_shore` | Rocky Shore - steinete kystlinje |
+| `nature_tidepools` | Eldritch Tide Pools - mystiske tidevannsbassenger |
+
+**Street/Urban Tiles (4):**
+| Tile | Beskrivelse |
+|------|-------------|
+| `street_foggy` | Fog-Shrouded Lane - tåkefylt gate |
+| `street_market` | Deserted Market Stalls - forlatte markedsboder |
+| `urban_fountain` | Dry Fountain - tørr fontene på torget |
+| `urban_almshouse` | Derelict Almshouse - falleferdig fattighus |
+
+**Nature Tiles (5):**
+| Tile | Beskrivelse |
+|------|-------------|
+| `nature_hilltop` | Sentinel Hill - utsiktspunkt med okkulte ritualer |
+| `nature_deadtrees` | Blighted Grove - døde trær som nekter å falle |
+| `nature_farmfield` | Abandoned Farm Field - forlatt åker |
+| `nature_shore` | Rocky Shore |
+| `nature_tidepools` | Eldritch Tide Pools |
+
+**Room Tiles (5):**
+| Tile | Beskrivelse |
+|------|-------------|
+| `room_attic` | Dusty Attic - støvete loft med hemmeligheter |
+| `room_bathroom` | Decrepit Bathroom - rustent bad med skremmende speil |
+| `room_cellarwine` | Hidden Wine Vault - skjult vinkjeller |
+| `room_trophy` | Trophy Room - jaktrom med ukjente arter |
+| `room_music` | Music Room - musikkrom med selvspillende piano |
+
+**Basement Tiles (3):**
+| Tile | Beskrivelse |
+|------|-------------|
+| `basement_icehouse` | Ice Storage - islagring med bevarte ting |
+| `basement_workshop` | Underground Workshop - underjordisk verksted |
+| `basement_cistern` | Flooded Cistern - oversvømt sisterne |
+
+**Crypt Tiles (3):**
+| Tile | Beskrivelse |
+|------|-------------|
+| `crypt_ossuary` | Bone Ossuary - beinkapell med symboler |
+| `crypt_laboratory` | Forbidden Laboratory - forbudt laboratorium |
+| `crypt_prison` | Ancient Prison - eldgammelt fengsel |
+
+**Facade Tiles (4):**
+| Tile | Beskrivelse |
+|------|-------------|
+| `facade_tavern` | The Miskatonic Arms - sjømannskro |
+| `facade_bookshop` | Curious Book Shop - mystisk bokhandel |
+| `facade_pawnshop` | Midnight Pawn Shop - pantelåner |
+| `facade_observatory` | Abandoned Observatory - forlatt observatorium |
+
+---
+
+### Filer Modifisert
+
+**`src/game/tileConnectionSystem.ts`:**
+- Lagt til `TILE_AFFINITIES` system (200+ linjer)
+- Lagt til `TileAffinity` interface
+- Lagt til `calculateAffinityBonus()` funksjon
+- Lagt til `getNeighborTiles()` funksjon
+- Oppdatert `findValidTemplates()` til å bruke affiniteter
+- Oppdatert `generateAdjacentTile()` til å sende naboer
+- Oppdatert `getPreviewForAdjacentTile()` til å bruke affiniteter
+- Lagt til 25+ nye TileTemplate definisjoner
+- Oppdatert TILE_TEMPLATES registry med alle nye tiles
+
+**`src/game/ShadowsGame.tsx`:**
+- Importert `getNeighborTiles` fra tileConnectionSystem
+- Oppdatert `spawnRoom` til å bruke affinity-systemet
+
+---
+
+### Build Status
+✅ Kompilerer uten feil
+
+---
+
+### Tekniske Detaljer
+
+**Affinity Bonus Beregning:**
+1. For hver nabo med affinity definert:
+   - Sjekk template ID match → full bonus
+   - Sjekk kategori match → 80% bonus
+   - Sjekk subType match → 70% bonus
+   - Sjekk floorType match → 60% bonus
+   - Sjekk edgeType match → 50% bonus
+2. Summer alle bonuser
+3. Cap på 3x total bonus (diminishing returns)
+
+**Vektet Utvalg:**
+```
+Template Score = spawnWeight × affinityBonus × categoryBonus
+```
+
+Høyere score = høyere sannsynlighet for å bli valgt.
+
+---
+
 ## 2026-01-21: Bug Hunt Fortsetter - BUG-002 Fikset
 
 ### Oppsummering
