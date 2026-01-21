@@ -2047,32 +2047,42 @@ const ShadowsGame: React.FC = () => {
         const { q, r } = payload;
         const targetTile = state.board.find(t => t.q === q && t.r === r);
 
-        // Check if target tile is adjacent to player (distance 1 or 0)
+        // Check if target tile is adjacent to player (distance 1)
         const distanceToTarget = hexDistance(activePlayer.position, { q, r });
-        const isAdjacent = distanceToTarget <= 1;
+        const isAdjacent = distanceToTarget === 1;
 
-        // Check for blocking objects - only show context menu if adjacent
-        // On mobile, don't reveal info about distant tiles
-        if (targetTile?.object?.blocking) {
-          if (isAdjacent) {
-            setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
-            showContextActions(targetTile);
-            addToLog(`PATH BLOCKED: ${targetTile.object.type}.`);
-          } else {
-            addToLog(`Du må være nærmere for å interagere med det.`);
+        // CRITICAL: Only allow movement to adjacent tiles!
+        // Clicking on same tile (distance 0) does nothing
+        if (distanceToTarget === 0) {
+          return;
+        }
+
+        // Block movement/interaction to non-adjacent tiles
+        // Don't reveal ANY information about distant tiles to preserve exploration
+        if (!isAdjacent) {
+          // Only show message if tile exists and is within sight range (2 tiles)
+          // For farther tiles, don't even acknowledge they exist
+          if (targetTile && distanceToTarget <= 2) {
+            addToLog(`For langt unna. Du kan bare bevege deg til tilstøtende tiles.`);
           }
           return;
         }
 
-        // Check for blocking obstacles - only show context menu if adjacent
+        // From here, we know the target is adjacent (distance 1)
+
+        // Check for blocking objects - show context menu for adjacent tiles
+        if (targetTile?.object?.blocking) {
+          setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
+          showContextActions(targetTile);
+          addToLog(`PATH BLOCKED: ${targetTile.object.type}.`);
+          return;
+        }
+
+        // Check for blocking obstacles - show context menu for adjacent tiles
         if (targetTile?.obstacle?.blocking) {
-          if (isAdjacent) {
-            setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
-            showContextActions(targetTile);
-            addToLog(`PATH BLOCKED: ${targetTile.obstacle.type.replace('_', ' ')}.`);
-          } else {
-            addToLog(`Du må være nærmere for å interagere med det.`);
-          }
+          setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
+          showContextActions(targetTile);
+          addToLog(`PATH BLOCKED: ${targetTile.obstacle.type.replace('_', ' ')}.`);
           return;
         }
 

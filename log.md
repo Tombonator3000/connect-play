@@ -1,5 +1,76 @@
 # Development Log
 
+## 2026-01-21: Bevegelsessystem Fikset - Adjacency Check
+
+### Oppsummering
+
+Fikset to kritiske bugs i bevegelsessystemet:
+1. Spillere kunne "teleportere" til ikke-tilstøtende tiles
+2. Klikking på fjerne tiles avslørte informasjon om hva som var på tilen
+
+---
+
+### Problem 1: Manglende Adjacency Check
+
+**Bug:**
+Bevegelseskoden sjekket IKKE om mål-tilen var tilstøtende til spilleren. Dette tillot:
+- Klikk på en hvilken som helst tile → spilleren flyttet dit (teleporterte)
+- Edge-sjekker (vegger, dører) ble hoppet over for ikke-tilstøtende tiles
+
+**Årsak:**
+`getEdgeIndexBetweenTiles()` returnerte -1 for ikke-tilstøtende tiles, og denne verdien ble brukt til å skippe edge-valideringen i stedet for å blokkere bevegelse.
+
+**Løsning:**
+Lagt til tidlig sjekk i `handleAction('move')`:
+```typescript
+// CRITICAL: Only allow movement to adjacent tiles!
+if (distanceToTarget === 0) {
+  return; // Klikk på egen tile gjør ingenting
+}
+if (!isAdjacent) {
+  if (targetTile && distanceToTarget <= 2) {
+    addToLog(`For langt unna. Du kan bare bevege deg til tilstøtende tiles.`);
+  }
+  return; // Blokkerer bevegelse til ikke-tilstøtende tiles
+}
+```
+
+### Problem 2: Informasjonslekkasje ved Tile-klikk
+
+**Bug:**
+Når man klikket på en tile med blokkerende objekt (dør, rubble, etc.), logget spillet:
+- "PATH BLOCKED: locked_door" (avslører hva som er der)
+- "Du må være nærmere for å interagere med det." (bekrefter at det ER noe der)
+
+**Løsning:**
+Fjernet logging av objekttyper for ikke-tilstøtende tiles. Nå vises kun en generisk melding for tiles innenfor 2-tile siktavstand, og ingen melding for fjernere tiles.
+
+### Endrede Filer
+
+**src/game/ShadowsGame.tsx:**
+- `handleAction('move')` - Lagt til adjacency-validering før all annen bevegelseslogikk
+- Endret `isAdjacent` fra `distanceToTarget <= 1` til `distanceToTarget === 1` (ekskluderer egen tile)
+- Fjernet informasjonslekkasje for ikke-tilstøtende tiles
+
+### Spillmekanikk Oppsummering
+
+**Bevegelsesregler (fikset):**
+| Avstand | Handling |
+|---------|----------|
+| 0 (egen tile) | Ingenting skjer |
+| 1 (tilstøtende) | Bevegelse tillatt (respekterer kanter, objekter, etc.) |
+| 2+ (fjern) | Blokkert med melding "For langt unna" |
+
+**Utforskning:**
+- Ghost-tiles (uutforskede tilstøtende tiles) fungerer fortsatt
+- Klikk på ghost-tile → spawnRoom() → bevegelse
+- Action points forbrukes kun ved faktisk bevegelse
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+---
+
 ## 2026-01-21: Hex Tiles Logikk Forbedret + Nye Tiles
 
 ### Oppsummering
