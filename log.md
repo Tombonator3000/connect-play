@@ -1,5 +1,107 @@
 # Development Log
 
+## 2026-01-21: Bug Hunt Fortsetter - BUG-002 Fikset
+
+### Oppsummering
+
+Fortsatt med bug hunt. Søkte etter flere bug-mønstre og fikset BUG-002 som var dokumentert fra forrige session.
+
+---
+
+### BUG-SØK RESULTATER
+
+Søkte etter følgende mønstre:
+- `FIXME`, `TODO`, `XXX`, `HACK`, `BUG` kommentarer → Ingen funnet
+- `as any` type assertions → 1 gjenværende (BUG-002, nå fikset)
+- `: any` explicit types → 7 steder i `roomSpawnHelpers.ts` (dokumentert)
+- `.catch(() => ...)` stille feilhåndtering → 1 sted (allerede dokumentert som BUG-010)
+- Non-null assertions (`!`) → 8 steder, de fleste er OK med guards
+
+---
+
+### BUG-002 FIKSET: `as any` i emitSpellEffect
+
+**Fil:** `src/game/ShadowsGame.tsx`
+
+**Problemet:**
+```typescript
+// Før - inline union type + as any
+const emitSpellEffect = (
+  type: 'wither' | 'eldritch_bolt' | 'mend_flesh' | ...,
+  ...
+) => {
+  const particle = {
+    type: type as any,  // TypeScript bypass
+  };
+};
+```
+
+`as any` ble brukt fordi funksjonsparameteren definerte en inline union type som var identisk med `SpellParticleType`, men TypeScript så dem som forskjellige.
+
+**Løsningen:**
+1. Importerte `SpellParticleType` fra `types.ts` (linje 5)
+2. Endret funksjonssignaturen til å bruke den definerte typen direkte
+3. Fjernet `as any` - ingen type assertion trengs
+
+```typescript
+// Etter - bruker definert type
+import { ..., SpellParticleType } from './types';
+
+const emitSpellEffect = (
+  type: SpellParticleType,  // ← Definert type
+  ...
+) => {
+  const particle = {
+    type,  // ← Ingen as any
+  };
+};
+```
+
+**Forbedringer:**
+- Type-sikkerhet: TypeScript validerer nå at kun gyldige particle typer brukes
+- Vedlikeholdbarhet: Endringer i `SpellParticleType` propagerer automatisk
+- Lesbarhet: Kortere og renere funksjonssignatur
+
+---
+
+### BUILD VERIFISERING
+
+```
+✓ npm run build - VELLYKKET
+✓ Ingen TypeScript-feil
+✓ Bundle størrelse uendret
+```
+
+---
+
+### FILER ENDRET
+
+1. `src/game/ShadowsGame.tsx`
+   - Linje 5: La til `SpellParticleType` i import
+   - Linje 601: Endret parameter type til `SpellParticleType`
+   - Linje 625: Fjernet `as any`
+
+2. `BUGS.MD`
+   - Oppdatert BUG-002 status til FIKSET
+   - Oppdatert status oversikt (2 fikset, 2 bekreftet)
+
+---
+
+### STATUS ETTER DENNE SESSION
+
+| Status | Antall |
+|--------|--------|
+| **FIKSET** | 2 |
+| **BEKREFTET** | 2 |
+| **TIL VERIFISERING** | 2 |
+| **LITEN RISIKO** | 5 |
+
+**Gjenværende bekreftet bugs:**
+- BUG-003: `as EnemyType` uten validering
+- BUG-004: Race condition i state updates + logging
+
+---
+
 ## 2026-01-21: Bug Hunt - Codebase Audit og Fix
 
 ### Oppsummering
