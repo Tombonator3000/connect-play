@@ -105,7 +105,7 @@ const ActionBar: React.FC<ActionBarProps> = ({
 
           <div className="relative">
             {showSpellMenu && !disabled && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-secondary border-2 border-sanity rounded-lg shadow-[0_0_30px_hsla(280,60%,55%,0.5)] w-64 overflow-hidden z-50 animate-in slide-in-from-bottom-4 duration-200">
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-secondary border-2 border-sanity rounded-lg shadow-[0_0_30px_hsla(280,60%,55%,0.5)] w-64 overflow-hidden z-[60] animate-in slide-in-from-bottom-4 duration-200">
                 <div className="bg-secondary/40 p-2 text-center text-xs font-bold text-sanity border-b border-sanity/30 uppercase tracking-widest">
                   Grimoire
                 </div>

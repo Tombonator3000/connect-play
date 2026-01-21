@@ -1,5 +1,108 @@
 # Development Log
 
+## 2026-01-21: Multiple Bug Fixes and Feature Implementations
+
+### Oppsummering
+
+Flere fikser og forbedringer implementert i denne økten:
+1. Spell selection fix (z-index issue)
+2. Full puzzle system implementation (6 puzzle types)
+3. Quest item pickup system
+4. Missing tile graphics mappings
+
+---
+
+### 1. Spell Selection Fix
+
+**Problem:** Spell-menyen kunne ikke velges når man trykket Cast-knappen.
+
+**Årsak:** z-index konflikt mellom spell dropdown (z-50) og ContextActionBar (z-50), der ContextActionBar overlappet spell-menyen.
+
+**Løsning (`src/game/components/ActionBar.tsx`):**
+- Økte z-index på spell dropdown fra `z-50` til `z-[60]`
+
+---
+
+### 2. PuzzleModal Integration - 6 Puzzle Types
+
+**Problem:** Bare 4 av 6 puzzle-typer var implementert.
+
+**Endringer:**
+
+**Fil: `src/game/types.ts`**
+- La til `mirror_light` til PuzzleType
+- La til `puzzleType?: PuzzleType` til EdgeData interface
+
+**Fil: `src/game/components/PuzzleModal.tsx`**
+- Implementerte `PressurePlatePuzzle` - trykk på plater i riktig rekkefølge
+- Implementerte `MirrorLightPuzzle` - roter speil for å lede lys til mål
+- La til messages for nye puzzle-typer i StatusFooter
+- Oppdaterte renderPuzzle() og getPuzzleInfo() for nye typer
+
+**Fil: `src/game/ShadowsGame.tsx`**
+- Oppdaterte solve_puzzle handler til å bruke puzzleType fra edge, eller tilfeldig type
+
+---
+
+### 3. Quest Item Pickup System
+
+**Problem:** Quest items kunne ikke plukkes opp fra tiles med objekter, og manglende dedikert quest item slot.
+
+**Endringer:**
+
+**Fil: `src/game/types.ts`**
+- La til `questItems: Item[]` til InventorySlots interface
+- Oppdaterte `createEmptyInventory()` til å inkludere `questItems: []`
+- Oppdaterte `equipItem()` til å automatisk legge quest items i questItems array
+
+**Fil: `src/game/utils/contextActions.ts`**
+- Oppdaterte `getTileObjectActions()` til å inkludere quest item pickup actions selv når tiles har objekter
+
+**Fil: `src/game/components/CharacterPanel.tsx`**
+- La til dedikert Quest Items seksjon med gul styling for å vise innsamlede quest items
+
+---
+
+### 4. Missing Tile Graphics Mappings
+
+**Problem:** Noen rom-navn hadde ikke matching tile-grafikk keywords.
+
+**Manglende mappings funnet:**
+- Boarded-Up Townhouse
+- Dim Reception
+- Narrow Service Hall
+- Creaking Floorboards
+- Wine Tasting Room
+- Rats Nest
+- The Pit
+- The Standing Stones
+- The Devils Acre
+- Dead End
+- Hanging Tree
+
+**Løsning (`src/game/components/GameBoard.tsx`):**
+La til nye keyword mappings i TILE_IMAGES:
+```typescript
+townhouse: tileManor,
+reception: tileManor,
+service: tileHallway,
+floor: tileHallway,
+tasting: tileCellar,
+rats: tileSewer,
+pit: tileCrypt,
+standing: tileStonecircle,
+devils: tileGraveyard,
+dead: tileDeadend,
+hanging: tileHangingtree
+```
+
+---
+
+### Build Status
+Build vellykket uten feil.
+
+---
+
 ## 2026-01-21: PC Tile-Klikk Bevegelse Fikset
 
 ### Oppsummering

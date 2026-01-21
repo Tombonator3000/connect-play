@@ -257,30 +257,46 @@ export function getTileObjectActions(
 
   let actions: ContextAction[] = [];
 
+  // First, add quest item pickup actions if there are visible quest items
+  const hasVisibleQuestItems = tile.items && tile.items.length > 0 && tile.items.some(item => item.isQuestItem);
+  if (hasVisibleQuestItems) {
+    const questItems = tile.items?.filter(item => item.isQuestItem) || [];
+    questItems.forEach((item, index) => {
+      actions.push({
+        id: `pickup_quest_item_${index}`,
+        label: `Plukk opp: ${item.name}`,
+        icon: 'interact',
+        apCost: 0,
+        enabled: true,
+        successMessage: `Du plukket opp ${item.name}!`
+      });
+    });
+  }
+
   switch (object.type) {
     case 'bookshelf':
-      actions = buildBookshelfActions(context);
+      actions = [...actions, ...buildBookshelfActions(context)];
       break;
 
     case 'crate':
     case 'cabinet':
-      actions = buildSearchableActions(context, 3);
+      actions = [...actions, ...buildSearchableActions(context, 3)];
       break;
 
     case 'chest':
-      actions = buildSearchableActions(context, 4);
+      actions = [...actions, ...buildSearchableActions(context, 4)];
       break;
 
     case 'statue':
-      actions = buildStatueActions(context);
+      actions = [...actions, ...buildStatueActions(context)];
       break;
 
     case 'trap':
-      actions = TRAP_ACTIONS.map(buildStaticAction);
+      actions = [...actions, ...TRAP_ACTIONS.map(buildStaticAction)];
       break;
 
     case 'gate':
-      actions = buildBlockedEdgeActions(context, GATE_ACTIONS);
+      actions = [...actions, ...buildBlockedEdgeActions(context, GATE_ACTIONS)];
       break;
 
     case 'locked_door':
@@ -291,7 +307,7 @@ export function getTileObjectActions(
       // Static object types
       const staticConfigs = TILE_OBJECT_ACTIONS[object.type];
       if (staticConfigs) {
-        actions = buildActionsFromConfigs(staticConfigs, context);
+        actions = [...actions, ...buildActionsFromConfigs(staticConfigs, context)];
       }
       break;
   }

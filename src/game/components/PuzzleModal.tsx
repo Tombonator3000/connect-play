@@ -684,6 +684,297 @@ const AstronomyPuzzle: React.FC<{
 };
 
 // ============================================================================
+// PRESSURE PLATE PUZZLE (Step on tiles in pattern)
+// ============================================================================
+
+const PressurePlatePuzzle: React.FC<{
+  difficulty: number;
+  onComplete: (success: boolean) => void;
+}> = ({ difficulty, onComplete }) => {
+  // Generate a pattern of plates to step on
+  const patternLength = Math.min(5, difficulty + 2);
+  const gridSize = 3; // 3x3 grid
+
+  const [targetPattern] = useState<number[]>(() => {
+    const pattern: number[] = [];
+    while (pattern.length < patternLength) {
+      const pos = Math.floor(Math.random() * (gridSize * gridSize));
+      if (!pattern.includes(pos)) pattern.push(pos);
+    }
+    return pattern;
+  });
+
+  const [playerPattern, setPlayerPattern] = useState<number[]>([]);
+  const [showingStep, setShowingStep] = useState<number>(0);
+  const [gameState, setGameState] = useState<GameState>('showing');
+
+  // Refs for cleanup
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
+
+  // Show the pattern
+  useEffect(() => {
+    if (gameState !== 'showing') return;
+
+    let step = 0;
+    intervalRef.current = setInterval(() => {
+      if (!isMountedRef.current) {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        return;
+      }
+
+      if (step >= targetPattern.length) {
+        if (intervalRef.current) clearInterval(intervalRef.current);
+        setShowingStep(-1);
+        setGameState('input');
+      } else {
+        setShowingStep(targetPattern[step]);
+        step++;
+      }
+    }, 800);
+
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, [gameState, targetPattern]);
+
+  const handlePlateClick = (index: number) => {
+    if (gameState !== 'input') return;
+
+    const newPattern = [...playerPattern, index];
+    setPlayerPattern(newPattern);
+
+    // Check if wrong
+    const currentStep = newPattern.length - 1;
+    if (newPattern[currentStep] !== targetPattern[currentStep]) {
+      setGameState('fail');
+      timeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) onComplete(false);
+      }, 1500);
+      return;
+    }
+
+    // Check if complete
+    if (newPattern.length === targetPattern.length) {
+      setGameState('success');
+      timeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) onComplete(true);
+      }, 1500);
+    }
+  };
+
+  return (
+    <>
+      <div className="p-6 flex flex-col items-center gap-4">
+        <p className="text-green-300/80 text-sm text-center">
+          Step on the plates in the correct order
+        </p>
+
+        {/* Progress indicator */}
+        <div className="flex gap-1">
+          {targetPattern.map((_, i) => (
+            <div
+              key={i}
+              className={`w-2 h-2 rounded-full ${
+                i < playerPattern.length ? 'bg-green-500' : 'bg-green-900'
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Pressure plate grid */}
+        <div className="grid grid-cols-3 gap-3">
+          {Array.from({ length: gridSize * gridSize }).map((_, i) => {
+            const isShowing = showingStep === i;
+            const isPressed = playerPattern.includes(i);
+
+            return (
+              <button
+                key={i}
+                disabled={gameState !== 'input'}
+                onClick={() => handlePlateClick(i)}
+                className={`
+                  w-16 h-16 rounded-lg border-2 flex items-center justify-center transition-all duration-200
+                  ${isShowing ? 'bg-green-500 border-green-300 shadow-[0_0_30px_#22c55e] scale-105' : ''}
+                  ${!isShowing && isPressed ? 'bg-green-700 border-green-500' : ''}
+                  ${!isShowing && !isPressed ? 'bg-[#0a1a0a] border-green-900' : ''}
+                  ${gameState === 'input' && !isPressed ? 'hover:border-green-500 cursor-pointer' : ''}
+                  ${gameState === 'success' ? 'bg-green-800 border-green-400' : ''}
+                  ${gameState === 'fail' ? 'bg-red-900 border-red-500' : ''}
+                `}
+              >
+                <Sparkles
+                  size={20}
+                  className={`
+                    transition-all duration-200
+                    ${isShowing || isPressed ? 'opacity-100 text-green-200' : 'opacity-20 text-green-900'}
+                  `}
+                />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <StatusFooter gameState={gameState} type="pressure_plate" />
+    </>
+  );
+};
+
+// ============================================================================
+// MIRROR LIGHT PUZZLE (Rotate mirrors to direct light)
+// ============================================================================
+
+const MirrorLightPuzzle: React.FC<{
+  difficulty: number;
+  onComplete: (success: boolean) => void;
+}> = ({ difficulty, onComplete }) => {
+  const gridSize = 3; // 3x3 grid
+  const mirrorCount = Math.min(4, difficulty + 1);
+
+  // Generate mirror positions and solution
+  const [mirrors] = useState<{ position: number; targetAngle: number }[]>(() => {
+    const positions: number[] = [];
+    // Don't place mirrors on source (0) or target (gridSize*gridSize - 1)
+    while (positions.length < mirrorCount) {
+      const pos = 1 + Math.floor(Math.random() * (gridSize * gridSize - 2));
+      if (!positions.includes(pos) && pos !== gridSize * gridSize - 1) {
+        positions.push(pos);
+      }
+    }
+    return positions.map(pos => ({
+      position: pos,
+      targetAngle: Math.floor(Math.random() * 4) * 90
+    }));
+  });
+
+  const [mirrorAngles, setMirrorAngles] = useState<number[]>(() =>
+    mirrors.map(() => Math.floor(Math.random() * 4) * 90)
+  );
+  const [gameState, setGameState] = useState<GameState>('input');
+
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  const rotateMirror = (mirrorIndex: number) => {
+    if (gameState !== 'input') return;
+
+    const newAngles = [...mirrorAngles];
+    newAngles[mirrorIndex] = (newAngles[mirrorIndex] + 90) % 360;
+    setMirrorAngles(newAngles);
+
+    // Check if all mirrors are aligned
+    const isComplete = newAngles.every((angle, i) => angle === mirrors[i].targetAngle);
+    if (isComplete) {
+      setGameState('success');
+      timeoutRef.current = setTimeout(() => {
+        if (isMountedRef.current) onComplete(true);
+      }, 1500);
+    }
+  };
+
+  const getMirrorIndex = (position: number): number => {
+    return mirrors.findIndex(m => m.position === position);
+  };
+
+  return (
+    <>
+      <div className="p-6 flex flex-col items-center gap-4">
+        <p className="text-yellow-300/80 text-sm text-center">
+          Rotate the mirrors to direct light from ☀️ to 🎯
+        </p>
+
+        {/* Light grid */}
+        <div className="grid grid-cols-3 gap-2 relative">
+          {Array.from({ length: gridSize * gridSize }).map((_, i) => {
+            const mirrorIndex = getMirrorIndex(i);
+            const hasMirror = mirrorIndex !== -1;
+            const isSource = i === 0;
+            const isTarget = i === gridSize * gridSize - 1;
+
+            return (
+              <button
+                key={i}
+                disabled={!hasMirror || gameState !== 'input'}
+                onClick={() => hasMirror && rotateMirror(mirrorIndex)}
+                className={`
+                  w-16 h-16 rounded-lg border-2 flex items-center justify-center transition-all duration-200
+                  ${isSource ? 'bg-yellow-900/50 border-yellow-500' : ''}
+                  ${isTarget ? 'bg-purple-900/50 border-purple-500' : ''}
+                  ${hasMirror ? 'bg-[#1a1a0a] border-yellow-700 hover:border-yellow-400 cursor-pointer' : ''}
+                  ${!isSource && !isTarget && !hasMirror ? 'bg-[#0a0a0a] border-gray-800' : ''}
+                  ${gameState === 'success' ? 'border-green-400' : ''}
+                `}
+              >
+                {isSource && <Sun size={24} className="text-yellow-400" />}
+                {isTarget && (
+                  <div className={`
+                    w-8 h-8 rounded-full border-2 flex items-center justify-center
+                    ${gameState === 'success' ? 'bg-green-500 border-green-300' : 'border-purple-400'}
+                  `}>
+                    {gameState === 'success' ? <Check size={16} className="text-white" /> : null}
+                  </div>
+                )}
+                {hasMirror && (
+                  <div
+                    className="w-8 h-8 relative transition-transform duration-200"
+                    style={{ transform: `rotate(${mirrorAngles[mirrorIndex]}deg)` }}
+                  >
+                    {/* Mirror representation */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-8 h-1 bg-gradient-to-r from-yellow-200 via-white to-yellow-200 rounded-full shadow-[0_0_10px_#fef08a]" />
+                    </div>
+                    <RotateCcw size={10} className="absolute -bottom-1 -right-1 text-yellow-600" />
+                  </div>
+                )}
+              </button>
+            );
+          })}
+
+          {/* Light beam visualization (simplified) */}
+          {gameState === 'success' && (
+            <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+              <div className="w-full h-1 bg-gradient-to-r from-yellow-400 to-green-400 opacity-50 animate-pulse" />
+            </div>
+          )}
+        </div>
+
+        {/* Hint */}
+        <div className="flex gap-2 items-center text-xs text-yellow-600">
+          <span>Mirrors aligned:</span>
+          {mirrors.map((m, i) => (
+            <div
+              key={i}
+              className={`w-3 h-3 rounded-full ${
+                mirrorAngles[i] === m.targetAngle ? 'bg-green-500' : 'bg-yellow-900'
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+      <StatusFooter gameState={gameState} type="mirror_light" />
+    </>
+  );
+};
+
+// ============================================================================
 // STATUS FOOTER COMPONENT
 // ============================================================================
 
@@ -724,6 +1015,12 @@ const StatusFooter: React.FC<{ gameState: GameState; type: PuzzleType }> = ({ ga
       input: 'Stand on the plate...',
       success: 'PLATE ACTIVATED',
       fail: 'PLATE RELEASED',
+    },
+    mirror_light: {
+      showing: 'Light flickers...',
+      input: 'Align the mirrors...',
+      success: 'LIGHT BEAM CONNECTED',
+      fail: 'LIGHT SCATTERED',
     },
   };
 
@@ -773,6 +1070,8 @@ const PuzzleModal: React.FC<PuzzleModalProps> = ({
         return { title: 'Star Chart', icon: Star, color: 'blue' };
       case 'pressure_plate':
         return { title: 'Pressure Plate', icon: Sparkles, color: 'green' };
+      case 'mirror_light':
+        return { title: 'Mirror Chamber', icon: Sun, color: 'yellow' };
       default:
         return { title: 'Elder Sign Puzzle', icon: Brain, color: 'purple' };
     }
@@ -798,6 +1097,10 @@ const PuzzleModal: React.FC<PuzzleModalProps> = ({
         return <BloodRitualPuzzle difficulty={difficulty} playerClass={playerClass} onComplete={onSolve} />;
       case 'astronomy':
         return <AstronomyPuzzle difficulty={difficulty} onComplete={onSolve} />;
+      case 'pressure_plate':
+        return <PressurePlatePuzzle difficulty={difficulty} onComplete={onSolve} />;
+      case 'mirror_light':
+        return <MirrorLightPuzzle difficulty={difficulty} onComplete={onSolve} />;
       default:
         return <SequencePuzzle difficulty={difficulty} onComplete={onSolve} />;
     }
