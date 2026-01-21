@@ -11329,3 +11329,229 @@ Felt for egendefinert beskrivelse per tile:
 - [ ] Tile-to-board converter
 
 ---
+
+## 2026-01-21: Quest Editor Fase 3 - Fullført
+
+### Oppsummering
+
+Implementert alle gjenstående features fra Fase 3-listen:
+
+| Feature | Prioritet | Status |
+|---------|-----------|--------|
+| Preview/Test mode | Høy | ✅ Ferdig |
+| Trigger system | Medium | ✅ Ferdig |
+| NPC-plassering | Medium | ✅ Ferdig |
+| Doom events editor | Medium | ✅ Ferdig |
+| Undo/Redo | Lav | Ikke startet |
+
+---
+
+### 1. Preview/Test Mode (`PreviewPanel.tsx`)
+
+Fullscreen modal som lar scenario-skapere teste scenariet fra spillerperspektivet.
+
+**Features:**
+- Visuell hex-grid med alle tiles
+- Simulert spiller-bevegelse (klikk på nabo-tiles)
+- Fog of War toggle (viser/skjuler uutforskede tiles)
+- Doom-teller som synker ved bevegelse
+- Objective-tracking sidebar
+- Briefing-overlay ved oppstart
+- Monster/item-indikatorer på tiles
+- Edge-visualisering (vegger, dører, vinduer, trapper)
+- Undo-funksjon for å angre siste trekk
+- Reset-knapp for å starte på nytt
+
+**UI-elementer:**
+- Venstre sidebar: Objectives med progress-tracking
+- Senter: SVG-basert hex-map med interaktive tiles
+- Høyre sidebar: Legend for symboler og farger
+- Header: Doom-counter, fog toggle, undo/reset knapper
+
+---
+
+### 2. Trigger System (`TriggerPanel.tsx`)
+
+Komplett event-system for å definere triggers som reagerer på spillhendelser.
+
+**Trigger Types:**
+- `objective_complete`: Når et objective fullføres
+- `tile_enter`: Når spiller entrer en bestemt tile
+- `doom_threshold`: Når doom når en bestemt verdi
+- `item_pickup`: Når et item plukkes opp
+- `enemy_killed`: Når en fientype drepes
+- `round_start`: Ved starten av en bestemt runde
+
+**Action Types:**
+- `spawn_enemy`: Spawn monstre på en tile
+- `unlock_door`: Lås opp en låst dør
+- `reveal_tile`: Gjør en skjult tile synlig
+- `add_item`: Legg til et item på en tile
+- `modify_doom`: Endre doom-telleren
+- `show_message`: Vis narrativ tekst
+- `play_sound`: Spill lydeffekt
+- `complete_objective`: Marker et objective som fullført
+
+**Features:**
+- Expandable trigger-cards med alle detaljer
+- Condition-konfigurasjon per trigger type
+- Multiple actions per trigger
+- One-time / repeating toggle
+- Enable/disable toggle
+- Delay (i runder) før trigger aktiveres
+- Quick templates: Boss Spawn, Ambush, Key→Door
+
+---
+
+### 3. NPC-plassering (`NPCPalette.tsx`)
+
+Panel for å plassere NPCs (Non-Player Characters) på tiles.
+
+**NPC Types:**
+- `survivor`: Kan reddes (rescue objectives)
+- `merchant`: Selger items for gull
+- `quest_giver`: Gir sekundære objectives
+- `contact`: Gir informasjon/clues
+- `hostile`: Fiendtlig NPC som kan bekjempes eller overtales
+
+**Konfigurerbare felt per NPC:**
+- Navn og beskrivelse
+- Greeting dialogue
+- Portrait (forhåndsdefinerte alternativer)
+
+**Type-spesifikke felt:**
+- **Survivor**: Rescue Objective ID
+- **Merchant**: Inventory (item ID, navn, pris)
+- **Quest Giver**: Quest ID, Quest Description
+- **Contact**: Clue Text, Insight Reward
+- **Hostile**: Can Be Reasoned With, Persuasion DC
+
+**Features:**
+- Hidden/Revealed toggle
+- RevealedBy (linking til trigger/objective)
+- Quick-add buttons for hver NPC-type
+- Random navn-forslag per type
+
+---
+
+### 4. Doom Events Editor (`DoomEventsPanel.tsx`)
+
+Dedikert UI for å sette opp doom-triggered events.
+
+**Action Types:**
+- `spawn_enemy`: Spawn monstre
+- `spawn_boss`: Spawn boss-monster
+- `lock_doors`: Lås dører (alle eller spesifikk)
+- `unlock_doors`: Lås opp dører
+- `darkness`: Mørke-effekt
+- `sanity_attack`: Sanity-skade til alle spillere
+- `show_message`: Vis varsel/narrativ
+- `play_sound`: Atmosfære-lyd
+- `reveal_tile`: Avsløre skjulte tiles
+
+**Features:**
+- Visuell doom timeline (gradient fra grønn til rød)
+- Event-markører på timeline
+- Sortert liste etter doom-terskel (høyeste først)
+- One-time toggle
+- Enable/disable toggle
+- Quick templates: Reinforcements, Boss Spawn, Darkness, Final Warning
+
+---
+
+### Filer opprettet
+
+- `src/game/components/QuestEditor/PreviewPanel.tsx` (NY)
+- `src/game/components/QuestEditor/TriggerPanel.tsx` (NY)
+- `src/game/components/QuestEditor/NPCPalette.tsx` (NY)
+- `src/game/components/QuestEditor/DoomEventsPanel.tsx` (NY)
+
+### Filer oppdatert
+
+- `src/game/components/QuestEditor/index.tsx`
+  - Importert alle nye komponenter
+  - Lagt til triggers, doomEvents, og showPreview state
+  - Utvidet EditorTile med npcs felt
+  - Nye tabs: NPCs, Triggers, Doom
+  - Preview-knapp i toolbar
+  - Export/import støtter alle nye data
+
+### Export Format (v3.1)
+
+```json
+{
+  "metadata": { ... },
+  "objectives": [ ... ],
+  "triggers": [
+    {
+      "id": "trigger_123",
+      "name": "Boss Spawn",
+      "type": "doom_threshold",
+      "doomValue": 3,
+      "doomComparison": "lte",
+      "actions": [
+        { "type": "spawn_enemy", "enemyType": "shoggoth", "enemyCount": 1 },
+        { "type": "show_message", "messageTitle": "Terror!", "message": "..." }
+      ],
+      "isOneTime": true,
+      "isEnabled": true
+    }
+  ],
+  "doomEvents": [
+    {
+      "id": "doom_event_456",
+      "name": "Reinforcements",
+      "doomThreshold": 8,
+      "actions": [ ... ],
+      "isOneTime": true,
+      "isEnabled": true
+    }
+  ],
+  "tiles": [
+    {
+      // ... eksisterende felt
+      "npcs": [
+        {
+          "id": "npc_789",
+          "type": "merchant",
+          "name": "Shady Dealer",
+          "greeting": "What do you need?",
+          "inventory": [
+            { "itemId": "revolver", "itemName": "Revolver", "price": 200 }
+          ]
+        }
+      ]
+    }
+  ],
+  "version": "3.1"
+}
+```
+
+---
+
+### Quest Editor Tab-oversikt (nå 9 tabs)
+
+| Tab | Ikon | Farge | Innhold |
+|-----|------|-------|---------|
+| Tile | Settings | Amber | Tile properties, edge config, door config, custom description |
+| Monsters | Skull | Rød | Monster-plassering på valgt tile |
+| Items | Package | Grønn | Quest items på valgt tile |
+| NPCs | Users | Cyan | NPC-plassering på valgt tile |
+| Goals | Target | Purple | Scenario objectives |
+| Triggers | Zap | Gul | Event triggers |
+| Doom | AlertTriangle | Rød | Doom threshold events |
+| Validate | CheckCircle | Grønn | Scenario validering |
+
+Plus Preview-knapp i toolbar.
+
+---
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+### Gjenstående (lavere prioritet)
+- [ ] Undo/Redo system
+- [ ] Scenario loader (JSON til spillbart Scenario)
+- [ ] Tile-to-board converter
+
+---

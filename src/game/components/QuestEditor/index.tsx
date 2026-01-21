@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useCallback, useRef } from 'react';
-import { ArrowLeft, Download, Trash2, RotateCw, Save, Upload, Grid3X3, Eraser, MousePointer, Skull, Package, Target, Settings, CheckCircle, Play } from 'lucide-react';
+import { ArrowLeft, Download, Trash2, RotateCw, Save, Upload, Grid3X3, Eraser, MousePointer, Skull, Package, Target, Settings, CheckCircle, Play, Zap, Users, AlertTriangle } from 'lucide-react';
 import { TileTemplate, ConnectionEdgeType, rotateEdges } from '../../tileConnectionSystem';
 import { TileCategory, FloorType, ZoneLevel, EdgeData, Item, EnemyType, DoorState } from '../../types';
 import { Button } from '@/components/ui/button';
@@ -20,12 +20,16 @@ import ItemPalette, { QuestItemPlacement } from './ItemPalette';
 import ObjectivesPanel, { EditorObjective } from './ObjectivesPanel';
 import ValidationPanel, { validateScenario } from './ValidationPanel';
 import DoorConfigPanel from './DoorConfigPanel';
+import PreviewPanel from './PreviewPanel';
+import TriggerPanel, { EditorTrigger } from './TriggerPanel';
+import NPCPalette, { NPCPlacement } from './NPCPalette';
+import DoomEventsPanel, { DoomEvent } from './DoomEventsPanel';
 
 // ============================================================================
 // RIGHT PANEL TABS
 // ============================================================================
 
-type RightPanelTab = 'properties' | 'monsters' | 'items' | 'objectives' | 'validate';
+type RightPanelTab = 'properties' | 'monsters' | 'items' | 'npcs' | 'objectives' | 'triggers' | 'doom' | 'validate';
 
 // ============================================================================
 // EDITOR TYPES
@@ -59,6 +63,7 @@ export interface EditorTile {
   isStartLocation?: boolean;
   monsters?: { type: string; count: number }[];
   items?: Item[];
+  npcs?: NPCPlacement[];
 }
 
 export interface ScenarioMetadata {
@@ -103,9 +108,16 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
   // Objectives state
   const [objectives, setObjectives] = useState<EditorObjective[]>([]);
 
+  // Triggers state
+  const [triggers, setTriggers] = useState<EditorTrigger[]>([]);
+
+  // Doom events state
+  const [doomEvents, setDoomEvents] = useState<DoomEvent[]>([]);
+
   // View state
   const [showGrid, setShowGrid] = useState(true);
   const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('properties');
+  const [showPreview, setShowPreview] = useState(false);
 
   // Ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -215,6 +227,8 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
     const exportData = {
       metadata,
       objectives,
+      triggers,
+      doomEvents,
       tiles: tilesArray.map(tile => ({
         id: tile.id,
         q: tile.q,
@@ -234,6 +248,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
         isStartLocation: tile.isStartLocation,
         monsters: tile.monsters,
         items: tile.items,
+        npcs: tile.npcs,
       })),
       validation: {
         isValid: validation.isValid,
@@ -241,7 +256,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
         warningCount: validation.issues.filter(i => i.severity === 'warning').length,
       },
       exportedAt: new Date().toISOString(),
-      version: '3.0'  // Updated version for Fase 3
+      version: '3.1'  // Updated version for Triggers
     };
 
     const json = JSON.stringify(exportData, null, 2);
@@ -291,6 +306,14 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
 
           if (data.objectives && Array.isArray(data.objectives)) {
             setObjectives(data.objectives);
+          }
+
+          if (data.triggers && Array.isArray(data.triggers)) {
+            setTriggers(data.triggers);
+          }
+
+          if (data.doomEvents && Array.isArray(data.doomEvents)) {
+            setDoomEvents(data.doomEvents);
           }
 
           setSelectedTileId(null);
@@ -392,6 +415,21 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
           title="Toggle grid"
         >
           <Grid3X3 className="w-4 h-4" />
+        </Button>
+
+        <div className="h-6 w-px bg-slate-600" />
+
+        {/* Preview button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowPreview(true)}
+          disabled={tiles.size === 0}
+          className="text-green-400 hover:text-green-300 disabled:opacity-50"
+          title="Preview scenario"
+        >
+          <Play className="w-4 h-4 mr-1" />
+          Preview
         </Button>
 
         <div className="h-6 w-px bg-slate-600" />
@@ -499,6 +537,17 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
               Items
             </button>
             <button
+              onClick={() => setRightPanelTab('npcs')}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 text-xs font-medium transition-colors ${
+                rightPanelTab === 'npcs'
+                  ? 'bg-slate-700 text-cyan-400 border-b-2 border-cyan-400'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <Users className="w-3.5 h-3.5" />
+              NPCs
+            </button>
+            <button
               onClick={() => setRightPanelTab('objectives')}
               className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 text-xs font-medium transition-colors ${
                 rightPanelTab === 'objectives'
@@ -508,6 +557,28 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
             >
               <Target className="w-3.5 h-3.5" />
               Goals
+            </button>
+            <button
+              onClick={() => setRightPanelTab('triggers')}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 text-xs font-medium transition-colors ${
+                rightPanelTab === 'triggers'
+                  ? 'bg-slate-700 text-yellow-400 border-b-2 border-yellow-400'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <Zap className="w-3.5 h-3.5" />
+              Triggers
+            </button>
+            <button
+              onClick={() => setRightPanelTab('doom')}
+              className={`flex-1 flex items-center justify-center gap-1 px-2 py-2 text-xs font-medium transition-colors ${
+                rightPanelTab === 'doom'
+                  ? 'bg-slate-700 text-red-400 border-b-2 border-red-400'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+              }`}
+            >
+              <AlertTriangle className="w-3.5 h-3.5" />
+              Doom
             </button>
             <button
               onClick={() => setRightPanelTab('validate')}
@@ -770,11 +841,55 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
               </>
             )}
 
+            {/* NPCS TAB */}
+            {rightPanelTab === 'npcs' && (
+              <>
+                {selectedTile ? (
+                  <NPCPalette
+                    npcs={(selectedTile.npcs || []) as NPCPlacement[]}
+                    onNPCsChange={(npcs) => {
+                      const key = getTileKey(selectedTile.q, selectedTile.r);
+                      setTiles(prev => {
+                        const newTiles = new Map(prev);
+                        const tile = newTiles.get(key);
+                        if (tile) {
+                          newTiles.set(key, { ...tile, npcs });
+                        }
+                        return newTiles;
+                      });
+                    }}
+                  />
+                ) : (
+                  <div className="text-slate-500 text-sm text-center py-8">
+                    Select a tile to place NPCs
+                  </div>
+                )}
+              </>
+            )}
+
             {/* OBJECTIVES TAB */}
             {rightPanelTab === 'objectives' && (
               <ObjectivesPanel
                 objectives={objectives}
                 onObjectivesChange={setObjectives}
+              />
+            )}
+
+            {/* TRIGGERS TAB */}
+            {rightPanelTab === 'triggers' && (
+              <TriggerPanel
+                triggers={triggers}
+                onTriggersChange={setTriggers}
+                objectives={objectives}
+              />
+            )}
+
+            {/* DOOM EVENTS TAB */}
+            {rightPanelTab === 'doom' && (
+              <DoomEventsPanel
+                doomEvents={doomEvents}
+                onDoomEventsChange={setDoomEvents}
+                startDoom={metadata.startDoom}
               />
             )}
 
@@ -814,6 +929,16 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
           Keyboard: S=Select, P=Place, E=Erase, R=Rotate, Delete=Remove selected
         </span>
       </div>
+
+      {/* Preview Panel */}
+      {showPreview && (
+        <PreviewPanel
+          tiles={tiles}
+          objectives={objectives}
+          metadata={metadata}
+          onClose={() => setShowPreview(false)}
+        />
+      )}
     </div>
   );
 };
