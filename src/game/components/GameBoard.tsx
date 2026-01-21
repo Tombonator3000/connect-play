@@ -15,6 +15,7 @@ import { getCharacterPortrait } from '../utils/characterAssets';
 import { getMonsterPortrait } from '../utils/monsterAssets';
 import { getEdgeIconInfo, getEdgeIconPosition } from './EdgeIcons';
 import { calculateCombinedOffset } from '../utils/entityPositioning';
+import { TileObjectRenderer } from './TileObjectRenderer';
 
 // Import AI-generated tile images
 import tileLibrary from '@/assets/tiles/tile-library.png';
@@ -1202,152 +1203,11 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   </div>
                 )}
 
+                {/* Tile Object Rendering - uses configuration-driven TileObjectRenderer */}
                 {tile.object && isVisible && (
                   <TileObjectTooltip object={tile.object}>
                     <div className="absolute inset-0 flex items-center justify-center z-20 animate-in zoom-in duration-300 cursor-help">
-                      {/* Fire - pulsing orange flame */}
-                      {tile.object.type === 'fire' && <Flame className="text-orange-500 animate-pulse drop-shadow-[0_0_10px_rgba(249,115,22,0.8)]" size={40} />}
-
-                      {/* Locked Door - accent colored lock */}
-                      {tile.object.type === 'locked_door' && (
-                        <div className="flex flex-col items-center">
-                          <Lock className={`text-accent ${tile.object.blocking ? 'opacity-100' : 'opacity-30'}`} size={32} />
-                          <span className="text-[10px] font-bold text-accent uppercase tracking-widest mt-1">Locked</span>
-                        </div>
-                      )}
-
-                      {/* Rubble - stone colored hammer */}
-                      {tile.object.type === 'rubble' && <Hammer className="text-stone-500 rotate-12 drop-shadow-md" size={32} />}
-
-                      {/* Trap - warning triangle with red glow */}
-                      {tile.object.type === 'trap' && (
-                        <div className="flex flex-col items-center">
-                          <AlertTriangle className="text-red-500 animate-pulse drop-shadow-[0_0_8px_rgba(239,68,68,0.6)]" size={32} />
-                          <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest mt-1">Trap</span>
-                        </div>
-                      )}
-
-                      {/* Gate - iron fence */}
-                      {tile.object.type === 'gate' && (
-                        <div className="flex flex-col items-center">
-                          <Fence className={`text-gray-400 ${tile.object.blocking ? 'opacity-100' : 'opacity-40'}`} size={32} />
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Gate</span>
-                        </div>
-                      )}
-
-                      {/* Fog Wall - ethereal cloud */}
-                      {tile.object.type === 'fog_wall' && (
-                        <div className="flex flex-col items-center animate-pulse">
-                          <Cloud className="text-purple-400/80 drop-shadow-[0_0_12px_rgba(168,85,247,0.5)]" size={36} />
-                          <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mt-1">Fog</span>
-                        </div>
-                      )}
-
-                      {/* Altar - mystical sparkles */}
-                      {tile.object.type === 'altar' && (
-                        <div className="flex flex-col items-center">
-                          <Sparkles className="text-purple-500 drop-shadow-[0_0_8px_rgba(168,85,247,0.6)]" size={32} />
-                          <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mt-1">Altar</span>
-                        </div>
-                      )}
-
-                      {/* Bookshelf - book icon with search state */}
-                      {tile.object.type === 'bookshelf' && (
-                        <div className={`flex flex-col items-center ${!tile.object.searched ? 'animate-bookshelf-glow' : ''}`}>
-                          <BookOpen
-                            className={`drop-shadow-md transition-all duration-300 ${
-                              tile.object.searched
-                                ? 'text-amber-900/60'
-                                : 'text-amber-600 drop-shadow-[0_0_8px_rgba(200,160,80,0.4)]'
-                            }`}
-                            size={28}
-                          />
-                          {!tile.object.searched && (
-                            <span className="text-[8px] font-bold text-amber-400 uppercase tracking-widest mt-1 animate-pulse">Search</span>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Container types - archive/package */}
-                      {(tile.object.type === 'crate' || tile.object.type === 'chest' || tile.object.type === 'cabinet') && (
-                        <Package className={`text-amber-600 ${tile.object.searched ? 'opacity-40' : 'opacity-100'}`} size={28} />
-                      )}
-
-                      {/* Barricade - crossed planks */}
-                      {tile.object.type === 'barricade' && <Hammer className="text-amber-800 rotate-45 drop-shadow-md" size={32} />}
-
-                      {/* Mirror - moon reflection */}
-                      {tile.object.type === 'mirror' && <Moon className="text-slate-300 drop-shadow-[0_0_6px_rgba(148,163,184,0.5)]" size={28} />}
-
-                      {/* Radio - communication */}
-                      {tile.object.type === 'radio' && <Radio className="text-green-500 animate-pulse" size={28} />}
-
-                      {/* Switch - toggle */}
-                      {tile.object.type === 'switch' && <ToggleLeft className="text-yellow-500" size={28} />}
-
-                      {/* Statue - skull (ominous) */}
-                      {tile.object.type === 'statue' && <Skull className="text-stone-400 drop-shadow-md" size={32} />}
-
-                      {/* Exit Door - escape route with prominent beacon effect */}
-                      {tile.object.type === 'exit_door' && (
-                        <div className="relative flex flex-col items-center">
-                          {/* Outer beacon glow */}
-                          <div className="absolute inset-0 -m-8 rounded-full animate-exit-beacon opacity-80" />
-                          {/* Inner rotating ring */}
-                          <div className="absolute inset-0 -m-4 rounded-full animate-spin"
-                            style={{
-                              animationDuration: '8s',
-                              background: 'conic-gradient(from 0deg, transparent 0%, rgba(52,211,153,0.4) 25%, transparent 50%, rgba(52,211,153,0.4) 75%, transparent 100%)'
-                            }}
-                          />
-                          {/* Door icon with enhanced glow */}
-                          <DoorOpen
-                            className="text-emerald-400 animate-pulse drop-shadow-[0_0_15px_rgba(52,211,153,0.8)]"
-                            size={40}
-                          />
-                          <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-widest mt-1 drop-shadow-[0_0_6px_rgba(52,211,153,0.8)]">
-                            EXIT
-                          </span>
-                          {/* Pulsing rays */}
-                          <div className="absolute inset-0 -m-6">
-                            {[0, 45, 90, 135, 180, 225, 270, 315].map((angle) => (
-                              <div
-                                key={angle}
-                                className="absolute w-[2px] h-8 bg-gradient-to-t from-emerald-400/60 to-transparent animate-pulse"
-                                style={{
-                                  left: '50%',
-                                  top: '50%',
-                                  transform: `translate(-50%, -100%) rotate(${angle}deg)`,
-                                  transformOrigin: 'center bottom',
-                                  animationDelay: `${angle / 360}s`
-                                }}
-                              />
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Eldritch Portal - glowing purple gateway that spawns enemies */}
-                      {tile.object.type === 'eldritch_portal' && (
-                        <div className="relative flex flex-col items-center">
-                          {/* Outer glow ring */}
-                          <div className="absolute inset-0 -m-4 rounded-full eldritch-portal-glow animate-portal-pulse" />
-                          {/* Swirling energy effect */}
-                          <div className="absolute inset-0 -m-2 rounded-full animate-portal-swirl opacity-60" style={{
-                            background: 'conic-gradient(from 0deg, rgba(128,0,255,0.4), rgba(200,100,255,0.2), rgba(128,0,255,0.4), rgba(150,50,200,0.3), rgba(128,0,255,0.4))'
-                          }} />
-                          {/* Portal icon */}
-                          <Zap
-                            className="text-purple-400 animate-portal-energy drop-shadow-[0_0_15px_rgba(168,85,247,0.8)]"
-                            size={36}
-                          />
-                          <span className="text-[9px] font-bold text-purple-300 uppercase tracking-widest mt-1 drop-shadow-[0_0_4px_rgba(128,0,255,0.6)]">
-                            {tile.object.portalActive ? 'PORTAL' : 'Dormant'}
-                          </span>
-                          {/* Occasional energy flare */}
-                          <div className="absolute inset-0 -m-6 rounded-full animate-portal-flare bg-purple-500/30" />
-                        </div>
-                      )}
+                      <TileObjectRenderer object={tile.object} />
                     </div>
                   </TileObjectTooltip>
                 )}

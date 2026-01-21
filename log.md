@@ -1,5 +1,148 @@
 # Development Log
 
+## 2026-01-21: Refactor GameBoard.tsx - TileObjectRenderer Extraction
+
+### Oppgave
+Refaktorere kompleks kode - finn en funksjon eller komponent som er for kompleks og refaktorer den for klarhet mens samme oppførsel beholdes.
+
+---
+
+### Analyse av Kompleksitet
+
+Søkte gjennom kodebasen etter kandidater. **GameBoard.tsx** (2158 linjer) ble identifisert som beste kandidat:
+
+| Fil | Størrelse | Problem |
+|-----|-----------|---------|
+| **GameBoard.tsx** | 2158 linjer | 15+ nesten identiske if-blokker for tile objects |
+| PuzzleModal.tsx | 1130 linjer | 5 puzzle-implementasjoner med repetert logikk |
+| QuestEditor/index.tsx | 1166 linjer | 10+ sammenkoblede state-variabler |
+| ShadowsGame.tsx | 4591 linjer | God object med for mange ansvar |
+
+---
+
+### Problem Identifisert
+
+I **GameBoard.tsx** (linje 1205-1353) var det ~150 linjer med nesten identiske if-blokker for tile object rendering:
+
+```tsx
+// BEFORE: 15+ repetitive conditionals
+{tile.object.type === 'fire' && <Flame className="..." size={40} />}
+{tile.object.type === 'locked_door' && (
+  <div className="flex flex-col items-center">
+    <Lock className="..." size={32} />
+    <span>Locked</span>
+  </div>
+)}
+{tile.object.type === 'rubble' && <Hammer className="..." size={32} />}
+{tile.object.type === 'trap' && (
+  <div className="flex flex-col items-center">
+    <AlertTriangle className="..." size={32} />
+    <span>Trap</span>
+  </div>
+)}
+// ... 11+ flere lignende blokker
+```
+
+**DRY-brudd**: Hvert tile object fulgte samme mønster:
+- Icon med størrelse og styling
+- Valgfri label med styling
+- Valgfri wrapper med animasjoner
+- Opacity basert på `blocking` eller `searched` state
+
+---
+
+### Løsning: Konfigurasjonsdrevet TileObjectRenderer
+
+#### 1. Ny Komponent: `TileObjectRenderer.tsx`
+
+Opprettet ny komponent med:
+
+**Type-definisjoner:**
+```typescript
+interface SimpleTileObjectConfig {
+  variant: 'simple';
+  icon: LucideIcon;
+  iconSize: number;
+  iconClass: string;
+  label?: string;
+  labelClass?: string;
+  useBlockingOpacity?: boolean;
+  useSearchedOpacity?: boolean;
+  wrapperClass?: string;
+}
+
+interface ComplexTileObjectConfig {
+  variant: 'complex';
+  render: (object: TileObject) => React.ReactNode;
+}
+```
+
+**Konfigurasjonskart med 18 tile object types:**
+- Simple: fire, locked_door, rubble, trap, gate, fog_wall, altar, crate, chest, cabinet, barricade, mirror, radio, switch, statue
+- Complex (custom render): bookshelf, exit_door, eldritch_portal
+
+#### 2. Oppdatert GameBoard.tsx
+
+**BEFORE (150 linjer):**
+```tsx
+{tile.object && isVisible && (
+  <TileObjectTooltip object={tile.object}>
+    <div className="...">
+      {tile.object.type === 'fire' && <Flame ... />}
+      {tile.object.type === 'locked_door' && (...)}
+      // ... 13+ flere conditionals
+    </div>
+  </TileObjectTooltip>
+)}
+```
+
+**AFTER (7 linjer):**
+```tsx
+{tile.object && isVisible && (
+  <TileObjectTooltip object={tile.object}>
+    <div className="...">
+      <TileObjectRenderer object={tile.object} />
+    </div>
+  </TileObjectTooltip>
+)}
+```
+
+---
+
+### Resultater
+
+| Metrikk | Før | Etter |
+|---------|-----|-------|
+| **Linjer i GameBoard.tsx** | ~2158 | ~2015 (-143 linjer) |
+| **If-blokker for tile objects** | 15+ | 0 |
+| **Å legge til ny tile object type** | Kopier 10-30 linjer | Legg til 5-10 linjer i config |
+| **Lesbarhet** | Lav | Høy |
+| **Vedlikeholdbarhet** | Lav | Høy |
+
+---
+
+### Prinsipper Anvendt
+
+1. **DRY (Don't Repeat Yourself)** - Fjernet 15+ nesten identiske if-blokker
+2. **Configuration over Code** - Tile objects definert som data
+3. **Single Responsibility** - TileObjectRenderer gjør én ting godt
+4. **Open/Closed** - Lett å legge til nye tile types uten å endre eksisterende kode
+5. **Strategy Pattern** - Komplekse objects bruker custom render-funksjoner
+
+---
+
+### Endrede Filer
+
+- `src/game/components/TileObjectRenderer.tsx` (ny, ~280 linjer)
+- `src/game/components/GameBoard.tsx` (oppdatert, -143 linjer)
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket
+✅ Ingen breaking changes - samme visuell oppførsel
+
+---
+
 ## 2026-01-21: Quest Editor - Campaign & Dialog Implementation (Sesjon 3)
 
 ### Oppgave
