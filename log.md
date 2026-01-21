@@ -15,19 +15,19 @@ Gjennomført audit av alle tiles for å sjekke hvilke som mangler grafikk-mappin
 | **Tile-bilder (PNG)** | 85 |
 | **Importerte bilder i GameBoard.tsx** | 84 |
 | **Tile-navn i tileConnectionSystem.ts** | ~100 |
-| **Tiles med fungerende mapping** | 98 |
-| **Tiles som mangler mapping** | 2 |
+| **Tiles med fungerende mapping** | 100 ✅ |
+| **Tiles som mangler mapping** | 0 (fikset) |
 
 ---
 
-### Tiles som mangler mapping
+### Tiles som manglet mapping (nå fikset ✅)
 
-Følgende tiles har ikke en fungerende mapping i `TILE_IMAGES` objektet i `GameBoard.tsx`:
+Følgende tiles hadde ikke fungerende mapping før denne oppdateringen:
 
-| Tile-navn | Problem | Anbefalt løsning |
-|-----------|---------|------------------|
-| **Dining Hall** | "dining" er ikke i TILE_IMAGES | Legg til mapping: `dining: tileKitchen` eller lag nytt bilde `tile-dining.png` |
-| **Abandoned Farm Field** | "farm" alene matcher ikke | Legg til mapping: `farm: tileFarmhouse` |
+| Tile-navn | Problem | Løsning |
+|-----------|---------|---------|
+| **Dining Hall** | "dining" var ikke i TILE_IMAGES | ✅ Lagt til `dining: tileKitchen` |
+| **Abandoned Farm Field** | "farm" alene matchet ikke | ✅ Lagt til `farm: tileFarmhouse` |
 
 ---
 
@@ -73,28 +73,26 @@ underground-lake, warehouse, well, witchhouse
 
 ---
 
-### Anbefalt handling
+### Utført handling ✅
 
-1. **Legg til mapping for "Dining Hall"** i `GameBoard.tsx`:
-   ```typescript
-   dining: tileKitchen,  // Dining Hall - uses kitchen image
-   ```
+Lagt til manglende mappinger i `GameBoard.tsx`:
 
-2. **Legg til mapping for "Abandoned Farm Field"** i `GameBoard.tsx`:
-   ```typescript
-   farm: tileFarmhouse,  // Farm Field - uses farmhouse image
-   ```
+```typescript
+// Kitchen and Dining (linje 301-305)
+dining: tileKitchen,        // Dining Hall
 
-3. **Valgfritt**: Lag dedikerte bilder for disse tiles hvis ønskelig:
-   - `tile-dining.png` - Spisestue med langbord og kandelaber
-   - `tile-field.png` - Åkerlandskap med åker og låve i bakgrunnen
+// Farmhouse and Farm (linje 414-418)
+farm: tileFarmhouse,        // Abandoned Farm Field
+field: tileFarmhouse,       // Farm Field
+```
+
+**Status**: Alle 100 tiles har nå fungerende grafikk-mapping.
 
 ---
 
 ### Påvirkede filer
 
-- `src/game/components/GameBoard.tsx` - TILE_IMAGES mapping (hvis endring gjøres)
-- `src/assets/tiles/` - Hvis nye bilder legges til
+- `src/game/components/GameBoard.tsx` - Lagt til 3 nye mappinger i TILE_IMAGES
 
 ---
 
