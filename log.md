@@ -1,5 +1,108 @@
 # Development Log
 
+## 2026-01-21: Quest Editor Fase 1 - Implementasjon
+
+### Oppsummering
+
+Implementert Fase 1 av Quest Editor med fungerende prototype:
+- Visuell hex-editor
+- Tile-palette på siden
+- Click-to-place funksjonalitet
+- JSON export/import
+
+---
+
+### Implementerte komponenter
+
+#### 1. QuestEditor (index.tsx)
+Hovedkomponent med:
+- State management for tiles, verktøy og metadata
+- Toolbar med verktøy (Select, Place, Erase)
+- Rotation-kontroll for tiles (0-300°)
+- JSON export/import funksjonalitet
+- Properties panel for valgt tile
+- Scenario metadata editor (title, doom, difficulty)
+
+**Fil:** `src/game/components/QuestEditor/index.tsx`
+
+#### 2. EditorCanvas
+Hex-grid canvas med:
+- Pan/zoom (scroll + middle-click drag)
+- Click-to-place tiles
+- Hover preview av tile som plasseres
+- Edge-farger for visuell feedback
+- Koordinat-visning på hover
+- Origin-markør
+
+**Fil:** `src/game/components/QuestEditor/EditorCanvas.tsx`
+
+#### 3. TilePalette
+Sidebar med:
+- Alle 90+ tile templates fra tileConnectionSystem.ts
+- Gruppering etter kategori (Nature, Urban, Street, etc.)
+- Søkefunksjon
+- Edge-pattern preview
+- Valgt template-info
+
+**Fil:** `src/game/components/QuestEditor/TilePalette.tsx`
+
+---
+
+### Integrasjon
+
+- Lagt til "Quest Editor" knapp i MainMenu
+- Koblet til via `mainMenuView = 'questEditor'`
+- Tilgjengelig fra hovedmenyen som egen skjerm
+
+**Filer endret:**
+- `src/game/components/MainMenu.tsx` - Lagt til onQuestEditor prop og knapp
+- `src/game/ShadowsGame.tsx` - Import, mainMenuView type, rendering
+
+---
+
+### Funksjonalitet
+
+| Feature | Status |
+|---------|--------|
+| Hex-grid rendering | ✅ |
+| Tile placement | ✅ |
+| Tile selection | ✅ |
+| Tile deletion | ✅ |
+| Tile rotation | ✅ |
+| Pan/zoom | ✅ |
+| Tile palette med kategorier | ✅ |
+| Søk i tiles | ✅ |
+| JSON export | ✅ |
+| JSON import | ✅ |
+| Start location marking | ✅ |
+| Properties panel | ✅ |
+| Scenario metadata | ✅ |
+
+---
+
+### Bruk
+
+1. Åpne spillet og gå til hovedmenyen
+2. Klikk "Quest Editor" (lilla knapp)
+3. Velg en tile fra paletten til venstre
+4. Klikk på griden for å plassere
+5. Bruk R eller rotasjonsknappen for å rotere
+6. Marker en tile som "Start Location" i properties panel
+7. Eksporter til JSON med nedlastingsknappen
+
+---
+
+### Neste steg (Fase 2+)
+
+- Edge-konfigurasjon per tile
+- Monster-plassering
+- Quest item-plassering
+- Objective editor
+- Preview/test modus
+- Undo/redo
+
+---
+
 ## 2026-01-21: Quest/Scenario Editor - Analyse og Plan
 
 ### Oppgave

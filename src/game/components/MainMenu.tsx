@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Skull, Settings, Users, Package, HardDrive } from 'lucide-react';
+import { Play, Skull, Settings, Users, Package, HardDrive, Map } from 'lucide-react';
 
 interface MainMenuProps {
   onNewGame: () => void;
@@ -13,6 +13,8 @@ interface MainMenuProps {
   onSaveLoad?: () => void;
   heroCount?: number;
   stashCount?: number;
+  // Quest Editor
+  onQuestEditor?: () => void;
 }
 
 const MainMenu: React.FC<MainMenuProps> = ({
@@ -25,7 +27,8 @@ const MainMenu: React.FC<MainMenuProps> = ({
   onStash,
   onSaveLoad,
   heroCount = 0,
-  stashCount = 0
+  stashCount = 0,
+  onQuestEditor
 }) => {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background text-foreground overflow-hidden font-serif">
@@ -121,6 +124,17 @@ const MainMenu: React.FC<MainMenuProps> = ({
               <Settings size={16} className="group-hover:rotate-90 transition-transform duration-700" /> Options
             </span>
           </button>
+
+          {onQuestEditor && (
+            <button
+              onClick={onQuestEditor}
+              className="group relative px-4 py-3 bg-purple-900/20 border border-purple-700 hover:border-purple-500 text-purple-400 hover:text-purple-300 transition-all uppercase tracking-[0.2em] font-bold text-xs md:text-sm rounded hover:bg-purple-900/30"
+            >
+              <span className="flex items-center justify-center gap-3">
+                <Map size={16} className="group-hover:scale-110 transition-transform" /> Quest Editor
+              </span>
+            </button>
+          )}
         </div>
 
         <div className="mt-8 md:mt-16 text-muted-foreground text-[10px] md:text-xs uppercase tracking-widest font-sans">
