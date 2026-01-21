@@ -2427,9 +2427,22 @@ const ShadowsGame: React.FC = () => {
         const distanceToTarget = hexDistance(activePlayer.position, { q, r });
         const isAdjacent = distanceToTarget === 1;
 
-        // CRITICAL: Only allow movement to adjacent tiles!
-        // Clicking on same tile (distance 0) does nothing
+        // When clicking on the tile you're standing on, show context actions
+        // This allows picking up quest items, searching, interacting with objects
         if (distanceToTarget === 0) {
+          const currentTile = state.board.find(t => t.q === q && t.r === r);
+          if (currentTile) {
+            // Check if tile has quest items, is searchable, or has objects to interact with
+            const hasQuestItems = currentTile.items && currentTile.items.some(item => item.isQuestItem);
+            const hasInteractableObject = currentTile.object && !currentTile.object.blocking;
+            const isSearchable = currentTile.searchable && !currentTile.searched;
+
+            if (hasQuestItems || hasInteractableObject || isSearchable) {
+              setState(prev => ({ ...prev, selectedTileId: currentTile.id }));
+              showContextActions(currentTile);
+              return;
+            }
+          }
           return;
         }
 

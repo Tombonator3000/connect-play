@@ -1618,13 +1618,34 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   // Skip open/empty edges
                   if (!edgeType || edgeType === 'open') return null;
 
+                  // For door edges: Only render the icon on ONE tile to avoid duplicates
+                  // Calculate adjacent tile position and only render if this tile "owns" the edge
+                  const isDoor = edgeType === 'door';
+                  if (isDoor) {
+                    // Adjacent offsets by edge index (0=N, 1=NE, 2=SE, 3=S, 4=SW, 5=NW)
+                    const adjOffsets: Record<number, { dq: number; dr: number }> = {
+                      0: { dq: 0, dr: -1 }, 1: { dq: 1, dr: -1 }, 2: { dq: 1, dr: 0 },
+                      3: { dq: 0, dr: 1 }, 4: { dq: -1, dr: 1 }, 5: { dq: -1, dr: 0 }
+                    };
+                    const offset = adjOffsets[edgeIndex];
+                    if (offset) {
+                      const adjQ = tile.q + offset.dq;
+                      const adjR = tile.r + offset.dr;
+                      // Only render door on the tile with "higher" coordinates to avoid duplicates
+                      // This ensures exactly one tile renders the shared door icon
+                      if (tile.q < adjQ || (tile.q === adjQ && tile.r < adjR)) {
+                        return null; // Let the other tile render this door
+                      }
+                    }
+                  }
+
                   // Get icon info for this edge type
                   const iconInfo = getEdgeIconInfo(edgeType, doorState);
 
                   // Determine edge rendering based on type
                   const isWall = edgeType === 'wall' || edgeType === 'blocked';
                   const isWindow = edgeType === 'window';
-                  const isDoor = edgeType === 'door';
+                  // isDoor already defined above for duplicate prevention
                   const isStairs = edgeType.includes('stairs');
                   const isSecret = edgeType === 'secret';
 

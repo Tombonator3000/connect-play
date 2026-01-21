@@ -100,7 +100,8 @@ export function updateTileEdge(
 }
 
 /**
- * Sets the door state on a specific edge
+ * Sets the door state on a specific edge AND the corresponding edge on the adjacent tile
+ * This ensures doors stay in sync on both sides
  */
 export function setDoorState(
   board: Tile[],
@@ -108,10 +109,33 @@ export function setDoorState(
   edgeIndex: number,
   doorState: DoorState
 ): Tile[] {
-  return updateTileEdge(board, tileId, edgeIndex, edge => ({
+  // First update the door on the source tile
+  let updatedBoard = updateTileEdge(board, tileId, edgeIndex, edge => ({
     ...edge,
     doorState
   }));
+
+  // Now find and update the adjacent tile's corresponding edge
+  const tile = board.find(t => t.id === tileId);
+  if (tile) {
+    const adjacentPos = getAdjacentPosition(tile, edgeIndex);
+    if (adjacentPos) {
+      const adjacentTile = updatedBoard.find(t => t.q === adjacentPos.q && t.r === adjacentPos.r);
+      if (adjacentTile) {
+        // The opposite edge index (0 <-> 3, 1 <-> 4, 2 <-> 5)
+        const oppositeEdgeIndex = (edgeIndex + 3) % 6;
+        // Only update if the adjacent edge is also a door
+        if (adjacentTile.edges?.[oppositeEdgeIndex]?.type === 'door') {
+          updatedBoard = updateTileEdge(updatedBoard, adjacentTile.id, oppositeEdgeIndex, edge => ({
+            ...edge,
+            doorState
+          }));
+        }
+      }
+    }
+  }
+
+  return updatedBoard;
 }
 
 /**
