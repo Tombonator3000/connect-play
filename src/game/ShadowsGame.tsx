@@ -33,7 +33,7 @@ import SurvivorTraitModal from './components/SurvivorTraitModal';
 import FieldGuidePanel from './components/FieldGuidePanel';
 import CharacterSelectionScreen from './components/CharacterSelectionScreen';
 import SaveLoadModal from './components/SaveLoadModal';
-import QuestEditor from './components/QuestEditor';
+import QuestEditor, { CustomQuestLoader } from './components/QuestEditor';
 import { autoSave } from './utils/saveManager';
 import {
   loadLegacyData,
@@ -123,7 +123,7 @@ const LEGACY_STORAGE_KEY = 'shadows_1920s_legacy';
 const APP_VERSION = "1.0.0";
 
 // Menu view modes for main menu
-type MainMenuView = 'title' | 'heroArchive' | 'stash' | 'merchant' | 'questEditor';
+type MainMenuView = 'title' | 'heroArchive' | 'stash' | 'merchant' | 'questEditor' | 'customQuest';
 
 const DEFAULT_STATE: GameState = {
   phase: GamePhase.SETUP,
@@ -3711,8 +3711,9 @@ const ShadowsGame: React.FC = () => {
           }}
           heroCount={getLivingHeroes(legacyData).length}
           stashCount={legacyData.stash.items.length}
-          // Quest Editor
+          // Quest Editor and Custom Quest
           onQuestEditor={() => setMainMenuView('questEditor')}
+          onCustomQuest={() => setMainMenuView('customQuest')}
         />
       )}
 
@@ -3738,6 +3739,24 @@ const ShadowsGame: React.FC = () => {
       {isMainMenuOpen && mainMenuView === 'questEditor' && (
         <QuestEditor
           onBack={() => setMainMenuView('title')}
+        />
+      )}
+
+      {/* Custom Quest Loader */}
+      {isMainMenuOpen && mainMenuView === 'customQuest' && (
+        <CustomQuestLoader
+          onClose={() => setMainMenuView('title')}
+          onStartQuest={(scenario, tiles) => {
+            // Start custom quest with the converted scenario
+            setState(prev => ({
+              ...DEFAULT_STATE,
+              phase: GamePhase.SETUP,
+              activeScenario: scenario,
+              board: tiles,
+            }));
+            setMainMenuView('title');
+            setIsMainMenuOpen(false);
+          }}
         />
       )}
 

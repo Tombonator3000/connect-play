@@ -1,22 +1,218 @@
 /**
  * PREVIEW PANEL - Quest Editor Preview/Test Mode
  *
- * Allows scenario creators to preview and test their scenarios
- * before exporting. Features:
- * - Visual preview of all tiles
+ * Full game-like preview with AI-generated tile graphics.
+ * Features:
+ * - AI tile images matching the main game
+ * - Pan & zoom with mouse/touch
  * - Simulated player movement
  * - Monster/item visualization
  * - Objective tracking
  * - Fog of war toggle
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { X, Eye, EyeOff, Play, RotateCcw, ChevronLeft, ChevronRight, Target, Skull, Package, MapPin, AlertTriangle, CheckCircle2, Circle } from 'lucide-react';
+import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { X, Eye, EyeOff, Play, RotateCcw, ChevronLeft, Target, Skull, Package, AlertTriangle, CheckCircle2, Circle, ZoomIn, ZoomOut, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EditorTile, ScenarioMetadata, DoorConfig } from './index';
 import { EditorObjective } from './ObjectivesPanel';
-import { BESTIARY } from '../../constants';
 import { ConnectionEdgeType } from '../../tileConnectionSystem';
+
+// Import AI-generated tile images (same as GameBoard)
+import tileLibrary from '@/assets/tiles/tile-library.png';
+import tileChurch from '@/assets/tiles/tile-church.png';
+import tileDock from '@/assets/tiles/tile-dock.png';
+import tileSquare from '@/assets/tiles/tile-square.png';
+import tileGraveyard from '@/assets/tiles/tile-graveyard.png';
+import tileHallway from '@/assets/tiles/tile-hallway.png';
+import tileAlley from '@/assets/tiles/tile-alley.png';
+import tileCrypt from '@/assets/tiles/tile-crypt.png';
+import tileStation from '@/assets/tiles/tile-station.png';
+import tilePolice from '@/assets/tiles/tile-police.png';
+import tileMuseum from '@/assets/tiles/tile-museum.png';
+import tileHospital from '@/assets/tiles/tile-hospital.png';
+import tileAsylum from '@/assets/tiles/tile-asylum.png';
+import tileStreet from '@/assets/tiles/tile-street.png';
+import tileManor from '@/assets/tiles/tile-manor.png';
+import tileCellar from '@/assets/tiles/tile-cellar.png';
+import tileForest from '@/assets/tiles/tile-forest.png';
+import tileRitual from '@/assets/tiles/tile-ritual.png';
+import tileWarehouse from '@/assets/tiles/tile-warehouse.png';
+import tileHotel from '@/assets/tiles/tile-hotel.png';
+import tileLab from '@/assets/tiles/tile-lab.png';
+import tileBedroom from '@/assets/tiles/tile-bedroom.png';
+import tileSewer from '@/assets/tiles/tile-sewer.png';
+import tileSwamp from '@/assets/tiles/tile-swamp.png';
+import tileLighthouse from '@/assets/tiles/tile-lighthouse.png';
+import tileMarket from '@/assets/tiles/tile-market.png';
+import tileCampus from '@/assets/tiles/tile-campus.png';
+import tileShop from '@/assets/tiles/tile-shop.png';
+import tileCave from '@/assets/tiles/tile-cave.png';
+import tileBridge from '@/assets/tiles/tile-bridge.png';
+import tileKitchen from '@/assets/tiles/tile-kitchen.png';
+import tilePark from '@/assets/tiles/tile-park.png';
+import tileParlor from '@/assets/tiles/tile-parlor.png';
+import tileNursery from '@/assets/tiles/tile-nursery.png';
+import tileMusic from '@/assets/tiles/tile-music.png';
+import tileConservatory from '@/assets/tiles/tile-conservatory.png';
+import tileBilliard from '@/assets/tiles/tile-billiard.png';
+import tileTrophy from '@/assets/tiles/tile-trophy.png';
+import tileDrawing from '@/assets/tiles/tile-drawing.png';
+import tileOffice from '@/assets/tiles/tile-office.png';
+import tileBoiler from '@/assets/tiles/tile-boiler.png';
+import tileTomb from '@/assets/tiles/tile-tomb.png';
+import tileUndergroundLake from '@/assets/tiles/tile-underground-lake.png';
+import tilePortal from '@/assets/tiles/tile-portal.png';
+import tileSanctum from '@/assets/tiles/tile-sanctum.png';
+import tileCourthouse from '@/assets/tiles/tile-courthouse.png';
+import tileNewspaper from '@/assets/tiles/tile-newspaper.png';
+import tileShipyard from '@/assets/tiles/tile-shipyard.png';
+import tileGasworks from '@/assets/tiles/tile-gasworks.png';
+import tileCannery from '@/assets/tiles/tile-cannery.png';
+import tileCrossroads from '@/assets/tiles/tile-crossroads.png';
+import tileDeadend from '@/assets/tiles/tile-deadend.png';
+import tileFuneral from '@/assets/tiles/tile-funeral.png';
+import tileWell from '@/assets/tiles/tile-well.png';
+import tileGallows from '@/assets/tiles/tile-gallows.png';
+import tileQuarry from '@/assets/tiles/tile-quarry.png';
+import tileCampsite from '@/assets/tiles/tile-campsite.png';
+import tileShack from '@/assets/tiles/tile-shack.png';
+import tileFarmhouse from '@/assets/tiles/tile-farmhouse.png';
+import tileHangingtree from '@/assets/tiles/tile-hangingtree.png';
+import tileStonecircle from '@/assets/tiles/tile-stonecircle.png';
+import tileOrchard from '@/assets/tiles/tile-orchard.png';
+import tileRuins from '@/assets/tiles/tile-ruins.png';
+import tileMine from '@/assets/tiles/tile-mine.png';
+import tilePond from '@/assets/tiles/tile-pond.png';
+import tileTenement from '@/assets/tiles/tile-tenement.png';
+import tileWitchhouse from '@/assets/tiles/tile-witchhouse.png';
+import tileBelltower from '@/assets/tiles/tile-belltower.png';
+import tileGallery from '@/assets/tiles/tile-gallery.png';
+import tileRecords from '@/assets/tiles/tile-records.png';
+import tileMaproom from '@/assets/tiles/tile-maproom.png';
+import tileSmoking from '@/assets/tiles/tile-smoking.png';
+import tileServants from '@/assets/tiles/tile-servants.png';
+import tileCloset from '@/assets/tiles/tile-closet.png';
+import tileGate from '@/assets/tiles/tile-gate.png';
+import tileRiverfront from '@/assets/tiles/tile-riverfront.png';
+import tileFireescape from '@/assets/tiles/tile-fireescape.png';
+import tileStarchamber from '@/assets/tiles/tile-starchamber.png';
+import tileMassgrave from '@/assets/tiles/tile-massgrave.png';
+import tileIdol from '@/assets/tiles/tile-idol.png';
+import tileBlackpool from '@/assets/tiles/tile-blackpool.png';
+import tileEcho from '@/assets/tiles/tile-echo.png';
+import tilePetrified from '@/assets/tiles/tile-petrified.png';
+
+// ============================================================================
+// TILE IMAGE MAPPING (same as GameBoard)
+// ============================================================================
+
+const TILE_IMAGES: Record<string, string> = {
+  library: tileLibrary, study: tileLibrary, reading: tileLibrary, archive: tileLibrary, orne: tileLibrary,
+  church: tileChurch, chapel: tileChurch, shrine: tileChurch, narthex: tileChurch,
+  dock: tileDock, pier: tileDock, harbor: tileDock, wharf: tileDock, waterfront: tileDock, innsmouth: tileDock,
+  square: tileSquare, plaza: tileSquare, courtyard: tileSquare, founders: tileSquare,
+  graveyard: tileGraveyard, cemetery: tileGraveyard, burial: tileGraveyard,
+  hallway: tileHallway, corridor: tileHallway, passage: tileHallway, stair: tileHallway, landing: tileHallway, spiral: tileHallway, rickety: tileHallway, crumbling: tileHallway,
+  alley: tileAlley, lane: tileAlley, back: tileAlley, narrows: tileAlley,
+  crypt: tileCrypt, vault: tileCrypt, ossuary: tileCrypt, catacomb: tileCrypt,
+  station: tileStation, train: tileStation, platform: tileStation, tram: tileStation, rail: tileStation,
+  police: tilePolice, precinct: tilePolice, jail: tilePolice,
+  museum: tileMuseum, exhibit: tileMuseum,
+  hospital: tileHospital, ward: tileHospital, morgue: tileHospital, medical: tileHospital, charity: tileHospital,
+  asylum: tileAsylum, padded: tileAsylum, cell: tileAsylum,
+  street: tileStreet, road: tileStreet, cobblestone: tileStreet, avenue: tileStreet,
+  manor: tileManor, mansion: tileManor, foyer: tileManor, lobby: tileManor, vestibule: tileManor, atrium: tileManor, blackwood: tileManor,
+  cellar: tileCellar, basement: tileCellar, storage: tileCellar, cold: tileCellar, flooded: tileCellar, coal: tileCellar, root: tileCellar, maintenance: tileCellar, smuggler: tileCellar,
+  forest: tileForest, woods: tileForest, clearing: tileForest, grove: tileForest, hollow: tileForest, whispering: tileForest,
+  ritual: tileRitual, altar: tileRitual, sacrific: tileRitual, occult: tileRitual, pentagram: tileRitual,
+  warehouse: tileWarehouse, factory: tileWarehouse, industrial: tileWarehouse, derelict: tileWarehouse,
+  hotel: tileHotel, inn: tileHotel, silver: tileHotel, gilded: tileHotel,
+  lab: tileLab, laboratory: tileLab, dissection: tileLab, hidden: tileLab,
+  bedroom: tileBedroom, bed: tileBedroom, sleep: tileBedroom, guest: tileBedroom, quarters: tileBedroom,
+  sewer: tileSewer, tunnel: tileSewer, drain: tileSewer, storm: tileSewer,
+  swamp: tileSwamp, marsh: tileSwamp, bog: tileSwamp, moor: tileSwamp, treacherous: tileSwamp,
+  lighthouse: tileLighthouse, coast: tileLighthouse, cliff: tileLighthouse, suicide: tileLighthouse,
+  market: tileMarket, fish: tileMarket, merchant: tileMarket,
+  shop: tileShop, antique: tileShop, dusty: tileShop,
+  campus: tileCampus, university: tileCampus, faculty: tileCampus, miskatonic: tileCampus,
+  cave: tileCave, cavern: tileCave, ancient: tileCave,
+  bridge: tileBridge, crossing: tileBridge, overpass: tileBridge, iron: tileBridge,
+  kitchen: tileKitchen, dining: tileKitchen, pantry: tileKitchen,
+  park: tilePark, garden: tilePark, pond: tilePark,
+  parlor: tileParlor, sitting: tileParlor,
+  nursery: tileNursery,
+  music: tileMusic, ballroom: tileMusic,
+  conservatory: tileConservatory, greenhouse: tileConservatory,
+  billiard: tileBilliard, game: tileBilliard,
+  trophy: tileTrophy, hunting: tileTrophy,
+  drawing: tileDrawing, art: tileDrawing,
+  office: tileOffice, desk: tileOffice,
+  boiler: tileBoiler, furnace: tileBoiler,
+  tomb: tileTomb, mausoleum: tileTomb,
+  lake: tileUndergroundLake, underground: tileUndergroundLake,
+  portal: tilePortal, gateway: tilePortal,
+  sanctum: tileSanctum, inner: tileSanctum,
+  courthouse: tileCourthouse, court: tileCourthouse,
+  newspaper: tileNewspaper, press: tileNewspaper,
+  shipyard: tileShipyard, drydock: tileShipyard,
+  gasworks: tileGasworks, gas: tileGasworks,
+  cannery: tileCannery, processing: tileCannery,
+  crossroads: tileCrossroads, intersection: tileCrossroads,
+  deadend: tileDeadend, dead: tileDeadend,
+  funeral: tileFuneral, mortuary: tileFuneral,
+  well: tileWell, cistern: tileWell,
+  gallows: tileGallows, gibbet: tileGallows, execution: tileGallows,
+  quarry: tileQuarry,
+  campsite: tileCampsite,
+  shack: tileShack, hermit: tileShack,
+  farmhouse: tileFarmhouse, farm: tileFarmhouse, field: tileFarmhouse,
+  hangingtree: tileHangingtree, hanging: tileHangingtree,
+  stonecircle: tileStonecircle, standing: tileStonecircle,
+  orchard: tileOrchard, blighted: tileOrchard,
+  ruins: tileRuins, overgrown: tileRuins,
+  mine: tileMine, collapsed: tileMine,
+  stagnant: tilePond,
+  tenement: tileTenement, condemned: tileTenement, immigrant: tileTenement,
+  witch: tileWitchhouse,
+  bell: tileBelltower, tower: tileBelltower,
+  gallery: tileGallery, portrait: tileGallery,
+  records: tileRecords, filing: tileRecords,
+  map: tileMaproom, nautical: tileMaproom,
+  smoking: tileSmoking, cigar: tileSmoking,
+  servants: tileServants, servant: tileServants,
+  closet: tileCloset, linen: tileCloset,
+  gate: tileGate,
+  riverfront: tileRiverfront, river: tileRiverfront,
+  fire: tileFireescape, escape: tileFireescape, emergency: tileFireescape,
+  star: tileStarchamber, chamber: tileStarchamber, astronomical: tileStarchamber,
+  mass: tileMassgrave, grave: tileMassgrave,
+  idol: tileIdol,
+  blackpool: tileBlackpool,
+  echo: tileEcho,
+  petrified: tilePetrified,
+  townhouse: tileManor, reception: tileManor,
+  service: tileHallway, floor: tileHallway,
+  tasting: tileCellar, rats: tileSewer, pit: tileCrypt,
+  devils: tileGraveyard, boathouse: tileDock, tide: tileDock,
+  sentinel: tileForest, shore: tileDock, workshop: tileCellar,
+  prison: tileCrypt, observatory: tileStarchamber, pawn: tileShop,
+  arms: tileHotel, attic: tileManor, bathroom: tileHospital,
+  apartment: tileTenement, junction: tileHallway, almshouse: tileTenement,
+  stalls: tileMarket, fountain: tileSquare, corner: tileStreet,
+  deserted: tileStreet, shrouded: tileForest, rocky: tileDock,
+  fetid: tileSwamp, curious: tileShop, ice: tileCellar, midnight: tileShop
+};
+
+const getTileImage = (tileName: string): string | null => {
+  const nameLower = tileName.toLowerCase();
+  for (const [key, image] of Object.entries(TILE_IMAGES)) {
+    if (nameLower.includes(key)) {
+      return image;
+    }
+  }
+  return null;
+};
 
 // ============================================================================
 // TYPES
@@ -43,6 +239,7 @@ interface PreviewTile {
   isStartLocation?: boolean;
   monsters?: { type: string; count: number }[];
   items?: { id: string; name: string; type: string }[];
+  npcs?: { id: string; type: string; name: string }[];
   isVisible: boolean;
   isExplored: boolean;
   watermarkIcon?: string;
@@ -52,83 +249,32 @@ interface PreviewTile {
 // CONSTANTS
 // ============================================================================
 
-const HEX_SIZE = 50;
-const SQRT3 = Math.sqrt(3);
+const HEX_SIZE = 95; // Same as main game
+const DRAG_THRESHOLD = 15;
+const TAP_TIME_THRESHOLD = 350;
 
-// Floor type colors
-const FLOOR_COLORS: Record<string, string> = {
-  wood: '#8B4513',
-  cobblestone: '#696969',
-  tile: '#A9A9A9',
-  stone: '#4a4a5a',
-  grass: '#228B22',
-  dirt: '#8B7355',
-  water: '#1E3A5F',
-  ritual: '#4B0082',
-  carpet: '#8B0000',
-  marble: '#F5F5F5',
-};
-
-// Category icons
-const CATEGORY_ICONS: Record<string, string> = {
-  foyer: '🚪',
-  corridor: '🏛️',
-  room: '🏠',
-  basement: '🪜',
-  crypt: '💀',
-  nature: '🌲',
-  urban: '🏙️',
-  street: '🛤️',
-  facade: '🏛️',
-  stairs: '🪜',
-};
+// Hex neighbor directions (flat-top hexagon)
+const HEX_NEIGHBORS = [
+  { q: 1, r: 0 },   // East
+  { q: 0, r: 1 },   // Southeast
+  { q: -1, r: 1 },  // Southwest
+  { q: -1, r: 0 },  // West
+  { q: 0, r: -1 },  // Northwest
+  { q: 1, r: -1 },  // Northeast
+];
 
 // ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 
-function hexToPixel(q: number, r: number, size: number): { x: number; y: number } {
-  const x = size * (SQRT3 * q + SQRT3 / 2 * r);
-  const y = size * (3 / 2 * r);
+function hexToPixel(q: number, r: number): { x: number; y: number } {
+  const x = HEX_SIZE * (3 / 2 * q);
+  const y = HEX_SIZE * (Math.sqrt(3) / 2 * q + Math.sqrt(3) * r);
   return { x, y };
 }
 
-function getHexCorners(cx: number, cy: number, size: number): string {
-  const corners: string[] = [];
-  for (let i = 0; i < 6; i++) {
-    const angle = (Math.PI / 180) * (60 * i - 30);
-    const x = cx + size * Math.cos(angle);
-    const y = cy + size * Math.sin(angle);
-    corners.push(`${x},${y}`);
-  }
-  return corners.join(' ');
-}
-
-function getEdgePositions(cx: number, cy: number, size: number): { x1: number; y1: number; x2: number; y2: number }[] {
-  const edges: { x1: number; y1: number; x2: number; y2: number }[] = [];
-  for (let i = 0; i < 6; i++) {
-    const angle1 = (Math.PI / 180) * (60 * i - 30);
-    const angle2 = (Math.PI / 180) * (60 * ((i + 1) % 6) - 30);
-    edges.push({
-      x1: cx + size * Math.cos(angle1),
-      y1: cy + size * Math.sin(angle1),
-      x2: cx + size * Math.cos(angle2),
-      y2: cy + size * Math.sin(angle2),
-    });
-  }
-  return edges;
-}
-
 function getHexNeighborCoord(q: number, r: number, direction: number): { q: number; r: number } {
-  const directions = [
-    { q: 1, r: 0 },   // 0 - East
-    { q: 0, r: 1 },   // 1 - SE
-    { q: -1, r: 1 },  // 2 - SW
-    { q: -1, r: 0 },  // 3 - West
-    { q: 0, r: -1 },  // 4 - NW
-    { q: 1, r: -1 },  // 5 - NE
-  ];
-  const dir = directions[direction];
+  const dir = HEX_NEIGHBORS[direction];
   return { q: q + dir.q, r: r + dir.r };
 }
 
@@ -143,6 +289,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   onClose,
 }) => {
   // State
+  const containerRef = useRef<HTMLDivElement>(null);
   const [playerPosition, setPlayerPosition] = useState<{ q: number; r: number } | null>(null);
   const [showFogOfWar, setShowFogOfWar] = useState(true);
   const [exploredTiles, setExploredTiles] = useState<Set<string>>(new Set());
@@ -152,6 +299,15 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
   const [moveHistory, setMoveHistory] = useState<{ q: number; r: number }[]>([]);
   const [showBriefing, setShowBriefing] = useState(true);
 
+  // Pan & zoom state
+  const [scale, setScale] = useState(0.7);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const [dragStartRaw, setDragStartRaw] = useState({ x: 0, y: 0 });
+  const hasDragged = useRef(false);
+  const touchStartTime = useRef<number>(0);
+
   // Find start location
   const startLocation = useMemo(() => {
     for (const tile of tiles.values()) {
@@ -159,19 +315,26 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         return { q: tile.q, r: tile.r };
       }
     }
-    // Default to first tile if no start location
     const firstTile = tiles.values().next().value;
     return firstTile ? { q: firstTile.q, r: firstTile.r } : { q: 0, r: 0 };
   }, [tiles]);
 
-  // Initialize player position
+  // Initialize player position and center view
   useEffect(() => {
-    if (!playerPosition && startLocation) {
+    if (!playerPosition && startLocation && containerRef.current) {
       setPlayerPosition(startLocation);
       setExploredTiles(new Set([`${startLocation.q},${startLocation.r}`]));
       setMoveHistory([startLocation]);
+
+      // Center view on start location
+      const { width, height } = containerRef.current.getBoundingClientRect();
+      const startPixel = hexToPixel(startLocation.q, startLocation.r);
+      setPosition({
+        x: width / 2 - startPixel.x * scale,
+        y: height / 2 - startPixel.y * scale
+      });
     }
-  }, [startLocation, playerPosition]);
+  }, [startLocation, playerPosition, scale]);
 
   // Convert editor tiles to preview tiles
   const previewTiles = useMemo((): Map<string, PreviewTile> => {
@@ -195,6 +358,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         isStartLocation: tile.isStartLocation,
         monsters: tile.monsters,
         items: tile.items,
+        npcs: tile.npcs,
         isVisible: isVisible || isAdjacent,
         isExplored: exploredTiles.has(key),
         watermarkIcon: tile.watermarkIcon,
@@ -213,6 +377,15 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
     return false;
   }
 
+  // Find direction from current to target tile
+  function findDirection(fromQ: number, fromR: number, toQ: number, toR: number): number {
+    for (let i = 0; i < 6; i++) {
+      const neighbor = getHexNeighborCoord(fromQ, fromR, i);
+      if (neighbor.q === toQ && neighbor.r === toR) return i;
+    }
+    return -1;
+  }
+
   // Check if player can move to a tile
   const canMoveTo = useCallback((targetQ: number, targetR: number): boolean => {
     if (!playerPosition) return false;
@@ -222,34 +395,26 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
 
     if (!currentTile || !targetTile) return false;
 
-    // Find which direction the target is
-    for (let i = 0; i < 6; i++) {
-      const neighbor = getHexNeighborCoord(playerPosition.q, playerPosition.r, i);
-      if (neighbor.q === targetQ && neighbor.r === targetR) {
-        // Check if the edge allows passage
-        const edge = currentTile.edges[i];
-        if (edge === 'WALL') return false;
-        if (edge === 'DOOR') {
-          const doorConfig = currentTile.doorConfigs?.[i];
-          if (doorConfig?.state === 'LOCKED' || doorConfig?.state === 'SEALED') {
-            return false; // For preview, locked doors block
-          }
-        }
-        return edge === 'OPEN' || edge === 'DOOR' || edge === 'STAIRS_UP' || edge === 'STAIRS_DOWN';
+    const direction = findDirection(playerPosition.q, playerPosition.r, targetQ, targetR);
+    if (direction === -1) return false;
+
+    const edge = currentTile.edges[direction];
+    if (edge === 'WALL') return false;
+    if (edge === 'DOOR') {
+      const doorConfig = currentTile.doorConfigs?.[direction];
+      if (doorConfig?.state === 'LOCKED' || doorConfig?.state === 'SEALED') {
+        return false;
       }
     }
-
-    return false;
+    return edge === 'OPEN' || edge === 'DOOR' || edge === 'STAIRS_UP' || edge === 'STAIRS_DOWN' || edge === 'WINDOW';
   }, [playerPosition, tiles]);
 
   // Handle tile click for movement
   const handleTileClick = useCallback((q: number, r: number) => {
-    if (!playerPosition) return;
+    if (!playerPosition || hasDragged.current) return;
 
-    // If clicking current tile, do nothing
     if (q === playerPosition.q && r === playerPosition.r) return;
 
-    // Check if can move
     if (canMoveTo(q, r)) {
       setPlayerPosition({ q, r });
       setExploredTiles(prev => new Set([...prev, `${q},${r}`]));
@@ -266,6 +431,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
     setCurrentDoom(metadata.startDoom);
     setCollectedItems(new Set());
     setDefeatedMonsters(new Set());
+    setShowBriefing(true);
   }, [startLocation, metadata.startDoom]);
 
   // Undo last move
@@ -280,20 +446,62 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
     }
   }, [moveHistory, metadata.startDoom]);
 
-  // Calculate viewport bounds
-  const bounds = useMemo(() => {
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  // Mouse handlers for pan
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
+    setDragStartRaw({ x: e.clientX, y: e.clientY });
+    hasDragged.current = false;
+  };
 
-    for (const tile of previewTiles.values()) {
-      const { x, y } = hexToPixel(tile.q, tile.r, HEX_SIZE);
-      minX = Math.min(minX, x - HEX_SIZE);
-      minY = Math.min(minY, y - HEX_SIZE);
-      maxX = Math.max(maxX, x + HEX_SIZE);
-      maxY = Math.max(maxY, y + HEX_SIZE);
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    if (Math.hypot(e.clientX - dragStartRaw.x, e.clientY - dragStartRaw.y) > DRAG_THRESHOLD) {
+      hasDragged.current = true;
     }
+    setPosition({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
+  };
 
-    return { minX, minY, maxX, maxY, width: maxX - minX + 100, height: maxY - minY + 100 };
-  }, [previewTiles]);
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Touch handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      setDragStart({ x: e.touches[0].clientX - position.x, y: e.touches[0].clientY - position.y });
+      setDragStartRaw({ x: e.touches[0].clientX, y: e.touches[0].clientY });
+      hasDragged.current = false;
+      touchStartTime.current = Date.now();
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (e.touches.length === 1 && isDragging) {
+      const touch = e.touches[0];
+      if (Math.hypot(touch.clientX - dragStartRaw.x, touch.clientY - dragStartRaw.y) > DRAG_THRESHOLD) {
+        hasDragged.current = true;
+      }
+      setPosition({ x: touch.clientX - dragStart.x, y: touch.clientY - dragStart.y });
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+  };
+
+  // Zoom with buttons
+  const handleZoomIn = () => setScale(prev => Math.min(prev * 1.2, 2));
+  const handleZoomOut = () => setScale(prev => Math.max(prev / 1.2, 0.3));
+
+  // Wheel zoom
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setScale(prev => Math.min(Math.max(prev * delta, 0.3), 2));
+  }, []);
 
   // Calculate objective progress
   const objectiveProgress = useMemo(() => {
@@ -320,7 +528,6 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
           progress = `${defeatedMonsters.size}/${enemyCount}`;
           break;
         case 'escape':
-          // Check if player is on an exit tile
           const exitTile = Array.from(tiles.values()).find(t =>
             t.edges.includes('STAIRS_DOWN') || t.edges.includes('STAIRS_UP')
           );
@@ -342,12 +549,15 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
     });
   }, [objectives, tiles, exploredTiles, collectedItems, defeatedMonsters, playerPosition, currentDoom, metadata.startDoom]);
 
+  // Current tile info
+  const currentTile = playerPosition ? tiles.get(`${playerPosition.q},${playerPosition.r}`) : null;
+
   // ============================================================================
   // RENDER
   // ============================================================================
 
   return (
-    <div className="fixed inset-0 bg-black/90 z-50 flex flex-col">
+    <div className="fixed inset-0 bg-black/95 z-50 flex flex-col">
       {/* Header */}
       <div className="h-14 bg-slate-800 border-b border-slate-700 flex items-center px-4 gap-4 shrink-0">
         <Button
@@ -371,6 +581,19 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
         <div className="flex items-center gap-2 bg-red-900/50 px-3 py-1 rounded">
           <AlertTriangle className="w-4 h-4 text-red-400" />
           <span className="text-red-400 font-mono">DOOM: {currentDoom}</span>
+        </div>
+
+        <div className="h-6 w-px bg-slate-600" />
+
+        {/* Zoom controls */}
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="sm" onClick={handleZoomOut} className="text-slate-300 hover:text-white">
+            <ZoomOut className="w-4 h-4" />
+          </Button>
+          <span className="text-slate-400 text-xs w-12 text-center">{Math.round(scale * 100)}%</span>
+          <Button variant="ghost" size="sm" onClick={handleZoomIn} className="text-slate-300 hover:text-white">
+            <ZoomIn className="w-4 h-4" />
+          </Button>
         </div>
 
         <div className="h-6 w-px bg-slate-600" />
@@ -418,7 +641,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
           </h3>
 
           <div className="space-y-2">
-            {objectiveProgress.map((obj, i) => (
+            {objectiveProgress.map((obj) => (
               <div
                 key={obj.id}
                 className={`p-2 rounded border ${
@@ -474,45 +697,56 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
           </div>
 
           {/* Current tile info */}
-          {playerPosition && (
+          {currentTile && (
             <div className="mt-4 pt-4 border-t border-slate-600">
               <h4 className="text-slate-400 text-xs uppercase mb-2">Current Location</h4>
-              {(() => {
-                const tile = tiles.get(`${playerPosition.q},${playerPosition.r}`);
-                if (!tile) return null;
-                return (
-                  <div className="bg-slate-700/50 p-3 rounded">
-                    <div className="text-white font-medium">{tile.name}</div>
-                    <div className="text-slate-400 text-xs capitalize mt-1">{tile.category}</div>
-                    {(tile.customDescription || tile.description) && (
-                      <div className="text-slate-300 text-sm mt-2 italic">
-                        "{tile.customDescription || tile.description}"
-                      </div>
-                    )}
-                    {tile.monsters && tile.monsters.length > 0 && (
-                      <div className="mt-2 flex items-center gap-1 text-red-400 text-sm">
-                        <Skull className="w-3 h-3" />
-                        {tile.monsters.map(m => `${m.count}x ${m.type}`).join(', ')}
-                      </div>
-                    )}
-                    {tile.items && tile.items.length > 0 && (
-                      <div className="mt-1 flex items-center gap-1 text-green-400 text-sm">
-                        <Package className="w-3 h-3" />
-                        {tile.items.map(i => i.name).join(', ')}
-                      </div>
-                    )}
+              <div className="bg-slate-700/50 p-3 rounded">
+                <div className="text-white font-medium">{currentTile.name}</div>
+                <div className="text-slate-400 text-xs capitalize mt-1">{currentTile.category}</div>
+                {(currentTile.customDescription || currentTile.description) && (
+                  <div className="text-slate-300 text-sm mt-2 italic">
+                    "{currentTile.customDescription || currentTile.description}"
                   </div>
-                );
-              })()}
+                )}
+                {currentTile.monsters && currentTile.monsters.length > 0 && (
+                  <div className="mt-2 flex items-center gap-1 text-red-400 text-sm">
+                    <Skull className="w-3 h-3" />
+                    {currentTile.monsters.map(m => `${m.count}x ${m.type}`).join(', ')}
+                  </div>
+                )}
+                {currentTile.items && currentTile.items.length > 0 && (
+                  <div className="mt-1 flex items-center gap-1 text-green-400 text-sm">
+                    <Package className="w-3 h-3" />
+                    {currentTile.items.map(i => i.name).join(', ')}
+                  </div>
+                )}
+                {currentTile.npcs && currentTile.npcs.length > 0 && (
+                  <div className="mt-1 flex items-center gap-1 text-cyan-400 text-sm">
+                    <Users className="w-3 h-3" />
+                    {currentTile.npcs.map(n => n.name).join(', ')}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
 
-        {/* Center - Map */}
-        <div className="flex-1 relative overflow-hidden bg-slate-900">
+        {/* Center - Map with real tile graphics */}
+        <div
+          ref={containerRef}
+          className="flex-1 relative overflow-hidden bg-slate-900 cursor-grab active:cursor-grabbing"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onWheel={handleWheel}
+        >
           {/* Briefing overlay */}
           {showBriefing && metadata.briefing && (
-            <div className="absolute inset-0 bg-black/80 z-10 flex items-center justify-center p-8">
+            <div className="absolute inset-0 bg-black/80 z-20 flex items-center justify-center p-8">
               <div className="max-w-lg bg-slate-800 rounded-lg p-6 border border-amber-600/50">
                 <h3 className="text-amber-400 text-xl font-serif mb-4">{metadata.title}</h3>
                 <p className="text-slate-300 leading-relaxed whitespace-pre-line">
@@ -528,149 +762,148 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
             </div>
           )}
 
-          {/* SVG Map */}
-          <svg
-            className="w-full h-full"
-            viewBox={`${bounds.minX - 50} ${bounds.minY - 50} ${bounds.width} ${bounds.height}`}
-            preserveAspectRatio="xMidYMid meet"
+          {/* Tile container with transform */}
+          <div
+            className="absolute"
+            style={{
+              transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+              transformOrigin: '0 0',
+            }}
           >
-            <defs>
-              {/* Fog gradient */}
-              <radialGradient id="fog-gradient">
-                <stop offset="0%" stopColor="rgba(0,0,0,0)" />
-                <stop offset="100%" stopColor="rgba(0,0,0,0.8)" />
-              </radialGradient>
-            </defs>
-
-            {/* Render tiles */}
             {Array.from(previewTiles.values()).map(tile => {
-              const { x, y } = hexToPixel(tile.q, tile.r, HEX_SIZE);
+              const { x, y } = hexToPixel(tile.q, tile.r);
               const isPlayerHere = playerPosition?.q === tile.q && playerPosition?.r === tile.r;
               const isClickable = playerPosition && isAdjacentToPlayer(tile.q, tile.r, playerPosition) && canMoveTo(tile.q, tile.r);
-              const floorColor = FLOOR_COLORS[tile.floorType] || FLOOR_COLORS.stone;
+              const tileImage = getTileImage(tile.name);
 
               return (
-                <g key={tile.id}>
-                  {/* Tile background */}
-                  <polygon
-                    points={getHexCorners(x, y, HEX_SIZE - 2)}
-                    fill={tile.isVisible ? floorColor : '#1a1a2e'}
-                    stroke={isPlayerHere ? '#fbbf24' : isClickable ? '#60a5fa' : '#374151'}
-                    strokeWidth={isPlayerHere ? 3 : isClickable ? 2 : 1}
-                    opacity={tile.isExplored ? 1 : tile.isVisible ? 0.6 : 0.3}
-                    className={isClickable ? 'cursor-pointer hover:brightness-125' : ''}
-                    onClick={() => handleTileClick(tile.q, tile.r)}
-                  />
+                <div
+                  key={tile.id}
+                  className={`absolute transition-all duration-150 ${isClickable ? 'cursor-pointer' : ''}`}
+                  style={{
+                    left: x - HEX_SIZE / 2,
+                    top: y - HEX_SIZE / 2,
+                    width: HEX_SIZE,
+                    height: HEX_SIZE,
+                  }}
+                  onClick={() => handleTileClick(tile.q, tile.r)}
+                >
+                  {/* Hexagonal tile with clipping */}
+                  <div
+                    className={`absolute inset-0 hex-clip overflow-hidden transition-all duration-150 ${
+                      isPlayerHere ? 'ring-4 ring-amber-400 ring-offset-2 ring-offset-slate-900' : ''
+                    } ${isClickable ? 'ring-2 ring-blue-400/60 hover:ring-blue-400 hover:brightness-125' : ''}`}
+                    style={{
+                      clipPath: 'polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)',
+                      opacity: tile.isVisible ? (tile.isExplored ? 1 : 0.6) : 0.2,
+                    }}
+                  >
+                    {/* Tile image or fallback color */}
+                    {tileImage ? (
+                      <img
+                        src={tileImage}
+                        alt={tile.name}
+                        className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                        draggable={false}
+                      />
+                    ) : (
+                      <div
+                        className="absolute inset-0"
+                        style={{ backgroundColor: getFloorColor(tile.floorType) }}
+                      />
+                    )}
 
-                  {/* Edges */}
-                  {tile.isVisible && getEdgePositions(x, y, HEX_SIZE - 2).map((edge, i) => {
-                    const edgeType = tile.edges[i];
-                    const doorConfig = tile.doorConfigs?.[i];
+                    {/* Fog overlay for unexplored */}
+                    {!tile.isExplored && tile.isVisible && (
+                      <div className="absolute inset-0 bg-black/40 pointer-events-none" />
+                    )}
+                  </div>
 
-                    let strokeColor = 'transparent';
-                    let strokeWidth = 1;
+                  {/* Edge indicators */}
+                  {tile.isVisible && tile.edges.map((edge, i) => {
+                    if (edge === 'OPEN') return null;
+                    const edgeStyle = getEdgeStyle(edge, tile.doorConfigs?.[i]);
+                    if (!edgeStyle) return null;
 
-                    if (edgeType === 'WALL') {
-                      strokeColor = '#6b7280';
-                      strokeWidth = 3;
-                    } else if (edgeType === 'DOOR') {
-                      strokeColor = doorConfig?.state === 'LOCKED' ? '#ef4444' : '#92400e';
-                      strokeWidth = 3;
-                    } else if (edgeType === 'WINDOW') {
-                      strokeColor = '#60a5fa';
-                      strokeWidth = 2;
-                    } else if (edgeType === 'STAIRS_UP' || edgeType === 'STAIRS_DOWN') {
-                      strokeColor = '#8b5cf6';
-                      strokeWidth = 2;
-                    }
-
-                    if (strokeColor === 'transparent') return null;
-
+                    const angle = i * 60 - 30;
                     return (
-                      <line
+                      <div
                         key={i}
-                        x1={edge.x1}
-                        y1={edge.y1}
-                        x2={edge.x2}
-                        y2={edge.y2}
-                        stroke={strokeColor}
-                        strokeWidth={strokeWidth}
-                        strokeLinecap="round"
+                        className="absolute pointer-events-none"
+                        style={{
+                          left: '50%',
+                          top: '50%',
+                          width: HEX_SIZE * 0.45,
+                          height: 4,
+                          backgroundColor: edgeStyle.color,
+                          transformOrigin: 'left center',
+                          transform: `rotate(${angle}deg) translateY(-50%)`,
+                          boxShadow: edgeStyle.glow,
+                        }}
                       />
                     );
                   })}
 
-                  {/* Content when visible */}
+                  {/* Tile name label */}
                   {tile.isVisible && (
-                    <>
-                      {/* Category icon */}
-                      <text
-                        x={x}
-                        y={y - 10}
-                        textAnchor="middle"
-                        fontSize="16"
-                        opacity={0.5}
-                      >
-                        {CATEGORY_ICONS[tile.category] || '🏠'}
-                      </text>
+                    <div className="absolute inset-0 flex items-end justify-center pb-1 pointer-events-none">
+                      <span className="text-[8px] text-white/80 font-medium bg-black/50 px-1 rounded truncate max-w-[80%]">
+                        {tile.name.length > 14 ? tile.name.slice(0, 12) + '...' : tile.name}
+                      </span>
+                    </div>
+                  )}
 
-                      {/* Tile name */}
-                      <text
-                        x={x}
-                        y={y + 5}
-                        textAnchor="middle"
-                        fontSize="8"
-                        fill={tile.isExplored ? '#e5e7eb' : '#9ca3af'}
-                        fontWeight="500"
-                      >
-                        {tile.name.length > 12 ? tile.name.slice(0, 10) + '...' : tile.name}
-                      </text>
-
-                      {/* Start location marker */}
+                  {/* Content indicators */}
+                  {tile.isVisible && (
+                    <div className="absolute top-1 right-1 flex flex-col gap-1 pointer-events-none">
+                      {/* Start location */}
                       {tile.isStartLocation && (
-                        <g transform={`translate(${x + 15}, ${y - 15})`}>
-                          <circle r="8" fill="#22c55e" />
-                          <text x="0" y="3" textAnchor="middle" fontSize="10" fill="white">S</text>
-                        </g>
+                        <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-[10px] text-white font-bold shadow-lg">
+                          S
+                        </div>
                       )}
 
                       {/* Monster indicator */}
                       {tile.monsters && tile.monsters.length > 0 && (
-                        <g transform={`translate(${x - 18}, ${y + 15})`}>
-                          <circle r="8" fill="#dc2626" />
-                          <text x="0" y="3" textAnchor="middle" fontSize="8" fill="white">
+                        <div className="w-5 h-5 rounded-full bg-red-600 flex items-center justify-center shadow-lg">
+                          <span className="text-[10px] text-white font-bold">
                             {tile.monsters.reduce((sum, m) => sum + m.count, 0)}
-                          </text>
-                        </g>
+                          </span>
+                        </div>
                       )}
 
                       {/* Item indicator */}
                       {tile.items && tile.items.length > 0 && (
-                        <g transform={`translate(${x + 18}, ${y + 15})`}>
-                          <circle r="8" fill="#22c55e" />
-                          <text x="0" y="3" textAnchor="middle" fontSize="8" fill="white">
-                            {tile.items.length}
-                          </text>
-                        </g>
+                        <div className="w-5 h-5 rounded-full bg-green-600 flex items-center justify-center shadow-lg">
+                          <span className="text-[10px] text-white font-bold">{tile.items.length}</span>
+                        </div>
                       )}
-                    </>
+
+                      {/* NPC indicator */}
+                      {tile.npcs && tile.npcs.length > 0 && (
+                        <div className="w-5 h-5 rounded-full bg-cyan-500 flex items-center justify-center shadow-lg">
+                          <span className="text-[10px] text-white font-bold">{tile.npcs.length}</span>
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {/* Player marker */}
                   {isPlayerHere && (
-                    <g transform={`translate(${x}, ${y})`}>
-                      <circle r="12" fill="#fbbf24" stroke="#92400e" strokeWidth="2" />
-                      <text x="0" y="4" textAnchor="middle" fontSize="14" fill="#1a1a2e">🔍</text>
-                    </g>
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-10 h-10 rounded-full bg-amber-500 border-3 border-amber-300 flex items-center justify-center shadow-lg animate-pulse">
+                        <span className="text-lg">🔍</span>
+                      </div>
+                    </div>
                   )}
-                </g>
+                </div>
               );
             })}
-          </svg>
+          </div>
 
           {/* Instructions */}
           <div className="absolute bottom-4 left-4 bg-slate-800/90 px-4 py-2 rounded text-sm text-slate-300">
-            Click adjacent tiles to move • Blue highlight = valid move
+            Click adjacent tiles to move • Blue highlight = valid move • Scroll to zoom • Drag to pan
           </div>
         </div>
 
@@ -694,6 +927,10 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded-full bg-green-600" />
               <span className="text-slate-300">Items</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 rounded-full bg-cyan-500" />
+              <span className="text-slate-300">NPCs</span>
             </div>
 
             <div className="border-t border-slate-600 pt-3 mt-3">
@@ -723,14 +960,12 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
             </div>
 
             <div className="border-t border-slate-600 pt-3 mt-3">
-              <h4 className="text-slate-400 text-xs uppercase mb-2">Floor Types</h4>
-              <div className="space-y-1">
-                {Object.entries(FLOOR_COLORS).slice(0, 6).map(([type, color]) => (
-                  <div key={type} className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded" style={{ backgroundColor: color }} />
-                    <span className="text-slate-400 text-xs capitalize">{type}</span>
-                  </div>
-                ))}
+              <h4 className="text-slate-400 text-xs uppercase mb-2">Controls</h4>
+              <div className="text-slate-400 text-xs space-y-1">
+                <div>• Click adjacent tile to move</div>
+                <div>• Drag to pan the map</div>
+                <div>• Scroll or +/- to zoom</div>
+                <div>• Eye icon toggles fog</div>
               </div>
             </div>
           </div>
@@ -739,5 +974,41 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
     </div>
   );
 };
+
+// Helper functions
+function getFloorColor(floorType: string): string {
+  const colors: Record<string, string> = {
+    wood: '#8B4513',
+    cobblestone: '#696969',
+    tile: '#A9A9A9',
+    stone: '#4a4a5a',
+    grass: '#228B22',
+    dirt: '#8B7355',
+    water: '#1E3A5F',
+    ritual: '#4B0082',
+    carpet: '#8B0000',
+    marble: '#F5F5F5',
+  };
+  return colors[floorType] || colors.stone;
+}
+
+function getEdgeStyle(edge: ConnectionEdgeType, doorConfig?: DoorConfig): { color: string; glow?: string } | null {
+  switch (edge) {
+    case 'WALL':
+      return { color: '#6b7280' };
+    case 'DOOR':
+      if (doorConfig?.state === 'LOCKED' || doorConfig?.state === 'SEALED') {
+        return { color: '#ef4444', glow: '0 0 6px #ef4444' };
+      }
+      return { color: '#92400e' };
+    case 'WINDOW':
+      return { color: '#60a5fa' };
+    case 'STAIRS_UP':
+    case 'STAIRS_DOWN':
+      return { color: '#8b5cf6', glow: '0 0 6px #8b5cf6' };
+    default:
+      return null;
+  }
+}
 
 export default PreviewPanel;

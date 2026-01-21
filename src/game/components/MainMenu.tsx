@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Skull, Settings, Users, Package, HardDrive, Map } from 'lucide-react';
+import { Play, Skull, Settings, Users, Package, HardDrive, Map, FileText } from 'lucide-react';
 
 interface MainMenuProps {
   onNewGame: () => void;
@@ -15,6 +15,9 @@ interface MainMenuProps {
   stashCount?: number;
   // Quest Editor
   onQuestEditor?: () => void;
+  // Custom Quest Loader
+  onCustomQuest?: () => void;
+  customQuestCount?: number;
 }
 
 const MainMenu: React.FC<MainMenuProps> = ({
@@ -28,7 +31,9 @@ const MainMenu: React.FC<MainMenuProps> = ({
   onSaveLoad,
   heroCount = 0,
   stashCount = 0,
-  onQuestEditor
+  onQuestEditor,
+  onCustomQuest,
+  customQuestCount = 0
 }) => {
   return (
     <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-background text-foreground overflow-hidden font-serif">
@@ -125,15 +130,37 @@ const MainMenu: React.FC<MainMenuProps> = ({
             </span>
           </button>
 
-          {onQuestEditor && (
-            <button
-              onClick={onQuestEditor}
-              className="group relative px-4 py-3 bg-purple-900/20 border border-purple-700 hover:border-purple-500 text-purple-400 hover:text-purple-300 transition-all uppercase tracking-[0.2em] font-bold text-xs md:text-sm rounded hover:bg-purple-900/30"
-            >
-              <span className="flex items-center justify-center gap-3">
-                <Map size={16} className="group-hover:scale-110 transition-transform" /> Quest Editor
-              </span>
-            </button>
+          {/* Quest Editor and Custom Quest buttons */}
+          {(onQuestEditor || onCustomQuest) && (
+            <div className="flex gap-3 mt-2">
+              {onCustomQuest && (
+                <button
+                  onClick={onCustomQuest}
+                  className="group flex-1 relative px-4 py-3 bg-amber-900/20 border border-amber-700 hover:border-amber-500 text-amber-400 hover:text-amber-300 transition-all uppercase tracking-wider font-bold text-xs rounded backdrop-blur-sm"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <FileText size={16} />
+                    <span className="hidden md:inline">Custom Quest</span>
+                    {customQuestCount > 0 && (
+                      <span className="px-1.5 py-0.5 bg-amber-600 text-amber-100 rounded-full text-[10px]">
+                        {customQuestCount}
+                      </span>
+                    )}
+                  </span>
+                </button>
+              )}
+              {onQuestEditor && (
+                <button
+                  onClick={onQuestEditor}
+                  className="group flex-1 relative px-4 py-3 bg-purple-900/20 border border-purple-700 hover:border-purple-500 text-purple-400 hover:text-purple-300 transition-all uppercase tracking-wider font-bold text-xs rounded backdrop-blur-sm"
+                >
+                  <span className="flex items-center justify-center gap-2">
+                    <Map size={16} className="group-hover:scale-110 transition-transform" />
+                    <span className="hidden md:inline">Quest Editor</span>
+                  </span>
+                </button>
+              )}
+            </div>
           )}
         </div>
 

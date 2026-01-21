@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { ArrowLeft, Download, Trash2, RotateCw, Save, Upload, Grid3X3, Eraser, MousePointer, Skull, Package, Target, Settings, CheckCircle, Play, Zap, Users, AlertTriangle, Undo2, Redo2 } from 'lucide-react';
+import { ArrowLeft, Download, Trash2, RotateCw, Save, Upload, Grid3X3, Eraser, MousePointer, Skull, Package, Target, Settings, CheckCircle, Play, Zap, Users, AlertTriangle, Undo2, Redo2, BookOpen } from 'lucide-react';
 import useUndoRedo, { UndoableState } from './useUndoRedo';
 import { TileTemplate, ConnectionEdgeType, rotateEdges } from '../../tileConnectionSystem';
 import { TileCategory, FloorType, ZoneLevel, EdgeData, Item, EnemyType, DoorState } from '../../types';
@@ -25,6 +25,11 @@ import PreviewPanel from './PreviewPanel';
 import TriggerPanel, { EditorTrigger } from './TriggerPanel';
 import NPCPalette, { NPCPlacement } from './NPCPalette';
 import DoomEventsPanel, { DoomEvent } from './DoomEventsPanel';
+import CampaignEditor from './CampaignEditor';
+import CustomQuestLoader from './CustomQuestLoader';
+
+// Re-export for external use
+export { CampaignEditor, CustomQuestLoader };
 
 // ============================================================================
 // RIGHT PANEL TABS
@@ -119,6 +124,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
   const [showGrid, setShowGrid] = useState(true);
   const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('properties');
   const [showPreview, setShowPreview] = useState(false);
+  const [showCampaignEditor, setShowCampaignEditor] = useState(false);
 
   // Undo/Redo
   const {
@@ -264,17 +270,16 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
   // TILE PLACEMENT
   // ============================================================================
 
-  const handleCanvasClick = useCallback((q: number, r: number) => {
+  const handleCanvasClick = useCallback((q: number, r: number, modifierHeld: boolean = false) => {
     const key = getTileKey(q, r);
+    const existingTile = tiles.get(key);
 
     if (activeTool === 'select') {
-      const existingTile = tiles.get(key);
       setSelectedTileId(existingTile ? key : null);
       return;
     }
 
     if (activeTool === 'erase') {
-      const existingTile = tiles.get(key);
       if (existingTile) {
         recordAction(`Delete tile: ${existingTile.name}`);
       }
@@ -290,6 +295,12 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
     }
 
     if (activeTool === 'place' && selectedTemplate) {
+      // If tile exists and Shift is not held, select it instead of replacing
+      if (existingTile && !modifierHeld) {
+        setSelectedTileId(key);
+        return;
+      }
+
       const rotatedEdges = selectedTemplate.canRotate
         ? rotateEdges(selectedTemplate.edges, rotation)
         : selectedTemplate.edges;
@@ -310,7 +321,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
         watermarkIcon: selectedTemplate.watermarkIcon,
       };
 
-      recordAction(`Place tile: ${selectedTemplate.name}`);
+      recordAction(existingTile ? `Replace tile: ${existingTile.name} with ${selectedTemplate.name}` : `Place tile: ${selectedTemplate.name}`);
       setTiles(prev => {
         const newTiles = new Map(prev);
         newTiles.set(key, newTile);
@@ -570,6 +581,18 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
         >
           <Play className="w-4 h-4 mr-1" />
           Preview
+        </Button>
+
+        {/* Campaign Editor button */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setShowCampaignEditor(true)}
+          className="text-purple-400 hover:text-purple-300"
+          title="Campaign Editor - Create multi-quest campaigns"
+        >
+          <BookOpen className="w-4 h-4 mr-1" />
+          Campaign
         </Button>
 
         <div className="h-6 w-px bg-slate-600" />
@@ -1112,7 +1135,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
           </span>
         )}
         <span className="ml-auto text-xs">
-          Ctrl+Z=Undo | Ctrl+Shift+Z=Redo | S=Select | P=Place | E=Erase | R=Rotate
+          Ctrl+Z=Undo | Ctrl+Shift+Z=Redo | S=Select | P=Place | E=Erase | R=Rotate | <span className="text-amber-400">Shift+Click=Replace</span>
         </span>
       </div>
 
@@ -1123,6 +1146,13 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
           objectives={objectives}
           metadata={metadata}
           onClose={() => setShowPreview(false)}
+        />
+      )}
+
+      {/* Campaign Editor */}
+      {showCampaignEditor && (
+        <CampaignEditor
+          onBack={() => setShowCampaignEditor(false)}
         />
       )}
     </div>
