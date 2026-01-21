@@ -40,6 +40,8 @@ import {
   TRAP_ACTIONS,
   GATE_ACTIONS,
   WINDOW_EDGE_ACTIONS,
+  STAIRS_UP_ACTIONS,
+  STAIRS_DOWN_ACTIONS,
   CANCEL_ACTION
 } from './contextActionDefinitions';
 
@@ -191,6 +193,21 @@ export function getWindowEdgeActions(
   return withCancelAction(actions);
 }
 
+/**
+ * Gets available actions for a stairs edge
+ */
+export function getStairsEdgeActions(
+  player: Player,
+  edge: EdgeData,
+  tile: Tile
+): ContextAction[] {
+  const edgeType = edge.type?.toLowerCase() || '';
+  const isUp = edgeType === 'stairs_up';
+  const actionConfigs = isUp ? STAIRS_UP_ACTIONS : STAIRS_DOWN_ACTIONS;
+  const actions = actionConfigs.map(buildStaticAction);
+  return withCancelAction(actions);
+}
+
 // ============================================================================
 // OBSTACLE CONTEXT ACTIONS
 // ============================================================================
@@ -337,6 +354,9 @@ export function getContextActions(
         }
         if (target.edge.type === 'window') {
           return getWindowEdgeActions(player, target.edge, tile);
+        }
+        if (target.edge.type === 'stairs_up' || target.edge.type === 'stairs_down') {
+          return getStairsEdgeActions(player, target.edge, tile);
         }
         // Default to door actions for door type edges
         return getDoorActions(player, target.edge, tile);

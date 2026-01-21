@@ -1,5 +1,130 @@
 # Development Log
 
+## 2026-01-21: Fix Ghost Tiles og Trapp-håndtering
+
+### Oppsummering
+
+Fikset to problemer:
+1. Grå MapPin tiles vistes for posisjoner som aldri har vært besøkt
+2. Trapp-edges manglet kostnad og konteksthandlinger
+
+---
+
+### Problem 1: Feil "exploredTiles" markering
+
+**Problem:** Når spilleren besøkte en tile, ble alle 6 naboposisjonene også markert som "explored". Dette førte til at ghost tiles rundt spilleren viste grå MapPin (besøkt) i stedet for rød "UTFORSK" (aldri besøkt).
+
+**Årsak (src/game/ShadowsGame.tsx:2459-2469):**
+```typescript
+// FEIL: Markerte alle nabotiles som explored
+const adjacentOffsets = [...];
+adjacentOffsets.forEach(({ dq, dr }) => {
+  newExplored.add(`${q + dq},${r + dr}`);  // <- Dette var feil
+});
+```
+
+**Løsning:** Fjernet koden som markerte nabotiles. Nå markeres KUN tilen spilleren faktisk besøker som explored:
+```typescript
+// RIKTIG: Marker KUN den besøkte tilen
+const newExplored = new Set(state.exploredTiles || []);
+newExplored.add(`${q},${r}`);
+```
+
+**Fil:** `src/game/ShadowsGame.tsx`
+
+---
+
+### Problem 2: Trapper mangler kostnad og handlinger
+
+**Problem:** Når spilleren prøvde å bevege seg gjennom en trapp-edge (stairs_up/stairs_down), skjedde enten ingenting eller feil melding ble vist. Trapper manglet:
+- AP-kostnad (game design sier 2 AP for trapper)
+- Konteksthandlinger for å bruke trappen
+- Riktig melding i loggen
+
+**Løsning:**
+
+1. **Nye action-definisjoner (src/game/utils/contextActionDefinitions.ts):**
+   ```typescript
+   export const STAIRS_UP_ACTIONS: ActionConfig[] = [
+     {
+       id: 'use_stairs_up',
+       label: 'Gå opp trappen (2 AP)',
+       apCost: 2,
+       consequences: { success: { type: 'pass_through' } }
+     },
+     { id: 'examine_stairs_up', label: 'Undersøk trappen', apCost: 0 }
+   ];
+
+   export const STAIRS_DOWN_ACTIONS: ActionConfig[] = [
+     {
+       id: 'use_stairs_down',
+       label: 'Gå ned trappen (2 AP)',
+       apCost: 2,
+       consequences: { success: { type: 'pass_through' } }
+     },
+     { id: 'examine_stairs_down', label: 'Undersøk trappen', apCost: 0 }
+   ];
+   ```
+
+2. **Ny funksjon i contextActions.ts:**
+   ```typescript
+   export function getStairsEdgeActions(player, edge, tile): ContextAction[] {
+     const isUp = edge.type === 'stairs_up';
+     const actionConfigs = isUp ? STAIRS_UP_ACTIONS : STAIRS_DOWN_ACTIONS;
+     return withCancelAction(actionConfigs.map(buildStaticAction));
+   }
+   ```
+
+3. **Oppdatert getContextActions() for å route til trapp-handlinger:**
+   ```typescript
+   if (target.edge.type === 'stairs_up' || target.edge.type === 'stairs_down') {
+     return getStairsEdgeActions(player, target.edge, tile);
+   }
+   ```
+
+4. **Bevegelseskode blokkerer nå trapper og viser kontekstmeny:**
+   ```typescript
+   if (sourceEdge.type === 'stairs_up' || sourceEdge.type === 'stairs_down') {
+     addToLog(`TRAPP: Trappen går ${stairsDirection}. Bruk 2 AP for å passere.`);
+     showContextActions(tile, edgeIndex);
+     return;
+   }
+   ```
+
+5. **Pass-through handling for trapper (contextActionEffects.ts):**
+   ```typescript
+   const PASS_THROUGH_ACTIONS = [
+     // ... existing actions ...
+     'use_stairs_up',
+     'use_stairs_down'
+   ];
+   ```
+
+**Filer endret:**
+- `src/game/ShadowsGame.tsx` - Bevegelseslogikk og exploredTiles fix
+- `src/game/utils/contextActionDefinitions.ts` - Nye trapp-handlinger
+- `src/game/utils/contextActions.ts` - Ny getStairsEdgeActions() funksjon
+- `src/game/utils/contextActionEffects.ts` - Pass-through for trapper
+
+---
+
+### Visuelle endringer
+
+**Ghost Tiles:**
+- Røde "UTFORSK" tiles = Posisjoner som ALDRI har blitt besøkt (ikke i exploredTiles)
+- Grå tiles med MapPin = Posisjoner som HAR blitt besøkt men ikke lenger har en tile
+
+**Trapper:**
+- Viser nå kontekstmeny med "Gå opp/ned trappen (2 AP)" og "Undersøk trappen"
+- Spilleren flyttes til nabotile etter å ha brukt trappen
+
+---
+
+### Build Status
+✅ Build vellykket
+
+---
+
 ## 2026-01-21: Tile System Fixes - Missing Mappings and Fog Visibility
 
 ### Oppsummering

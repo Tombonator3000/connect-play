@@ -2333,6 +2333,14 @@ const ShadowsGame: React.FC = () => {
             showContextActions(sourceTile, edgeFromSource);
             return;
           }
+          // Stairs require extra AP - show context actions
+          if (sourceEdge.type === 'stairs_up' || sourceEdge.type === 'stairs_down') {
+            const stairsDirection = sourceEdge.type === 'stairs_up' ? 'opp' : 'ned';
+            addToLog(`TRAPP: Trappen går ${stairsDirection}. Bruk 2 AP for å passere.`);
+            setState(prev => ({ ...prev, selectedTileId: sourceTile.id }));
+            showContextActions(sourceTile, edgeFromSource);
+            return;
+          }
         }
 
         // Check target tile's edge (the side we're entering from)
@@ -2356,6 +2364,14 @@ const ShadowsGame: React.FC = () => {
           // Windows require Athletics check
           if (targetEdge.type === 'window') {
             addToLog(`WINDOW: Cannot pass through window (Athletics DC 4 required).`);
+            setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
+            showContextActions(targetTile, edgeFromTarget);
+            return;
+          }
+          // Stairs require extra AP - show context actions
+          if (targetEdge.type === 'stairs_up' || targetEdge.type === 'stairs_down') {
+            const stairsDirection = targetEdge.type === 'stairs_up' ? 'opp' : 'ned';
+            addToLog(`TRAPP: Trappen går ${stairsDirection}. Bruk 2 AP for å passere.`);
             setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
             showContextActions(targetTile, edgeFromTarget);
             return;
@@ -2456,17 +2472,10 @@ const ShadowsGame: React.FC = () => {
           }
         }
 
-        // Mark tile and surrounding tiles as explored
+        // Mark ONLY the current tile as explored (not adjacent tiles)
+        // Adjacent tiles should show as "UTFORSK" (red) until the player actually visits them
         const newExplored = new Set(state.exploredTiles || []);
         newExplored.add(`${q},${r}`);
-        // Also mark adjacent tiles as explored (visibility range)
-        const adjacentOffsets = [
-          { dq: 1, dr: 0 }, { dq: 1, dr: -1 }, { dq: 0, dr: -1 },
-          { dq: -1, dr: 0 }, { dq: -1, dr: 1 }, { dq: 0, dr: 1 }
-        ];
-        adjacentOffsets.forEach(({ dq, dr }) => {
-          newExplored.add(`${q + dq},${r + dr}`);
-        });
 
         // Apply movement and hazard damage
         if (hazardDamage > 0) {

@@ -977,3 +977,47 @@ export const WINDOW_EDGE_ACTIONS: ActionConfig[] = [
     successMessage: 'You peer through the dusty glass...'
   }
 ];
+
+// ============================================================================
+// STAIRS EDGE ACTIONS
+// ============================================================================
+
+export const STAIRS_UP_ACTIONS: ActionConfig[] = [
+  {
+    id: 'use_stairs_up',
+    label: 'Gå opp trappen (2 AP)',
+    icon: 'interact',
+    apCost: 2,
+    successMessage: 'Du går opp trappen.',
+    consequences: {
+      success: { type: 'pass_through' }
+    }
+  },
+  {
+    id: 'examine_stairs_up',
+    label: 'Undersøk trappen',
+    icon: 'search',
+    apCost: 0,
+    successMessage: 'Trappen fører oppover til neste etasje.'
+  }
+];
+
+export const STAIRS_DOWN_ACTIONS: ActionConfig[] = [
+  {
+    id: 'use_stairs_down',
+    label: 'Gå ned trappen (2 AP)',
+    icon: 'interact',
+    apCost: 2,
+    successMessage: 'Du går ned trappen inn i mørket.',
+    consequences: {
+      success: { type: 'pass_through' }
+    }
+  },
+  {
+    id: 'examine_stairs_down',
+    label: 'Undersøk trappen',
+    icon: 'search',
+    apCost: 0,
+    successMessage: 'Trappen forsvinner ned i mørket under.'
+  }
+];
