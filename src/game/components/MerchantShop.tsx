@@ -32,8 +32,7 @@ import {
   sellItemToFence,
   sellStashItem
 } from '../utils/legacyManager';
-import { canUseWeapon } from '../utils/combatUtils';
-import { CHARACTERS } from '../constants';
+import { canCharacterClassUseWeapon } from '../utils/combatUtils';
 import {
   ShoppingBag,
   Sword,
@@ -211,15 +210,9 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
   const isWeaponRestrictedForHero = useCallback((weaponId: string, itemType: string): boolean => {
     if (!activeHero || itemType !== 'weapon') return false;
 
-    // Create a minimal player-like object for canUseWeapon check
-    const mockPlayer = {
-      id: activeHero.characterClass,
-      specialAbility: CHARACTERS[activeHero.characterClass as keyof typeof CHARACTERS]?.specialAbility || '',
-      inventory: { leftHand: null, rightHand: null, body: null, bag: [] },
-      attributes: { strength: 0, agility: 0, intelligence: 0, willpower: 0 }
-    } as any;
-
-    return !canUseWeapon(mockPlayer, weaponId);
+    // Use canCharacterClassUseWeapon directly with the character class
+    // This avoids the need for creating mock Player objects with type assertions
+    return !canCharacterClassUseWeapon(activeHero.characterClass, weaponId);
   }, [activeHero]);
 
   const renderShopItem = (shopItem: ShopItem) => {

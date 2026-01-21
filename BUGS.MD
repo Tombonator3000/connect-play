@@ -8,7 +8,7 @@
 
 | Status | Antall |
 |--------|--------|
-| **FIKSET** | 2 |
+| **FIKSET** | 3 |
 | **BEKREFTET** | 2 |
 | **TIL VERIFISERING** | 2 |
 | **LITEN RISIKO** | 5 |
@@ -16,6 +16,49 @@
 ---
 
 ## FIKSET
+
+### BUG-012: `as any` i MerchantShop.tsx for weapon restriction check (FIKSET 2026-01-21)
+
+**Fil:** `src/game/components/MerchantShop.tsx:220`
+
+**Kode før:**
+```typescript
+const isWeaponRestrictedForHero = useCallback((weaponId: string, itemType: string): boolean => {
+  if (!activeHero || itemType !== 'weapon') return false;
+
+  // Create a minimal player-like object for canUseWeapon check
+  const mockPlayer = {
+    id: activeHero.characterClass,
+    specialAbility: CHARACTERS[activeHero.characterClass as keyof typeof CHARACTERS]?.specialAbility || '',
+    inventory: { leftHand: null, rightHand: null, body: null, bag: [] },
+    attributes: { strength: 0, agility: 0, intelligence: 0, willpower: 0 }
+  } as any;
+
+  return !canUseWeapon(mockPlayer, weaponId);
+}, [activeHero]);
+```
+
+**Problem:** `as any` ble brukt for å lage et mock Player-objekt fordi `canUseWeapon` krevde et helt `Player` objekt, selv om funksjonen bare brukte `player.id` for å sjekke våpenrestriksjoner.
+
+**Løsning:**
+1. Opprettet ny funksjon `canCharacterClassUseWeapon(characterClass, weaponId)` i `combatUtils.ts` som gjør det faktiske arbeidet
+2. Refaktorerte `canUseWeapon(player, weaponId)` til å være en wrapper rundt den nye funksjonen
+3. Oppdaterte MerchantShop til å bruke `canCharacterClassUseWeapon` direkte med `activeHero.characterClass`
+
+**Kode etter:**
+```typescript
+const isWeaponRestrictedForHero = useCallback((weaponId: string, itemType: string): boolean => {
+  if (!activeHero || itemType !== 'weapon') return false;
+
+  // Use canCharacterClassUseWeapon directly with the character class
+  // This avoids the need for creating mock Player objects with type assertions
+  return !canCharacterClassUseWeapon(activeHero.characterClass, weaponId);
+}, [activeHero]);
+```
+
+**Severity:** LOW (fungerte, men dårlig praksis) → FIKSET
+
+---
 
 ### BUG-001: Unødvendig `as any` type assertion i SkillCheckPanel (FIKSET 2026-01-21)
 

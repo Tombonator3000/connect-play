@@ -1,5 +1,68 @@
 # Development Log
 
+## 2026-01-21: Fix `as any` Type Assertion i MerchantShop
+
+### Oppsummering
+
+Fjernet `as any` type assertion i MerchantShop.tsx ved å refaktorere `canUseWeapon` funksjonen til en mer gjenbrukbar arkitektur.
+
+---
+
+### Problem: `as any` for mock Player-objekt
+
+**Fil:** `src/game/components/MerchantShop.tsx:220`
+
+**Problem:** MerchantShop måtte lage et mock Player-objekt med `as any` for å sjekke våpenrestriksjoner fordi `canUseWeapon(player, weaponId)` krevde et helt `Player` objekt, selv om funksjonen bare brukte `player.id`.
+
+**Kode før:**
+```typescript
+const mockPlayer = {
+  id: activeHero.characterClass,
+  specialAbility: CHARACTERS[activeHero.characterClass as keyof typeof CHARACTERS]?.specialAbility || '',
+  inventory: { leftHand: null, rightHand: null, body: null, bag: [] },
+  attributes: { strength: 0, agility: 0, intelligence: 0, willpower: 0 }
+} as any;
+
+return !canUseWeapon(mockPlayer, weaponId);
+```
+
+---
+
+### Løsning
+
+1. **Ny hjelpefunksjon** `canCharacterClassUseWeapon(characterClass, weaponId)` i `combatUtils.ts`:
+   - Tar bare characterClass (string) og weaponId som parametere
+   - Gjør det faktiske arbeidet med å sjekke våpenrestriksjoner
+   - Kan brukes direkte av komponenter som kun har tilgang til karakterklasse
+
+2. **Refaktorert `canUseWeapon`** til å være en wrapper:
+   - Kaller `canCharacterClassUseWeapon(player.id, weaponId)`
+   - Bakoverkompatibel - eksisterende kode trenger ingen endringer
+
+3. **Oppdatert MerchantShop.tsx**:
+   - Bruker `canCharacterClassUseWeapon` direkte med `activeHero.characterClass`
+   - Ingen mock player eller `as any` nødvendig
+
+**Kode etter:**
+```typescript
+return !canCharacterClassUseWeapon(activeHero.characterClass, weaponId);
+```
+
+---
+
+### Påvirkede filer
+
+- `src/game/utils/combatUtils.ts` - Lagt til `canCharacterClassUseWeapon`, importert `CharacterType`
+- `src/game/components/MerchantShop.tsx` - Fjernet mock player og `as any`, bruker ny funksjon
+
+---
+
+### Relatert
+
+BUG-012 i BUGS.MD
+
+---
+
 ## 2026-01-21: Fix Event Card Effects
 
 ### Oppsummering
