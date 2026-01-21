@@ -2,11 +2,11 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package, X, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent, OccultistSpell, SpellParticleType, LogEntry, detectLogCategory, getLogCategoryClasses } from './types';
+import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent, OccultistSpell, SpellParticleType, LogEntry, detectLogCategory, getLogCategoryClasses, LevelUpBonus, SurvivorTrait } from './types';
 import ContextActionBar from './components/ContextActionBar';
 import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
 import { performSkillCheck } from './utils/combatUtils';
-import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, OCCULTIST_SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES, validateTileConnection, selectRandomConnectableCategory, isDoorRequired, CATEGORY_ZONE_LEVELS, LOCATION_DESCRIPTIONS, getWeatherForDoom, getWeatherEffect, calculateWeatherAgilityPenalty, rollWeatherHorror, WEATHER_EFFECTS, getDarkRoomItem, DARK_ROOM_LOOT_TABLES } from './constants';
+import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, OCCULTIST_SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES, validateTileConnection, selectRandomConnectableCategory, isDoorRequired, CATEGORY_ZONE_LEVELS, LOCATION_DESCRIPTIONS, getWeatherForDoom, getWeatherEffect, calculateWeatherAgilityPenalty, rollWeatherHorror, WEATHER_EFFECTS, getDarkRoomItem, DARK_ROOM_LOOT_TABLES, getAvailableSurvivorTraits } from './constants';
 import { hexDistance, findPath } from './hexUtils';
 import GameBoard from './components/GameBoard';
 import CharacterPanel from './components/CharacterPanel';
@@ -28,6 +28,8 @@ import { checkVictoryConditions, checkDefeatConditions, updateObjectiveProgress,
 import PuzzleModal from './components/PuzzleModal';
 import EventModal from './components/EventModal';
 import SpellSelectionModal from './components/SpellSelectionModal';
+import LevelUpModal from './components/LevelUpModal';
+import SurvivorTraitModal from './components/SurvivorTraitModal';
 import FieldGuidePanel from './components/FieldGuidePanel';
 import CharacterSelectionScreen from './components/CharacterSelectionScreen';
 import SaveLoadModal from './components/SaveLoadModal';
@@ -46,7 +48,8 @@ import {
   killHero,
   addXPToHero,
   addGoldToHero,
-  createDefaultLegacyData
+  createDefaultLegacyData,
+  applyLevelUpBonus
 } from './utils/legacyManager';
 import { generateValidatedScenario, getScenarioValidationInfo } from './utils/scenarioGenerator';
 import {
@@ -200,6 +203,16 @@ const ShadowsGame: React.FC = () => {
   const [showScenarioInfo, setShowScenarioInfo] = useState(false);
   const [lastScenarioResult, setLastScenarioResult] = useState<ScenarioResult | null>(null);
   const [heroKillCounts, setHeroKillCounts] = useState<Record<string, number>>({});
+
+  // Level-Up Modal State
+  const [showLevelUpModal, setShowLevelUpModal] = useState(false);
+  const [levelUpQueue, setLevelUpQueue] = useState<{ heroId: string; newLevel: number }[]>([]);
+  const [currentLevelUpHero, setCurrentLevelUpHero] = useState<LegacyHero | null>(null);
+
+  // Survivor Trait Modal State (for permadeath heroes)
+  const [showSurvivorTraitModal, setShowSurvivorTraitModal] = useState(false);
+  const [survivorTraitQueue, setSurvivorTraitQueue] = useState<string[]>([]); // Hero IDs
+  const [currentSurvivorHero, setCurrentSurvivorHero] = useState<LegacyHero | null>(null);
 
   // Difficulty selection for random scenario
   const [selectedDifficulty, setSelectedDifficulty] = useState<'Normal' | 'Hard' | 'Nightmare' | null>(null);
@@ -965,6 +978,10 @@ const ShadowsGame: React.FC = () => {
       obj => obj.isOptional && obj.completed
     ).length;
 
+    // Track heroes that need level-up selection or survivor trait selection
+    const pendingLevelUps: { heroId: string; newLevel: number }[] = [];
+    const pendingSurvivorTraits: string[] = [];
+
     // Calculate rewards
     const goldReward = calculateScenarioGoldReward(victory, difficulty, completedBonusObjectives);
     const xpReward = calculateScenarioXPReward(victory, difficulty, 0, completedBonusObjectives);
@@ -1044,6 +1061,23 @@ const ShadowsGame: React.FC = () => {
         if (canLevelUp(updatedHero)) {
           heroResult.leveledUp = true;
           heroResult.newLevel = updatedHero.level + 1;
+          // Add to level-up queue
+          pendingLevelUps.push({ heroId: hero.id, newLevel: heroResult.newLevel });
+        }
+
+        // Update survivor streak for permadeath heroes
+        if (hero.hasPermadeath) {
+          updatedHero.scenariosSurvivedStreak = (updatedHero.scenariosSurvivedStreak || 0) + 1;
+
+          // Check if they've reached a survivor trait milestone (3 or 6 scenarios)
+          const streakMilestones = [3, 6];
+          const chosenTraits = updatedHero.survivorTraits || [];
+          const availableTraits = getAvailableSurvivorTraits(updatedHero.scenariosSurvivedStreak, chosenTraits);
+
+          // If they just hit a milestone and have traits to choose
+          if (streakMilestones.includes(updatedHero.scenariosSurvivedStreak) && availableTraits.length > 0) {
+            pendingSurvivorTraits.push(hero.id);
+          }
         }
 
         // Track scenario
@@ -1073,6 +1107,23 @@ const ShadowsGame: React.FC = () => {
     setLegacyData(updatedLegacyData);
     setLastScenarioResult(result);
 
+    // Queue up level-up modals
+    if (pendingLevelUps.length > 0) {
+      setLevelUpQueue(pendingLevelUps);
+      // Start with first hero in queue
+      const firstLevelUp = pendingLevelUps[0];
+      const heroToLevel = updatedLegacyData.heroes.find(h => h.id === firstLevelUp.heroId);
+      if (heroToLevel) {
+        setCurrentLevelUpHero(heroToLevel);
+        setShowLevelUpModal(true);
+      }
+    }
+
+    // Queue up survivor trait modals
+    if (pendingSurvivorTraits.length > 0) {
+      setSurvivorTraitQueue(pendingSurvivorTraits);
+    }
+
     // Show merchant shop if there are survivors
     const survivors = heroResults.filter(r => r.survived);
     if (survivors.length > 0) {
@@ -1087,6 +1138,117 @@ const ShadowsGame: React.FC = () => {
       [heroId]: (prev[heroId] || 0) + 1
     }));
   }, []);
+
+  // Handle level-up bonus selection
+  const handleLevelUpBonusSelect = useCallback((bonus: LevelUpBonus) => {
+    if (!currentLevelUpHero) return;
+
+    // Apply the bonus to the hero
+    const updatedHero = applyLevelUpBonus(currentLevelUpHero, bonus);
+    // Also increment the level
+    updatedHero.level = (currentLevelUpHero.level || 1) + 1;
+
+    // Update legacy data
+    const updatedLegacyData = updateHero(legacyData, updatedHero);
+    setLegacyData(updatedLegacyData);
+    saveLegacyData(updatedLegacyData);
+
+    // Move to next hero in queue or close modal
+    const remainingQueue = levelUpQueue.slice(1);
+    if (remainingQueue.length > 0) {
+      setLevelUpQueue(remainingQueue);
+      const nextLevelUp = remainingQueue[0];
+      const nextHero = updatedLegacyData.heroes.find(h => h.id === nextLevelUp.heroId);
+      if (nextHero) {
+        setCurrentLevelUpHero(nextHero);
+      } else {
+        setShowLevelUpModal(false);
+        setCurrentLevelUpHero(null);
+      }
+    } else {
+      setShowLevelUpModal(false);
+      setCurrentLevelUpHero(null);
+      setLevelUpQueue([]);
+
+      // After all level-ups are done, check if we need survivor trait selection
+      if (survivorTraitQueue.length > 0) {
+        const firstHeroId = survivorTraitQueue[0];
+        const hero = updatedLegacyData.heroes.find(h => h.id === firstHeroId);
+        if (hero) {
+          setCurrentSurvivorHero(hero);
+          setShowSurvivorTraitModal(true);
+        }
+      }
+    }
+
+    addToLog(`${updatedHero.name} reached Level ${updatedHero.level}!`);
+  }, [currentLevelUpHero, legacyData, levelUpQueue, survivorTraitQueue, addToLog]);
+
+  // Handle survivor trait selection
+  const handleSurvivorTraitSelect = useCallback((trait: SurvivorTrait) => {
+    if (!currentSurvivorHero) return;
+
+    // Apply the trait to the hero
+    const updatedHero: LegacyHero = {
+      ...currentSurvivorHero,
+      survivorTraits: [...(currentSurvivorHero.survivorTraits || []), trait.id]
+    };
+
+    // Apply trait effects
+    if (trait.effect.type === 'bonus_hp') {
+      updatedHero.maxHp = (updatedHero.maxHp || 6) + trait.effect.value;
+      if (trait.effect.sanityCost) {
+        updatedHero.maxSanity = Math.max(1, (updatedHero.maxSanity || 6) - trait.effect.sanityCost);
+      }
+    } else if (trait.effect.type === 'bonus_attack_die') {
+      updatedHero.bonusAttackDice = (updatedHero.bonusAttackDice || 0) + trait.effect.value;
+    }
+
+    // Update legacy data
+    const updatedLegacyData = updateHero(legacyData, updatedHero);
+    setLegacyData(updatedLegacyData);
+    saveLegacyData(updatedLegacyData);
+
+    // Move to next hero or close modal
+    const remainingQueue = survivorTraitQueue.slice(1);
+    if (remainingQueue.length > 0) {
+      setSurvivorTraitQueue(remainingQueue);
+      const nextHeroId = remainingQueue[0];
+      const nextHero = updatedLegacyData.heroes.find(h => h.id === nextHeroId);
+      if (nextHero) {
+        setCurrentSurvivorHero(nextHero);
+      } else {
+        setShowSurvivorTraitModal(false);
+        setCurrentSurvivorHero(null);
+      }
+    } else {
+      setShowSurvivorTraitModal(false);
+      setCurrentSurvivorHero(null);
+      setSurvivorTraitQueue([]);
+    }
+
+    addToLog(`${updatedHero.name} gained the "${trait.name}" survivor trait!`);
+  }, [currentSurvivorHero, legacyData, survivorTraitQueue, addToLog]);
+
+  // Skip survivor trait selection (can choose later)
+  const handleSkipSurvivorTrait = useCallback(() => {
+    const remainingQueue = survivorTraitQueue.slice(1);
+    if (remainingQueue.length > 0) {
+      setSurvivorTraitQueue(remainingQueue);
+      const nextHeroId = remainingQueue[0];
+      const nextHero = legacyData.heroes.find(h => h.id === nextHeroId);
+      if (nextHero) {
+        setCurrentSurvivorHero(nextHero);
+      } else {
+        setShowSurvivorTraitModal(false);
+        setCurrentSurvivorHero(null);
+      }
+    } else {
+      setShowSurvivorTraitModal(false);
+      setCurrentSurvivorHero(null);
+      setSurvivorTraitQueue([]);
+    }
+  }, [survivorTraitQueue, legacyData.heroes]);
 
   // ============================================================================
   // INVENTORY MANAGEMENT HANDLERS
@@ -4231,6 +4393,28 @@ const ShadowsGame: React.FC = () => {
             setPendingLegacyOccultists([]);
             setCurrentLegacyOccultistIndex(0);
           }}
+        />
+      )}
+
+      {/* Level-Up Modal */}
+      {showLevelUpModal && currentLevelUpHero && (
+        <LevelUpModal
+          hero={currentLevelUpHero}
+          newLevel={levelUpQueue[0]?.newLevel || currentLevelUpHero.level + 1}
+          onConfirm={handleLevelUpBonusSelect}
+        />
+      )}
+
+      {/* Survivor Trait Modal (Permadeath Heroes) */}
+      {showSurvivorTraitModal && currentSurvivorHero && (
+        <SurvivorTraitModal
+          hero={currentSurvivorHero}
+          availableTraits={getAvailableSurvivorTraits(
+            currentSurvivorHero.scenariosSurvivedStreak || 0,
+            currentSurvivorHero.survivorTraits || []
+          )}
+          onConfirm={handleSurvivorTraitSelect}
+          onSkip={handleSkipSurvivorTrait}
         />
       )}
 

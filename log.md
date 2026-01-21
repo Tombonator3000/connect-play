@@ -9949,3 +9949,440 @@ Now a tile is ALWAYS created when `spawnRoom()` is called, preventing the "disap
 - ✅ Build successful
 - ✅ No TypeScript errors
 
+---
+
+## 2026-01-21: XP- og Leveling-System Design (FORSLAG)
+
+### Bakgrunn
+
+Bruker ønsker et utvidet XP- og leveling-system med:
+1. Bedre belønninger ved leveling
+2. Bonus for å overleve lenge (spesielt med permadeath)
+3. Ekstra action points ved visse levels
+
+### Eksisterende System (fra REGELBOK.MD DEL 9)
+
+**XP Thresholds:**
+| Level | XP Krav | Akkumulert |
+|-------|---------|------------|
+| 1 | 0 | Start |
+| 2 | 50 | 50 |
+| 3 | 150 | 150 |
+| 4 | 300 | 300 |
+| 5 | 500 | Max |
+
+**Nåværende Level Up Bonuser (velg EN):**
+- +1 til en attributt (STR/AGI/INT/WIL)
+- +2 Max HP
+- +1 Max Sanity
+
+### FORSLAG: Utvidet Leveling-System
+
+#### 1. Nye Level Up Bonuser
+
+Ved hvert level-up får spilleren velge EN bonus, men med flere valg:
+
+| Bonus Type | Effekt | Tilgjengelig |
+|------------|--------|--------------|
+| **+1 Attributt** | +1 STR, AGI, INT, eller WIL | Alltid |
+| **+2 Max HP** | Økt overlevelsesevne | Alltid |
+| **+1 Max Sanity** | Bedre mental motstand | Alltid |
+| **+1 Action Point** | Permanent +1 AP per runde | Level 3 og 5 |
+| **+1 Attack Die** | Permanent +1 på angrep | Level 4 og 5 |
+| **+1 Defense Die** | Permanent +1 på forsvar | Level 4 og 5 |
+| **Skill Mastery** | +1 die på valgt skill-type | Level 2+ |
+
+**Skill Mastery detaljer:**
+- Investigation Mastery: +1 die på Investigate
+- Combat Mastery: +1 die på alle angrepskast
+- Occult Mastery: +1 die på Willpower (horror/ritual)
+- Athletics Mastery: +1 die på Agility (unngå feller, flukt)
+
+#### 2. Milestone Bonuser (Automatiske)
+
+Disse bonus får helten automatisk ved å nå visse levels:
+
+| Level | Milestone Bonus |
+|-------|-----------------|
+| 2 | **Hardened**: +1 die på første Horror Check per scenario |
+| 3 | **Veteran's Instinct**: +1 AP første runde av hver scenario |
+| 4 | **Iron Will**: Kan re-roll 1 die per runde på skill checks |
+| 5 | **Legend**: Starter med +1 Insight, -1 på alle DC krav |
+
+#### 3. Survivor Bonus System (For Permadeath-helter)
+
+Helter med `hasPermadeath: true` får ekstra bonuser for å overleve:
+
+**Scenario Streak Bonus:**
+| Scenarios Overlevd | Bonus |
+|--------------------|-------|
+| 3 | +5% XP fra alle kilder |
+| 5 | +10% XP, +5% Gold |
+| 7 | +15% XP, +10% Gold |
+| 10+ | +25% XP, +15% Gold, "Immortal" title |
+
+**Survival Traits (velges ved milepæler):**
+
+Etter 3 overlevde scenarios med permadeath, velg 1 trait:
+- **Scarred Survivor**: +1 permanent HP, -1 Max Sanity
+- **Paranoid Vigilance**: Kan ikke bli overrasket av fiender
+- **Death's Defiance**: Én gang per scenario, ignorer dødelig skade (settes til 1 HP)
+
+Etter 6 overlevde scenarios:
+- **Hardened Mind**: Immun mot én valgt Madness-type
+- **Battle-Tested**: +1 permanent Attack Die
+- **Sixth Sense**: Ser alltid skjulte dører i nabofelter
+
+#### 4. XP-kilder (Utvidet)
+
+**Scenario-basert XP:**
+| Kilde | XP | Notater |
+|-------|-----|---------|
+| Seier (Normal) | 30 | Base |
+| Seier (Hard) | 45 | +50% |
+| Seier (Nightmare) | 60 | +100% |
+| Tap | 10 | Trøstepremie |
+| Full Explore | +10 | Alle tiles utforsket |
+| No Deaths | +15 | Ingen i gruppen døde |
+| Speed Bonus | +10 | Fullført før Doom < 4 |
+
+**Kill XP:**
+| Fiende-type | XP per kill |
+|-------------|-------------|
+| Minion (Cultist, Mi-Go) | 2 |
+| Warrior (Ghoul, Deep One) | 4 |
+| Elite (Dark Priest, Hunting Horror) | 8 |
+| Boss (Shoggoth, Star Spawn) | 15 |
+| Ancient One | 30 |
+
+**Bonus-objektiver:**
+| Objektiv | XP |
+|----------|-----|
+| Sekundær objektiv | +15 |
+| Finn sjelden gjenstand | +5 |
+| Redde NPC | +10 |
+
+#### 5. Action Point Progression
+
+**Forslag: Annenhver level gir AP-bonus**
+
+| Level | Base AP | Bonus | Total AP |
+|-------|---------|-------|----------|
+| 1 | 2 | - | 2 |
+| 2 | 2 | - | 2 |
+| 3 | 2 | +1 (Level bonus) | 3 |
+| 4 | 2 | +1 | 3 |
+| 5 | 2 | +2 (Level 3 + 5) | 4 |
+
+**Alternativ: AP som valgfri bonus**
+- Ved level 3: Kan velge +1 AP i stedet for andre bonuser
+- Ved level 5: Kan velge +1 AP igjen
+
+#### 6. TypeScript Implementasjon
+
+**Nye typer i types.ts:**
+```typescript
+// Utvidet LevelUpBonus
+export type LevelUpBonus =
+  | { type: 'attribute'; attribute: keyof CharacterAttributes }
+  | { type: 'maxHp'; value: 2 }
+  | { type: 'maxSanity'; value: 1 }
+  | { type: 'actionPoint'; value: 1 }
+  | { type: 'attackDie'; value: 1 }
+  | { type: 'defenseDie'; value: 1 }
+  | { type: 'skillMastery'; skill: SkillMasteryType };
+
+export type SkillMasteryType =
+  | 'investigation' | 'combat' | 'occult' | 'athletics';
+
+// Milestone bonuser (automatiske)
+export interface MilestoneBonus {
+  level: number;
+  id: string;
+  name: string;
+  description: string;
+  effect: MilestoneEffect;
+}
+
+export type MilestoneEffect =
+  | { type: 'horror_die_bonus'; value: number }
+  | { type: 'first_round_ap'; value: number }
+  | { type: 'reroll_per_round'; value: number }
+  | { type: 'insight_start'; value: number; dcReduction: number };
+
+// Survivor traits (permadeath bonus)
+export interface SurvivorTrait {
+  id: string;
+  name: string;
+  description: string;
+  requirement: number;  // Scenarios survived
+  effect: SurvivorEffect;
+}
+
+// Survivor streak tracking
+export interface SurvivorStreak {
+  scenariosSurvived: number;
+  xpMultiplier: number;
+  goldMultiplier: number;
+  title?: string;
+}
+```
+
+**Oppdatert LegacyHero interface:**
+```typescript
+export interface LegacyHero {
+  // ... eksisterende felt ...
+
+  // Nye felt for utvidet leveling
+  bonusActionPoints: number;       // Fra level bonuser
+  bonusAttackDice: number;         // Fra level bonuser
+  bonusDefenseDice: number;        // Fra level bonuser
+  skillMasteries: SkillMasteryType[];
+  milestones: string[];            // IDs av oppnådde milestones
+
+  // Survivor tracking (permadeath)
+  scenariosSurvivedStreak: number; // Uten å dø
+  survivorTraits: string[];        // IDs av valgte traits
+  survivorTitle?: string;          // Spesiell tittel
+}
+```
+
+### UI-komponenter som trengs
+
+1. **LevelUpModal.tsx** - Viser level-up valg med nye bonuser
+2. **SurvivorTraitModal.tsx** - Viser survivor trait valg (permadeath)
+3. **HeroStatsPanel.tsx** - Utvidet visning av hero stats med alle bonuser
+4. **MilestoneNotification.tsx** - Toast/popup når milestone nås
+
+### Prioritert Implementasjonsrekkefølge
+
+1. **Fase 1: Core Level Bonuser**
+   - Utvid `LevelUpBonus` type
+   - Oppdater `applyLevelUpBonus()` i legacyManager
+   - Legg til nye felt i `LegacyHero`
+   - Oppdater `legacyHeroToPlayer()` for å bruke nye bonuser
+
+2. **Fase 2: Action Point System**
+   - Implementer AP-bonus ved level 3 og 5
+   - Oppdater Player.actions basert på hero level
+
+3. **Fase 3: Milestone System**
+   - Definere alle milestones i constants.ts
+   - Automatisk tildeling ved level-up
+   - UI for å vise milestones
+
+4. **Fase 4: Survivor System (Permadeath)**
+   - Streak tracking
+   - XP/Gold multipliers
+   - Survivor traits
+
+### Spørsmål til bruker
+
+1. Skal AP-bonus være automatisk ved level 3/5, eller valgfri? **SVAR: AUTOMATISK**
+2. Hvor kraftige skal survivor-bonusene være for permadeath? **SVAR: PASSE**
+3. Skal alle bonuser være permanent, eller noen per-scenario?
+4. Ønskes noen klasse-spesifikke level-bonuser? **SVAR: JA**
+
+---
+
+## 2026-01-21: XP- og Leveling-System IMPLEMENTERT
+
+### Implementerte endringer
+
+#### 1. types.ts - Nye typer
+
+**Nye typer lagt til:**
+```typescript
+// Skill mastery types
+export type SkillMasteryType = 'investigation' | 'combat' | 'occult' | 'athletics';
+
+// Utvidet LevelUpBonus
+export type LevelUpBonus =
+  | { type: 'attribute'; attribute: keyof CharacterAttributes }
+  | { type: 'maxHp'; value: 2 }
+  | { type: 'maxSanity'; value: 1 }
+  | { type: 'actionPoint'; value: 1 }
+  | { type: 'attackDie'; value: 1 }
+  | { type: 'defenseDie'; value: 1 }
+  | { type: 'skillMastery'; skill: SkillMasteryType };
+
+// Milestone system
+export interface MilestoneBonus { ... }
+export type MilestoneEffect = ...
+
+// Survivor system (permadeath)
+export interface SurvivorTrait { ... }
+export type SurvivorEffect = ...
+
+// Class-specific bonuses
+export interface ClassLevelBonus { ... }
+export type ClassBonusEffect = ...
+```
+
+**LegacyHero utvidet med:**
+```typescript
+// Extended leveling system (v2)
+bonusActionPoints: number;
+bonusAttackDice: number;
+bonusDefenseDice: number;
+skillMasteries: SkillMasteryType[];
+milestones: string[];
+
+// Survivor tracking (permadeath)
+scenariosSurvivedStreak: number;
+survivorTraits: string[];
+survivorTitle?: string;
+
+// Class-specific bonuses
+classBonuses: string[];
+```
+
+#### 2. constants.ts - Nye konstanter
+
+**MILESTONE_BONUSES:**
+- Level 2: Hardened (+1 die første Horror Check)
+- Level 3: Veteran's Instinct (+1 AP første runde)
+- Level 4: Iron Will (1 re-roll per runde)
+- Level 5: Legend (+1 Insight start, -1 DC)
+
+**SURVIVOR_TRAITS (Tier 1 - 3 scenarios):**
+- Scarred Survivor (+1 HP, -1 Sanity)
+- Paranoid Vigilance (kan ikke overraskes)
+- Death's Defiance (overlev dødelig skade én gang)
+
+**SURVIVOR_TRAITS (Tier 2 - 6 scenarios):**
+- Hardened Mind (immun mot valgt Madness)
+- Battle-Tested (+1 Attack Die)
+- Sixth Sense (detect secret doors)
+
+**SURVIVOR_STREAK_BONUSES:**
+- 3 scenarios: +5% XP
+- 5 scenarios: +10% XP, +5% Gold
+- 7 scenarios: +15% XP, +10% Gold
+- 10+ scenarios: +25% XP, +15% Gold, "Immortal" title
+
+**CLASS_LEVEL_BONUSES (for hver klasse ved level 2, 3, 5):**
+- Detective: Sharp Eye, Keen Intuition, Master Investigator
+- Professor: Arcane Knowledge, Scholarly Mind, Master Occultist
+- Occultist: Dark Arts, Ritual Master, Eldritch Power
+- Veteran: Combat Training, Marksman, War Hero
+- Journalist: Street Smart, Nimble, Scoop Master
+- Nurse: Field Medic, Trauma Specialist, Angel of Mercy
+
+**Hjelpefunksjoner:**
+- `getSurvivorStreakBonus()`
+- `getClassBonusesForLevel()`
+- `getMilestoneForLevel()`
+- `getAvailableSurvivorTraits()`
+- `getAutomaticAPBonus()`
+
+#### 3. legacyManager.ts - Oppdaterte funksjoner
+
+**createLegacyHero():**
+- Initialiserer alle nye felt (bonusActionPoints, skillMasteries, etc.)
+
+**applyLevelUpBonus():**
+- Støtter nå alle nye bonus-typer:
+  - actionPoint: +1 til bonusActionPoints
+  - attackDie: +1 til bonusAttackDice
+  - defenseDie: +1 til bonusDefenseDice
+  - skillMastery: Legger til skill i skillMasteries array
+
+**getLevelUpOptions(heroLevel):**
+- Skill mastery tilgjengelig fra level 2+
+- Attack/Defense dice tilgjengelig fra level 4+
+
+**legacyHeroToPlayer():**
+- Beregner automatisk AP-bonus (level 3 = +1, level 5 = +2)
+- Legger til manuelle AP-bonuser fra level-up valg
+- Beregner bonus attack/defense dice
+- Level 5 helter starter med +1 Insight (Legend milestone)
+
+### AP Progression (AUTOMATISK)
+
+| Level | Base AP | Auto Bonus | Total |
+|-------|---------|------------|-------|
+| 1 | 2 | 0 | 2 |
+| 2 | 2 | 0 | 2 |
+| 3 | 2 | +1 | 3 |
+| 4 | 2 | +1 | 3 |
+| 5 | 2 | +2 | 4 |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+### UI-komponenter IMPLEMENTERT
+
+#### LevelUpModal.tsx
+Modal som vises når en helt levler opp:
+- Viser alle tilgjengelige bonuser basert på level
+- Grupperer bonuser i kategorier (Attributes, Vitality, Skill Masteries, Combat)
+- Viser automatisk milestone-bonus som er opplåst ved dette nivået
+- Filtrerer bort allerede valgte skill masteries
+
+**Features:**
+- Gule highlight for valgt bonus
+- Fargekodede ikoner for hver bonus-type
+- Beskrivelser for hver bonus
+- Bekreftelses-knapp aktiveres kun når valg er gjort
+
+#### SurvivorTraitModal.tsx
+Modal som vises når en permadeath-helt når 3 eller 6 overlevde scenarios:
+- Viser tilgjengelige survivor traits (Tier 1 ved 3, Tier 2 ved 6)
+- Viser nåværende streak-bonuser (XP%, Gold%, Title)
+- Viser allerede valgte traits
+- Advarsel om at dette er permadeath-helt
+
+**Features:**
+- Lilla/indigo tema for survivor-systemet
+- Tydelig tier-inndeling
+- Skip-knapp for å velge senere
+- Viser hvilke traits som allerede er valgt
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ LevelUpModal.tsx opprettet
+✅ SurvivorTraitModal.tsx opprettet
+
+### Integrert i ShadowsGame.tsx
+
+Modalene er nå fullt integrert i hovedspillet:
+
+**Nye state-variabler:**
+- `showLevelUpModal`, `levelUpQueue`, `currentLevelUpHero`
+- `showSurvivorTraitModal`, `survivorTraitQueue`, `currentSurvivorHero`
+
+**Nye callback-funksjoner:**
+- `handleLevelUpBonusSelect()` - Håndterer level-up valg, oppdaterer hero, går til neste i kø
+- `handleSurvivorTraitSelect()` - Håndterer survivor trait valg, appliserer effekter
+- `handleSkipSurvivorTrait()` - Hopp over survivor trait for nå
+
+**Integrasjon i handleScenarioComplete():**
+1. Helter som kan levle legges i `levelUpQueue`
+2. Permadeath-helter som når 3 eller 6 scenarios legges i `survivorTraitQueue`
+3. `scenariosSurvivedStreak` inkrementeres for permadeath-helter
+4. LevelUpModal vises først, deretter SurvivorTraitModal
+
+**Flow:**
+```
+Scenario Complete
+    ↓
+Calculate rewards, check level-ups
+    ↓
+Show LevelUpModal for each hero that leveled
+    ↓
+Show SurvivorTraitModal for permadeath heroes at milestones
+    ↓
+Show MerchantShop
+```
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Modalene integrert i ShadowsGame.tsx
+
+### Gjenstående UI (lavere prioritet)
+- HeroStatsPanel - utvidet visning av alle bonuser
+- MilestoneNotification - toast ved milestone
+
+---
+

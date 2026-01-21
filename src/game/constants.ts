@@ -1,4 +1,4 @@
-import { Character, CharacterType, Item, EventCard, Tile, Scenario, Madness, Spell, BestiaryEntry, EnemyType, Obstacle, ObstacleType, EdgeData, TileCategory, SkillType, OccultistSpell, HQWeapon, HQArmor, WeatherEffect, WeatherType, WeatherCondition, WeatherIntensity, DarkRoomDiscoveryType, DarkRoomContent, createDarkRoomContent, Player, hasLightSource } from './types';
+import { Character, CharacterType, Item, EventCard, Tile, Scenario, Madness, Spell, BestiaryEntry, EnemyType, Obstacle, ObstacleType, EdgeData, TileCategory, SkillType, OccultistSpell, HQWeapon, HQArmor, WeatherEffect, WeatherType, WeatherCondition, WeatherIntensity, DarkRoomDiscoveryType, DarkRoomContent, createDarkRoomContent, Player, hasLightSource, MilestoneBonus, SurvivorTrait, ClassLevelBonus } from './types';
 
 // ============================================================================
 // 1.1 TILE CONNECTION SYSTEM
@@ -3247,4 +3247,320 @@ export function getDarkRoomItem(itemId: string): Item | null {
     if (found) return found as Item;
   }
   return null;
+}
+
+// ============================================================================
+// LEVELING SYSTEM - MILESTONES, SURVIVOR TRAITS & CLASS BONUSES
+// ============================================================================
+
+/**
+ * Automatic milestone bonuses granted at specific levels
+ * These are given automatically - no player choice required
+ */
+export const MILESTONE_BONUSES: MilestoneBonus[] = [
+  {
+    level: 2,
+    id: 'hardened',
+    name: 'Hardened',
+    description: '+1 die on first Horror Check each scenario',
+    effect: { type: 'horror_die_bonus', value: 1 }
+  },
+  {
+    level: 3,
+    id: 'veterans_instinct',
+    name: "Veteran's Instinct",
+    description: '+1 Action Point on first round of each scenario',
+    effect: { type: 'first_round_ap', value: 1 }
+  },
+  {
+    level: 4,
+    id: 'iron_will',
+    name: 'Iron Will',
+    description: 'May re-roll 1 die per round on skill checks',
+    effect: { type: 'reroll_per_round', value: 1 }
+  },
+  {
+    level: 5,
+    id: 'legend',
+    name: 'Legend',
+    description: 'Start with +1 Insight, -1 to all DC requirements',
+    effect: { type: 'insight_start', value: 1, dcReduction: 1 }
+  }
+];
+
+/**
+ * Survivor traits - rewards for permadeath heroes who survive multiple scenarios
+ * Heroes choose ONE trait when they reach the requirement threshold
+ */
+export const SURVIVOR_TRAITS_TIER1: SurvivorTrait[] = [
+  {
+    id: 'scarred_survivor',
+    name: 'Scarred Survivor',
+    description: '+1 permanent Max HP, -1 Max Sanity',
+    requirement: 3,
+    effect: { type: 'bonus_hp', value: 1, sanityCost: 1 }
+  },
+  {
+    id: 'paranoid_vigilance',
+    name: 'Paranoid Vigilance',
+    description: 'Cannot be surprised by enemies',
+    requirement: 3,
+    effect: { type: 'no_surprise' }
+  },
+  {
+    id: 'deaths_defiance',
+    name: "Death's Defiance",
+    description: 'Once per scenario, survive lethal damage (set to 1 HP)',
+    requirement: 3,
+    effect: { type: 'death_defiance' }
+  }
+];
+
+export const SURVIVOR_TRAITS_TIER2: SurvivorTrait[] = [
+  {
+    id: 'hardened_mind',
+    name: 'Hardened Mind',
+    description: 'Immune to one chosen Madness type',
+    requirement: 6,
+    effect: { type: 'madness_immunity', madnessType: 'choose' }
+  },
+  {
+    id: 'battle_tested',
+    name: 'Battle-Tested',
+    description: '+1 permanent Attack Die',
+    requirement: 6,
+    effect: { type: 'bonus_attack_die', value: 1 }
+  },
+  {
+    id: 'sixth_sense',
+    name: 'Sixth Sense',
+    description: 'Always detect secret doors in adjacent hexes',
+    requirement: 6,
+    effect: { type: 'detect_secret_doors' }
+  }
+];
+
+/**
+ * All survivor traits combined
+ */
+export const SURVIVOR_TRAITS: SurvivorTrait[] = [
+  ...SURVIVOR_TRAITS_TIER1,
+  ...SURVIVOR_TRAITS_TIER2
+];
+
+/**
+ * Survivor streak multipliers for XP and Gold
+ */
+export const SURVIVOR_STREAK_BONUSES: Record<number, { xpMultiplier: number; goldMultiplier: number; title?: string }> = {
+  3: { xpMultiplier: 1.05, goldMultiplier: 1.0 },
+  5: { xpMultiplier: 1.10, goldMultiplier: 1.05 },
+  7: { xpMultiplier: 1.15, goldMultiplier: 1.10 },
+  10: { xpMultiplier: 1.25, goldMultiplier: 1.15, title: 'Immortal' }
+};
+
+/**
+ * Get streak bonus for a given number of survived scenarios
+ */
+export function getSurvivorStreakBonus(scenariosSurvived: number): { xpMultiplier: number; goldMultiplier: number; title?: string } {
+  if (scenariosSurvived >= 10) return SURVIVOR_STREAK_BONUSES[10];
+  if (scenariosSurvived >= 7) return SURVIVOR_STREAK_BONUSES[7];
+  if (scenariosSurvived >= 5) return SURVIVOR_STREAK_BONUSES[5];
+  if (scenariosSurvived >= 3) return SURVIVOR_STREAK_BONUSES[3];
+  return { xpMultiplier: 1.0, goldMultiplier: 1.0 };
+}
+
+/**
+ * Class-specific level bonuses
+ * Each class gets unique bonuses at levels 2, 3, and 5
+ */
+export const CLASS_LEVEL_BONUSES: ClassLevelBonus[] = [
+  // DETECTIVE
+  {
+    characterClass: 'detective',
+    level: 2,
+    id: 'detective_sharp_eye',
+    name: 'Sharp Eye',
+    description: '+1 Insight when finding clues',
+    effect: { type: 'extra_insight_per_clue', value: 1 }
+  },
+  {
+    characterClass: 'detective',
+    level: 3,
+    id: 'detective_keen_intuition',
+    name: 'Keen Intuition',
+    description: 'Automatically detect traps in current hex',
+    effect: { type: 'trap_detection' }
+  },
+  {
+    characterClass: 'detective',
+    level: 5,
+    id: 'detective_master_investigator',
+    name: 'Master Investigator',
+    description: '+2 Insight when finding clues',
+    effect: { type: 'extra_insight_per_clue', value: 2 }
+  },
+
+  // PROFESSOR
+  {
+    characterClass: 'professor',
+    level: 2,
+    id: 'professor_arcane_knowledge',
+    name: 'Arcane Knowledge',
+    description: '+1 to Horror resistance checks',
+    effect: { type: 'horror_resistance', value: 1 }
+  },
+  {
+    characterClass: 'professor',
+    level: 3,
+    id: 'professor_scholarly_mind',
+    name: 'Scholarly Mind',
+    description: '+2 to Horror resistance checks',
+    effect: { type: 'horror_resistance', value: 2 }
+  },
+  {
+    characterClass: 'professor',
+    level: 5,
+    id: 'professor_master_occultist',
+    name: 'Master Occultist',
+    description: 'Learn one additional spell',
+    effect: { type: 'extra_spell_slot', value: 1 }
+  },
+
+  // OCCULTIST
+  {
+    characterClass: 'occultist',
+    level: 2,
+    id: 'occultist_dark_arts',
+    name: 'Dark Arts',
+    description: '+1 extra spell slot',
+    effect: { type: 'extra_spell_slot', value: 1 }
+  },
+  {
+    characterClass: 'occultist',
+    level: 3,
+    id: 'occultist_ritual_master',
+    name: 'Ritual Master',
+    description: '+1 Horror resistance from dark knowledge',
+    effect: { type: 'horror_resistance', value: 1 }
+  },
+  {
+    characterClass: 'occultist',
+    level: 5,
+    id: 'occultist_eldritch_power',
+    name: 'Eldritch Power',
+    description: '+2 extra spell slots',
+    effect: { type: 'extra_spell_slot', value: 2 }
+  },
+
+  // VETERAN
+  {
+    characterClass: 'veteran',
+    level: 2,
+    id: 'veteran_combat_training',
+    name: 'Combat Training',
+    description: '+1 damage with melee weapons',
+    effect: { type: 'bonus_melee_damage', value: 1 }
+  },
+  {
+    characterClass: 'veteran',
+    level: 3,
+    id: 'veteran_marksman',
+    name: 'Marksman',
+    description: '+1 damage with ranged weapons',
+    effect: { type: 'bonus_ranged_damage', value: 1 }
+  },
+  {
+    characterClass: 'veteran',
+    level: 5,
+    id: 'veteran_war_hero',
+    name: 'War Hero',
+    description: '+2 damage with all weapons',
+    effect: { type: 'bonus_melee_damage', value: 2 }
+  },
+
+  // JOURNALIST
+  {
+    characterClass: 'journalist',
+    level: 2,
+    id: 'journalist_street_smart',
+    name: 'Street Smart',
+    description: '+1 Insight when finding clues',
+    effect: { type: 'extra_insight_per_clue', value: 1 }
+  },
+  {
+    characterClass: 'journalist',
+    level: 3,
+    id: 'journalist_nimble',
+    name: 'Nimble',
+    description: '+1 stealth bonus (harder to detect)',
+    effect: { type: 'stealth_bonus', value: 1 }
+  },
+  {
+    characterClass: 'journalist',
+    level: 5,
+    id: 'journalist_scoop_master',
+    name: 'Scoop Master',
+    description: '+2 Insight when finding clues, +1 stealth',
+    effect: { type: 'extra_insight_per_clue', value: 2 }
+  },
+
+  // NURSE
+  {
+    characterClass: 'nurse',
+    level: 2,
+    id: 'nurse_field_medic',
+    name: 'Field Medic',
+    description: '+1 HP when using healing items',
+    effect: { type: 'healing_bonus', value: 1 }
+  },
+  {
+    characterClass: 'nurse',
+    level: 3,
+    id: 'nurse_trauma_specialist',
+    name: 'Trauma Specialist',
+    description: '+2 HP when using healing items',
+    effect: { type: 'healing_bonus', value: 2 }
+  },
+  {
+    characterClass: 'nurse',
+    level: 5,
+    id: 'nurse_angel_of_mercy',
+    name: 'Angel of Mercy',
+    description: '+3 HP when healing, can restore 1 Sanity',
+    effect: { type: 'healing_bonus', value: 3 }
+  }
+];
+
+/**
+ * Get class bonuses for a specific character class and level
+ */
+export function getClassBonusesForLevel(characterClass: CharacterType, level: number): ClassLevelBonus[] {
+  return CLASS_LEVEL_BONUSES.filter(
+    bonus => bonus.characterClass === characterClass && bonus.level <= level
+  );
+}
+
+/**
+ * Get milestone bonus for a specific level
+ */
+export function getMilestoneForLevel(level: number): MilestoneBonus | undefined {
+  return MILESTONE_BONUSES.find(m => m.level === level);
+}
+
+/**
+ * Get available survivor traits for a given streak count
+ */
+export function getAvailableSurvivorTraits(scenariosSurvived: number, alreadyChosen: string[]): SurvivorTrait[] {
+  return SURVIVOR_TRAITS.filter(
+    trait => trait.requirement <= scenariosSurvived && !alreadyChosen.includes(trait.id)
+  );
+}
+
+/**
+ * Automatic AP bonus based on level (level 3 = +1, level 5 = +2 total)
+ */
+export function getAutomaticAPBonus(level: number): number {
+  if (level >= 5) return 2;
+  if (level >= 3) return 1;
+  return 0;
 }

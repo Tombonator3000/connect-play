@@ -22,6 +22,7 @@ import {
   ScenarioResult,
   HeroScenarioResult,
   LevelUpBonus,
+  SkillMasteryType,
   XP_THRESHOLDS,
   getLevelFromXP,
   getXPForNextLevel,
@@ -169,7 +170,19 @@ export function createLegacyHero(
     lastPlayed: now,
     isRetired: false,
     isDead: false,
-    hasPermadeath
+    hasPermadeath,
+    // Extended leveling system (v2)
+    bonusActionPoints: 0,
+    bonusAttackDice: 0,
+    bonusDefenseDice: 0,
+    skillMasteries: [],
+    milestones: [],
+    // Survivor tracking
+    scenariosSurvivedStreak: 0,
+    survivorTraits: [],
+    survivorTitle: undefined,
+    // Class-specific bonuses
+    classBonuses: []
   };
 }
 
@@ -323,7 +336,15 @@ export function addXPToHero(hero: LegacyHero, xpGained: number): LegacyHero {
  */
 export function applyLevelUpBonus(hero: LegacyHero, bonus: LevelUpBonus): LegacyHero {
   const levelUpChoice = { level: hero.level, bonus };
-  let updatedHero = { ...hero, levelUpBonuses: [...hero.levelUpBonuses, levelUpChoice] };
+  let updatedHero: LegacyHero = {
+    ...hero,
+    levelUpBonuses: [...hero.levelUpBonuses, levelUpChoice],
+    // Ensure arrays exist for older heroes
+    skillMasteries: hero.skillMasteries || [],
+    milestones: hero.milestones || [],
+    survivorTraits: hero.survivorTraits || [],
+    classBonuses: hero.classBonuses || []
+  };
 
   switch (bonus.type) {
     case 'attribute':
@@ -338,16 +359,31 @@ export function applyLevelUpBonus(hero: LegacyHero, bonus: LevelUpBonus): Legacy
     case 'maxSanity':
       updatedHero.maxSanity += bonus.value;
       break;
+    case 'actionPoint':
+      updatedHero.bonusActionPoints = (updatedHero.bonusActionPoints || 0) + bonus.value;
+      break;
+    case 'attackDie':
+      updatedHero.bonusAttackDice = (updatedHero.bonusAttackDice || 0) + bonus.value;
+      break;
+    case 'defenseDie':
+      updatedHero.bonusDefenseDice = (updatedHero.bonusDefenseDice || 0) + bonus.value;
+      break;
+    case 'skillMastery':
+      if (!updatedHero.skillMasteries.includes(bonus.skill)) {
+        updatedHero.skillMasteries = [...updatedHero.skillMasteries, bonus.skill];
+      }
+      break;
   }
 
   return updatedHero;
 }
 
 /**
- * Get available level up options
+ * Get available level up options based on hero level
+ * Some bonuses are only available at higher levels
  */
-export function getLevelUpOptions(): LevelUpBonus[] {
-  return [
+export function getLevelUpOptions(heroLevel: number = 1): LevelUpBonus[] {
+  const baseOptions: LevelUpBonus[] = [
     { type: 'attribute', attribute: 'strength' },
     { type: 'attribute', attribute: 'agility' },
     { type: 'attribute', attribute: 'intellect' },
@@ -355,6 +391,26 @@ export function getLevelUpOptions(): LevelUpBonus[] {
     { type: 'maxHp', value: 2 },
     { type: 'maxSanity', value: 1 }
   ];
+
+  // Skill mastery available from level 2+
+  if (heroLevel >= 2) {
+    baseOptions.push(
+      { type: 'skillMastery', skill: 'investigation' },
+      { type: 'skillMastery', skill: 'combat' },
+      { type: 'skillMastery', skill: 'occult' },
+      { type: 'skillMastery', skill: 'athletics' }
+    );
+  }
+
+  // Attack/Defense dice available from level 4+
+  if (heroLevel >= 4) {
+    baseOptions.push(
+      { type: 'attackDie', value: 1 },
+      { type: 'defenseDie', value: 1 }
+    );
+  }
+
+  return baseOptions;
 }
 
 /**
@@ -573,6 +629,7 @@ export function processScenarioCompletion(
 /**
  * Convert a LegacyHero to a Player for in-game use
  * Now uses hero.id as the player ID to enable proper hero-player mapping
+ * Includes all leveling bonuses (AP, attack/defense dice, milestones)
  */
 export function legacyHeroToPlayer(hero: LegacyHero): Player {
   const character = CHARACTERS[hero.characterClass];
@@ -590,6 +647,18 @@ export function legacyHeroToPlayer(hero: LegacyHero): Player {
     ? SPELLS.filter(s => s.id === 'reveal' || s.id === 'mend')
     : [];
 
+  // Calculate automatic AP bonus based on level (level 3 = +1, level 5 = +2)
+  const automaticAPBonus = hero.level >= 5 ? 2 : hero.level >= 3 ? 1 : 0;
+  const manualAPBonus = hero.bonusActionPoints || 0;
+  const totalActions = 2 + automaticAPBonus + manualAPBonus;
+
+  // Calculate attack/defense dice bonuses
+  const bonusAttackDice = hero.bonusAttackDice || 0;
+  const bonusDefenseDice = hero.bonusDefenseDice || 0;
+
+  // Level 5 milestone "Legend" gives +1 starting Insight
+  const startingInsight = hero.level >= 5 ? 1 : 0;
+
   return {
     id: hero.characterClass,  // Use character class as the id (CharacterType)
     heroId: hero.id,  // Store unique hero ID for tracking
@@ -598,17 +667,17 @@ export function legacyHeroToPlayer(hero: LegacyHero): Player {
     maxHp: hero.maxHp,
     sanity: hero.maxSanity,
     maxSanity: hero.maxSanity,
-    insight: 0, // Reset for new scenario
+    insight: startingInsight, // Level 5 heroes start with +1 Insight
     attributes: effectiveAttributes,
     special: character?.special || '',
     specialAbility: character?.specialAbility || 'investigate_bonus',
-    // Hero Quest combat stats from character class
-    baseAttackDice: character?.baseAttackDice || 1,
-    baseDefenseDice: character?.baseDefenseDice || 1,
+    // Hero Quest combat stats with level bonuses
+    baseAttackDice: (character?.baseAttackDice || 1) + bonusAttackDice,
+    baseDefenseDice: (character?.baseDefenseDice || 1) + bonusDefenseDice,
     position: { q: 0, r: 0 },
     inventory: { ...hero.equipment, bag: [...hero.equipment.bag] },
     spells: characterSpells,
-    actions: 2,
+    actions: totalActions,
     isDead: false,
     madness: [],
     activeMadness: null,
