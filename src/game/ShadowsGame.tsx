@@ -2271,98 +2271,105 @@ const ShadowsGame: React.FC = () => {
 
   // Handle event card resolution
   const handleEventResolve = useCallback(() => {
-    const event = state.activeEvent;
-    if (!event) {
-      setState(prev => ({ ...prev, activeEvent: null }));
-      return;
-    }
+    // Use a single setState to ensure we work with the current state
+    setState(prev => {
+      const event = prev.activeEvent;
+      if (!event) {
+        return { ...prev, activeEvent: null };
+      }
 
-    const activePlayer = state.players[state.activePlayerIndex] || state.players.find(p => !p.isDead);
-    if (!activePlayer) {
-      // No valid player, just dismiss the event
-      setState(prev => ({
+      const activePlayer = prev.players[prev.activePlayerIndex] || prev.players.find(p => !p.isDead);
+      if (!activePlayer) {
+        // No valid player, just dismiss the event
+        return {
+          ...prev,
+          activeEvent: null,
+          eventDiscardPile: discardEventCard(event, prev.eventDiscardPile)
+        };
+      }
+
+      // Check if event has a skill check
+      let skillCheckPassed = false;
+      if (event.skillCheck) {
+        const checkResult = performEventSkillCheck(
+          activePlayer,
+          event.skillCheck.attribute,
+          event.skillCheck.dc
+        );
+        skillCheckPassed = checkResult.success;
+
+        // Log the skill check result (schedule for after state update)
+        const attrName = event.skillCheck.attribute.charAt(0).toUpperCase() + event.skillCheck.attribute.slice(1);
+        setTimeout(() => {
+          addToLog(`${activePlayer.name} makes a ${attrName} check (DC ${event.skillCheck!.dc}): ${checkResult.rolls.join(', ')} = ${checkResult.successes} successes - ${skillCheckPassed ? 'SUCCESS!' : 'FAILED!'}`);
+        }, 0);
+      }
+
+      // Resolve the event effect using the CURRENT state (prev)
+      const { updatedState, logMessages, spawnEnemies, weatherChange } = resolveEventEffect(
+        event,
+        prev,
+        prev.activePlayerIndex,
+        skillCheckPassed
+      );
+
+      // Log all messages from the event (schedule for after state update)
+      setTimeout(() => {
+        logMessages.forEach(msg => addToLog(msg));
+      }, 0);
+
+      // Handle enemy spawning (schedule for after state update)
+      if (spawnEnemies && spawnEnemies.count > 0 && !skillCheckPassed) {
+        const alivePlayers = prev.players.filter(p => !p.isDead);
+        const targetPlayer = spawnEnemies.nearPlayerId
+          ? prev.players.find(p => p.id === spawnEnemies.nearPlayerId)
+          : alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
+
+        if (targetPlayer) {
+          // Spawn enemies near the target player
+          const spawnType = (spawnEnemies.type in BESTIARY) ? spawnEnemies.type as EnemyType : 'cultist';
+          for (let i = 0; i < spawnEnemies.count; i++) {
+            const offsetQ = Math.floor(Math.random() * 3) - 1;
+            const offsetR = Math.floor(Math.random() * 3) - 1;
+            // Use setTimeout to spawn after state update
+            setTimeout(() => {
+              spawnEnemy(spawnType, targetPlayer.position.q + offsetQ + 1, targetPlayer.position.r + offsetR);
+            }, (i + 1) * 200);
+          }
+          setTimeout(() => {
+            addFloatingText(targetPlayer.position.q, targetPlayer.position.r, `${spawnEnemies.count} ${spawnEnemies.type}!`, "text-primary");
+            triggerScreenShake();
+          }, 50);
+        }
+      }
+
+      // Build the new state
+      let newState = {
         ...prev,
+        ...updatedState,
         activeEvent: null,
         eventDiscardPile: discardEventCard(event, prev.eventDiscardPile)
-      }));
-      return;
-    }
-
-    // Check if event has a skill check
-    let skillCheckPassed = false;
-    if (event.skillCheck) {
-      const checkResult = performEventSkillCheck(
-        activePlayer,
-        event.skillCheck.attribute,
-        event.skillCheck.dc
-      );
-      skillCheckPassed = checkResult.success;
-
-      // Log the skill check result
-      const attrName = event.skillCheck.attribute.charAt(0).toUpperCase() + event.skillCheck.attribute.slice(1);
-      addToLog(`${activePlayer.name} makes a ${attrName} check (DC ${event.skillCheck.dc}): ${checkResult.rolls.join(', ')} = ${checkResult.successes} successes - ${skillCheckPassed ? 'SUCCESS!' : 'FAILED!'}`);
-    }
-
-    // Resolve the event effect
-    const { updatedState, logMessages, spawnEnemies, weatherChange } = resolveEventEffect(
-      event,
-      state,
-      state.activePlayerIndex,
-      skillCheckPassed
-    );
-
-    // Log all messages from the event
-    logMessages.forEach(msg => addToLog(msg));
-
-    // Handle enemy spawning
-    if (spawnEnemies && spawnEnemies.count > 0 && !skillCheckPassed) {
-      const alivePlayers = state.players.filter(p => !p.isDead);
-      const targetPlayer = spawnEnemies.nearPlayerId
-        ? state.players.find(p => p.id === spawnEnemies.nearPlayerId)
-        : alivePlayers[Math.floor(Math.random() * alivePlayers.length)];
-
-      if (targetPlayer) {
-        // Spawn enemies near the target player
-        const spawnType = (spawnEnemies.type in BESTIARY) ? spawnEnemies.type as EnemyType : 'cultist';
-        for (let i = 0; i < spawnEnemies.count; i++) {
-          const offsetQ = Math.floor(Math.random() * 3) - 1;
-          const offsetR = Math.floor(Math.random() * 3) - 1;
-          // Use setTimeout to spawn after state update
-          setTimeout(() => {
-            spawnEnemy(spawnType, targetPlayer.position.q + offsetQ + 1, targetPlayer.position.r + offsetR);
-          }, i * 200);
-        }
-        addFloatingText(targetPlayer.position.q, targetPlayer.position.r, `${spawnEnemies.count} ${spawnEnemies.type}!`, "text-primary");
-        triggerScreenShake();
-      }
-    }
-
-    // Handle weather change
-    if (weatherChange && !skillCheckPassed) {
-      const newWeatherCondition: WeatherCondition = {
-        type: weatherChange.type as WeatherType,
-        intensity: 'moderate',
-        duration: weatherChange.duration,
       };
 
-      setState(prev => ({
-        ...prev,
-        weatherState: {
-          ...prev.weatherState,
-          activeWeather: newWeatherCondition,
-        }
-      }));
-    }
+      // Handle weather change
+      if (weatherChange && !skillCheckPassed) {
+        const newWeatherCondition: WeatherCondition = {
+          type: weatherChange.type as WeatherType,
+          intensity: 'moderate',
+          duration: weatherChange.duration,
+        };
+        newState = {
+          ...newState,
+          weatherState: {
+            ...prev.weatherState,
+            activeWeather: newWeatherCondition,
+          }
+        };
+      }
 
-    // Update state with event effects
-    setState(prev => ({
-      ...prev,
-      ...updatedState,
-      activeEvent: null,
-      eventDiscardPile: discardEventCard(event, prev.eventDiscardPile)
-    }));
-
-  }, [state.activeEvent, state.players, state.activePlayerIndex, state]);
+      return newState;
+    });
+  }, [addToLog, addFloatingText, triggerScreenShake, spawnEnemy]);
 
   /**
    * Instantiate a room cluster at the given world position
