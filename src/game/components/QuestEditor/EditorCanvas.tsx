@@ -71,7 +71,7 @@ function pixelToHex(x: number, y: number, size: number): { q: number; r: number 
 interface EditorCanvasProps {
   tiles: Map<string, EditorTile>;
   selectedTileId: string | null;
-  onTileClick: (q: number, r: number) => void;
+  onTileClick: (q: number, r: number, modifierHeld: boolean) => void;
   showGrid: boolean;
   activeTool: EditorTool;
   selectedTemplate: TileTemplate | null;
@@ -148,7 +148,9 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       const mouseX = (e.clientX - rect.left - offset.x) / scale;
       const mouseY = (e.clientY - rect.top - offset.y) / scale;
       const hex = pixelToHex(mouseX, mouseY, HEX_SIZE);
-      onTileClick(hex.q, hex.r);
+      // Pass modifier key state (Shift) to allow overwriting existing tiles
+      const modifierHeld = e.shiftKey;
+      onTileClick(hex.q, hex.r, modifierHeld);
     }
   }, [offset, scale, onTileClick, activeTool]);
 
@@ -437,7 +439,8 @@ const EditorCanvas: React.FC<EditorCanvasProps> = ({
       <div className="absolute top-4 left-4 bg-slate-800/80 text-slate-400 px-3 py-2 rounded text-xs space-y-1">
         <div>Scroll to zoom</div>
         <div>Middle-click drag to pan</div>
-        <div>Click to place/select</div>
+        <div>Click empty cell to place</div>
+        <div className="text-amber-400">Shift+Click to replace tile</div>
       </div>
     </div>
   );

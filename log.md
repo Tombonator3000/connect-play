@@ -11806,7 +11806,116 @@ function deserializeState(json: string): UndoableState {
 ---
 
 ### Gjenstående (lavere prioritet)
-- [ ] Scenario loader (JSON til spillbart Scenario)
-- [ ] Tile-to-board converter
+- [x] Scenario loader (JSON til spillbart Scenario) ✅ Implementert
+- [x] Tile-to-board converter ✅ Implementert
+
+---
+
+## 21. januar 2026 - Quest Editor Forbedringer
+
+### Endringer implementert
+
+#### 1. Forbedret Preview med tilegrafikk og bevegelse
+**Fil:** `src/game/components/QuestEditor/PreviewPanel.tsx`
+
+- **AI-genererte tile-bilder:** Samme tile-bilder som hovedspillet brukes nå i preview
+- **Hexagonal klipping:** Tiles rendres med hexagonal clipPath som i hovedspillet
+- **Pan & zoom:** Dra for å panorere, scroll for å zoome (0.3x - 2x)
+- **Touch-støtte:** Full touch-støtte for mobil
+- **Spillerlignende bevegelse:** Klikk på nærliggende tiles for å bevege seg
+- **Fog of war:** Toggle for å vise/skjule uutforskede tiles
+- **Edge-indikatorer:** Viser vegger, dører, trapper visuelt
+- **Content-indikatorer:** Monster (rød), items (grønn), NPCs (cyan)
+- **Briefing-overlay:** Viser scenario-briefing før start
+- **Doom-tracker:** Viser gjeldende doom-verdi
+
+#### 2. Tile-plassering med modifier key (Shift+Click)
+**Filer:**
+- `src/game/components/QuestEditor/EditorCanvas.tsx`
+- `src/game/components/QuestEditor/index.tsx`
+
+**Problem løst:** Tiles ble overskrevet automatisk når man klikket på eksisterende tiles
+
+**Løsning:**
+- **Vanlig klikk på tom celle:** Plasserer tile
+- **Vanlig klikk på eksisterende tile:** Velger tilen
+- **Shift+Click på eksisterende tile:** Erstatter tilen med valgt template
+
+**UI-endringer:**
+- Oppdatert instruksjoner i EditorCanvas
+- Ny shortcut-visning i status bar: "Shift+Click=Replace"
+
+#### 3. Campaign System
+**Ny fil:** `src/game/components/QuestEditor/CampaignEditor.tsx`
+
+**Funksjoner:**
+- **Opprett kampanjer:** Sett sammen flere quests til en sammenhengende kampanje
+- **Quest-rekkefølge:** Definer rekkefølge med drag (opp/ned)
+- **Prerequisites:** Sett hvilke quests som må fullføres først
+- **Quest rewards:** XP og gold bonuser per quest
+- **Campaign settings:**
+  - `persistHeroes`: Heroes beholdes mellom quests
+  - `persistEquipment`: Utstyr beholdes
+  - `sharedGold`: Felles gull-pool
+  - `permadeathEnabled`: Permadeath aktivert
+  - `allowMerchant`: Merchant mellom quests
+  - `startingGold`: Start-gull for nye helter
+- **Campaign rewards:** XP og gold ved fullføring av hele kampanjen
+- **Import/Export:** JSON-fil for deling
+- **LocalStorage:** Lagring av kampanjer
+
+**Tilgang:** Campaign-knapp i Quest Editor toolbar
+
+#### 4. Custom Quest Loader
+**Ny fil:** `src/game/components/QuestEditor/CustomQuestLoader.tsx`
+
+**Funksjoner:**
+- **Laste quests:** Fra localStorage eller importert JSON-fil
+- **Quest-liste:** Viser alle lagrede quests med metadata
+- **Quest-detaljer:**
+  - Tittel, vanskelighetsgrad, doom
+  - Beskrivelse og briefing
+  - Statistikk (tiles, objectives, enemies)
+  - Liste over objectives
+- **Start quest:** Konverterer Quest Editor-format til spillbart Scenario
+- **Campaign-fane:** Forberedt for fremtidig kampanje-spill
+
+**Konvertering:**
+- `convertEditorTileToTile()`: Editor tile → Game tile
+- `convertEditorObjectiveToScenarioObjective()`: Editor objective → Scenario objective
+- `convertEditorDoomEvent()`: Editor doom event → Game doom event
+- `convertQuestToScenario()`: Komplett quest → Scenario + tiles
+
+**Tilgang:** "Custom Quest" knapp i hovedmeny
+
+### Filer endret
+
+**Nye filer:**
+- `src/game/components/QuestEditor/CampaignEditor.tsx`
+- `src/game/components/QuestEditor/CustomQuestLoader.tsx`
+
+**Oppdaterte filer:**
+- `src/game/components/QuestEditor/PreviewPanel.tsx` - Fullstendig omskrevet
+- `src/game/components/QuestEditor/EditorCanvas.tsx` - Modifier key støtte
+- `src/game/components/QuestEditor/index.tsx` - Campaign Editor, eksporter
+- `src/game/components/MainMenu.tsx` - Custom Quest knapp
+- `src/game/ShadowsGame.tsx` - Custom Quest Loader integrasjon
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+---
+
+### Quest Editor - Oppdatert funksjonsoversikt
+
+| Feature | Status |
+|---------|--------|
+| **Fase 1-3** | ✅ Komplett |
+| **Preview med tilegrafikk** | ✅ |
+| **Preview med bevegelse** | ✅ |
+| **Shift+Click for å erstatte tiles** | ✅ |
+| **Campaign Editor** | ✅ |
+| **Custom Quest Loader** | ✅ |
+| **Kampanje-spill** | 🔜 (UI klart, logikk gjenstår) |
 
 ---
