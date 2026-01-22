@@ -47,17 +47,18 @@ interface CustomQuestLoaderProps {
 /**
  * Convert EditorTile to game Tile
  */
-function convertEditorTileToTile(editorTile: EditorTile, index: number): Tile {
-  // Convert edges to EdgeData format
-  const edges = editorTile.edges.map((edge, i) => {
+function convertEditorTileToTile(editorTile: EditorTile, index: number): Partial<Tile> {
+  // Convert edges to EdgeData format - ensure we always have 6 edges
+  const edgeArray = editorTile.edges || ['WALL', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'];
+  const edges = Array.from({ length: 6 }, (_, i) => {
+    const edge = edgeArray[i] || 'WALL';
     const doorConfig = editorTile.doorConfigs?.[i];
     return {
-      type: edge,
-      state: doorConfig?.state || (edge === 'DOOR' ? 'CLOSED' : undefined),
+      type: edge as any,
+      doorState: doorConfig?.state || (edge === 'DOOR' ? 'closed' : undefined),
       keyId: doorConfig?.keyId,
-      lockDifficulty: doorConfig?.lockDifficulty,
     };
-  });
+  }) as [any, any, any, any, any, any];
 
   // Convert monster placements to enemy spawn configuration
   const spawnEnemies: { type: EnemyType; count: number }[] = [];
@@ -70,22 +71,39 @@ function convertEditorTileToTile(editorTile: EditorTile, index: number): Tile {
     }
   }
 
+  // Map TileCategory to the simpler 'building' | 'room' | 'street' type
+  const categoryToType = (cat: string): 'building' | 'room' | 'street' => {
+    switch (cat) {
+      case 'street':
+      case 'urban':
+      case 'nature':
+        return 'street';
+      case 'facade':
+      case 'foyer':
+        return 'building';
+      default:
+        return 'room';
+    }
+  };
+
   return {
-    id: index,
+    id: String(index),
     q: editorTile.q,
     r: editorTile.r,
     name: editorTile.name,
-    type: editorTile.category,
+    type: categoryToType(editorTile.category),
+    category: editorTile.category,
     edges,
-    isRevealed: editorTile.isStartLocation || false,
-    hasBeenExplored: false,
-    connections: [],
-    object: null,
+    visibility: editorTile.isStartLocation ? 'visible' : 'hidden',
+    explored: editorTile.isStartLocation || false,
+    searchable: true,
+    searched: false,
     items: editorTile.items as Item[] || [],
     description: editorTile.customDescription || editorTile.description || '',
-    spawnEnemies: spawnEnemies.length > 0 ? spawnEnemies : undefined,
     hasQuestItem: editorTile.items && editorTile.items.length > 0,
-  };
+    zoneLevel: 0,
+    floorType: editorTile.floorType || 'wood',
+  } as any;
 }
 
 /**
@@ -98,7 +116,7 @@ function convertEditorObjectiveToScenarioObjective(editorObj: EditorObjective): 
     shortDescription: editorObj.description.substring(0, 50),
     type: editorObj.type as ScenarioObjective['type'],
     targetId: editorObj.targetId,
-    targetAmount: editorObj.targetCount || 1,
+    targetAmount: editorObj.targetAmount || 1,
     currentAmount: 0,
     isOptional: !editorObj.isRequired,
     isHidden: editorObj.isHidden || false,
@@ -111,13 +129,33 @@ function convertEditorObjectiveToScenarioObjective(editorObj: EditorObjective): 
  * Convert EditorDoomEvent to game DoomEvent
  */
 function convertEditorDoomEvent(editorEvent: EditorDoomEvent): DoomEvent {
+  // Extract first action's details for the game DoomEvent format
+  const firstAction = editorEvent.actions?.[0];
+  
+  // Map editor action type to game DoomEvent type
+  const mapActionType = (actionType?: string): DoomEvent['type'] => {
+    switch (actionType) {
+      case 'spawn_enemy':
+        return 'spawn_enemy';
+      case 'spawn_boss':
+        return 'spawn_boss';
+      case 'sanity_attack':
+        return 'sanity_hit';
+      case 'lock_doors':
+      case 'unlock_doors':
+        return 'unlock_area';
+      default:
+        return 'narrative';
+    }
+  };
+
   return {
     threshold: editorEvent.doomThreshold,
     triggered: false,
-    type: editorEvent.eventType as DoomEvent['type'],
-    targetId: editorEvent.targetId,
-    amount: editorEvent.amount,
-    message: editorEvent.message,
+    type: mapActionType(firstAction?.type),
+    targetId: firstAction?.enemyType,
+    amount: firstAction?.enemyCount || firstAction?.sanityDamage,
+    message: firstAction?.message || editorEvent.name,
   };
 }
 
@@ -183,7 +221,7 @@ export function convertQuestToScenario(quest: SavedQuest): { scenario: Scenario;
     recommendedPlayers: '1-4',
   };
 
-  return { scenario, tiles };
+  return { scenario, tiles: tiles as Tile[] };
 }
 
 // ============================================================================

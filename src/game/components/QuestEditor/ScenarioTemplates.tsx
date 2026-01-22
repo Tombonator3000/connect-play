@@ -49,44 +49,78 @@ function createEditorTile(
   q: number,
   r: number,
   name: string,
-  category: TileCategory,
+  category: string,
   subType: string,
-  floorType: FloorType = 'wood',
+  floorType: string = 'wood',
   edges: ConnectionEdgeType[] = ['WALL', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
   isStart: boolean = false
 ): EditorTile {
+  // Map invalid categories to valid TileCategory values
+  const mapCategory = (cat: string): TileCategory => {
+    switch (cat) {
+      case 'interior_room':
+      case 'storage':
+        return 'room';
+      case 'entrance':
+        return 'foyer';
+      case 'utility':
+        return 'room';
+      case 'outdoor':
+        return 'nature';
+      default:
+        return cat as TileCategory;
+    }
+  };
+
+  // Map floor types
+  const mapFloor = (floor: string): FloorType => {
+    switch (floor) {
+      case 'marble':
+        return 'tile';
+      case 'concrete':
+        return 'stone';
+      default:
+        return floor as FloorType;
+    }
+  };
+
   return {
     id: generateId(),
     q,
     r,
     templateId: `${category}_${subType}`,
     name,
-    category,
+    category: mapCategory(category),
     subType,
     edges: edges as [ConnectionEdgeType, ConnectionEdgeType, ConnectionEdgeType, ConnectionEdgeType, ConnectionEdgeType, ConnectionEdgeType],
-    floorType,
-    zoneLevel: 'safe',
+    floorType: mapFloor(floorType),
+    zoneLevel: 0 as ZoneLevel,
     rotation: 0,
     isStartLocation: isStart
   };
 }
 
 function createObjective(
-  name: string,
-  type: EditorObjective['type'],
+  _name: string,
+  type: string,
   description: string,
   isRequired: boolean = true,
-  targetCount: number = 1
+  targetAmount: number = 1
 ): EditorObjective {
+  // Map 'interact' to valid ObjectiveType
+  const mapType = (t: string): EditorObjective['type'] => {
+    if (t === 'interact') return 'investigate';
+    return t as EditorObjective['type'];
+  };
+
   return {
     id: `obj_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-    type,
-    name,
+    type: mapType(type),
     description,
     isRequired,
-    targetCount,
-    currentProgress: 0,
-    isHidden: false
+    targetAmount,
+    isHidden: false,
+    isBonus: false
   };
 }
 
@@ -486,7 +520,7 @@ const ScenarioTemplates: React.FC<ScenarioTemplatesProps> = ({ onSelectTemplate,
                           ) : (
                             <Package className="w-4 h-4 text-blue-400" />
                           )}
-                          <span className="text-white">{obj.name}</span>
+                          <span className="text-white">{obj.description.split(' ').slice(0, 3).join(' ')}</span>
                           <span className="text-slate-500">- {obj.description}</span>
                         </div>
                       ))}

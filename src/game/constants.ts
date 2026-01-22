@@ -3540,25 +3540,25 @@ export const CLASS_LEVEL_BONUSES: ClassLevelBonus[] = [
 
   // NURSE
   {
-    characterClass: 'nurse',
+    characterClass: 'doctor',
     level: 2,
-    id: 'nurse_field_medic',
+    id: 'doctor_field_medic',
     name: 'Field Medic',
     description: '+1 HP when using healing items',
     effect: { type: 'healing_bonus', value: 1 }
   },
   {
-    characterClass: 'nurse',
+    characterClass: 'doctor',
     level: 3,
-    id: 'nurse_trauma_specialist',
+    id: 'doctor_trauma_specialist',
     name: 'Trauma Specialist',
     description: '+2 HP when using healing items',
     effect: { type: 'healing_bonus', value: 2 }
   },
   {
-    characterClass: 'nurse',
+    characterClass: 'doctor',
     level: 5,
-    id: 'nurse_angel_of_mercy',
+    id: 'doctor_angel_of_mercy',
     name: 'Angel of Mercy',
     description: '+3 HP when healing, can restore 1 Sanity',
     effect: { type: 'healing_bonus', value: 3 }

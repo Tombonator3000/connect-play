@@ -325,7 +325,7 @@ export function validateScenario(
 
     // Validate kill_boss - check if boss type exists in BESTIARY
     if (objective.type === 'kill_boss' && objective.targetId) {
-      const bossExists = BESTIARY.some(e => e.type === objective.targetId);
+      const bossExists = Object.values(BESTIARY).some(e => e.type === objective.targetId);
       const isBossPlaced = tilesArray.some(
         t => t.monsters?.some(m => m.type === objective.targetId)
       );
@@ -376,7 +376,7 @@ export function validateScenario(
         return count + t.items.filter(
           i => i.id === objective.targetId ||
                i.name?.toLowerCase().includes(objective.targetId!.toLowerCase()) ||
-               i.subtype === objective.targetId
+               i.type === objective.targetId
         ).length;
       }, 0);
 

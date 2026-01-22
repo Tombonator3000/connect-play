@@ -1537,7 +1537,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
         <SanityOverlay
           sanityLevel={players[0].sanity}
           maxSanity={players[0].maxSanity}
-          hasMadness={players[0].madnessConditions?.length > 0}
+          hasMadness={(players[0].madness?.length || 0) > 0}
         />
       )}
 

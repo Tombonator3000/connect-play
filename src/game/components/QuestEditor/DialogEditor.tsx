@@ -516,16 +516,16 @@ const DialogNodeEditor: React.FC<DialogNodeEditorProps> = ({
                       />
                       <div className="flex items-center gap-1">
                         {option.condition && option.condition.type !== 'none' && (
-                          <Eye className="w-3 h-3 text-amber-400" title="Has condition" />
+                          <span title="Has condition"><Eye className="w-3 h-3 text-amber-400" /></span>
                         )}
                         {option.effects && option.effects.length > 0 && (
-                          <Gift className="w-3 h-3 text-green-400" title="Has effects" />
+                          <span title="Has effects"><Gift className="w-3 h-3 text-green-400" /></span>
                         )}
                         {linkedNode && (
-                          <ArrowRight className="w-3 h-3 text-blue-400" title={`Links to: ${linkedNode.npcText.substring(0, 20)}...`} />
+                          <span title={`Links to: ${linkedNode.npcText.substring(0, 20)}...`}><ArrowRight className="w-3 h-3 text-blue-400" /></span>
                         )}
                         {option.isExit && (
-                          <X className="w-3 h-3 text-red-400" title="Ends conversation" />
+                          <span title="Ends conversation"><X className="w-3 h-3 text-red-400" /></span>
                         )}
                       </div>
                       {node.options.length > 1 && (
