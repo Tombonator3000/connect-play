@@ -15997,3 +15997,47 @@ Brukere kan nå:
 - Bruke dem i Campaign Editor for å lage multi-quest kampanjer
 - Scenarier er også tilgjengelige i Custom Quest Loader
 
+
+---
+
+## 2026-01-22: Bugfix - Tile-grafikk forsvinner når spiller forlater hex
+
+### Problemet
+Når spilleren beveget seg rundt på brettet, kunne tile-grafikk plutselig forsvinne fra tidligere besøkte hexer. Dette var spesielt merkbart ved rask utforskning av flere tiles.
+
+### Rotårsak: Stale Closure Bug
+Buggen var i `spawnRoom`-funksjonen i `ShadowsGame.tsx`. Funksjonen brukte `state.board` direkte (fra closure) for å bygge det nye brettet, i stedet for å bruke `prev.board` i setState-callback.
+
+**Problematisk kode:**
+\`\`\`typescript
+const currentBoardMap = boardArrayToMap(state.board);  // STALE CLOSURE!
+const synchronizedBoardMap = synchronizeEdgesWithNeighbors(finalTile, currentBoardMap);
+const synchronizedBoard = boardMapToArray(synchronizedBoardMap);
+setState(prev => ({ ...prev, board: synchronizedBoard }));
+\`\`\`
+
+Når React batcher state-oppdateringer, kunne `state.board` være utdatert, og det nye brettet ville da bli bygget fra en gammel versjon av brettet - noe som førte til at nylig lagt til tiles gikk tapt.
+
+### Løsning
+Refaktorerte alle 4 stedene i `spawnRoom` som oppdaterer brettet til å bruke funksjonell setState med `prev.board`:
+
+**Fikset kode:**
+\`\`\`typescript
+setState(prev => {
+  const currentBoardMap = boardArrayToMap(prev.board);  // Bruker prev.board!
+  const synchronizedBoardMap = synchronizeEdgesWithNeighbors(finalTile, currentBoardMap);
+  const synchronizedBoard = boardMapToArray(synchronizedBoardMap);
+  return { ...prev, board: synchronizedBoard };
+});
+\`\`\`
+
+### Filer Modifisert
+- `src/game/ShadowsGame.tsx`
+  - Linje ~1927: Første fallback-case
+  - Linje ~1962: Andre fallback-case  
+  - Linje ~1995: Cluster tiles-case
+  - Linje ~2076: Hovedcase for single tile
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket

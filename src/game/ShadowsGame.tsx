@@ -1920,11 +1920,13 @@ const ShadowsGame: React.FC = () => {
         boardMap
       });
 
-      // Synchronize edges with neighboring tiles
-      const syncBoardMap = synchronizeEdgesWithNeighbors(fallbackTile, boardMap);
-      const syncBoard = boardMapToArray(syncBoardMap);
-
-      setState(prev => ({ ...prev, board: syncBoard }));
+      // Synchronize edges with neighboring tiles using functional setState to avoid stale closure
+      setState(prev => {
+        const prevBoardMap = boardArrayToMap(prev.board);
+        const syncBoardMap = synchronizeEdgesWithNeighbors(fallbackTile, prevBoardMap);
+        const syncBoard = boardMapToArray(syncBoardMap);
+        return { ...prev, board: syncBoard };
+      });
       addToLog(`UTFORSKET: ${roomName}. [${newCategory.toUpperCase()}]`);
 
       const locationDescription = LOCATION_DESCRIPTIONS[roomName];
@@ -1955,11 +1957,13 @@ const ShadowsGame: React.FC = () => {
         boardMap
       });
 
-      // Synchronize edges with neighboring tiles
-      const syncBoardMap2 = synchronizeEdgesWithNeighbors(fallbackTile, boardMap);
-      const syncBoard2 = boardMapToArray(syncBoardMap2);
-
-      setState(prev => ({ ...prev, board: syncBoard2 }));
+      // Synchronize edges with neighboring tiles using functional setState to avoid stale closure
+      setState(prev => {
+        const prevBoardMap = boardArrayToMap(prev.board);
+        const syncBoardMap2 = synchronizeEdgesWithNeighbors(fallbackTile, prevBoardMap);
+        const syncBoard2 = boardMapToArray(syncBoardMap2);
+        return { ...prev, board: syncBoard2 };
+      });
       addToLog(`UTFORSKET: ${fallbackRoomName}. [${fallbackCategory.toUpperCase()}]`);
 
       const locationDescription = LOCATION_DESCRIPTIONS[fallbackRoomName];
@@ -1985,14 +1989,15 @@ const ShadowsGame: React.FC = () => {
         const clusterTiles = instantiateRoomCluster(cluster, startQ, startR, boardMap);
 
         if (clusterTiles.length > 0) {
-          // Synchronize edges for each cluster tile
-          let clusterBoardMap = new Map(boardMap);
-          for (const clusterTile of clusterTiles) {
-            clusterBoardMap = synchronizeEdgesWithNeighbors(clusterTile, clusterBoardMap);
-          }
-          const syncClusterBoard = boardMapToArray(clusterBoardMap);
-
-          setState(prev => ({ ...prev, board: syncClusterBoard }));
+          // Synchronize edges for each cluster tile using functional setState to avoid stale closure
+          setState(prev => {
+            let clusterBoardMap = boardArrayToMap(prev.board);
+            for (const clusterTile of clusterTiles) {
+              clusterBoardMap = synchronizeEdgesWithNeighbors(clusterTile, clusterBoardMap);
+            }
+            const syncClusterBoard = boardMapToArray(clusterBoardMap);
+            return { ...prev, board: syncClusterBoard };
+          });
           addToLog(`UTFORSKET: ${cluster.name}. [BUILDING]`);
           addToLog(cluster.description);
 
@@ -2065,15 +2070,17 @@ const ShadowsGame: React.FC = () => {
     }
 
     // Synchronize edges with neighboring tiles (fixes window/door linking)
-    const currentBoardMap = boardArrayToMap(state.board);
-    const synchronizedBoardMap = synchronizeEdgesWithNeighbors(finalTile, currentBoardMap);
-    const synchronizedBoard = boardMapToArray(synchronizedBoardMap);
-
-    setState(prev => ({
-      ...prev,
-      board: synchronizedBoard,
-      objectiveSpawnState: updatedObjectiveSpawnState
-    }));
+    // Use functional setState to avoid stale closure bug where tiles could be lost
+    setState(prev => {
+      const currentBoardMap = boardArrayToMap(prev.board);
+      const synchronizedBoardMap = synchronizeEdgesWithNeighbors(finalTile, currentBoardMap);
+      const synchronizedBoard = boardMapToArray(synchronizedBoardMap);
+      return {
+        ...prev,
+        board: synchronizedBoard,
+        objectiveSpawnState: updatedObjectiveSpawnState
+      };
+    });
     addToLog(`UTFORSKET: ${finalTile.name}. [${finalTile.category?.toUpperCase() || 'UNKNOWN'}]`);
 
     // Show atmospheric description from template or location descriptions
