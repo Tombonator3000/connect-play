@@ -2546,14 +2546,15 @@ const ShadowsGame: React.FC = () => {
     const dq = to.q - from.q;
     const dr = to.r - from.r;
 
-    // Hex edge directions (pointy-top orientation)
-    // 0: +q, 1: +q-r, 2: -r, 3: -q, 4: -q+r, 5: +r
-    if (dq === 1 && dr === 0) return 0;
-    if (dq === 1 && dr === -1) return 1;
-    if (dq === 0 && dr === -1) return 2;
-    if (dq === -1 && dr === 0) return 3;
-    if (dq === -1 && dr === 1) return 4;
-    if (dq === 0 && dr === 1) return 5;
+    // Hex edge directions - MUST match roomSpawnHelpers.ts EDGE_DIRECTIONS
+    // and contextActionEffects.ts ADJACENT_OFFSETS for consistent edge indexing
+    // 0: North, 1: Northeast, 2: Southeast, 3: South, 4: Southwest, 5: Northwest
+    if (dq === 0 && dr === -1) return 0;  // North
+    if (dq === 1 && dr === -1) return 1;  // Northeast
+    if (dq === 1 && dr === 0) return 2;   // Southeast (East)
+    if (dq === 0 && dr === 1) return 3;   // South
+    if (dq === -1 && dr === 1) return 4;  // Southwest
+    if (dq === -1 && dr === 0) return 5;  // Northwest (West)
 
     return -1; // Not adjacent
   };

@@ -9,24 +9,25 @@ export const hexDistance = (a: { q: number; r: number }, b: { q: number; r: numb
  * Returns the index (0-5) of the edge on the source tile that faces the target tile
  * Returns -1 if tiles are not adjacent
  *
- * Hex edge directions (axial coordinates, pointy-top):
- * 0: East       (q+1, r+0)
- * 1: Southeast  (q+0, r+1)
- * 2: Southwest  (q-1, r+1)
- * 3: West       (q-1, r+0)
- * 4: Northwest  (q+0, r-1)
- * 5: Northeast  (q+1, r-1)
+ * Hex edge directions - MUST match roomSpawnHelpers.ts EDGE_DIRECTIONS
+ * and contextActionEffects.ts ADJACENT_OFFSETS for consistent edge indexing:
+ * 0: North      (q+0, r-1)
+ * 1: Northeast  (q+1, r-1)
+ * 2: Southeast  (q+1, r+0)
+ * 3: South      (q+0, r+1)
+ * 4: Southwest  (q-1, r+1)
+ * 5: Northwest  (q-1, r+0)
  */
 export const getEdgeDirection = (from: { q: number; r: number }, to: { q: number; r: number }): number => {
   const dq = to.q - from.q;
   const dr = to.r - from.r;
 
-  if (dq === 1 && dr === 0) return 0;  // East
-  if (dq === 0 && dr === 1) return 1;  // Southeast
-  if (dq === -1 && dr === 1) return 2; // Southwest
-  if (dq === -1 && dr === 0) return 3; // West
-  if (dq === 0 && dr === -1) return 4; // Northwest
-  if (dq === 1 && dr === -1) return 5; // Northeast
+  if (dq === 0 && dr === -1) return 0;  // North
+  if (dq === 1 && dr === -1) return 1;  // Northeast
+  if (dq === 1 && dr === 0) return 2;   // Southeast (East)
+  if (dq === 0 && dr === 1) return 3;   // South
+  if (dq === -1 && dr === 1) return 4;  // Southwest
+  if (dq === -1 && dr === 0) return 5;  // Northwest (West)
 
   return -1; // Not adjacent
 };
