@@ -663,6 +663,25 @@ export const LOCATION_DESCRIPTIONS: Record<string, string> = {
   'Dirt Trail': 'Winding through overgrowth. The path knows where it\'s going. Trust it or don\'t.'
 };
 
+/**
+ * SCENARIOS - All playable scenarios
+ *
+ * DOOM SYSTEM (Pressure-Based):
+ * The new doom system removes automatic doom decrease per round by default.
+ * Instead, doom is affected by game events:
+ *
+ * - doomTickPerRound: 0 (default) = no auto-tick, 1+ = classic mode
+ * - doomTickEveryNRounds: N = doom ticks every N rounds (alternative)
+ * - doomOnMonsterSpawn: -1 (default) = doom decreases when monsters spawn
+ * - doomOnEliteKill: +1 (default) = doom increases when elite/boss killed
+ * - doomOnObjectiveComplete: +1 (default) = doom increases on objective complete
+ * - doomOnSurvivorRescue: +1 (default) = doom increases when survivor rescued
+ * - doomOnPlayerDeath: -2 (default) = doom decreases when player dies
+ * - doomOnPortalOpen: -2 (default) = doom decreases when portal opens
+ *
+ * This creates a more dynamic, player-agency driven experience where
+ * the doom clock responds to actions rather than just ticking down.
+ */
 export const SCENARIOS: Scenario[] = [
   {
     id: 's1',
@@ -686,6 +705,11 @@ The clock strikes midnight. The hunt begins.`,
     victoryType: 'escape',
     estimatedTime: '30-45 min',
     recommendedPlayers: '1-2',
+    // Pressure-based doom configuration (new system - no automatic doom tick)
+    doomTickPerRound: 0,           // No automatic doom decrease per round
+    doomOnMonsterSpawn: -1,        // Doom decreases when monsters spawn
+    doomOnEliteKill: 1,            // Doom increases when elite/boss killed
+    doomOnObjectiveComplete: 1,    // Doom increases when objective completed
     steps: [
       { id: 'step1', description: 'Find the Iron Key (Investigate locations)', type: 'find_item', targetId: 'quest_key', completed: false },
       { id: 'step2', description: 'Locate the Exit Door', type: 'find_tile', targetId: 'Exit Door', completed: false },
@@ -784,6 +808,11 @@ The ritual begins at midnight. You have until then.`,
     victoryType: 'assassination',
     estimatedTime: '45-60 min',
     recommendedPlayers: '2-3',
+    // Pressure-based doom (Hard scenario - still has some time pressure)
+    doomTickPerRound: 0,
+    doomOnMonsterSpawn: -1,
+    doomOnEliteKill: 2,            // Extra doom for killing the boss
+    doomOnObjectiveComplete: 1,
     steps: [
       { id: 'step1', description: 'Find the Dark Priest', type: 'find_item', targetId: 'location_intel', completed: false },
       { id: 'step2', description: 'Kill the Dark Priest', type: 'kill_enemy', targetId: 'priest', amount: 1, completed: false }
@@ -886,6 +915,11 @@ There is no escape. The roads are blocked. The telegraph lines are down. You mus
 Ten rounds. Ten waves. Survive, and you might just live to see another sunrise.`,
     startDoom: 15,
     startLocation: 'Police Station',
+    // Survival scenario - doom ticks every 2 rounds instead of every round
+    doomTickEveryNRounds: 2,       // Doom only ticks every 2nd round
+    doomOnMonsterSpawn: -1,
+    doomOnEliteKill: 1,
+    doomOnObjectiveComplete: 2,    // Big bonus for surviving milestones
     goal: 'Survive for 10 rounds.',
     specialRule: 'Doom decreases every round automatically. Enemies spawn in waves.',
     difficulty: 'Nightmare',
