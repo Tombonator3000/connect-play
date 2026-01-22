@@ -19,43 +19,43 @@ import { DoorConfig } from './index';
 // ============================================================================
 
 const DOOR_STATE_INFO: Record<DoorState, { label: string; icon: React.ReactNode; color: string; description: string }> = {
-  OPEN: {
+  open: {
     label: 'Open',
     icon: <DoorOpen className="w-3 h-3" />,
     color: 'text-green-400',
     description: 'Door is open, free passage',
   },
-  CLOSED: {
+  closed: {
     label: 'Closed',
     icon: <DoorOpen className="w-3 h-3" />,
     color: 'text-slate-400',
     description: '1 AP to open',
   },
-  LOCKED: {
+  locked: {
     label: 'Locked',
     icon: <Lock className="w-3 h-3" />,
     color: 'text-amber-400',
     description: 'Requires key or lockpick',
   },
-  BARRICADED: {
+  barricaded: {
     label: 'Barricaded',
     icon: <Hammer className="w-3 h-3" />,
     color: 'text-orange-400',
     description: 'Strength check to break',
   },
-  BROKEN: {
+  broken: {
     label: 'Broken',
     icon: <DoorOpen className="w-3 h-3" />,
     color: 'text-red-400',
     description: 'Permanently open',
   },
-  SEALED: {
+  sealed: {
     label: 'Sealed',
     icon: <Sparkles className="w-3 h-3" />,
     color: 'text-purple-400',
     description: 'Occult - requires ritual',
   },
-  PUZZLE: {
+  puzzle: {
     label: 'Puzzle',
     icon: <ShieldQuestion className="w-3 h-3" />,
     color: 'text-cyan-400',
@@ -101,7 +101,7 @@ const DoorConfigPanel: React.FC<DoorConfigPanelProps> = ({
       </h4>
 
       {doorEdges.map(({ edge, index }) => {
-        const config = doorConfigs?.[index] || { state: 'CLOSED' as DoorState };
+        const config = doorConfigs?.[index] || { state: 'closed' as DoorState };
         const stateInfo = DOOR_STATE_INFO[config.state];
 
         return (
@@ -131,8 +131,8 @@ const DoorConfigPanel: React.FC<DoorConfigPanelProps> = ({
                     ...config,
                     state: newState,
                     // Clear keyId if not locked
-                    keyId: newState === 'LOCKED' ? config.keyId : undefined,
-                    lockDifficulty: newState === 'LOCKED' ? config.lockDifficulty || 4 : undefined,
+                    keyId: newState === 'locked' ? config.keyId : undefined,
+                    lockDifficulty: newState === 'locked' ? config.lockDifficulty || 4 : undefined,
                   });
                 }}
                 className="w-full bg-slate-600 text-white text-xs px-2 py-1 rounded border border-slate-500"
@@ -146,7 +146,7 @@ const DoorConfigPanel: React.FC<DoorConfigPanelProps> = ({
             </div>
 
             {/* Locked door options */}
-            {config.state === 'LOCKED' && (
+            {config.state === 'locked' && (
               <>
                 <div>
                   <label className="text-[10px] text-slate-400 block mb-1">
@@ -209,7 +209,7 @@ const DoorConfigPanel: React.FC<DoorConfigPanelProps> = ({
           <button
             onClick={() => {
               doorEdges.forEach(({ index }) => {
-                onDoorConfigChange(index, { state: 'CLOSED' });
+                onDoorConfigChange(index, { state: 'closed' });
               });
             }}
             className="text-[10px] bg-slate-600 hover:bg-slate-500 text-white px-2 py-0.5 rounded"
@@ -219,7 +219,7 @@ const DoorConfigPanel: React.FC<DoorConfigPanelProps> = ({
           <button
             onClick={() => {
               doorEdges.forEach(({ index }) => {
-                onDoorConfigChange(index, { state: 'OPEN' });
+                onDoorConfigChange(index, { state: 'open' });
               });
             }}
             className="text-[10px] bg-slate-600 hover:bg-slate-500 text-white px-2 py-0.5 rounded"
@@ -229,7 +229,7 @@ const DoorConfigPanel: React.FC<DoorConfigPanelProps> = ({
           <button
             onClick={() => {
               doorEdges.forEach(({ index }) => {
-                onDoorConfigChange(index, { state: 'LOCKED', lockDifficulty: 4 });
+                onDoorConfigChange(index, { state: 'locked', lockDifficulty: 4 });
               });
             }}
             className="text-[10px] bg-amber-600 hover:bg-amber-500 text-white px-2 py-0.5 rounded"

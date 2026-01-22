@@ -402,7 +402,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
     if (edge === 'WALL') return false;
     if (edge === 'DOOR') {
       const doorConfig = currentTile.doorConfigs?.[direction];
-      if (doorConfig?.state === 'LOCKED' || doorConfig?.state === 'SEALED') {
+      if (doorConfig?.state === 'locked' || doorConfig?.state === 'sealed') {
         return false;
       }
     }
@@ -517,13 +517,13 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
           progress = `${explored}/${totalTiles} tiles`;
           break;
         case 'collect':
-          const targetCount = obj.targetCount || 1;
+          const targetCount = obj.targetAmount || 1;
           const collected = collectedItems.size;
           completed = collected >= targetCount;
           progress = `${collected}/${targetCount}`;
           break;
         case 'kill_enemies':
-          const enemyCount = obj.targetCount || 1;
+          const enemyCount = obj.targetAmount || 1;
           completed = defeatedMonsters.size >= enemyCount;
           progress = `${defeatedMonsters.size}/${enemyCount}`;
           break;
@@ -536,7 +536,7 @@ const PreviewPanel: React.FC<PreviewPanelProps> = ({
           }
           break;
         case 'survive':
-          const rounds = obj.targetCount || 5;
+          const rounds = obj.targetAmount || 5;
           const survived = metadata.startDoom - currentDoom;
           completed = survived >= rounds;
           progress = `${survived}/${rounds} rounds`;
@@ -997,7 +997,7 @@ function getEdgeStyle(edge: ConnectionEdgeType, doorConfig?: DoorConfig): { colo
     case 'WALL':
       return { color: '#6b7280' };
     case 'DOOR':
-      if (doorConfig?.state === 'LOCKED' || doorConfig?.state === 'SEALED') {
+      if (doorConfig?.state === 'locked' || doorConfig?.state === 'sealed') {
         return { color: '#ef4444', glow: '0 0 6px #ef4444' };
       }
       return { color: '#92400e' };

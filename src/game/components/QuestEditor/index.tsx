@@ -860,7 +860,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
                               // Also update doorConfigs when edge changes to/from DOOR
                               let doorConfigs = { ...tile.doorConfigs };
                               if (newType === 'DOOR' && !doorConfigs[index]) {
-                                doorConfigs[index] = { state: 'CLOSED' };
+                                doorConfigs[index] = { state: 'closed' };
                               } else if (newType !== 'DOOR' && doorConfigs[index]) {
                                 delete doorConfigs[index];
                               }

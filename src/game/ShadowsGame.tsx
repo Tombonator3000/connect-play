@@ -377,7 +377,11 @@ const ShadowsGame: React.FC = () => {
             // Update state with new spawns and urgency log together
             setState(prev => {
               const newLog = urgencyMessage
-                ? [`[${new Date().toLocaleTimeString()}] ${urgencyMessage}`, ...prev.log].slice(0, 50)
+                ? [{ 
+                    timestamp: new Date().toLocaleTimeString(), 
+                    message: urgencyMessage, 
+                    category: 'quest_progress' as const 
+                  }, ...prev.log].slice(0, 50)
                 : prev.log;
               return {
                 ...prev,
@@ -2391,7 +2395,7 @@ const ShadowsGame: React.FC = () => {
           ...newState,
           weatherState: {
             ...prev.weatherState,
-            activeWeather: newWeatherCondition,
+            global: newWeatherCondition,
           }
         };
       }
