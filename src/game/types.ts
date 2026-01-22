@@ -1886,3 +1886,190 @@ export function createDefaultLegacyData(): LegacyData {
     lastSaved: new Date().toISOString()
   };
 }
+
+// ============================================================================
+// QUICK WINS: RPG-LITE AND ROGUELITE SYSTEMS
+// ============================================================================
+
+// ============================================================================
+// 1. SISTE ORD (DEATH PERKS) - Bonus when hero dies
+// ============================================================================
+
+export type DeathPerkType = 'revenge' | 'inheritance' | 'wisdom' | 'warnings';
+
+export interface DeathPerk {
+  id: DeathPerkType;
+  name: string;
+  description: string;
+  icon: string;
+  effect: {
+    type: 'damage_bonus' | 'item_inherit' | 'xp_bonus' | 'doom_bonus';
+    value?: number;
+    targetEnemyType?: string;  // For revenge perk
+    inheritedItemId?: string;  // For inheritance perk
+  };
+}
+
+export interface ActiveDeathPerk {
+  perkId: DeathPerkType;
+  sourceHeroName: string;
+  sourceHeroId: string;
+  targetEnemyType?: string;
+  inheritedItemId?: string;
+  appliedToHeroId?: string;
+}
+
+// ============================================================================
+// 2. VETERANMERKER (ACHIEVEMENT BADGES) - Visual progression rewards
+// ============================================================================
+
+export type BadgeRarity = 'bronze' | 'silver' | 'gold' | 'legendary';
+
+export interface AchievementBadge {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;  // Emoji or Lucide icon name
+  rarity: BadgeRarity;
+  requirement: {
+    type: 'scenarios_survived' | 'bosses_killed' | 'lore_found' |
+          'narrow_escapes' | 'low_hp_survival' | 'enemies_killed' |
+          'gold_earned' | 'insight_earned' | 'perfect_scenario' |
+          'madness_survived' | 'no_damage_scenario';
+    count: number;
+    perHero?: boolean;  // If true, tracked per hero. If false, across all heroes.
+  };
+  reward?: {
+    type: 'title' | 'starting_bonus' | 'unlock';
+    value: string | number;
+  };
+}
+
+export interface EarnedBadge {
+  badgeId: string;
+  earnedDate: string;
+  earnedByHeroId?: string;
+  earnedByHeroName?: string;
+}
+
+// ============================================================================
+// 3. DESPERATE TILTAK (DESPERATE MEASURES) - Bonuses at low HP/Sanity
+// ============================================================================
+
+export interface DesperateMeasure {
+  id: string;
+  name: string;
+  description: string;
+  triggerCondition: {
+    type: 'low_hp' | 'low_sanity' | 'both';
+    threshold: number;  // HP or Sanity value that triggers this
+  };
+  effect: {
+    type: 'bonus_ap' | 'bonus_attack' | 'bonus_defense' | 'auto_fail_check' | 'bonus_damage';
+    value: number;
+    skillType?: SkillType;  // For auto_fail_check
+    duration?: 'round' | 'permanent';
+  };
+  drawback?: {
+    type: 'auto_fail_check';
+    skillType: SkillType;
+  };
+}
+
+// ============================================================================
+// 4. EXPANDED CRITS - More dramatic critical hits and misses
+// ============================================================================
+
+export type CriticalBonusType = 'extra_attack' | 'heal_hp' | 'gain_insight' | 'recover_sanity';
+export type CriticalPenaltyType = 'counter_attack' | 'lose_ap' | 'drop_item' | 'attract_enemy';
+
+export interface ExpandedCritResult {
+  isCriticalHit: boolean;
+  isCriticalMiss: boolean;
+  bonusDamage: number;
+  bonusChosen?: CriticalBonusType;
+  penaltyApplied?: CriticalPenaltyType;
+  message: string;
+}
+
+export interface CriticalBonus {
+  id: CriticalBonusType;
+  name: string;
+  description: string;
+  icon: string;
+  effect: {
+    type: 'action' | 'heal' | 'resource';
+    value: number;
+    resource?: 'hp' | 'sanity' | 'insight' | 'ap';
+  };
+}
+
+export interface CriticalPenalty {
+  id: CriticalPenaltyType;
+  name: string;
+  description: string;
+  effect: {
+    type: 'damage' | 'lose_resource' | 'spawn';
+    value: number;
+    resource?: 'ap' | 'item';
+  };
+}
+
+// ============================================================================
+// 5. ENKEL CRAFTING - Simple item combination recipes
+// ============================================================================
+
+export interface CraftingRecipe {
+  id: string;
+  name: string;
+  description: string;
+  ingredients: {
+    itemId: string;
+    quantity: number;
+  }[];
+  result: {
+    itemId: string;
+    quantity: number;
+  };
+  apCost: number;  // Action points to craft
+  skillCheck?: {
+    skill: SkillType;
+    dc: number;
+  };
+  unlocked?: boolean;  // Some recipes need to be discovered
+}
+
+export interface CraftingResult {
+  success: boolean;
+  message: string;
+  craftedItem?: Item;
+  consumedItems: string[];  // IDs of items consumed
+  skillCheckResult?: {
+    passed: boolean;
+    dice: number[];
+    successes: number;
+  };
+}
+
+// ============================================================================
+// EXTENDED LEGACY DATA - Add new systems to persistent storage
+// ============================================================================
+
+export interface ExtendedLegacyData extends LegacyData {
+  // Death Perks
+  availableDeathPerks: ActiveDeathPerk[];
+
+  // Achievement Badges
+  earnedBadges: EarnedBadge[];
+  badgeProgress: Record<string, number>;  // Progress toward each badge
+
+  // Discovered Recipes
+  discoveredRecipes: string[];
+
+  // Statistics for badges
+  totalBossesKilled: number;
+  totalLoreFound: number;
+  totalNarrowEscapes: number;  // Escaping with <3 Doom
+  totalPerfectScenarios: number;  // No hero deaths
+  totalMadnessSurvived: number;  // Scenarios survived while having madness
+}
