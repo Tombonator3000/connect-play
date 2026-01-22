@@ -16186,10 +16186,247 @@ setState(prev => {
 ### Filer Modifisert
 - `src/game/ShadowsGame.tsx`
   - Linje ~1927: Første fallback-case
-  - Linje ~1962: Andre fallback-case  
+  - Linje ~1962: Andre fallback-case
   - Linje ~1995: Cluster tiles-case
   - Linje ~2076: Hovedcase for single tile
 
 ### Build Status
 ✅ TypeScript kompilerer uten feil
 ✅ Build vellykket
+
+---
+
+## 2026-01-22: Editor - Custom Tile Creator & Monster Designer
+
+### Oppgave
+Implementere funksjonalitet i Quest Editor for å:
+1. Lage egne tiles med grafikk (bilde-opplasting)
+2. Designe egne monstre med stats og grafikk
+
+### Løsning
+
+#### 1. CustomTileCreator Komponent (`CustomTileCreator.tsx`)
+
+En fullverdig dialog for å lage custom tiles med:
+
+**Grunnleggende info:**
+- Navn og beskrivelse
+- Kategori (nature, urban, street, facade, foyer, corridor, room, stairs, basement, crypt)
+- Sub-type (f.eks. "forbidden", "ancient", etc.)
+- Floor type (wood, cobblestone, tile, stone, grass, dirt, water, ritual)
+- Zone level (-2 til 2)
+
+**Edge-konfigurasjon:**
+- 6 kanter per hex (Top-Right, Right, Bottom-Right, Bottom-Left, Left, Top-Left)
+- Edge-typer: WALL, OPEN, DOOR, WINDOW, STREET, NATURE, WATER, FACADE, STAIRS_UP, STAIRS_DOWN
+- Valgfri rotasjon
+
+**Grafikk-funksjonalitet:**
+- Drag & drop bilde-opplasting
+- Fil-velger som alternativ
+- Maks 1MB filstørrelse
+- Base64-encoding for lagring
+- Bildeskala-kontroll (0.5x - 2.0x)
+- Hex-preview med bilde-overlay
+
+**Avanserte innstillinger:**
+- Watermark-ikon (BookOpen, Skull, Flame, etc.)
+- Bildeskala-justering
+
+#### 2. MonsterDesigner Komponent (`MonsterDesigner.tsx`)
+
+En komplett editor for å designe custom monstre med:
+
+**Grunnleggende info:**
+- Monster-navn
+- Type ID (auto-generert fra navn)
+- Kategori (minion, warrior, elite, boss)
+- Beskrivelse, lore, og defeat flavor text
+
+**Combat stats med visuelle sliders:**
+- HP (1-20) med anbefalt range per kategori
+- Attack Dice (1-6)
+- Defense Dice (0-6)
+- Horror (1-6)
+- Advarsler når stats er utenfor anbefalt range
+
+**Stat-anbefalinger per kategori:**
+| Kategori | HP | Attack | Defense | Horror |
+|----------|-----|--------|---------|--------|
+| Minion | 2-4 | 1 | 1-2 | 1-2 |
+| Warrior | 3-5 | 2 | 2-3 | 2-3 |
+| Elite | 4-6 | 2-3 | 2-4 | 3-4 |
+| Boss | 6-10 | 3-4 | 3-5 | 4-6 |
+
+**15 valgbare traits:**
+- Flying, Fast, Slow, Ranged, Aquatic, Massive
+- Regenerate, Ambusher, Scavenger, Elite
+- Ethereal, Pack Tactics, Terrifying, Resistant
+- Vulnerable to Light
+
+**AI-oppførsels-innstillinger:**
+- Behavior type: Aggressive, Defensive, Ranged, Ambusher, Patrol, Swarm
+- Preferred terrain: Any, Water, Dark, Underground, Outdoor, Ritual, Urban, Nature
+- 9 spesialiteter: Charge, Drag Under, Phasing, Enrage, Summon, Terrify, Devour, Poison, Stun
+
+**Grafikk:**
+- Bilde-opplasting (drag & drop eller fil-velger)
+- Base64-lagring
+- Bildeskala-kontroll
+- Preview-kort med alle stats
+
+#### 3. Custom Entity Storage (`customEntityStorage.ts`)
+
+Utility-modul for localStorage-håndtering:
+
+**Tile-funksjoner:**
+- `getCustomTiles()` - Hent alle custom tiles
+- `saveCustomTile(tile)` - Lagre/oppdater tile
+- `deleteCustomTile(tileId)` - Slett tile
+- `getCustomTileById(tileId)` - Hent enkelt tile
+- `exportCustomTiles()` - Eksporter til JSON
+- `importCustomTiles(json)` - Importer fra JSON
+
+**Monster-funksjoner:**
+- `getCustomMonsters()` - Hent alle custom monstre
+- `saveCustomMonster(monster)` - Lagre/oppdater monster
+- `deleteCustomMonster(monsterId)` - Slett monster
+- `getCustomMonsterById(monsterId)` - Hent enkelt monster
+- `getCustomMonsterByType(type)` - Hent monster etter type
+- `exportCustomMonsters()` - Eksporter til JSON
+- `importCustomMonsters(json)` - Importer fra JSON
+
+**Kombinerte operasjoner:**
+- `exportAllCustomContent()` - Eksporter alt
+- `importAllCustomContent(json)` - Importer alt
+- `getCustomContentCount()` - Tell entities
+- `clearAllCustomContent()` - Slett alt
+
+#### 4. TilePalette Oppdateringer
+
+**Nye props:**
+```typescript
+interface TilePaletteProps {
+  selectedTemplate: TileTemplate | CustomTileTemplate | null;
+  onSelectTemplate: (template: TileTemplate | CustomTileTemplate) => void;
+  rotation: number;
+  onCreateCustomTile?: () => void;
+  onEditCustomTile?: (tile: CustomTileTemplate) => void;
+  customTilesRefreshKey?: number;
+}
+```
+
+**UI-endringer:**
+- Ny "Custom Tiles" seksjon øverst i paletten
+- "Create Custom Tile" knapp med stiplet border
+- Custom tiles vises med lilla bakgrunn og Sparkles-ikon
+- Hover-knapper for Edit og Delete på custom tiles
+- Miniatyr-preview av custom bilder
+
+#### 5. MonsterPalette Oppdateringer
+
+**Nye props:**
+```typescript
+interface MonsterPaletteProps {
+  monsters: MonsterPlacement[];
+  onMonstersChange: (monsters: MonsterPlacement[]) => void;
+  onCreateCustomMonster?: () => void;
+  onEditCustomMonster?: (monster: CustomMonster) => void;
+  customMonstersRefreshKey?: number;
+}
+```
+
+**UI-endringer:**
+- Ny "Custom Monsters" seksjon øverst
+- "Create Custom Monster" knapp
+- Custom monstre vises med lilla bakgrunn
+- Hover-knapper for Edit og Delete
+- Custom monster-bilder vises i listen
+- Stats (HP, ATK, DEF, HOR) vises for custom monstre
+
+#### 6. QuestEditor Integrasjon
+
+**Nye state-variabler:**
+```typescript
+const [showCustomTileCreator, setShowCustomTileCreator] = useState(false);
+const [showMonsterDesigner, setShowMonsterDesigner] = useState(false);
+const [editingCustomTile, setEditingCustomTile] = useState<CustomTileTemplate | undefined>();
+const [editingCustomMonster, setEditingCustomMonster] = useState<CustomMonster | undefined>();
+const [customTilesRefreshKey, setCustomTilesRefreshKey] = useState(0);
+const [customMonstersRefreshKey, setCustomMonstersRefreshKey] = useState(0);
+```
+
+**Nye handlers:**
+- `handleCreateCustomTile()` - Åpner tom CustomTileCreator
+- `handleEditCustomTile(tile)` - Åpner CustomTileCreator med eksisterende tile
+- `handleSaveCustomTile(tile)` - Lagrer og oppdaterer refresh key
+- `handleCreateCustomMonster()` - Åpner tom MonsterDesigner
+- `handleEditCustomMonster(monster)` - Åpner MonsterDesigner med eksisterende monster
+- `handleSaveCustomMonster(monster)` - Lagrer og oppdaterer refresh key
+
+### Filer Opprettet
+- `src/game/components/QuestEditor/CustomTileCreator.tsx` (NEW)
+- `src/game/components/QuestEditor/MonsterDesigner.tsx` (NEW)
+- `src/game/components/QuestEditor/customEntityStorage.ts` (NEW)
+
+### Filer Modifisert
+- `src/game/components/QuestEditor/index.tsx`
+  - Importert nye komponenter
+  - Lagt til state og handlers
+  - Integrert dialogs i render
+  - Oppdatert exports
+- `src/game/components/QuestEditor/TilePalette.tsx`
+  - Støtte for custom tiles
+  - Edit/Delete funksjonalitet
+  - Custom section UI
+- `src/game/components/QuestEditor/MonsterPalette.tsx`
+  - Støtte for custom monsters
+  - Edit/Delete funksjonalitet
+  - Custom section UI
+
+### Brukerveiledning
+
+**Lage Custom Tile:**
+1. Åpne Quest Editor
+2. I venstre panel (Tile Palette), klikk "Create Custom Tile" under "Custom Tiles"
+3. Fyll ut navn, kategori, floor type, zone level
+4. Konfigurer edges (hvilke sider er åpne, dører, vegger, etc.)
+5. Valgfritt: Last opp et bilde (drag & drop eller klikk)
+6. Klikk "Create Tile"
+7. Tile er nå tilgjengelig i paletten
+
+**Lage Custom Monster:**
+1. Åpne Quest Editor
+2. Velg en tile og gå til "Monsters" tab i høyre panel
+3. Klikk "Create Custom Monster" under "Custom Monsters"
+4. Fyll ut navn, kategori (minion/warrior/elite/boss)
+5. Juster stats med sliders (HP, Attack, Defense, Horror)
+6. Velg traits (flying, fast, ranged, etc.)
+7. Valgfritt: Last opp et bilde
+8. Valgfritt: Konfigurer AI-oppførsel
+9. Klikk "Create Monster"
+10. Monster er nå tilgjengelig for plassering
+
+**Redigere/Slette:**
+- Hold musepekeren over custom tile/monster
+- Klikk blyant-ikon for å redigere
+- Klikk søppelbøtte-ikon for å slette
+
+### LocalStorage Nøkler
+- `quest_editor_custom_tiles` - Custom tiles array
+- `quest_editor_custom_monsters` - Custom monsters array
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,616.00 kB bundle)
+
+### Resultat
+Brukere kan nå:
+- ✅ Lage egne tiles med custom grafikk
+- ✅ Definere tile-egenskaper (kategori, edges, floor type)
+- ✅ Designe egne monstre med stats
+- ✅ Laste opp bilder for tiles og monstre
+- ✅ Redigere eksisterende custom entities
+- ✅ Slette custom entities
+- ✅ Bruke custom tiles og monstre i scenarioer
+- ✅ Custom entities lagres i localStorage

@@ -30,10 +30,13 @@ import CustomQuestLoader, { convertQuestToScenario, SavedQuest } from './CustomQ
 import CampaignPlayManager from './CampaignPlayManager';
 import DialogEditor, { DialogTree, DialogNode, DialogOption } from './DialogEditor';
 import ScenarioTemplates, { ScenarioTemplate, SCENARIO_TEMPLATES } from './ScenarioTemplates';
+import CustomTileCreator, { CustomTileTemplate } from './CustomTileCreator';
+import MonsterDesigner, { CustomMonster } from './MonsterDesigner';
+import { saveCustomTile, saveCustomMonster } from './customEntityStorage';
 
 // Re-export for external use
-export { CampaignEditor, CustomQuestLoader, CampaignPlayManager, convertQuestToScenario, DialogEditor, ScenarioTemplates, SCENARIO_TEMPLATES };
-export type { SavedQuest, DialogTree, DialogNode, DialogOption, ScenarioTemplate };
+export { CampaignEditor, CustomQuestLoader, CampaignPlayManager, convertQuestToScenario, DialogEditor, ScenarioTemplates, SCENARIO_TEMPLATES, CustomTileCreator, MonsterDesigner };
+export type { SavedQuest, DialogTree, DialogNode, DialogOption, ScenarioTemplate, CustomTileTemplate, CustomMonster };
 
 // ============================================================================
 // RIGHT PANEL TABS
@@ -130,6 +133,14 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
   const [showPreview, setShowPreview] = useState(false);
   const [showCampaignEditor, setShowCampaignEditor] = useState(false);
   const [showSavedFeedback, setShowSavedFeedback] = useState(false);
+
+  // Custom entity creation state
+  const [showCustomTileCreator, setShowCustomTileCreator] = useState(false);
+  const [showMonsterDesigner, setShowMonsterDesigner] = useState(false);
+  const [editingCustomTile, setEditingCustomTile] = useState<CustomTileTemplate | undefined>();
+  const [editingCustomMonster, setEditingCustomMonster] = useState<CustomMonster | undefined>();
+  const [customTilesRefreshKey, setCustomTilesRefreshKey] = useState(0);
+  const [customMonstersRefreshKey, setCustomMonstersRefreshKey] = useState(0);
 
   // Undo/Redo
   const {
@@ -366,6 +377,44 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
       setSelectedTileId(null);
     }
   }, [tiles.size, recordAction]);
+
+  // ============================================================================
+  // CUSTOM ENTITY HANDLERS
+  // ============================================================================
+
+  const handleCreateCustomTile = useCallback(() => {
+    setEditingCustomTile(undefined);
+    setShowCustomTileCreator(true);
+  }, []);
+
+  const handleEditCustomTile = useCallback((tile: CustomTileTemplate) => {
+    setEditingCustomTile(tile);
+    setShowCustomTileCreator(true);
+  }, []);
+
+  const handleSaveCustomTile = useCallback((tile: CustomTileTemplate) => {
+    saveCustomTile(tile);
+    setCustomTilesRefreshKey(prev => prev + 1);
+    setShowCustomTileCreator(false);
+    setEditingCustomTile(undefined);
+  }, []);
+
+  const handleCreateCustomMonster = useCallback(() => {
+    setEditingCustomMonster(undefined);
+    setShowMonsterDesigner(true);
+  }, []);
+
+  const handleEditCustomMonster = useCallback((monster: CustomMonster) => {
+    setEditingCustomMonster(monster);
+    setShowMonsterDesigner(true);
+  }, []);
+
+  const handleSaveCustomMonster = useCallback((monster: CustomMonster) => {
+    saveCustomMonster(monster);
+    setCustomMonstersRefreshKey(prev => prev + 1);
+    setShowMonsterDesigner(false);
+    setEditingCustomMonster(undefined);
+  }, []);
 
   // ============================================================================
   // JSON EXPORT
@@ -754,6 +803,9 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
           selectedTemplate={selectedTemplate}
           onSelectTemplate={handleSelectTemplate}
           rotation={rotation}
+          onCreateCustomTile={handleCreateCustomTile}
+          onEditCustomTile={handleEditCustomTile}
+          customTilesRefreshKey={customTilesRefreshKey}
         />
 
         {/* Center - Canvas */}
@@ -1080,6 +1132,9 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
                         return newTiles;
                       });
                     }}
+                    onCreateCustomMonster={handleCreateCustomMonster}
+                    onEditCustomMonster={handleEditCustomMonster}
+                    customMonstersRefreshKey={customMonstersRefreshKey}
                   />
                 ) : (
                   <div className="text-slate-500 text-sm text-center py-8">
@@ -1234,6 +1289,30 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
       {showCampaignEditor && (
         <CampaignEditor
           onBack={() => setShowCampaignEditor(false)}
+        />
+      )}
+
+      {/* Custom Tile Creator */}
+      {showCustomTileCreator && (
+        <CustomTileCreator
+          onClose={() => {
+            setShowCustomTileCreator(false);
+            setEditingCustomTile(undefined);
+          }}
+          onSave={handleSaveCustomTile}
+          editingTile={editingCustomTile}
+        />
+      )}
+
+      {/* Monster Designer */}
+      {showMonsterDesigner && (
+        <MonsterDesigner
+          onClose={() => {
+            setShowMonsterDesigner(false);
+            setEditingCustomMonster(undefined);
+          }}
+          onSave={handleSaveCustomMonster}
+          editingMonster={editingCustomMonster}
         />
       )}
     </div>

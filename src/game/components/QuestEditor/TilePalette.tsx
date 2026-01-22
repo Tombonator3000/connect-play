@@ -3,12 +3,15 @@
  *
  * Sidebar showing all available tile templates organized by category.
  * Click to select a template for placement.
+ * Now supports custom tiles created with CustomTileCreator.
  */
 
-import React, { useState, useMemo } from 'react';
-import { ChevronDown, ChevronRight, Search } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { ChevronDown, ChevronRight, Search, Plus, Trash2, Pencil, Sparkles } from 'lucide-react';
 import { TileTemplate, TILE_TEMPLATES, ConnectionEdgeType, rotateEdges } from '../../tileConnectionSystem';
 import { TileCategory } from '../../types';
+import { CustomTileTemplate } from './CustomTileCreator';
+import { getCustomTiles, deleteCustomTile } from './customEntityStorage';
 
 // ============================================================================
 // CONSTANTS
@@ -47,20 +50,47 @@ const EDGE_ABBREV: Record<ConnectionEdgeType, string> = {
 // ============================================================================
 
 interface TilePaletteProps {
-  selectedTemplate: TileTemplate | null;
-  onSelectTemplate: (template: TileTemplate) => void;
+  selectedTemplate: TileTemplate | CustomTileTemplate | null;
+  onSelectTemplate: (template: TileTemplate | CustomTileTemplate) => void;
   rotation: number;
+  onCreateCustomTile?: () => void;
+  onEditCustomTile?: (tile: CustomTileTemplate) => void;
+  customTilesRefreshKey?: number; // Increment to force refresh of custom tiles
 }
 
 const TilePalette: React.FC<TilePaletteProps> = ({
   selectedTemplate,
   onSelectTemplate,
-  rotation
+  rotation,
+  onCreateCustomTile,
+  onEditCustomTile,
+  customTilesRefreshKey = 0
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [expandedCategories, setExpandedCategories] = useState<Set<TileCategory>>(
-    new Set(['foyer', 'corridor', 'room']) // Start with common categories expanded
+  const [expandedCategories, setExpandedCategories] = useState<Set<TileCategory | 'custom'>>(
+    new Set(['foyer', 'corridor', 'room', 'custom']) // Start with common categories and custom expanded
   );
+  const [customTiles, setCustomTiles] = useState<CustomTileTemplate[]>([]);
+
+  // Load custom tiles from localStorage
+  useEffect(() => {
+    setCustomTiles(getCustomTiles());
+  }, [customTilesRefreshKey]);
+
+  // Handle deleting a custom tile
+  const handleDeleteCustomTile = (tileId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (window.confirm('Delete this custom tile? This cannot be undone.')) {
+      deleteCustomTile(tileId);
+      setCustomTiles(getCustomTiles());
+    }
+  };
+
+  // Handle editing a custom tile
+  const handleEditCustomTile = (tile: CustomTileTemplate, event: React.MouseEvent) => {
+    event.stopPropagation();
+    onEditCustomTile?.(tile);
+  };
 
   // Group templates by category
   const templatesByCategory = useMemo(() => {
@@ -106,7 +136,7 @@ const TilePalette: React.FC<TilePaletteProps> = ({
   }, [templatesByCategory, searchQuery]);
 
   // Toggle category expansion
-  const toggleCategory = (category: TileCategory) => {
+  const toggleCategory = (category: TileCategory | 'custom') => {
     setExpandedCategories(prev => {
       const next = new Set(prev);
       if (next.has(category)) {
@@ -117,6 +147,17 @@ const TilePalette: React.FC<TilePaletteProps> = ({
       return next;
     });
   };
+
+  // Filter custom tiles by search
+  const filteredCustomTiles = useMemo(() => {
+    if (!searchQuery.trim()) return customTiles;
+    const query = searchQuery.toLowerCase();
+    return customTiles.filter(t =>
+      t.name.toLowerCase().includes(query) ||
+      t.subType.toLowerCase().includes(query) ||
+      t.category.toLowerCase().includes(query)
+    );
+  }, [customTiles, searchQuery]);
 
   // Render edge pattern preview
   const renderEdgePattern = (edges: ConnectionEdgeType[], canRotate: boolean) => {
@@ -151,24 +192,48 @@ const TilePalette: React.FC<TilePaletteProps> = ({
   };
 
   // Render a single template item
-  const renderTemplateItem = (template: TileTemplate) => {
+  const renderTemplateItem = (template: TileTemplate | CustomTileTemplate) => {
     const isSelected = selectedTemplate?.id === template.id;
+    const isCustom = 'isCustom' in template && template.isCustom;
 
     return (
       <div
         key={template.id}
         onClick={() => onSelectTemplate(template)}
         className={`
-          p-2 rounded cursor-pointer transition-all
+          p-2 rounded cursor-pointer transition-all relative group
           ${isSelected
             ? 'bg-amber-600/30 border border-amber-500'
-            : 'bg-slate-700/50 hover:bg-slate-700 border border-transparent'
+            : isCustom
+              ? 'bg-purple-900/30 hover:bg-purple-900/50 border border-purple-600/50'
+              : 'bg-slate-700/50 hover:bg-slate-700 border border-transparent'
           }
         `}
       >
+        {/* Custom tile indicator and actions */}
+        {isCustom && (
+          <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={(e) => handleEditCustomTile(template as CustomTileTemplate, e)}
+              className="p-1 bg-slate-600 hover:bg-amber-600 rounded text-white"
+              title="Edit tile"
+            >
+              <Pencil className="w-3 h-3" />
+            </button>
+            <button
+              onClick={(e) => handleDeleteCustomTile(template.id, e)}
+              className="p-1 bg-slate-600 hover:bg-red-600 rounded text-white"
+              title="Delete tile"
+            >
+              <Trash2 className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium text-white truncate">
+            <div className="text-sm font-medium text-white truncate flex items-center gap-1">
+              {isCustom && <Sparkles className="w-3 h-3 text-purple-400" />}
               {template.name}
             </div>
             <div className="text-xs text-slate-400">
@@ -182,6 +247,17 @@ const TilePalette: React.FC<TilePaletteProps> = ({
             Z{template.zoneLevel}
           </div>
         </div>
+
+        {/* Custom image preview */}
+        {isCustom && (template as CustomTileTemplate).customImage && (
+          <div className="mt-1 flex justify-center">
+            <img
+              src={(template as CustomTileTemplate).customImage}
+              alt={template.name}
+              className="h-8 w-8 object-cover rounded opacity-70"
+            />
+          </div>
+        )}
 
         {/* Edge pattern */}
         <div className="mt-1">
@@ -217,6 +293,51 @@ const TilePalette: React.FC<TilePaletteProps> = ({
 
       {/* Category list */}
       <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        {/* Custom Tiles Section */}
+        {(filteredCustomTiles.length > 0 || (searchQuery.trim() === '' && onCreateCustomTile)) && (
+          <div className="rounded overflow-hidden mb-2">
+            {/* Custom category header */}
+            <button
+              onClick={() => toggleCategory('custom')}
+              className="w-full flex items-center gap-2 px-2 py-1.5 bg-purple-900/30 hover:bg-purple-900/50 text-left transition-colors"
+            >
+              {expandedCategories.has('custom') ? (
+                <ChevronDown className="w-4 h-4 text-purple-400" />
+              ) : (
+                <ChevronRight className="w-4 h-4 text-purple-400" />
+              )}
+              <Sparkles className="w-3 h-3 text-purple-400" />
+              <span className="text-sm font-medium text-purple-300 flex-1">Custom Tiles</span>
+              <span className="text-xs text-purple-400">{customTiles.length}</span>
+            </button>
+
+            {/* Custom tiles content */}
+            {expandedCategories.has('custom') && (
+              <div className="space-y-1 p-1 bg-purple-900/10">
+                {/* Create new button */}
+                {onCreateCustomTile && (
+                  <button
+                    onClick={onCreateCustomTile}
+                    className="w-full flex items-center justify-center gap-2 p-2 rounded border-2 border-dashed border-purple-600/50 hover:border-purple-500 hover:bg-purple-900/30 text-purple-400 hover:text-purple-300 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span className="text-sm">Create Custom Tile</span>
+                  </button>
+                )}
+
+                {/* Custom tiles list */}
+                {filteredCustomTiles.map(tile => renderTemplateItem(tile))}
+
+                {customTiles.length === 0 && !searchQuery.trim() && (
+                  <div className="text-center text-purple-400/60 py-3 text-xs">
+                    No custom tiles yet
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {CATEGORY_ORDER.map(({ category, label, color }) => {
           const templates = filteredCategories.get(category);
           if (!templates || templates.length === 0) return null;
