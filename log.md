@@ -14627,3 +14627,86 @@ interface ActionEffectConfig {
 5. [ ] Testing på ulike enheter (performance)
 
 ---
+
+
+---
+
+## 2026-01-22: Fiks av React forwardRef Warnings
+
+### Problembeskrivelse
+
+Følgende console warnings ble observert i utviklingsmiljøet:
+
+```
+Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?
+```
+
+Disse warnings kom fra:
+1. `SaveLoadModal` - Spillets save/load modal
+2. `Toaster` - Toast notifications (shadcn/ui)
+3. `Sonner` - Sonner toast component
+
+### Andre observerte feil
+
+1. **AbortError: The play() request was interrupted** - Kommer fra lovable.dev platformen (eksterne iframes), ikke fra spillkoden vår
+2. **Iframe sandbox warnings** - Også fra lovable.dev platformen
+3. **404 errors** - Manglende ressurser på lovable.dev platformen
+
+### Løsninger
+
+#### 1. SaveLoadModal (`src/game/components/SaveLoadModal.tsx`)
+
+```typescript
+// Før:
+const SaveLoadModal: React.FC<SaveLoadModalProps> = ({ ... }) => {
+
+// Etter:
+const SaveLoadModal = forwardRef<HTMLDivElement, SaveLoadModalProps>(({ ... }, ref) => {
+  // ... component logic
+});
+SaveLoadModal.displayName = 'SaveLoadModal';
+```
+
+#### 2. Toaster (`src/components/ui/toaster.tsx`)
+
+```typescript
+// Før:
+export function Toaster() {
+
+// Etter:
+export const Toaster = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  (_props, _ref) => {
+    // ... component logic
+  }
+);
+Toaster.displayName = "Toaster";
+```
+
+#### 3. Sonner (`src/components/ui/sonner.tsx`)
+
+```typescript
+// Før:
+const Toaster = ({ ...props }: ToasterProps) => {
+
+// Etter:
+const Toaster = React.forwardRef<HTMLDivElement, ToasterProps>(({ ...props }, _ref) => {
+  // ... component logic
+});
+Toaster.displayName = "Toaster";
+```
+
+### Endrede filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/components/SaveLoadModal.tsx` | Lagt til forwardRef og displayName |
+| `src/components/ui/toaster.tsx` | Lagt til forwardRef og displayName |
+| `src/components/ui/sonner.tsx` | Lagt til forwardRef og displayName |
+
+### Ikke-fikserbare feil
+
+Følgende feil kommer fra lovable.dev platformen og kan ikke fikses i spillkoden:
+- Audio AbortError fra video-only background media
+- Iframe sandbox warnings
+- 404 for eksterne ressurser
+

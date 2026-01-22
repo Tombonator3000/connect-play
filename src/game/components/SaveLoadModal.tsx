@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, forwardRef } from 'react';
 import {
   Download,
   Upload,
@@ -42,14 +42,14 @@ interface SaveLoadModalProps {
 
 type TabType = 'local' | 'export' | 'import';
 
-const SaveLoadModal: React.FC<SaveLoadModalProps> = ({
+const SaveLoadModal = forwardRef<HTMLDivElement, SaveLoadModalProps>(({
   isOpen,
   onClose,
   legacyData,
   gameState,
   onLoadLegacyData,
   onLoadGameState
-}) => {
+}, ref) => {
   const [activeTab, setActiveTab] = useState<TabType>('local');
   const [slots, setSlots] = useState<SaveSlot[]>(() => getSaveSlots());
   const [newSlotName, setNewSlotName] = useState('');
@@ -153,7 +153,7 @@ const SaveLoadModal: React.FC<SaveLoadModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80">
+    <div ref={ref} className="fixed inset-0 z-[80] flex items-center justify-center bg-black/80">
       <div className="bg-card w-full max-w-2xl rounded-2xl border-2 border-primary shadow-[var(--shadow-doom)] overflow-hidden">
         {/* Header */}
         <div className="bg-primary/20 p-4 border-b border-primary/30 flex items-center justify-between">
@@ -514,6 +514,8 @@ const SaveLoadModal: React.FC<SaveLoadModalProps> = ({
       </div>
     </div>
   );
-};
+});
+
+SaveLoadModal.displayName = 'SaveLoadModal';
 
 export default SaveLoadModal;
