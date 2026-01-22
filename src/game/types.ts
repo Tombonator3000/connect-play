@@ -149,6 +149,8 @@ export interface Player extends Character {
   traits: Trait[];
   // Legacy system - unique hero ID for persistent heroes
   heroId?: string;  // The unique LegacyHero.id for tracking between scenarios
+  // Custom portrait from legacy hero
+  customPortraitUrl?: string;  // Custom uploaded portrait URL for board and character sheet
   // Temporary combat bonuses (reset at end of round)
   tempDefenseBonus?: number;  // Temporary defense bonus from spells like Dark Shield
 }
@@ -1698,6 +1700,7 @@ export interface LegacyHero {
   name: string;                         // Custom hero name
   characterClass: CharacterType;        // detective, professor, etc.
   portraitIndex: number;                // Which portrait to use (0-3)
+  customPortraitUrl?: string;           // Custom uploaded portrait (data URL or blob URL)
 
   // Progression
   level: number;                        // 1-5

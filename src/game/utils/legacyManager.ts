@@ -681,7 +681,9 @@ export function legacyHeroToPlayer(hero: LegacyHero): Player {
     isDead: false,
     madness: [],
     activeMadness: null,
-    traits: []
+    traits: [],
+    // Custom portrait from legacy hero
+    customPortraitUrl: hero.customPortraitUrl
   };
 }
 

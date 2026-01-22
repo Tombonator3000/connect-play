@@ -1,5 +1,74 @@
 # Development Log
 
+## 2026-01-22: Hero Archive Redesign og Custom Portrait Upload
+
+### Oppgave
+1. Gjør Hero Archive mer moderne, kul og Lovecraftiansk i design
+2. Gi spilleren mulighet til å laste opp eget bilde som brukes på character sheet og som ikon på brettet
+
+### Løsning 1: Hero Archive Redesign (Lovecraftiansk tema)
+
+**Endringer i HeroArchivePanel.tsx:**
+- Komplett redesign med mørk, atmosfærisk Lovecraftiansk estetikk
+- Gradient bakgrunner med vignette-effekter og subtile mønster-overlays
+- Ambient glow-effekter (lilla og gylden)
+- Ny CLASS_CONFIG med unike ikoner og farger for hver klasse:
+  - Detective: Eye-ikon, blå farge
+  - Professor: BookOpen-ikon, amber farge
+  - Veteran: Swords-ikon, rød farge
+  - Occultist: Moon-ikon, lilla farge
+  - Journalist: Sparkles-ikon, cyan farge
+  - Doctor: Heart-ikon, emerald farge
+- Hero-kort med:
+  - Glow-effekt på hover/selected
+  - Dekorative kantlinjer (gradient)
+  - Runde level-badge med glow
+  - Stats vist med ikoner (Heart for HP, Brain for Sanity, Star for Gold, Shield for Items)
+  - Attribute-bars med runde dots og glow-effekt
+  - XP-bar med gradient fra blå via cyan til blå
+- Bruker Cinzel Decorative font (font-display) for titler
+- Lucide React ikoner: Skull, BookOpen, Eye, Shield, Swords, Heart, Brain, Upload, Camera, X, Sparkles, Moon, Star, ChevronLeft, Plus, Archive, Crown
+
+### Løsning 2: Custom Portrait Upload
+
+**Type-endringer:**
+- Lagt til `customPortraitUrl?: string` i `LegacyHero` interface (types.ts:1701)
+- Lagt til `customPortraitUrl?: string` i `Player` interface (types.ts:153)
+
+**Funksjonalitet i HeroArchivePanel.tsx:**
+- `handleImageUpload()` funksjon som:
+  - Validerer filtype (må starte med 'image/')
+  - Validerer filstørrelse (maks 5MB)
+  - Leser fil som DataURL og lagrer den
+  - Fungerer både ved opprettelse og redigering av hero
+- Upload-overlay på portrait som vises ved hover
+- Mulighet til å fjerne custom portrait
+- Portrait vises i:
+  - Hero-kort i listen
+  - Hero-detaljer
+  - Create Hero-skjermen
+
+**Propagering til spillbrettet:**
+- `legacyHeroToPlayer()` i legacyManager.ts kopier nå `customPortraitUrl` til Player
+- GameBoard.tsx bruker `player.customPortraitUrl || getCharacterPortrait(...)` for å vise custom portrait
+- CharacterPanel.tsx bruker samme logikk for character sheet
+
+### Endrede filer
+| Fil | Endring |
+|-----|---------|
+| `src/game/types.ts` | Lagt til `customPortraitUrl` i både `LegacyHero` og `Player` interfaces |
+| `src/game/components/HeroArchivePanel.tsx` | Komplett redesign med Lovecraftiansk tema og portrait upload |
+| `src/game/utils/legacyManager.ts` | `legacyHeroToPlayer()` kopierer nå `customPortraitUrl` |
+| `src/game/components/GameBoard.tsx` | Bruker custom portrait for spillerikon |
+| `src/game/components/CharacterPanel.tsx` | Bruker custom portrait i character sheet |
+
+### Testing
+- Build kompilerer uten feil
+- Custom portrait lagres som DataURL i LegacyHero
+- Portrait vises korrekt i Archive, på brettet og i character panel
+
+---
+
 ## 2026-01-22: Hex Windows, Doors og Tile Layout Forbedringer
 
 ### Oppgave
