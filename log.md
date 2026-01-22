@@ -1,5 +1,50 @@
 # Development Log
 
+## 2026-01-22: Refactoring - Extract Tile Image Assets from GameBoard
+
+### Oppgave
+Refaktorere kompleks kode ved å finne overly komplekse funksjoner/komponenter og forbedre klarhet mens samme oppførsel beholdes.
+
+### Analyse
+Undersøkte flere kandidater for refaktorering:
+1. **ShadowsGame.tsx** (4,669 linjer) - Allerede delvis refaktorert (contextActionEffects.ts)
+2. **GameBoard.tsx** (2,090 linjer) - **Valgt for refaktorering**
+3. **PuzzleModal.tsx** (1,130 linjer) - Godt organisert allerede
+4. **monsterAI.ts** (1,503 linjer) - Allerede godt refaktorert til flere moduler
+
+### Problem identifisert
+**GameBoard.tsx** hadde ~530 linjer med tile image imports og mappinger inline:
+- 85 tile image imports (linjer 21-105)
+- TILE_IMAGES mapping objekt med ~200 nøkkel/verdi-par
+- `getTileImage()` funksjon
+
+Dette gjorde komponenten unødvendig stor og vanskelig å vedlikeholde.
+
+### Løsning
+Opprettet ny modul `src/game/utils/tileImageAssets.ts` som inneholder:
+- Alle tile image imports (85 stk)
+- `TILE_IMAGES` mapping objekt med kategoriserte kommentarer
+- `getTileImage()` funksjon med JSDoc dokumentasjon
+
+### Endrede filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/utils/tileImageAssets.ts` | **NY FIL** - Tile image assets modul (~470 linjer) |
+| `src/game/components/GameBoard.tsx` | Fjernet ~530 linjer, lagt til import fra tileImageAssets |
+
+### Resultat
+- **GameBoard.tsx redusert med ~530 linjer** (fra ~2090 til ~1560)
+- Bedre separasjon av bekymringer (separation of concerns)
+- Tile image logikken er nå lettere å vedlikeholde
+- Samme funksjonalitet bevart - build verifisert
+
+### Verifisering
+- ✅ `npm run build` - Vellykket uten feil
+- ✅ Ingen endring i funksjonalitet
+
+---
+
 ## 2026-01-22: Redesign av Doom Timer System
 
 ### Problemanalyse
