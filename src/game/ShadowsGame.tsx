@@ -66,7 +66,10 @@ import {
   RoomCluster,
   ConnectionEdgeType,
   rotateEdges,
-  getNeighborTiles
+  getNeighborTiles,
+  synchronizeEdgesWithNeighbors,
+  boardArrayToMap,
+  boardMapToArray
 } from './tileConnectionSystem';
 import {
   initializeObjectiveSpawns,
@@ -1917,7 +1920,11 @@ const ShadowsGame: React.FC = () => {
         boardMap
       });
 
-      setState(prev => ({ ...prev, board: [...prev.board, fallbackTile] }));
+      // Synchronize edges with neighboring tiles
+      const syncBoardMap = synchronizeEdgesWithNeighbors(fallbackTile, boardMap);
+      const syncBoard = boardMapToArray(syncBoardMap);
+
+      setState(prev => ({ ...prev, board: syncBoard }));
       addToLog(`UTFORSKET: ${roomName}. [${newCategory.toUpperCase()}]`);
 
       const locationDescription = LOCATION_DESCRIPTIONS[roomName];
@@ -1948,7 +1955,11 @@ const ShadowsGame: React.FC = () => {
         boardMap
       });
 
-      setState(prev => ({ ...prev, board: [...prev.board, fallbackTile] }));
+      // Synchronize edges with neighboring tiles
+      const syncBoardMap2 = synchronizeEdgesWithNeighbors(fallbackTile, boardMap);
+      const syncBoard2 = boardMapToArray(syncBoardMap2);
+
+      setState(prev => ({ ...prev, board: syncBoard2 }));
       addToLog(`UTFORSKET: ${fallbackRoomName}. [${fallbackCategory.toUpperCase()}]`);
 
       const locationDescription = LOCATION_DESCRIPTIONS[fallbackRoomName];
@@ -1974,7 +1985,14 @@ const ShadowsGame: React.FC = () => {
         const clusterTiles = instantiateRoomCluster(cluster, startQ, startR, boardMap);
 
         if (clusterTiles.length > 0) {
-          setState(prev => ({ ...prev, board: [...prev.board, ...clusterTiles] }));
+          // Synchronize edges for each cluster tile
+          let clusterBoardMap = new Map(boardMap);
+          for (const clusterTile of clusterTiles) {
+            clusterBoardMap = synchronizeEdgesWithNeighbors(clusterTile, clusterBoardMap);
+          }
+          const syncClusterBoard = boardMapToArray(clusterBoardMap);
+
+          setState(prev => ({ ...prev, board: syncClusterBoard }));
           addToLog(`UTFORSKET: ${cluster.name}. [BUILDING]`);
           addToLog(cluster.description);
 
@@ -2046,9 +2064,14 @@ const ShadowsGame: React.FC = () => {
       }
     }
 
+    // Synchronize edges with neighboring tiles (fixes window/door linking)
+    const currentBoardMap = boardArrayToMap(state.board);
+    const synchronizedBoardMap = synchronizeEdgesWithNeighbors(finalTile, currentBoardMap);
+    const synchronizedBoard = boardMapToArray(synchronizedBoardMap);
+
     setState(prev => ({
       ...prev,
-      board: [...prev.board, finalTile],
+      board: synchronizedBoard,
       objectiveSpawnState: updatedObjectiveSpawnState
     }));
     addToLog(`UTFORSKET: ${finalTile.name}. [${finalTile.category?.toUpperCase() || 'UNKNOWN'}]`);
@@ -2554,6 +2577,13 @@ const ShadowsGame: React.FC = () => {
             addToLog(`TRAPP: Trappen går ${stairsDirection}. Bruk 2 AP for å passere.`);
             setState(prev => ({ ...prev, selectedTileId: sourceTile.id }));
             showContextActions(sourceTile, edgeFromSource);
+            return;
+          }
+          // Check for closed/locked doors on source tile (can't walk through locked doors!)
+          if (sourceEdge.type === 'door' && sourceEdge.doorState !== 'open' && sourceEdge.doorState !== 'broken') {
+            setState(prev => ({ ...prev, selectedTileId: sourceTile.id }));
+            showContextActions(sourceTile, edgeFromSource);
+            addToLog(`DØR: ${sourceEdge.doorState === 'locked' ? 'Døren er låst' : 'Døren er lukket'}. Du må åpne den først.`);
             return;
           }
         }

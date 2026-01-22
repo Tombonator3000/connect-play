@@ -1,5 +1,97 @@
 # Development Log
 
+## 2026-01-22: Hex Windows, Doors og Tile Layout Forbedringer
+
+### Oppgave
+Fikse tre problemer med hex-systemet:
+1. Spilleren sitter fast i rom etter å ha klatret gjennom vindu fordi tilstøtende tile har vegg i stedet for vindu
+2. Spilleren kan gå gjennom låste dører inn i nye tiles
+3. Tile-generering er ikke kontekstuelt (mansion-tiles i mansion, kirke-tiles i kirke, etc.)
+
+### Løsning 1: Vindu/Dør Edge Linking
+
+**Problem:** Når en tile har WINDOW edge, kan nabo-tilen ha WALL på motsatt side (pga edge compatibility WINDOW -> [WALL, WINDOW]). Dette gjør at spilleren kan klatre INN gjennom vinduet men ikke tilbake UT.
+
+**Fix:** Ny funksjon `synchronizeEdgesWithNeighbors()` i `tileConnectionSystem.ts`:
+- Synkroniserer edges mellom nylig plassert tile og alle naboer
+- Hvis nabo har WINDOW, konverteres tilsvarende WALL til WINDOW
+- Hvis nabo har DOOR, får ny tile også DOOR med samme state
+- Trapper (STAIRS_UP/DOWN) synkroniseres korrekt
+- Kalles automatisk når nye tiles genereres
+
+**Endrede filer:**
+| Fil | Endring |
+|-----|---------|
+| `src/game/tileConnectionSystem.ts` | Nye funksjoner: `synchronizeEdgesWithNeighbors()`, `boardArrayToMap()`, `boardMapToArray()` |
+| `src/game/ShadowsGame.tsx` | Oppdatert `spawnRoom()` for å kalle synchronize-funksjon på alle tile-genereringer |
+
+### Løsning 2: Låste Dører Blokkering
+
+**Problem:** Kode sjekket kun mål-tilens dør-state, ikke kilde-tilens. Når mål-tile ikke eksisterer (uutforsket), ble dør-sjekken hoppet over.
+
+**Fix:** Lagt til dør-state-sjekk på KILDE-tile i tillegg til mål-tile:
+```typescript
+// Check for closed/locked doors on source tile (can't walk through locked doors!)
+if (sourceEdge.type === 'door' && sourceEdge.doorState !== 'open' && sourceEdge.doorState !== 'broken') {
+  setState(prev => ({ ...prev, selectedTileId: sourceTile.id }));
+  showContextActions(sourceTile, edgeFromSource);
+  addToLog(`DØR: ${sourceEdge.doorState === 'locked' ? 'Døren er låst' : 'Døren er lukket'}. Du må åpne den først.`);
+  return;
+}
+```
+
+**Endrede filer:**
+| Fil | Endring |
+|-----|---------|
+| `src/game/ShadowsGame.tsx` | Lagt til dør-state-sjekk på kilde-tile (linje ~2558) |
+
+### Løsning 3: Kontekstuell Tile Generering
+
+**Problem:** Tiles genereres uten å ta hensyn til bygningstype - mansion, kirke, sykehus osv. genererer tilfeldige rom.
+
+**Fix:** Utvidet `TILE_AFFINITIES` med bygnings-spesifikke affinities:
+
+**Nye affinities lagt til:**
+- **Mansion/Manor:** `facade_manor` → attracter grand rooms, study, library, dining, parlor, gallery
+- **Grand Foyer:** `foyer_grand` → attracter mansion-style rooms
+- **Church:** `foyer_church` → attracter ritual rooms, crypt, altar
+- **Asylum:** `foyer_asylum`, `corridor_asylum` → attracter asylum-spesifikke rom
+- **Hotel:** `foyer_hotel`, `corridor_hotel` → attracter bedroom, dining
+- **Museum:** `foyer_museum`, `corridor_museum` → attracter gallery, maproom
+- **Nature:** Styrket forest clustering, path/clearing/stones affinities
+
+**Bonus multipliers:**
+- Bygnings-spesifikke foyers har nå **2.5x** bonus for matching tiles
+- Korridorer har **1.8-2.0x** bonus
+- Dette sikrer at når du går inn i en mansion, får du mansion-tiles
+
+**Endrede filer:**
+| Fil | Endring |
+|-----|---------|
+| `src/game/tileConnectionSystem.ts` | 100+ linjer med nye TILE_AFFINITIES for bygningstyper |
+
+### Verifisering
+- ✅ `npm run build` - Vellykket uten feil
+- ✅ Alle tre problemer adressert
+
+### Tekniske detaljer
+
+**Edge Synchronization Flow:**
+```
+1. createTileFromTemplate() lager ny tile
+2. synchronizeEdgesWithNeighbors() kalles
+3. For hver av 6 retninger:
+   - Finn nabo-tile
+   - Sammenlign edge types
+   - Hvis WINDOW møter WALL → konverter begge til WINDOW
+   - Hvis DOOR møter non-DOOR → synkroniser til DOOR med samme state
+   - Hvis STAIRS_UP møter non-STAIRS_DOWN → synkroniser
+4. Returner oppdatert board Map
+5. Konverter til array og sett state
+```
+
+---
+
 ## 2026-01-22: Tile Count Analysis
 
 ### Oppgave

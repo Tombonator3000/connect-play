@@ -3093,6 +3093,203 @@ export const TILE_AFFINITIES: Record<string, TileAffinity> = {
     attractsFloorTypes: ['ritual'],
     attractsSubTypes: ['hilltop', 'starchamber', 'maproom'],
     bonusMultiplier: 2.0
+  },
+
+  // ============================================================================
+  // BUILDING-SPECIFIC AFFINITIES - Mansion/Manor themed rooms
+  // ============================================================================
+
+  // Manor facade strongly attracts grand mansion rooms
+  facade_manor: {
+    attractsTemplates: [
+      'foyer_grand', 'corridor_wide', 'room_study', 'room_library',
+      'room_dining', 'room_parlor', 'room_gallery', 'room_bedroom',
+      'room_conservatory', 'room_trophy', 'room_music', 'room_living'
+    ],
+    attractsCategories: ['corridor', 'room'],
+    attractsSubTypes: ['grand', 'study', 'library', 'dining', 'parlor', 'gallery',
+                       'bedroom', 'conservatory', 'trophy', 'music', 'living'],
+    attractsFloorTypes: ['wood'],
+    bonusMultiplier: 2.5
+  },
+
+  // Grand foyer (mansion entrance) attracts mansion-style rooms
+  foyer_grand: {
+    attractsTemplates: [
+      'corridor_wide', 'stairs_grand', 'room_study', 'room_library',
+      'room_dining', 'room_parlor', 'room_gallery', 'room_living'
+    ],
+    attractsSubTypes: ['wide', 'grand', 'study', 'library', 'dining', 'parlor', 'gallery', 'living'],
+    attractsFloorTypes: ['wood'],
+    bonusMultiplier: 2.0
+  },
+
+  // Parlor attracts other mansion social rooms
+  room_parlor: {
+    attractsTemplates: ['room_living', 'room_music', 'room_dining', 'room_gallery', 'corridor_wide'],
+    attractsSubTypes: ['living', 'music', 'dining', 'gallery', 'wide'],
+    attractsFloorTypes: ['wood'],
+    bonusMultiplier: 1.8
+  },
+
+  // Conservatory attracts elegant spaces
+  room_conservatory: {
+    attractsTemplates: ['room_gallery', 'room_music', 'room_parlor', 'room_dining'],
+    attractsSubTypes: ['gallery', 'music', 'parlor', 'dining'],
+    attractsFloorTypes: ['wood', 'tile'],
+    bonusMultiplier: 1.7
+  },
+
+  // Dining room attracts kitchen and service areas
+  room_dining: {
+    attractsTemplates: ['room_kitchen', 'room_parlor', 'room_living', 'corridor_straight'],
+    attractsSubTypes: ['kitchen', 'parlor', 'living'],
+    attractsFloorTypes: ['wood'],
+    bonusMultiplier: 1.6
+  },
+
+  // Living room attracts other mansion rooms
+  room_living: {
+    attractsTemplates: ['room_parlor', 'room_dining', 'room_music', 'corridor_straight'],
+    attractsSubTypes: ['parlor', 'dining', 'music'],
+    attractsFloorTypes: ['wood'],
+    bonusMultiplier: 1.5
+  },
+
+  // ============================================================================
+  // BUILDING-SPECIFIC AFFINITIES - Church themed rooms
+  // ============================================================================
+
+  // Church foyer strongly attracts church-themed rooms
+  foyer_church: {
+    attractsTemplates: [
+      'room_ritual', 'crypt_altar', 'crypt_tomb', 'stairs_spiral',
+      'corridor_dark', 'basement_cellar', 'crypt_sanctum'
+    ],
+    attractsCategories: ['crypt'],
+    attractsSubTypes: ['ritual', 'altar', 'tomb', 'spiral', 'dark', 'sanctum'],
+    attractsFloorTypes: ['stone', 'ritual'],
+    bonusMultiplier: 2.5
+  },
+
+  // ============================================================================
+  // BUILDING-SPECIFIC AFFINITIES - Asylum themed rooms
+  // ============================================================================
+
+  // Asylum foyer attracts asylum-specific rooms
+  foyer_asylum: {
+    attractsTemplates: [
+      'corridor_asylum', 'room_asylum_cell', 'room_asylum_common',
+      'room_asylum_office', 'room_asylum_treatment', 'room_lab'
+    ],
+    attractsSubTypes: ['asylum', 'cell', 'common', 'treatment'],
+    attractsFloorTypes: ['tile'],
+    bonusMultiplier: 2.5
+  },
+
+  // Asylum corridor strongly attracts asylum rooms
+  corridor_asylum: {
+    attractsTemplates: [
+      'room_asylum_cell', 'room_asylum_common', 'room_asylum_office',
+      'room_asylum_treatment', 'corridor_asylum'
+    ],
+    attractsSubTypes: ['asylum_cell', 'common', 'treatment', 'asylum'],
+    attractsFloorTypes: ['tile'],
+    bonusMultiplier: 2.0
+  },
+
+  // ============================================================================
+  // BUILDING-SPECIFIC AFFINITIES - Hotel themed rooms
+  // ============================================================================
+
+  // Hotel foyer attracts hotel-specific rooms
+  foyer_hotel: {
+    attractsTemplates: [
+      'corridor_hotel', 'room_bedroom', 'room_dining', 'stairs_grand', 'basement_cellar'
+    ],
+    attractsSubTypes: ['hotel', 'bedroom', 'dining', 'grand'],
+    attractsFloorTypes: ['wood'],
+    bonusMultiplier: 2.0
+  },
+
+  // Hotel corridor attracts hotel rooms
+  corridor_hotel: {
+    attractsTemplates: ['room_bedroom', 'room_bathroom', 'corridor_hotel'],
+    attractsSubTypes: ['bedroom', 'bathroom', 'hotel'],
+    attractsFloorTypes: ['wood'],
+    bonusMultiplier: 1.8
+  },
+
+  // ============================================================================
+  // BUILDING-SPECIFIC AFFINITIES - Museum themed rooms
+  // ============================================================================
+
+  // Museum foyer attracts museum-specific rooms
+  foyer_museum: {
+    attractsTemplates: [
+      'corridor_museum', 'room_gallery', 'room_library', 'room_maproom',
+      'room_study', 'crypt_altar'
+    ],
+    attractsSubTypes: ['museum', 'gallery', 'library', 'maproom', 'study'],
+    attractsFloorTypes: ['tile', 'stone'],
+    bonusMultiplier: 2.0
+  },
+
+  // Museum corridor attracts exhibit rooms
+  corridor_museum: {
+    attractsTemplates: ['room_gallery', 'room_maproom', 'corridor_museum'],
+    attractsSubTypes: ['gallery', 'maproom', 'museum'],
+    attractsFloorTypes: ['tile', 'stone'],
+    bonusMultiplier: 1.8
+  },
+
+  // ============================================================================
+  // NATURE AREA AFFINITIES - Stronger forest clustering
+  // ============================================================================
+
+  // Generic forest attracts more forest and nature tiles
+  nature_path: {
+    attractsTemplates: [
+      'nature_forest', 'nature_clearing', 'nature_trail_corner',
+      'nature_trail_crossing', 'nature_trail_t', 'nature_stones'
+    ],
+    attractsCategories: ['nature'],
+    attractsSubTypes: ['forest', 'clearing', 'trail', 'stones'],
+    attractsFloorTypes: ['dirt', 'grass'],
+    bonusMultiplier: 1.8
+  },
+
+  // Clearing attracts ritual and forest tiles
+  nature_clearing: {
+    attractsTemplates: [
+      'nature_forest', 'nature_path', 'nature_stones', 'nature_ruins',
+      'nature_trail_corner', 'room_ritual'
+    ],
+    attractsSubTypes: ['forest', 'path', 'stones', 'ruins'],
+    attractsFloorTypes: ['grass', 'ritual'],
+    bonusMultiplier: 1.7
+  },
+
+  // Ruins attract mysterious tiles
+  nature_ruins: {
+    attractsTemplates: [
+      'nature_clearing', 'nature_stones', 'crypt_tomb', 'crypt_altar',
+      'basement_tunnel', 'nature_forest_haunted'
+    ],
+    attractsSubTypes: ['clearing', 'stones', 'tomb', 'tunnel', 'haunted'],
+    attractsFloorTypes: ['stone', 'ritual'],
+    bonusMultiplier: 1.8
+  },
+
+  // Blackpool attracts dark nature and horror
+  nature_blackpool: {
+    attractsTemplates: [
+      'nature_swamp', 'nature_marsh', 'nature_deadtrees',
+      'nature_forest_haunted', 'crypt_altar'
+    ],
+    attractsSubTypes: ['swamp', 'marsh', 'deadtrees', 'haunted'],
+    attractsFloorTypes: ['water', 'ritual'],
+    bonusMultiplier: 2.0
   }
 };
 
@@ -3669,6 +3866,152 @@ function connectionEdgeToEdgeData(edgeType: ConnectionEdgeType): EdgeData {
   }
 
   return result;
+}
+
+// ============================================================================
+// 9.5 EDGE SYNCHRONIZATION
+// ============================================================================
+
+/**
+ * Hex neighbor offsets for flat-top hex (axial coordinates)
+ * Direction index -> offset
+ */
+const SYNC_NEIGHBOR_OFFSETS: [number, number][] = [
+  [0, -1],  // 0: North
+  [1, -1],  // 1: North-East
+  [1, 0],   // 2: South-East
+  [0, 1],   // 3: South
+  [-1, 1],  // 4: South-West
+  [-1, 0]   // 5: North-West
+];
+
+/**
+ * Synchronize edges between a newly placed tile and its neighbors.
+ * This ensures that:
+ * 1. Windows on one tile have matching windows on the adjacent tile (not walls)
+ * 2. Doors on one tile have matching doors on the adjacent tile with the same state
+ * 3. Stairs connect properly
+ *
+ * @param newTile The newly placed tile
+ * @param board Current board state (Map<string, Tile>)
+ * @returns Updated board with synchronized edges
+ */
+export function synchronizeEdgesWithNeighbors(
+  newTile: Tile,
+  board: Map<string, Tile>
+): Map<string, Tile> {
+  const updatedBoard = new Map(board);
+
+  // Update the new tile in the board first
+  const newTileKey = `${newTile.q},${newTile.r}`;
+  updatedBoard.set(newTileKey, newTile);
+
+  // Check each direction for neighbors
+  for (let dir = 0; dir < 6; dir++) {
+    const [dq, dr] = SYNC_NEIGHBOR_OFFSETS[dir];
+    const neighborKey = `${newTile.q + dq},${newTile.r + dr}`;
+    const neighbor = updatedBoard.get(neighborKey);
+
+    if (!neighbor) continue;
+
+    const oppositeDir = (dir + 3) % 6;
+    const newTileEdge = newTile.edges[dir];
+    const neighborEdge = neighbor.edges[oppositeDir];
+
+    // Synchronize windows: if neighbor has window, new tile should also have window
+    if (neighborEdge.type === 'window' && newTileEdge.type === 'wall') {
+      // Convert wall to window to allow passage back
+      const updatedNewTile = updatedBoard.get(newTileKey)!;
+      const newEdges = [...updatedNewTile.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+      newEdges[dir] = { type: 'window' };
+      updatedBoard.set(newTileKey, { ...updatedNewTile, edges: newEdges });
+    }
+
+    // Also check the reverse: if new tile has window but neighbor has wall
+    if (newTileEdge.type === 'window' && neighborEdge.type === 'wall') {
+      // Convert neighbor's wall to window
+      const neighborEdges = [...neighbor.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+      neighborEdges[oppositeDir] = { type: 'window' };
+      updatedBoard.set(neighborKey, { ...neighbor, edges: neighborEdges });
+    }
+
+    // Synchronize doors: if neighbor has door, new tile should also have door with matching state
+    if (neighborEdge.type === 'door' && newTileEdge.type !== 'door') {
+      // Convert edge to door with same state as neighbor
+      const updatedNewTile = updatedBoard.get(newTileKey)!;
+      const newEdges = [...updatedNewTile.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+      newEdges[dir] = {
+        type: 'door',
+        doorState: neighborEdge.doorState || 'closed',
+        lockType: neighborEdge.lockType,
+        keyId: neighborEdge.keyId
+      };
+      updatedBoard.set(newTileKey, { ...updatedNewTile, edges: newEdges });
+    }
+
+    // Also check the reverse: if new tile has door but neighbor doesn't
+    if (newTileEdge.type === 'door' && neighborEdge.type !== 'door' && neighborEdge.type !== 'wall') {
+      // Convert neighbor's edge to door with same state
+      const neighborEdges = [...neighbor.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+      neighborEdges[oppositeDir] = {
+        type: 'door',
+        doorState: newTileEdge.doorState || 'closed',
+        lockType: newTileEdge.lockType,
+        keyId: newTileEdge.keyId
+      };
+      updatedBoard.set(neighborKey, { ...neighbor, edges: neighborEdges });
+    }
+
+    // Synchronize door states: if both are doors but states differ, use the existing neighbor's state
+    if (newTileEdge.type === 'door' && neighborEdge.type === 'door') {
+      if (newTileEdge.doorState !== neighborEdge.doorState) {
+        // Use neighbor's state (the existing tile) for consistency
+        const updatedNewTile = updatedBoard.get(newTileKey)!;
+        const newEdges = [...updatedNewTile.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+        newEdges[dir] = {
+          ...newEdges[dir],
+          doorState: neighborEdge.doorState,
+          lockType: neighborEdge.lockType,
+          keyId: neighborEdge.keyId
+        };
+        updatedBoard.set(newTileKey, { ...updatedNewTile, edges: newEdges });
+      }
+    }
+
+    // Synchronize stairs: stairs_up should connect to stairs_down and vice versa
+    if (neighborEdge.type === 'stairs_up' && newTileEdge.type !== 'stairs_down') {
+      const updatedNewTile = updatedBoard.get(newTileKey)!;
+      const newEdges = [...updatedNewTile.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+      newEdges[dir] = { type: 'stairs_down' };
+      updatedBoard.set(newTileKey, { ...updatedNewTile, edges: newEdges });
+    }
+    if (neighborEdge.type === 'stairs_down' && newTileEdge.type !== 'stairs_up') {
+      const updatedNewTile = updatedBoard.get(newTileKey)!;
+      const newEdges = [...updatedNewTile.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+      newEdges[dir] = { type: 'stairs_up' };
+      updatedBoard.set(newTileKey, { ...updatedNewTile, edges: newEdges });
+    }
+  }
+
+  return updatedBoard;
+}
+
+/**
+ * Convert a board array to a Map for efficient lookups
+ */
+export function boardArrayToMap(board: Tile[]): Map<string, Tile> {
+  const map = new Map<string, Tile>();
+  for (const tile of board) {
+    map.set(`${tile.q},${tile.r}`, tile);
+  }
+  return map;
+}
+
+/**
+ * Convert a board Map back to an array
+ */
+export function boardMapToArray(board: Map<string, Tile>): Tile[] {
+  return Array.from(board.values());
 }
 
 /**
