@@ -16727,3 +16727,116 @@ Lagt til console.log for å spore spawn-systemet:
 ### Build Status
 ✅ TypeScript kompilerer uten feil
 ✅ Build vellykket (1,619.69 kB bundle)
+
+---
+
+## 2026-01-22: Refactor - Extract Movement Edge Validation Logic
+
+### Oppgave
+Refaktorere kompleks kode i `handleAction`-funksjonen i ShadowsGame.tsx. Denne funksjonen hadde duplisert logikk for å sjekke edge-blokkering (vegger, dører, vinduer, trapper) som ble gjentatt to ganger - én gang for source tile (tilen spilleren forlater) og én gang for target tile (tilen spilleren går til).
+
+### Problem
+`handleAction`-funksjonen i ShadowsGame.tsx:2446-2800+ inneholdt:
+- **~90 linjer** med duplisert edge-sjekking logikk
+- Samme if/else-kjede gjentas for både source og target tiles
+- Vanskelig å vedlikeholde - endringer må gjøres to steder
+- Høy cyclomatic complexity
+
+### Løsning
+
+**Ny fil: `src/game/utils/movementUtils.ts`**
+
+Opprettet en dedikert utility-fil med følgende funksjoner:
+
+#### `checkEdgeBlocking(edge, tileId, edgeIndex, isSourceTile): EdgeBlockResult`
+Sjekker en enkelt edge for blokkering og returnerer:
+- `blocked: boolean` - om passering er blokkert
+- `message: string` - melding til logg
+- `showContextActions: boolean` - om kontekst-meny skal vises
+- `contextTileId?: string` - hvilken tile som skal ha context actions
+- `contextEdgeIndex?: number` - hvilken edge-indeks
+
+Håndterer alle edge-typer:
+- **wall** - alltid blokkert, ingen context actions
+- **blocked** - blokkert, vis context actions for å fjerne
+- **window** - blokkert, krever Athletics DC 4
+- **stairs_up/stairs_down** - blokkert for normal bevegelse, vis context actions
+- **door** - sjekker doorState (open/broken = passbar)
+- **secret** - behandles som vegg til oppdaget
+
+#### `validateMovementEdges(sourceTile, targetTile, edgeFromSource, edgeFromTarget): MovementValidationResult`
+Validerer bevegelse mellom to tilstøtende tiles ved å sjekke begge edges:
+1. Sjekker source tile's edge (siden vi forlater fra)
+2. Sjekker target tile's edge (siden vi går inn fra)
+
+Returnerer:
+- `allowed: boolean` - om bevegelse er tillatt
+- `message: string` - melding til logg
+- `showContextActions: boolean` - om kontekst-meny skal vises
+- `contextTileId?: string` - hvilken tile
+- `contextEdgeIndex?: number` - hvilken edge
+
+### Endringer i ShadowsGame.tsx
+
+**Før (90+ linjer):**
+```typescript
+// Check source tile's edge (the side we're leaving from)
+if (sourceTile && edgeFromSource !== -1 && sourceTile.edges?.[edgeFromSource]) {
+  const sourceEdge = sourceTile.edges[edgeFromSource];
+  if (sourceEdge.type === 'wall') { ... }
+  if (sourceEdge.type === 'blocked') { ... }
+  if (sourceEdge.type === 'window') { ... }
+  if (sourceEdge.type === 'stairs_up' || ...) { ... }
+  if (sourceEdge.type === 'door' && ...) { ... }
+}
+// Check target tile's edge (the side we're entering from)
+if (targetTile && edgeFromTarget !== -1 && targetTile.edges?.[edgeFromTarget]) {
+  // ... SAME LOGIC REPEATED ...
+}
+```
+
+**Etter (15 linjer):**
+```typescript
+const edgeValidation = validateMovementEdges(sourceTile, targetTile, edgeFromSource, edgeFromTarget);
+if (!edgeValidation.allowed) {
+  addToLog(edgeValidation.message);
+  if (edgeValidation.showContextActions && edgeValidation.contextTileId) {
+    const contextTile = state.board.find(t => t.id === edgeValidation.contextTileId);
+    if (contextTile) {
+      setState(prev => ({ ...prev, selectedTileId: contextTile.id }));
+      showContextActions(contextTile, edgeValidation.contextEdgeIndex);
+    }
+  }
+  return;
+}
+```
+
+### Andre Oppryddinger
+
+1. **Fjernet duplikat funksjon:** `getEdgeIndexBetweenTiles` i ShadowsGame.tsx var en duplikat av `getEdgeDirection` i hexUtils.ts. Fjernet den lokale versjonen.
+
+2. **Oppdatert imports:** Lagt til import av `getEdgeDirection` og `getOppositeEdgeDirection` fra hexUtils, og `validateMovementEdges` fra movementUtils.
+
+### Filer Opprettet
+- `src/game/utils/movementUtils.ts` (NY)
+
+### Filer Modifisert
+- `src/game/ShadowsGame.tsx`
+  - Fjernet lokal `getEdgeIndexBetweenTiles`-funksjon (17 linjer)
+  - Erstattet 90+ linjer med duplisert edge-sjekking med 15 linjer
+  - Lagt til nye imports
+
+### Fordeler med Refaktoreringen
+
+| Aspekt | Før | Etter |
+|--------|-----|-------|
+| Linjer med edge-sjekking | ~90 | ~15 |
+| Duplisert kode | Ja (2x) | Nei |
+| Testbarhet | Vanskelig (inline) | Enkelt (egen funksjon) |
+| Vedlikehold | Endre 2 steder | Endre 1 sted |
+| Gjenbrukbarhet | Nei | Ja (kan brukes av andre funksjoner) |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,619.93 kB bundle)
+
