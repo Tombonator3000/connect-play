@@ -1,5 +1,170 @@
 # Development Log
 
+## 2026-01-22: Implementert Partikkel- og Lyseffekter
+
+### Oppgave
+Implementere det foreslåtte partikkel- og lyseffektsystemet fra design-dokumentet, inkludert:
+- Tile-baserte atmosfæriske effekter (kirke, ritual, krypt, lab, vann)
+- Handlings-baserte effekter (bevegelse, dør-åpning, skill checks, kamp)
+- Fiende-effekter (spawn, død, bevegelse)
+- Doom og Sanity visuell feedback
+- Item-interaksjonseffekter
+- Ambient belysning (gasslys, månelys, stearinlys)
+- UI og spesielle situasjons-effekter
+
+---
+
+### Implementert
+
+#### 1. CSS Animasjoner (src/index.css)
+
+Lagt til over 80 nye CSS keyframe-animasjoner og klasser for:
+
+| Kategori | Effekter | Klasser |
+|----------|----------|---------|
+| **Tile-atmosfære** | Divine light, occult pulse, crypt mist, lab sparks, water reflections | `.tile-church-light`, `.ritual-rune-glow`, `.crypt-floor-mist`, `.lab-spark`, `.water-light-dance` |
+| **Handlinger** | Footstep dust, door opening, dice glow, melee slash, ranged tracer | `.animate-footstep-dust`, `.animate-door-opening`, `.dice-success`, `.melee-slash`, `.ranged-tracer` |
+| **Fiender** | Spawn rift, type-specific deaths, movement trail | `.animate-enemy-spawn`, `.ghoul-dying`, `.deep-one-dying`, `.enemy-movement-ghost` |
+| **Doom/Sanity** | Tick pulse, critical vignette, loss distortion, restore wave | `.doom-ticking`, `.doom-critical-overlay`, `.sanity-losing`, `.sanity-restoring` |
+| **Items** | Pickup sparkle, flashlight cone, occult activation | `.item-pickup-ring`, `.flashlight-cone`, `.occult-activate-wave` |
+| **Ambient** | Gaslight flicker, moonlight shimmer, candle flame, torch | `.gaslight-ambience`, `.moonlight-overlay`, `.candle-glow`, `.torch-ambience` |
+| **UI/Special** | Notifications, turn transitions, horror check, madness onset, victory/game over | `.notification-enter`, `.turn-sweep`, `.horror-screen-effect`, `.madness-onset`, `.victory-burst` |
+
+---
+
+#### 2. Effekt-konfigurasjonssystem (src/game/utils/tileEffects.ts)
+
+Opprettet data-drevet konfigurasjonsfil for tile-effekter:
+
+```typescript
+// Eksempel konfigurasjon
+const TILE_ATMOSPHERE_CONFIGS: TileAtmosphereConfig[] = [
+  {
+    tileTypes: ['church', 'chapel', 'cathedral'],
+    particles: [{
+      type: 'divine-dust',
+      count: 8,
+      color: 'rgba(255, 230, 150, 0.8)',
+      duration: 8000,
+      className: 'divine-dust-particle'
+    }],
+    lights: [{
+      type: 'divine',
+      color: 'rgba(255, 215, 100, 0.15)',
+      intensity: 0.3,
+      className: 'tile-church-light'
+    }],
+    priority: 10
+  }
+  // ... flere konfigurasjoner for ritual, crypt, lab, water, etc.
+];
+```
+
+Inkluderer også `ACTION_EFFECTS` for alle handlingsbaserte effekter med CSS-klassereferanser og varigheter.
+
+---
+
+#### 3. React-komponenter (src/game/components/ParticleEmitter.tsx)
+
+Opprettet flere gjenbrukbare komponenter:
+
+| Komponent | Beskrivelse |
+|-----------|-------------|
+| `ParticleEmitter` | Generisk partikkel-renderer basert på konfigurasjon |
+| `TileAtmosphericEffects` | Kombiner partikler, lys og overlays for en tile |
+| `ScreenEffect` | Fullskjerm visuell effekt (doom pulse, sanity loss, etc.) |
+| `ActionEffect` | Posisjonert effekt for spesifikke handlinger |
+| `DoomOverlay` | Persistent vignette når doom er kritisk (≤3) |
+| `SanityOverlay` | Visuell forvrengning basert på sanity-nivå |
+
+---
+
+#### 4. GameBoard Integrasjon
+
+Oppdatert `GameBoard.tsx` for å inkludere:
+- `TileAtmosphericEffects` for hver synlig tile
+- `DoomOverlay` for doom-tilstand
+- `SanityOverlay` for sanity-tilstand
+
+```tsx
+// Inne i tile-rendering
+<TileAtmosphericEffects
+  tileName={tile.name}
+  tileType={tile.type}
+  isVisible={isVisible}
+/>
+
+// På board-nivå
+<DoomOverlay doomLevel={doom} maxDoom={12} />
+<SanityOverlay sanityLevel={player.sanity} maxSanity={player.maxSanity} hasMadness={...} />
+```
+
+---
+
+#### 5. ShadowsGame Integrasjon
+
+Oppdatert `ShadowsGame.tsx` for å trigge effekter ved:
+- Fiende-spawn: Legger til `emitSpellEffect(q, r, 'banish')` for portal-manifestasjon
+
+---
+
+### Effekt-oversikt per Tile-type
+
+| Tile-kategori | Partikler | Lys | Overlay |
+|---------------|-----------|-----|---------|
+| **Church** | Divine dust (8) | Divine golden | - |
+| **Ritual** | Rune glow (5) | Ritual purple, flicker | Purple overlay |
+| **Crypt/Tomb** | Mist (3), Ghost (1) | - | Mist overlay |
+| **Laboratory** | Sparks (4), Bubbles (6) | - | Blue-green overlay |
+| **Harbor/Water** | Water ripples (4) | Moonlight | Water overlay |
+| **Exterior** | - | Moonlight, Gaslight | - |
+| **Interior** | - | Candle | - |
+| **Basement** | - | Torch | - |
+
+---
+
+### Build Status
+- **TypeScript kompilering:** ✅ Suksess
+- **Vite build:** ✅ Suksess (15.16s)
+- **CSS størrelse:** 184.93 kB (gzip: 31.14 kB)
+
+---
+
+### Filer Opprettet
+- `src/game/utils/tileEffects.ts` - Konfigurasjonssystem for tile-effekter
+- `src/game/components/ParticleEmitter.tsx` - Partikkel og effekt-komponenter
+
+### Filer Modifisert
+- `src/index.css` - Lagt til ~1000 linjer med nye CSS animasjoner
+- `src/game/components/GameBoard.tsx` - Integrert effekt-komponenter
+- `src/game/ShadowsGame.tsx` - Lagt til spawn-effekt
+
+---
+
+### Tekniske Detaljer
+
+#### CSS Custom Properties brukt
+- `--tx`, `--ty`: Partikkel-bevegelse retning
+- `--duration`: Animasjons-varighet
+- `--door-direction`: Dør lys-retning
+- `--crack-angle`: Madness reality crack vinkel
+
+#### Performance-hensyn
+- Partikler genereres med `useMemo` og `useCallback`
+- Effekter fjernes automatisk etter `duration + buffer`
+- Lazy-loading av `getTileAtmosphere` for å unngå sirkulære avhengigheter
+- Overlays bruker `pointer-events-none` for å ikke blokkere interaksjon
+
+---
+
+### Neste Steg (Forslag)
+1. Legg til lyd-effekter synkronisert med visuelle effekter
+2. Implementer partikkel-pooling for bedre performance
+3. Legg til konfigurasjonsalternativ for å redusere/deaktivere effekter
+4. Utvidede madness-spesifikke visuelle effekter
+
+---
+
 ## 2026-01-21: Refaktorering av getTileVisuals-funksjonen
 
 ### Oppgave
