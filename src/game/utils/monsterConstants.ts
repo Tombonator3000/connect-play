@@ -54,51 +54,90 @@ export interface CombatStyleModifiers {
 
 export const SPAWN_TABLES: Record<TileCategory | 'default', SpawnConfig[]> = {
   nature: [
-    { type: 'cultist', weight: 30, minDoom: 0, maxDoom: 255 },
-    { type: 'ghoul', weight: 20, minDoom: 0, maxDoom: 255 },
+    { type: 'cultist', weight: 25, minDoom: 0, maxDoom: 255 },
+    { type: 'ghoul', weight: 15, minDoom: 0, maxDoom: 255 },
     { type: 'dark_young', weight: 5, minDoom: 0, maxDoom: 6 },
+    // New monsters
+    { type: 'zoog', weight: 20, minDoom: 0, maxDoom: 255 },
+    { type: 'gnoph_keh', weight: 5, minDoom: 0, maxDoom: 5 },
+    { type: 'tcho_tcho', weight: 10, minDoom: 0, maxDoom: 255 },
   ],
   urban: [
-    { type: 'cultist', weight: 40, minDoom: 0, maxDoom: 255 },
+    { type: 'cultist', weight: 35, minDoom: 0, maxDoom: 255 },
     { type: 'sniper', weight: 15, minDoom: 0, maxDoom: 255 },
     { type: 'priest', weight: 10, minDoom: 0, maxDoom: 5 },
+    // New monsters
+    { type: 'tcho_tcho', weight: 10, minDoom: 0, maxDoom: 255 },
+    { type: 'serpent_man', weight: 5, minDoom: 0, maxDoom: 6 },
   ],
   street: [
-    { type: 'cultist', weight: 35, minDoom: 0, maxDoom: 255 },
+    { type: 'cultist', weight: 30, minDoom: 0, maxDoom: 255 },
     { type: 'ghoul', weight: 15, minDoom: 0, maxDoom: 255 },
     { type: 'hound', weight: 10, minDoom: 0, maxDoom: 5 },
+    // New monsters
+    { type: 'rat_thing', weight: 15, minDoom: 0, maxDoom: 255 },
+    { type: 'dimensional_shambler', weight: 5, minDoom: 0, maxDoom: 4 },
   ],
   facade: [
     { type: 'cultist', weight: 30, minDoom: 0, maxDoom: 255 },
+    // New monsters
+    { type: 'serpent_man', weight: 10, minDoom: 0, maxDoom: 255 },
   ],
   foyer: [
-    { type: 'cultist', weight: 30, minDoom: 0, maxDoom: 255 },
+    { type: 'cultist', weight: 25, minDoom: 0, maxDoom: 255 },
     { type: 'ghoul', weight: 15, minDoom: 0, maxDoom: 255 },
+    // New monsters
+    { type: 'rat_thing', weight: 15, minDoom: 0, maxDoom: 255 },
+    { type: 'serpent_man', weight: 10, minDoom: 0, maxDoom: 6 },
   ],
   corridor: [
-    { type: 'ghoul', weight: 25, minDoom: 0, maxDoom: 255 },
+    { type: 'ghoul', weight: 20, minDoom: 0, maxDoom: 255 },
     { type: 'nightgaunt', weight: 10, minDoom: 0, maxDoom: 6 },
+    // New monsters
+    { type: 'rat_thing', weight: 20, minDoom: 0, maxDoom: 255 },
+    { type: 'dimensional_shambler', weight: 8, minDoom: 0, maxDoom: 5 },
   ],
   room: [
-    { type: 'cultist', weight: 25, minDoom: 0, maxDoom: 255 },
+    { type: 'cultist', weight: 20, minDoom: 0, maxDoom: 255 },
     { type: 'mi-go', weight: 10, minDoom: 0, maxDoom: 255 },
+    // New monsters
+    { type: 'rat_thing', weight: 15, minDoom: 0, maxDoom: 255 },
+    { type: 'serpent_man', weight: 10, minDoom: 0, maxDoom: 255 },
+    { type: 'fire_vampire', weight: 5, minDoom: 0, maxDoom: 5 },
   ],
   stairs: [
     { type: 'ghoul', weight: 20, minDoom: 0, maxDoom: 255 },
+    // New monsters
+    { type: 'ghast', weight: 15, minDoom: 0, maxDoom: 255 },
   ],
   basement: [
-    { type: 'ghoul', weight: 30, minDoom: 0, maxDoom: 255 },
-    { type: 'formless_spawn', weight: 15, minDoom: 0, maxDoom: 5 },
+    { type: 'ghoul', weight: 25, minDoom: 0, maxDoom: 255 },
+    { type: 'formless_spawn', weight: 12, minDoom: 0, maxDoom: 5 },
+    // New monsters
+    { type: 'ghast', weight: 20, minDoom: 0, maxDoom: 255 },
+    { type: 'gug', weight: 5, minDoom: 0, maxDoom: 4 },
+    { type: 'cthonian', weight: 8, minDoom: 0, maxDoom: 5 },
+    { type: 'elder_thing', weight: 3, minDoom: 0, maxDoom: 3 },
   ],
   crypt: [
-    { type: 'ghoul', weight: 25, minDoom: 0, maxDoom: 255 },
+    { type: 'ghoul', weight: 20, minDoom: 0, maxDoom: 255 },
     { type: 'shoggoth', weight: 5, minDoom: 0, maxDoom: 4 },
     { type: 'star_spawn', weight: 2, minDoom: 0, maxDoom: 2 },
+    // New monsters
+    { type: 'ghast', weight: 18, minDoom: 0, maxDoom: 255 },
+    { type: 'gug', weight: 8, minDoom: 0, maxDoom: 5 },
+    { type: 'flying_polyp', weight: 3, minDoom: 0, maxDoom: 3 },
+    { type: 'lloigor', weight: 2, minDoom: 0, maxDoom: 3 },
+    { type: 'colour_out_of_space', weight: 1, minDoom: 0, maxDoom: 2 },
   ],
   default: [
-    { type: 'cultist', weight: 40, minDoom: 0, maxDoom: 255 },
-    { type: 'ghoul', weight: 20, minDoom: 0, maxDoom: 255 },
-    { type: 'deepone', weight: 15, minDoom: 0, maxDoom: 255 },
+    { type: 'cultist', weight: 35, minDoom: 0, maxDoom: 255 },
+    { type: 'ghoul', weight: 18, minDoom: 0, maxDoom: 255 },
+    { type: 'deepone', weight: 12, minDoom: 0, maxDoom: 255 },
+    // New monsters
+    { type: 'rat_thing', weight: 10, minDoom: 0, maxDoom: 255 },
+    { type: 'ghast', weight: 8, minDoom: 0, maxDoom: 255 },
+    { type: 'tcho_tcho', weight: 7, minDoom: 0, maxDoom: 255 },
   ]
 };
 
@@ -122,7 +161,22 @@ export const MONSTER_BEHAVIORS: Record<EnemyType, MonsterBehavior> = {
   star_spawn: 'aggressive',
   formless_spawn: 'swarm',
   hunting_horror: 'aggressive',
-  moon_beast: 'ranged'
+  moon_beast: 'ranged',
+  // New monsters (2026-01-22)
+  ghast: 'ambusher',           // Hunts in darkness
+  zoog: 'swarm',               // Attacks in groups
+  rat_thing: 'ambusher',       // Sneaky and fast
+  fire_vampire: 'ranged',      // Attacks from distance with fire
+  dimensional_shambler: 'ambusher', // Teleports to ambush
+  serpent_man: 'ranged',       // Uses hypnosis/ranged
+  gug: 'aggressive',           // Direct attacker
+  cthonian: 'ambusher',        // Burrows and ambushes
+  tcho_tcho: 'aggressive',     // Fanatical attackers
+  flying_polyp: 'aggressive',  // Devastating wind attacks
+  lloigor: 'ranged',           // Uses telekinesis
+  gnoph_keh: 'aggressive',     // Territorial hunter
+  colour_out_of_space: 'defensive', // Drains slowly
+  elder_thing: 'defensive'     // Ancient and cautious
 };
 
 // ============================================================================
@@ -298,6 +352,159 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
     combatStyle: 'siege',
     specialAbilities: ['ranged_shot'],
     callForHelpChance: 70
+  },
+
+  // New monsters (2026-01-22)
+  ghast: {
+    aggressionLevel: 60,
+    cowardiceThreshold: 30,
+    packMentality: true,
+    territorialRange: 6,
+    preferredTerrain: ['crypt', 'basement'],
+    avoidsTerrain: ['urban', 'street'],
+    combatStyle: 'ambush',
+    specialAbilities: ['pack_tactics'],
+    callForHelpChance: 70
+  },
+
+  zoog: {
+    aggressionLevel: 40,
+    cowardiceThreshold: 60,
+    packMentality: true,
+    territorialRange: 4,
+    preferredTerrain: ['nature'],
+    combatStyle: 'swarm',
+    specialAbilities: ['pack_tactics'],
+    callForHelpChance: 90
+  },
+
+  rat_thing: {
+    aggressionLevel: 55,
+    cowardiceThreshold: 50,
+    packMentality: false,
+    territorialRange: 8,
+    preferredTerrain: ['room', 'basement'],
+    combatStyle: 'ambush',
+    specialAbilities: ['phasing'],
+    callForHelpChance: 30
+  },
+
+  fire_vampire: {
+    aggressionLevel: 75,
+    cowardiceThreshold: 20,
+    packMentality: true,
+    territorialRange: 10,
+    combatStyle: 'siege',
+    specialAbilities: ['ranged_shot', 'burn'],
+    callForHelpChance: 60
+  },
+
+  dimensional_shambler: {
+    aggressionLevel: 70,
+    cowardiceThreshold: 35,
+    packMentality: false,
+    territorialRange: 255,
+    combatStyle: 'ambush',
+    specialAbilities: ['teleport', 'terrify'],
+    callForHelpChance: 0
+  },
+
+  serpent_man: {
+    aggressionLevel: 45,
+    cowardiceThreshold: 55,
+    packMentality: false,
+    territorialRange: 6,
+    preferredTerrain: ['crypt', 'room'],
+    combatStyle: 'cautious',
+    specialAbilities: ['ranged_shot', 'hypnosis'],
+    callForHelpChance: 50
+  },
+
+  gug: {
+    aggressionLevel: 80,
+    cowardiceThreshold: 15,
+    packMentality: false,
+    territorialRange: 8,
+    preferredTerrain: ['crypt', 'basement'],
+    avoidsTerrain: ['urban', 'street'],
+    combatStyle: 'berserker',
+    specialAbilities: ['charge'],
+    callForHelpChance: 20
+  },
+
+  cthonian: {
+    aggressionLevel: 65,
+    cowardiceThreshold: 25,
+    packMentality: true,
+    territorialRange: 10,
+    preferredTerrain: ['basement', 'crypt'],
+    combatStyle: 'ambush',
+    specialAbilities: ['burrow', 'terrify'],
+    callForHelpChance: 40
+  },
+
+  tcho_tcho: {
+    aggressionLevel: 80,
+    cowardiceThreshold: 20,
+    packMentality: true,
+    territorialRange: 6,
+    preferredTerrain: ['nature', 'crypt'],
+    combatStyle: 'tactical',
+    specialAbilities: ['ranged_shot', 'ritual'],
+    callForHelpChance: 80
+  },
+
+  flying_polyp: {
+    aggressionLevel: 85,
+    cowardiceThreshold: 10,
+    packMentality: false,
+    territorialRange: 15,
+    preferredTerrain: ['crypt', 'basement'],
+    combatStyle: 'berserker',
+    specialAbilities: ['wind_blast', 'phasing'],
+    callForHelpChance: 0
+  },
+
+  lloigor: {
+    aggressionLevel: 70,
+    cowardiceThreshold: 15,
+    packMentality: false,
+    territorialRange: 12,
+    combatStyle: 'siege',
+    specialAbilities: ['telekinesis', 'terrify'],
+    callForHelpChance: 0
+  },
+
+  gnoph_keh: {
+    aggressionLevel: 90,
+    cowardiceThreshold: 10,
+    packMentality: false,
+    territorialRange: 10,
+    preferredTerrain: ['nature'],
+    combatStyle: 'berserker',
+    specialAbilities: ['charge', 'cold_aura'],
+    callForHelpChance: 30
+  },
+
+  colour_out_of_space: {
+    aggressionLevel: 50,
+    cowardiceThreshold: 0,
+    packMentality: false,
+    territorialRange: 5,
+    combatStyle: 'cautious',
+    specialAbilities: ['drain', 'phasing'],
+    callForHelpChance: 0
+  },
+
+  elder_thing: {
+    aggressionLevel: 55,
+    cowardiceThreshold: 40,
+    packMentality: true,
+    territorialRange: 8,
+    preferredTerrain: ['basement', 'crypt'],
+    combatStyle: 'tactical',
+    specialAbilities: ['ranged_shot'],
+    callForHelpChance: 60
   }
 };
 
@@ -322,6 +529,21 @@ export const ENEMY_TARGET_PREFERENCES: Record<EnemyType, TargetPreferences> = {
   formless_spawn: { preferLowHp: true, preferLowSanity: false, preferIsolated: false },
   hunting_horror: { preferLowHp: false, preferLowSanity: true, preferIsolated: true },
   moon_beast: { preferLowHp: false, preferLowSanity: false, preferIsolated: true, avoidClass: ['veteran'] },
+  // New monsters (2026-01-22)
+  ghast: { preferLowHp: true, preferLowSanity: false, preferIsolated: true },
+  zoog: { preferLowHp: true, preferLowSanity: false, preferIsolated: true },
+  rat_thing: { preferLowHp: false, preferLowSanity: true, preferIsolated: true },
+  fire_vampire: { preferLowHp: false, preferLowSanity: false, preferIsolated: false },
+  dimensional_shambler: { preferLowHp: false, preferLowSanity: true, preferIsolated: true },
+  serpent_man: { preferLowHp: false, preferLowSanity: true, preferIsolated: false, preferClass: ['professor'] },
+  gug: { preferLowHp: false, preferLowSanity: false, preferIsolated: false },
+  cthonian: { preferLowHp: false, preferLowSanity: false, preferIsolated: false },
+  tcho_tcho: { preferLowHp: false, preferLowSanity: false, preferIsolated: true, preferClass: ['occultist'] },
+  flying_polyp: { preferLowHp: false, preferLowSanity: false, preferIsolated: false },
+  lloigor: { preferLowHp: false, preferLowSanity: true, preferIsolated: false, preferClass: ['professor', 'occultist'] },
+  gnoph_keh: { preferLowHp: true, preferLowSanity: false, preferIsolated: true },
+  colour_out_of_space: { preferLowHp: true, preferLowSanity: false, preferIsolated: false },
+  elder_thing: { preferLowHp: false, preferLowSanity: false, preferIsolated: false, preferClass: ['professor'] }
 };
 
 // ============================================================================
