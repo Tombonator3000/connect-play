@@ -1,5 +1,92 @@
 # Development Log
 
+## 2026-01-22: Refactor spawnRoom Fallback Logic - Remove Code Duplication
+
+### Oppgave
+Refaktorere kompleks kode i `spawnRoom`-funksjonen i ShadowsGame.tsx for bedre lesbarhet og vedlikeholdbarhet.
+
+### Problem
+`spawnRoom`-funksjonen (ca. 270 linjer) hadde **duplisert fallback-logikk** på to steder:
+- Linje 1813-1848: Fallback når ingen templates matcher
+- Linje 1853-1878: Fallback når template-seleksjon feiler
+
+Begge blokker inneholdt nesten identisk kode:
+1. `selectRandomConnectableCategory()` for å velge kategori
+2. `selectRandomRoomName()` for å velge romnavn
+3. `createFallbackTile()` for å opprette tile
+4. `synchronizeEdgesWithNeighbors()` for kantsynkronisering
+5. `setState()` for board-oppdatering
+6. `addToLog()` for lokasjonsmelding og beskrivelse
+
+### Løsning
+Opprettet en ny hjelpefunksjon `createFallbackSpawnResult()` i `roomSpawnHelpers.ts` som konsoliderer all felles fallback-logikk.
+
+### Endrede filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/utils/roomSpawnHelpers.ts` | La til `createFallbackSpawnResult()` funksjon med tilhørende interfaces |
+| `src/game/ShadowsGame.tsx` | Refaktorert begge fallback-blokker til å bruke ny hjelpefunksjon |
+
+### Tekniske detaljer
+
+**Ny funksjon i roomSpawnHelpers.ts:**
+```typescript
+export interface FallbackTileSpawnResult {
+  tile: Tile;
+  category: TileCategory;
+  roomName: string;
+  logMessages: string[];
+}
+
+export function createFallbackSpawnResult(
+  config: CreateFallbackSpawnConfig
+): FallbackTileSpawnResult
+```
+
+**Før (duplisert kode, ca. 35 linjer x 2 = 70 linjer):**
+```typescript
+const newCategory = selectRandomConnectableCategory(...);
+const roomName = selectRandomRoomName(newCategory, tileSet);
+const fallbackTile = createFallbackTile({...});
+setState(prev => {
+  const prevBoardMap = boardArrayToMap(prev.board);
+  const syncBoardMap = synchronizeEdgesWithNeighbors(fallbackTile, prevBoardMap);
+  return { ...prev, board: boardMapToArray(syncBoardMap) };
+});
+addToLog(`UTFORSKET: ${roomName}. [${newCategory.toUpperCase()}]`);
+const locationDescription = LOCATION_DESCRIPTIONS[roomName];
+if (locationDescription) { addToLog(locationDescription); }
+```
+
+**Etter (konsolidert, ca. 15 linjer x 2 = 30 linjer):**
+```typescript
+const fallbackResult = createFallbackSpawnResult({
+  startQ, startR, sourceCategory, tileSet, roomId, boardMap,
+  locationDescriptions: LOCATION_DESCRIPTIONS,
+  selectCategoryFn: selectRandomConnectableCategory
+});
+setState(prev => {
+  const prevBoardMap = boardArrayToMap(prev.board);
+  const syncBoardMap = synchronizeEdgesWithNeighbors(fallbackResult.tile, prevBoardMap);
+  return { ...prev, board: boardMapToArray(syncBoardMap) };
+});
+fallbackResult.logMessages.forEach(msg => addToLog(msg));
+```
+
+### Fordeler med refaktoreringen
+1. **Mindre duplisering**: ~40 linjer spart
+2. **Single source of truth**: Fallback-logikk definert ett sted
+3. **Enklere vedlikehold**: Endringer trenger kun gjøres ett sted
+4. **Bedre testbarhet**: Hjelpefunksjon kan testes isolert
+5. **Tydeligere ansvar**: Separasjon mellom tile-opprettelse og state-oppdatering
+
+### Verifisering
+- Build kjører uten feil
+- Ingen funksjonelle endringer - kun strukturell refaktorering
+
+---
+
 ## 2026-01-22: Fix Player Stuck in Rooms - Edge Indexing Inconsistency
 
 ### Problem
