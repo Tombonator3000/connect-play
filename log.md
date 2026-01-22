@@ -1,5 +1,75 @@
 # Development Log
 
+## 2026-01-22: Game Mechanics Implementation (Event Cards, Shop, Crafting, Field Guide)
+
+### Oppgave
+Implementere flere manglende spillmekanikker:
+1. Event card effekter (buff_enemies, debuff_player, item rewards)
+2. Vise alle våpen/rustninger i butikken
+3. Integrere crafting-system
+4. Lagre Field Guide mellom sesjoner
+
+### Endringer
+
+#### 1. Event Card Effekter (types.ts, eventDeckManager.ts, ShadowsGame.tsx)
+- **buff_enemies**: Nå tracked via `globalEnemyAttackBonus` i GameState
+  - Fiender får ekstra angrepsterninger fra events
+  - Bonus legges til i `calculateEnemyDamage()`
+- **debuff_player**: Implementert `apPenaltyNextTurn` på Player
+  - Straffen anvendes ved neste runde-start
+  - Nullstilles etter bruk
+- **item rewards**: Events som gir items fungerer nå
+  - `handleEventItemReward()` funksjon lagt til
+  - Items legges i spillerens inventory
+
+#### 2. Shop Våpen/Rustninger (legacyManager.ts)
+- **Før**: Hardkodet liste med 4 våpen, 3 rustninger
+- **Nå**: Dynamisk generert fra `HQ_WEAPONS` og `HQ_ARMOR` arrays
+- **23 våpen** nå tilgjengelig (inkludert 14 nye):
+  - brass_knuckles, fire_axe, cavalry_saber, sledgehammer
+  - ceremonial_dagger, switchblade, war_trophy_club
+  - flare_gun, crossbow, hunting_rifle, sawed_off, luger, throwing_knives
+- **12 rustninger** tilgjengelig (inkludert 8 nye):
+  - wool_overcoat, police_vest, cultist_robes, ritual_vestments
+  - explorers_jacket, sailors_coat, chain_mail_vest, elder_mantle
+- Nye items markert med `isNew: true` flag
+- Nye tools: Climbing Rope, Binoculars
+- Nye consumables: Adrenaline Shot, Antidote
+- Nye relics: Silver Mirror, Binding Chains
+
+#### 3. Crafting System (MerchantShop.tsx)
+- **Ny "Craft" tab** i The Fence (MerchantShop)
+- Crafting bruker gull istedenfor AP mellom scenarioer
+- Kostnad: 5g per AP complexity
+- Viser tilgjengelige og utilgjengelige oppskrifter
+- Fjerner ingredienser fra inventory ved crafting
+- Legger til crafted item i inventory
+
+#### 4. Field Guide Persistens (types.ts, legacyManager.ts, ShadowsGame.tsx)
+- **Nytt felt** `encounteredEnemies: string[]` på LegacyHero
+- Monstre du møter lagres på helten
+- Ved scenario-start: Alle valgte helters encountered enemies merges
+- Ved scenario-slutt: Nye encounters lagres på hver helt
+- Field Guide viser nå monstre fra alle tidligere spill-sesjoner
+
+### Tekniske detaljer
+
+**Nye typer i types.ts:**
+- `globalEnemyAttackBonus: number` i GameState
+- `apPenaltyNextTurn?: number` i Player
+- `encounteredEnemies: string[]` i LegacyHero
+
+**Nye imports i MerchantShop:**
+- `Hammer, FlaskConical, Check, AlertCircle, Flame` fra lucide-react
+- `CraftingRecipe` fra types
+- `CRAFTING_RECIPES, canCraftRecipe, getCraftedItem` fra constants
+
+**Nye funksjoner:**
+- `handleEventItemReward()` i ShadowsGame.tsx
+- `renderCraftingPanel()` i MerchantShop.tsx
+
+---
+
 ## 2026-01-22: Expanded Cthulhu Mythos Bestiary - 14 New Monsters
 
 ### Oppgave

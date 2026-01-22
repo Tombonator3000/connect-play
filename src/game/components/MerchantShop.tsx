@@ -51,8 +51,15 @@ import {
   Target,
   HandCoins,
   Warehouse,
-  Ban
+  Ban,
+  Hammer,
+  FlaskConical,
+  Check,
+  AlertCircle,
+  Flame
 } from 'lucide-react';
+import { CraftingRecipe } from '../types';
+import { CRAFTING_RECIPES, canCraftRecipe, getCraftedItem } from '../constants';
 
 interface MerchantShopProps {
   heroes: LegacyHero[];
@@ -64,8 +71,11 @@ interface MerchantShopProps {
 }
 
 type ShopCategory = 'weapons' | 'tools' | 'armor' | 'consumables' | 'relics';
-type ShopMode = 'buy' | 'sell';
+type ShopMode = 'buy' | 'sell' | 'craft';
 type SellSource = 'inventory' | 'stash';
+
+// Crafting costs gold instead of AP when done at the Fence
+const CRAFT_GOLD_COST_MULTIPLIER = 5; // Each AP cost becomes 5 gold
 
 const MerchantShop: React.FC<MerchantShopProps> = ({
   heroes,
@@ -405,6 +415,261 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
     );
   };
 
+  // Render the crafting panel content
+  const renderCraftingPanel = () => {
+    if (!activeHero) {
+      return (
+        <div className="flex-1 flex items-center justify-center text-stone-500">
+          <p>Select a hero to craft items</p>
+        </div>
+      );
+    }
+
+    // Get hero's inventory as flat array
+    const inventoryItems = getAllEquippedItems(activeHero.equipment);
+
+    // Calculate craftability for each recipe
+    const recipeStatuses = CRAFTING_RECIPES.map(recipe => {
+      const craftability = canCraftRecipe(recipe, inventoryItems);
+      const goldCost = recipe.apCost * CRAFT_GOLD_COST_MULTIPLIER;
+      const canAfford = activeHero.gold >= goldCost;
+      return {
+        recipe,
+        ...craftability,
+        goldCost,
+        canAfford
+      };
+    });
+
+    const availableRecipes = recipeStatuses.filter(r => r.canCraft && r.canAfford);
+    const unavailableRecipes = recipeStatuses.filter(r => !r.canCraft || !r.canAfford);
+
+    const handleCraft = (recipe: CraftingRecipe, goldCost: number) => {
+      if (!activeHero) return;
+
+      // Check gold
+      if (activeHero.gold < goldCost) {
+        setPurchaseMessage('Not enough gold!');
+        setTimeout(() => setPurchaseMessage(null), 2000);
+        return;
+      }
+
+      // Get the crafted item
+      const craftedItem = getCraftedItem(recipe.result.itemId);
+      if (!craftedItem) {
+        setPurchaseMessage('Recipe result not found!');
+        setTimeout(() => setPurchaseMessage(null), 2000);
+        return;
+      }
+
+      // Remove ingredients from inventory
+      let newEquipment = { ...activeHero.equipment, bag: [...activeHero.equipment.bag] };
+      for (const ingredient of recipe.ingredients) {
+        for (let i = 0; i < ingredient.quantity; i++) {
+          // Find and remove the ingredient
+          if (newEquipment.leftHand?.id === ingredient.itemId || newEquipment.leftHand?.id === `shop_${ingredient.itemId}`) {
+            newEquipment.leftHand = null;
+          } else if (newEquipment.rightHand?.id === ingredient.itemId || newEquipment.rightHand?.id === `shop_${ingredient.itemId}`) {
+            newEquipment.rightHand = null;
+          } else if (newEquipment.body?.id === ingredient.itemId || newEquipment.body?.id === `shop_${ingredient.itemId}`) {
+            newEquipment.body = null;
+          } else {
+            const idx = newEquipment.bag.findIndex(item => item?.id === ingredient.itemId || item?.id === `shop_${ingredient.itemId}`);
+            if (idx !== -1) {
+              newEquipment.bag[idx] = null;
+            }
+          }
+        }
+      }
+
+      // Add crafted item to inventory
+      const slot = findAvailableSlot(newEquipment, craftedItem);
+      if (slot) {
+        const equipResult = equipItem(newEquipment, craftedItem, slot);
+        if (equipResult.success) {
+          newEquipment = equipResult.newInventory;
+        }
+      }
+
+      // Deduct gold and update hero
+      const updatedHero: LegacyHero = {
+        ...activeHero,
+        gold: activeHero.gold - goldCost,
+        equipment: newEquipment
+      };
+
+      onHeroUpdate(updatedHero);
+      setPurchaseMessage(`Crafted ${craftedItem.name}!`);
+      setTimeout(() => setPurchaseMessage(null), 2000);
+    };
+
+    const getRecipeTypeIcon = (recipe: CraftingRecipe) => {
+      const item = getCraftedItem(recipe.result.itemId);
+      if (!item) return <FlaskConical size={20} />;
+      switch (item.type) {
+        case 'weapon': return <Sword size={20} />;
+        case 'armor': return <Shield size={20} />;
+        case 'tool': return <Wrench size={20} />;
+        case 'consumable': return <Flame size={20} />;
+        default: return <FlaskConical size={20} />;
+      }
+    };
+
+    const getRecipeTypeColor = (recipe: CraftingRecipe, canCraft: boolean, canAfford: boolean) => {
+      if (!canCraft || !canAfford) return 'border-stone-700 bg-stone-900/50 text-stone-500';
+      const item = getCraftedItem(recipe.result.itemId);
+      if (!item) return 'border-stone-600 bg-stone-800/50 text-stone-400';
+      switch (item.type) {
+        case 'weapon': return 'border-red-700 bg-red-900/20 text-red-400';
+        case 'armor': return 'border-blue-700 bg-blue-900/20 text-blue-400';
+        case 'tool': return 'border-green-700 bg-green-900/20 text-green-400';
+        case 'consumable': return 'border-orange-700 bg-orange-900/20 text-orange-400';
+        default: return 'border-purple-700 bg-purple-900/20 text-purple-400';
+      }
+    };
+
+    const renderRecipeCard = (status: typeof recipeStatuses[0]) => {
+      const { recipe, canCraft, canAfford, goldCost, missingItems } = status;
+      const craftedItem = getCraftedItem(recipe.result.itemId);
+      const isAvailable = canCraft && canAfford;
+
+      return (
+        <div
+          key={recipe.id}
+          className={`
+            relative p-4 rounded-lg border-2 transition-all
+            ${getRecipeTypeColor(recipe, canCraft, canAfford)}
+            ${isAvailable ? 'hover:scale-[1.02]' : 'opacity-70'}
+          `}
+        >
+          {/* Header */}
+          <div className="flex items-start gap-3 mb-3">
+            <div className="p-2 rounded-lg bg-black/30">
+              {getRecipeTypeIcon(recipe)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-sm truncate">{recipe.name}</h3>
+              <p className="text-xs opacity-70 line-clamp-2">{recipe.description}</p>
+            </div>
+          </div>
+
+          {/* Result preview */}
+          {craftedItem && (
+            <div className="mb-3 p-2 bg-black/20 rounded text-xs">
+              <span className="text-stone-400">Creates: </span>
+              <span className="text-amber-400 font-semibold">{craftedItem.name}</span>
+              {craftedItem.effect && (
+                <span className="text-green-400 block mt-1">{craftedItem.effect}</span>
+              )}
+            </div>
+          )}
+
+          {/* Ingredients */}
+          <div className="flex flex-wrap gap-1 mb-3">
+            {recipe.ingredients.map((ing, i) => {
+              const hasMissing = missingItems.includes(ing.itemId);
+              return (
+                <span
+                  key={i}
+                  className={`text-[10px] px-1.5 py-0.5 rounded ${
+                    hasMissing
+                      ? 'bg-red-900/50 text-red-300'
+                      : 'bg-green-900/50 text-green-300'
+                  }`}
+                >
+                  {ing.quantity}x {ing.itemId.replace(/_/g, ' ')}
+                </span>
+              );
+            })}
+          </div>
+
+          {/* Cost and Craft button */}
+          <div className="flex items-center justify-between">
+            <span className={`flex items-center gap-1 text-sm font-bold ${canAfford ? 'text-amber-400' : 'text-red-400'}`}>
+              <Coins size={14} /> {goldCost}g
+            </span>
+            <button
+              onClick={() => handleCraft(recipe, goldCost)}
+              disabled={!isAvailable}
+              className={`
+                px-3 py-1.5 rounded-lg text-sm font-bold transition-all flex items-center gap-1
+                ${isAvailable
+                  ? 'bg-orange-600 hover:bg-orange-500 text-white'
+                  : 'bg-stone-700 text-stone-500 cursor-not-allowed'
+                }
+              `}
+            >
+              <Hammer size={14} />
+              Craft
+            </button>
+          </div>
+
+          {/* Unavailable reason */}
+          {!isAvailable && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
+              <div className="text-center text-xs">
+                {!canCraft && <p className="text-red-400">Missing ingredients</p>}
+                {canCraft && !canAfford && <p className="text-amber-400">Not enough gold</p>}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Crafting info header */}
+        <div className="p-4 border-b border-stone-700 bg-stone-900">
+          <div className="flex items-center gap-2">
+            <Hammer size={20} className="text-orange-400" />
+            <span className="text-stone-300">
+              The Fence will craft items for a fee of <span className="text-amber-400 font-bold">{CRAFT_GOLD_COST_MULTIPLIER}g</span> per complexity
+            </span>
+          </div>
+        </div>
+
+        {/* Recipes grid */}
+        <div className="flex-1 p-4 overflow-y-auto">
+          {/* Available recipes */}
+          {availableRecipes.length > 0 && (
+            <div className="mb-6">
+              <h3 className="text-sm font-bold text-green-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Check size={14} />
+                Available ({availableRecipes.length})
+              </h3>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                {availableRecipes.map(status => renderRecipeCard(status))}
+              </div>
+            </div>
+          )}
+
+          {/* Unavailable recipes */}
+          {unavailableRecipes.length > 0 && (
+            <div>
+              <h3 className="text-sm font-bold text-stone-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <AlertCircle size={14} />
+                Unavailable ({unavailableRecipes.length})
+              </h3>
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                {unavailableRecipes.map(status => renderRecipeCard(status))}
+              </div>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {CRAFTING_RECIPES.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full text-stone-500">
+              <FlaskConical size={48} className="mb-4 opacity-50" />
+              <p className="text-lg">No recipes available</p>
+              <p className="text-sm">Find recipe scrolls during scenarios</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const renderRewardsPanel = () => {
     if (!scenarioResult) return null;
 
@@ -639,15 +904,33 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
                 <HandCoins size={18} />
                 Sell
               </button>
+              <button
+                onClick={() => setShopMode('craft')}
+                className={`
+                  flex items-center gap-2 px-6 py-2 rounded-lg border-2 transition-all font-bold uppercase tracking-wider
+                  ${shopMode === 'craft'
+                    ? 'border-orange-500 bg-orange-900/30 text-orange-400'
+                    : 'border-stone-700 bg-stone-800 text-stone-400 hover:border-stone-600'
+                  }
+                `}
+              >
+                <Hammer size={18} />
+                Craft
+              </button>
               <div className="flex-1" />
               {shopMode === 'sell' && (
                 <div className="flex items-center gap-2 text-sm text-stone-500 italic">
                   <span>The Fence pays 50% of shop value</span>
                 </div>
               )}
+              {shopMode === 'craft' && (
+                <div className="flex items-center gap-2 text-sm text-stone-500 italic">
+                  <span>Crafting fee: {CRAFT_GOLD_COST_MULTIPLIER}g per AP</span>
+                </div>
+              )}
             </div>
 
-            {shopMode === 'buy' ? (
+            {shopMode === 'buy' && (
               <>
                 {/* Category tabs */}
                 <div className="flex gap-2 p-4 border-b border-stone-700 bg-stone-900">
@@ -676,9 +959,9 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
                   </div>
                 </div>
               </>
-            ) : (
-              renderSellPanel()
             )}
+            {shopMode === 'sell' && renderSellPanel()}
+            {shopMode === 'craft' && renderCraftingPanel()}
           </div>
         </div>
 

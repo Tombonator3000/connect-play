@@ -153,6 +153,8 @@ export interface Player extends Character {
   customPortraitUrl?: string;  // Custom uploaded portrait URL for board and character sheet
   // Temporary combat bonuses (reset at end of round)
   tempDefenseBonus?: number;  // Temporary defense bonus from spells like Dark Shield
+  // Event card debuffs
+  apPenaltyNextTurn?: number;  // AP reduction for next turn (from debuff_player events)
 }
 
 export interface Item {
@@ -1562,6 +1564,8 @@ export interface GameState {
   weatherState: WeatherState;    // Active weather conditions
   survivors: Survivor[];         // NPC survivors on the map
   rescuedSurvivors: string[];    // IDs of successfully rescued survivors
+  // Event card effect tracking
+  globalEnemyAttackBonus: number;  // Bonus attack dice for all enemies (from buff_enemies events)
   // Quest item spawning state - tracks which items need to spawn and where
   objectiveSpawnState?: {
     questItems: {
@@ -1753,6 +1757,9 @@ export interface LegacyHero {
 
   // Class-specific bonuses
   classBonuses: string[];               // IDs of unlocked class-specific bonuses
+
+  // Field Guide - persistent monster encounter tracking
+  encounteredEnemies: string[];         // EnemyType strings of monsters encountered across all sessions
 }
 
 /**

@@ -160,7 +160,8 @@ const DEFAULT_STATE: GameState = {
   pendingHorrorChecks: [],
   weatherState: createDefaultWeatherState(),
   survivors: [],
-  rescuedSurvivors: []
+  rescuedSurvivors: [],
+  globalEnemyAttackBonus: 0
 };
 
 const ROOM_SHAPES = {
@@ -429,7 +430,8 @@ const ShadowsGame: React.FC = () => {
 
         for (const attack of attacks) {
           const { enemy, targetPlayer, isRanged, coverPenalty } = attack;
-          const { hpDamage, sanityDamage, message } = calculateEnemyDamage(enemy, targetPlayer);
+          // Include global enemy attack bonus from buff_enemies events
+          const { hpDamage, sanityDamage, message } = calculateEnemyDamage(enemy, targetPlayer, state.globalEnemyAttackBonus || 0);
 
           // Apply cover penalty for ranged attacks (reduces damage)
           const coverReduction = isRanged && coverPenalty ? Math.min(coverPenalty, hpDamage) : 0;
@@ -529,8 +531,14 @@ const ShadowsGame: React.FC = () => {
         // Transition back to investigator phase after a delay
         setTimeout(() => {
           setState(prev => {
-            // Reset actions for all players
-            const resetPlayers = updatedPlayers.map(p => ({ ...p, actions: p.isDead ? 0 : 2 }));
+            // Reset actions for all players, applying any AP penalties and then clearing them
+            const resetPlayers = updatedPlayers.map(p => {
+              const basActions = p.isDead ? 0 : 2;
+              const penalty = p.apPenaltyNextTurn || 0;
+              const finalActions = Math.max(0, basActions - penalty);
+              // Clear the penalty after applying it
+              return { ...p, actions: finalActions, apPenaltyNextTurn: undefined };
+            });
             // Apply madness effects to first player (index 0)
             const firstPlayer = resetPlayers[0];
             if (firstPlayer && !firstPlayer.isDead && firstPlayer.activeMadness) {
@@ -946,10 +954,15 @@ const ShadowsGame: React.FC = () => {
       });
       setHeroKillCounts(initialKillCounts);
 
+      // Merge all selected heroes' previously encountered enemies for Field Guide
+      const allEncounteredEnemies = selectedHeroes.flatMap(hero => hero.encounteredEnemies || []);
+      const uniqueEncounteredEnemies = [...new Set(allEncounteredEnemies)];
+
       // Set non-occultist players to state
       setState(prev => ({
         ...prev,
-        players: nonOccultistPlayers
+        players: nonOccultistPlayers,
+        encounteredEnemies: uniqueEncounteredEnemies
       }));
 
       // Start spell selection flow for occultists
@@ -969,9 +982,14 @@ const ShadowsGame: React.FC = () => {
     });
     setHeroKillCounts(initialKillCounts);
 
+    // Merge all selected heroes' previously encountered enemies for Field Guide
+    const allEncounteredEnemies = selectedHeroes.flatMap(hero => hero.encounteredEnemies || []);
+    const uniqueEncounteredEnemies = [...new Set(allEncounteredEnemies)];
+
     setState(prev => ({
       ...prev,
-      players
+      players,
+      encounteredEnemies: uniqueEncounteredEnemies
     }));
 
     setMainMenuView('title');
@@ -1100,6 +1118,13 @@ const ShadowsGame: React.FC = () => {
         if (player) {
           updatedHero.equipment = { ...player.inventory, bag: [...player.inventory.bag] };
         }
+
+        // Sync encountered enemies for Field Guide persistence
+        // Merge the current session's encounters with the hero's lifetime encounters
+        const existingEncountered = updatedHero.encounteredEnemies || [];
+        const sessionEncountered = state.encounteredEnemies || [];
+        const mergedEncountered = [...new Set([...existingEncountered, ...sessionEncountered])];
+        updatedHero.encounteredEnemies = mergedEncountered;
 
         updatedLegacyData = updateHero(updatedLegacyData, updatedHero);
       }
@@ -2369,12 +2394,19 @@ const ShadowsGame: React.FC = () => {
       }
 
       // Resolve the event effect using the CURRENT state (prev)
-      const { updatedState, logMessages, spawnEnemies, weatherChange } = resolveEventEffect(
+      const { updatedState, logMessages, spawnEnemies, weatherChange, itemReward } = resolveEventEffect(
         event,
         prev,
         prev.activePlayerIndex,
         skillCheckPassed
       );
+
+      // Handle item rewards (schedule for after state update)
+      if (itemReward && !skillCheckPassed) {
+        setTimeout(() => {
+          handleEventItemReward(itemReward.playerId, itemReward.itemId);
+        }, 100);
+      }
 
       // Log all messages from the event (schedule for after state update)
       setTimeout(() => {
@@ -2433,6 +2465,48 @@ const ShadowsGame: React.FC = () => {
       return newState;
     });
   }, [addToLog, addFloatingText, triggerScreenShake, spawnEnemy]);
+
+  /**
+   * Handle item rewards from event cards
+   */
+  const handleEventItemReward = useCallback((playerId: string, itemId: string) => {
+    // Find the item in ITEMS array
+    const item = ITEMS.find(i => i.id === itemId);
+    if (!item) {
+      addToLog(`Could not find item: ${itemId}`);
+      return;
+    }
+
+    setState(prev => {
+      const playerIdx = prev.players.findIndex(p => p.id === playerId);
+      if (playerIdx === -1) return prev;
+
+      const player = prev.players[playerIdx];
+
+      // Find an empty bag slot
+      const emptyBagIndex = player.inventory.bag.findIndex(slot => slot === null);
+      if (emptyBagIndex === -1) {
+        // No room - log and skip
+        setTimeout(() => addToLog(`${player.name} has no room for ${item.name}!`), 0);
+        return prev;
+      }
+
+      // Add item to inventory
+      const newPlayers = prev.players.map((p, idx) => {
+        if (idx !== playerIdx) return p;
+        const newInventory = { ...p.inventory, bag: [...p.inventory.bag] };
+        newInventory.bag[emptyBagIndex] = { ...item, slotType: 'bag' };
+        return { ...p, inventory: newInventory };
+      });
+
+      setTimeout(() => {
+        addToLog(`${player.name} received ${item.name}!`);
+        addFloatingText(player.position.q, player.position.r, `+${item.name}`, "text-yellow-400");
+      }, 0);
+
+      return { ...prev, players: newPlayers };
+    });
+  }, [addToLog, addFloatingText]);
 
   /**
    * Instantiate a room cluster at the given world position

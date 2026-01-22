@@ -552,8 +552,9 @@ export function getPlayerDefenseDice(player: Player): number {
  * Monster rolls attackDice, player rolls defenseDice
  * Each die showing 4+ is a success (skull/shield)
  * Net damage = attack successes - defense successes (minimum 0)
+ * @param globalEnemyAttackBonus - Bonus attack dice from event cards (buff_enemies effect)
  */
-export function calculateEnemyDamage(enemy: Enemy, player: Player): {
+export function calculateEnemyDamage(enemy: Enemy, player: Player, globalEnemyAttackBonus: number = 0): {
   hpDamage: number;
   sanityDamage: number;
   attackRolls: number[];
@@ -564,9 +565,10 @@ export function calculateEnemyDamage(enemy: Enemy, player: Player): {
 } {
   const dc = 4; // Standard Hero Quest DC (skulls)
 
-  // Get attack dice from bestiary
+  // Get attack dice from bestiary + global bonus from events
   const bestiaryEntry = BESTIARY[enemy.type];
-  const attackDice = bestiaryEntry?.attackDice || 1;
+  const baseAttackDice = bestiaryEntry?.attackDice || 1;
+  const attackDice = baseAttackDice + globalEnemyAttackBonus;
 
   // Roll attack dice
   const attackRolls = rollDice(attackDice);

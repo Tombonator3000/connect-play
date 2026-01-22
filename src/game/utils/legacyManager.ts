@@ -32,7 +32,7 @@ import {
   ShopItem,
   ShopInventory
 } from '../types';
-import { CHARACTERS, SPELLS } from '../constants';
+import { CHARACTERS, SPELLS, HQ_WEAPONS, HQ_ARMOR } from '../constants';
 
 // Re-export for external consumers
 export { createDefaultLegacyData };
@@ -182,7 +182,9 @@ export function createLegacyHero(
     survivorTraits: [],
     survivorTitle: undefined,
     // Class-specific bonuses
-    classBonuses: []
+    classBonuses: [],
+    // Field Guide - persistent monster encounters
+    encounteredEnemies: []
   };
 }
 
@@ -729,33 +731,88 @@ export function updateLegacyHeroFromPlayer(
 // ============================================================================
 
 /**
- * Default shop inventory
+ * Default shop inventory - dynamically generated from HQ_WEAPONS and HQ_ARMOR
+ * All weapons and armor from constants.ts are now available in the shop!
  */
 export function getDefaultShopInventory(): ShopInventory {
-  return {
-    weapons: [
-      {
-        item: { id: 'shop_revolver', name: 'Revolver', type: 'weapon', effect: '3 attack dice, range 3', attackDice: 3, weaponType: 'ranged', range: 3, ammo: 6, slotType: 'hand' },
-        goldCost: 30,
-        stock: -1
-      },
-      {
-        item: { id: 'shop_shotgun', name: 'Shotgun', type: 'weapon', effect: '4 attack dice, range 2', attackDice: 4, weaponType: 'ranged', range: 2, ammo: 2, slotType: 'hand' },
-        goldCost: 50,
-        stock: 2
-      },
-      {
-        item: { id: 'shop_tommy', name: 'Tommy Gun', type: 'weapon', effect: '5 attack dice, range 3', attackDice: 5, weaponType: 'ranged', range: 3, ammo: 20, slotType: 'hand' },
-        goldCost: 100,
-        stock: 1,
-        requiredLevel: 3
-      },
-      {
-        item: { id: 'shop_knife', name: 'Combat Knife', type: 'weapon', effect: '2 attack dice, silent', attackDice: 2, weaponType: 'melee', ammo: -1, silent: true, slotType: 'hand' },
-        goldCost: 15,
-        stock: -1
+  // Generate weapon shop items from HQ_WEAPONS (skip 'unarmed')
+  const weapons: ShopItem[] = HQ_WEAPONS
+    .filter(w => w.id !== 'unarmed')
+    .map(weapon => {
+      // Build effect description
+      const effects: string[] = [];
+      effects.push(`${weapon.attackDice} attack dice`);
+      if (weapon.weaponType === 'ranged') {
+        effects.push(`range ${weapon.range || 2}`);
+        if (weapon.ammo && weapon.ammo > 0) effects.push(`${weapon.ammo} shots`);
       }
-    ],
+      if (weapon.silent) effects.push('silent');
+      if (weapon.notes) effects.push(weapon.notes);
+
+      // Determine stock based on rarity (goldCost)
+      let stock = -1; // unlimited
+      if (weapon.goldCost >= 400) stock = 1;
+      else if (weapon.goldCost >= 200) stock = 2;
+      else if (weapon.goldCost >= 100) stock = 3;
+
+      // Shop gold cost is adjusted (roughly 10-20% of original)
+      const shopGoldCost = Math.max(10, Math.round(weapon.goldCost / 5));
+
+      return {
+        item: {
+          id: `shop_${weapon.id}`,
+          name: weapon.name,
+          type: 'weapon' as const,
+          effect: effects.join(', '),
+          attackDice: weapon.attackDice,
+          weaponType: weapon.weaponType,
+          range: weapon.range,
+          ammo: weapon.ammo,
+          silent: weapon.silent,
+          slotType: 'hand' as const
+        },
+        goldCost: shopGoldCost,
+        stock,
+        requiredLevel: weapon.requiredLevel,
+        isNew: ['brass_knuckles', 'fire_axe', 'cavalry_saber', 'sledgehammer', 'ceremonial_dagger', 'switchblade', 'war_trophy_club', 'flare_gun', 'crossbow', 'hunting_rifle', 'sawed_off', 'luger', 'throwing_knives'].includes(weapon.id)
+      };
+    });
+
+  // Generate armor shop items from HQ_ARMOR (skip 'none')
+  const armor: ShopItem[] = HQ_ARMOR
+    .filter(a => a.id !== 'none')
+    .map(armorItem => {
+      // Build effect description
+      const effects: string[] = [];
+      effects.push(`+${armorItem.defenseDice} defense ${armorItem.defenseDice === 1 ? 'die' : 'dice'}`);
+      if (armorItem.notes) effects.push(armorItem.notes);
+
+      // Determine stock based on rarity
+      let stock = -1;
+      if (armorItem.goldCost >= 500) stock = 1;
+      else if (armorItem.goldCost >= 300) stock = 2;
+
+      // Shop gold cost adjusted
+      const shopGoldCost = Math.max(15, Math.round(armorItem.goldCost / 5));
+
+      return {
+        item: {
+          id: `shop_${armorItem.id}`,
+          name: armorItem.name,
+          type: 'armor' as const,
+          effect: effects.join(', '),
+          defenseDice: armorItem.defenseDice,
+          slotType: 'body' as const
+        },
+        goldCost: shopGoldCost,
+        stock,
+        requiredLevel: armorItem.requiredLevel,
+        isNew: ['wool_overcoat', 'police_vest', 'cultist_robes', 'ritual_vestments', 'explorers_jacket', 'sailors_coat', 'chain_mail_vest', 'elder_mantle'].includes(armorItem.id)
+      };
+    });
+
+  return {
+    weapons,
     tools: [
       {
         item: { id: 'shop_flashlight', name: 'Flashlight', type: 'tool', effect: 'Provides light', isLightSource: true, slotType: 'hand' },
@@ -776,26 +833,21 @@ export function getDefaultShopInventory(): ShopInventory {
         item: { id: 'shop_lantern', name: 'Oil Lantern', type: 'tool', effect: 'Provides bright light, can be thrown', isLightSource: true, slotType: 'hand' },
         goldCost: 25,
         stock: 3
-      }
-    ],
-    armor: [
-      {
-        item: { id: 'shop_leather', name: 'Leather Jacket', type: 'armor', effect: '+1 defense die', defenseDice: 1, slotType: 'body' },
-        goldCost: 35,
-        stock: -1
       },
       {
-        item: { id: 'shop_trench', name: 'Trench Coat', type: 'armor', effect: '+1 defense die, conceals weapons', defenseDice: 1, slotType: 'body' },
-        goldCost: 25,
-        stock: -1
+        item: { id: 'shop_rope', name: 'Climbing Rope', type: 'tool', effect: '+1 die on climbing checks', bonus: 1, slotType: 'bag' },
+        goldCost: 15,
+        stock: -1,
+        isNew: true
       },
       {
-        item: { id: 'shop_vest', name: 'Armored Vest', type: 'armor', effect: '+2 defense dice', defenseDice: 2, slotType: 'body' },
-        goldCost: 75,
-        stock: 1,
-        requiredLevel: 2
+        item: { id: 'shop_binoculars', name: 'Binoculars', type: 'tool', effect: 'Reveal adjacent tiles', slotType: 'bag' },
+        goldCost: 30,
+        stock: 2,
+        isNew: true
       }
     ],
+    armor,
     consumables: [
       {
         item: { id: 'shop_medkit', name: 'Medical Kit', type: 'consumable', effect: 'Heal 3 HP', uses: 2, maxUses: 2, slotType: 'bag' },
@@ -816,6 +868,19 @@ export function getDefaultShopInventory(): ShopInventory {
         item: { id: 'shop_sedative', name: 'Sedatives', type: 'consumable', effect: 'Restore 3 Sanity, -1 action next turn', uses: 1, maxUses: 1, slotType: 'bag' },
         goldCost: 15,
         stock: 5
+      },
+      {
+        item: { id: 'shop_stimpak', name: 'Adrenaline Shot', type: 'consumable', effect: '+1 action this turn', uses: 1, maxUses: 1, slotType: 'bag' },
+        goldCost: 35,
+        stock: 2,
+        requiredLevel: 2,
+        isNew: true
+      },
+      {
+        item: { id: 'shop_antidote', name: 'Antidote', type: 'consumable', effect: 'Cures poison', uses: 1, maxUses: 1, slotType: 'bag' },
+        goldCost: 20,
+        stock: 3,
+        isNew: true
       }
     ],
     relics: [
@@ -835,6 +900,20 @@ export function getDefaultShopInventory(): ShopInventory {
         goldCost: 80,
         stock: 1,
         requiredLevel: 2
+      },
+      {
+        item: { id: 'shop_silver_mirror', name: 'Silver Mirror', type: 'relic', effect: '+1 die vs spirits, reveals hidden enemies', slotType: 'bag' },
+        goldCost: 100,
+        stock: 1,
+        requiredLevel: 2,
+        isNew: true
+      },
+      {
+        item: { id: 'shop_binding_chains', name: 'Binding Chains', type: 'relic', effect: 'Immobilize enemy for 1 turn', slotType: 'bag' },
+        goldCost: 120,
+        stock: 1,
+        requiredLevel: 3,
+        isNew: true
       }
     ]
   };

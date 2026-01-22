@@ -127,6 +127,7 @@ export function resolveEventEffect(
   logMessages: string[];
   spawnEnemies?: { type: string; count: number; nearPlayerId: string };
   weatherChange?: { type: WeatherType; duration: number };
+  itemReward?: { playerId: string; itemId: string };
 } {
   const logMessages: string[] = [];
   const updatedState: Partial<GameState> = {};
@@ -148,6 +149,9 @@ export function resolveEventEffect(
   const targetIdx = targetPlayerIndex ?? state.activePlayerIndex;
   const players = [...state.players];
 
+  // Track item rewards
+  let itemReward: { playerId: string; itemId: string } | undefined;
+
   // Apply primary effect
   const primaryResult = applyEffect(
     event.effectType,
@@ -162,6 +166,14 @@ export function resolveEventEffect(
   if (primaryResult.weatherChange) weatherChange = primaryResult.weatherChange;
   if (primaryResult.doomChange !== undefined) {
     updatedState.doom = Math.max(0, state.doom + primaryResult.doomChange);
+  }
+  if (primaryResult.enemyAttackBonus !== undefined) {
+    // Add to global enemy attack bonus (persists for scenario)
+    const currentBonus = state.globalEnemyAttackBonus || 0;
+    updatedState.globalEnemyAttackBonus = currentBonus + primaryResult.enemyAttackBonus;
+  }
+  if (primaryResult.itemReward) {
+    itemReward = primaryResult.itemReward;
   }
 
   // Apply secondary effect if present
@@ -185,11 +197,18 @@ export function resolveEventEffect(
       const currentDoom = updatedState.doom ?? state.doom;
       updatedState.doom = Math.max(0, currentDoom + secondaryResult.doomChange);
     }
+    if (secondaryResult.enemyAttackBonus !== undefined) {
+      const currentBonus = updatedState.globalEnemyAttackBonus ?? state.globalEnemyAttackBonus ?? 0;
+      updatedState.globalEnemyAttackBonus = currentBonus + secondaryResult.enemyAttackBonus;
+    }
+    if (secondaryResult.itemReward && !itemReward) {
+      itemReward = secondaryResult.itemReward;
+    }
   }
 
   updatedState.players = players;
 
-  return { updatedState, logMessages, spawnEnemies, weatherChange };
+  return { updatedState, logMessages, spawnEnemies, weatherChange, itemReward };
 }
 
 /**
@@ -207,6 +226,8 @@ function applyEffect(
   spawnEnemies?: { type: string; count: number; nearPlayerId: string };
   weatherChange?: { type: WeatherType; duration: number };
   doomChange?: number;
+  enemyAttackBonus?: number;
+  itemReward?: { playerId: string; itemId: string };
 } {
   const logMessages: string[] = [];
   const targetPlayer = players[targetIdx];
@@ -288,25 +309,24 @@ function applyEffect(
     }
 
     case 'buff_enemies': {
-      // Enemies get +1 attack die until end of scenario
-      // This would need to be tracked in game state - for now just log
+      // Enemies get +N attack dice until end of scenario
+      // This is tracked via globalEnemyAttackBonus in GameState
       logMessages.push(`Enemies grow stronger! +${value} attack die`);
-      break;
+      return { logMessages, enemyAttackBonus: value };
     }
 
     case 'debuff_player': {
       // Player gets -1 AP next turn
-      // This would need a debuff system - for now apply small sanity hit
-      const newSanity = Math.max(0, targetPlayer.sanity - 1);
-      players[targetIdx] = { ...targetPlayer, sanity: newSanity };
-      logMessages.push(`${targetPlayer.name} feels weakened (-1 Sanity)`);
+      players[targetIdx] = { ...targetPlayer, apPenaltyNextTurn: value };
+      logMessages.push(`${targetPlayer.name} feels weakened (-${value} AP next turn)`);
       break;
     }
 
     case 'item': {
-      // Grant an item - would need inventory integration
-      logMessages.push(`${targetPlayer.name} finds supplies!`);
-      break;
+      // Grant an item based on itemId in event, or a random useful item
+      const itemToGive = event.itemId || 'bandage';
+      logMessages.push(`${targetPlayer.name} finds ${itemToGive}!`);
+      return { logMessages, itemReward: { playerId: targetPlayer.id, itemId: itemToGive } };
     }
 
     case 'teleport': {
