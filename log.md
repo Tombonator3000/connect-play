@@ -14893,3 +14893,256 @@ Følgende feil kommer fra lovable.dev platformen og kan ikke fikses i spillkoden
 - Iframe sandbox warnings
 - 404 for eksterne ressurser
 
+---
+
+## 2026-01-22: Game Items Expansion - Weapons, Armor, Relics, Events, Lore & NPCs
+
+### Oppgave
+Utvide spillets innhold med:
+1. Flere weapons, relics og armor for mer variasjon
+2. Flere event-kort som gir faktiske effekter på hero character
+3. Lore items (journaler, dagbøker, avrevne sider) med Lovecraftian tekst
+4. Random spawning av NPCs med replikker og tjenester
+
+### Løsning
+
+#### 1. Nye Våpen (HQ_WEAPONS)
+
+**Nye melee våpen:**
+| Våpen | Attack Dice | Kostnad | Spesielt |
+|-------|-------------|---------|----------|
+| Brass Knuckles | 2 | 40g | Silent, +1 vs unarmored |
+| Fire Axe | 3 | 120g | Bryter barrikader |
+| Cavalry Saber | 3 | 180g | Elegant og dødelig |
+| Sledgehammer | 4 | 200g | Sakte men ødeleggende |
+| Ceremonial Dagger | 2 | 250g | +1 vs cultists, silent |
+| Switchblade | 1 | 25g | Quick draw, lett å skjule |
+| War Trophy Club | 3 | 100g | Fra Stillehavsøyene |
+
+**Nye ranged våpen:**
+| Våpen | Attack Dice | Range | Ammo | Kostnad | Spesielt |
+|-------|-------------|-------|------|---------|----------|
+| Flare Gun | 2 | 3 | 3 | 75g | Lyser opp mørke områder |
+| Crossbow | 3 | 4 | 1 | 250g | Silent, slow reload |
+| Hunting Rifle | 4 | 6 | 3 | 450g | Ekstrem rekkevidde |
+| Sawed-Off Shotgun | 5 | 1 | 2 | 350g | Point-blank |
+| Luger Pistol | 3 | 3 | 8 | 225g | Rask reload |
+| Throwing Knives | 2 | 2 | 4 | 80g | Silent, retrievable |
+
+#### 2. Nye Rustninger (HQ_ARMOR)
+
+| Rustning | Defense Dice | Kostnad | Spesielt |
+|----------|--------------|---------|----------|
+| Wool Overcoat | 1 | 80g | Varm, mange lommer |
+| Police Vest | 2 | 400g | Standard issue |
+| Cultist Robes | 1 | 200g | Blender inn med fiender |
+| Ritual Vestments | 1 | 350g | +1 occult checks |
+| Explorer's Jacket | 1 | 175g | +1 bag slot |
+| Sailor's Oilskin | 1 | 125g | Waterproof, vs Deep Ones |
+| Hidden Chain Mail | 2 | 600g | Ancient protection |
+| Elder Mantle | 2 | 800g | +2 vs sanity loss |
+
+#### 3. Nye Relics
+
+| Relic | Effekt | Kostnad |
+|-------|--------|---------|
+| Silver Key | Åpner enhver låst dør én gang | 500g |
+| Dream Crystal | Gjenoppretter 2 Sanity per scenario | 400g |
+| Mi-Go Brain Cylinder | +2 Intellect checks, -1 Sanity per use | 600g |
+| Powder of Ibn-Ghazi | Avslører usynlige fiender (3 uses) | 350g |
+| Lucky Rabbit Foot | Reroll ett mislykket check per scenario | 200g |
+| Ancient Medallion | Reduserer Horror damage med 1 | 450g |
+| Eye of Light and Darkness | Se gjennom vegger i nabotiles | 550g |
+| Shrivelling Scroll | Gjør 3 damage til én fiende, destroyed | 300g |
+| Warding Statue | Fiender unngår denne tile | 400g |
+| Black Book of the Skull | +4 Insight, -2 Sanity per lesing | 650g |
+| Ritual Candles | Required for rituals (5 uses) | 100g |
+| Holy Water | +2 damage vs undead (3 uses) | 150g |
+| Ghost Lantern | Avslører spirit barriers og hidden doors | 475g |
+
+#### 4. Nye Event Cards (35 nye kort: e36-e70)
+
+**Kategorier:**
+- **Sanity Events** (e36-e40): The Mirror Lies, Childhood Memories, The Geometry is Wrong, Drowning in Air, They Know Your Name
+- **Health Events** (e41-e45): Ceiling Collapse, Glass Shard Floor, Poisoned Air, Bitten, Exhaustion
+- **Spawn Events** (e46-e50): The Pack Arrives, Cultist Reinforcements, From the Waters, Night Terror, The Priest Arrives
+- **Positive Events** (e51-e55): Safe Room, Old Bandolier, Professor's Notes, Second Wind, Ritual Disrupted
+- **Weather Events** (e56-e59): Miasma Rises, Oppressive Darkness, Torrential Rain, The Fog Lifts
+- **Doom Events** (e60-e63): The Chanting Grows, Cosmic Alignment, Blood Moon, Seal Weakens
+- **Complex Events** (e64-e70): Forbidden Reading, Dark Pact, Memory Fragment, Ally in Darkness, Sacrificial Energy, Desperate Measures, Ancient Guardian
+
+**Alle events har:**
+- Faktiske effekter (health, sanity, doom, spawn, etc.)
+- Skill checks der relevant
+- Thematisk Lovecraftian flavortext
+- Doom thresholds for late-game events
+
+#### 5. Lore Items System (NYTT)
+
+**Ny LoreItem interface:**
+```typescript
+interface LoreItem {
+  id: string;
+  name: string;
+  type: 'journal' | 'diary' | 'letter' | 'torn_page' | 'newspaper' | 'photograph' | 'recording';
+  title: string;
+  content: string;
+  insightBonus?: number;
+  sanityEffect?: number;
+  condition: 'pristine' | 'worn' | 'damaged' | 'barely_legible';
+  author?: string;
+  date?: string;
+}
+```
+
+**Lore Items opprettet (17 totalt):**
+
+| Type | Antall | Eksempler |
+|------|--------|-----------|
+| Journal | 3 | Dr. Armitage's Research Notes, Explorer's Journal, Occultist's Grimoire |
+| Diary | 3 | Personal Diary, Emily's Secret Diary, Asylum Patient Diary |
+| Torn Page | 4 | Fragment from Unknown Text, Bloodstained Page, Ancient Parchment, Charred Fragment |
+| Letter | 3 | Unsent Letter, Threatening Letter, Desperate Plea |
+| Newspaper | 2 | Arkham Advertiser, Innsmouth Scandal |
+| Photograph | 2 | Esoteric Order portrait, Antarctic Expedition |
+| Recording | 1 | Dr. West's Final Recording |
+
+**Lovecraftian innhold inkluderer:**
+- Referanser til Cthulhu, Dagon, Nyarlathotep, Yog-Sothoth
+- Innsmouth, Arkham, Miskatonic University
+- R'lyeh, Deep Ones, Elder Signs
+- Non-Euclidean geometry, cosmic horror
+- Mi-Go, ghouls, reanimation
+
+**Spawn weights for discovery:**
+```typescript
+LORE_DISCOVERY_WEIGHTS = {
+  torn_page: 30,    // Mest vanlig
+  letter: 20,
+  diary: 15,
+  journal: 15,
+  newspaper: 10,
+  photograph: 7,
+  recording: 3      // Sjeldnest
+}
+```
+
+#### 6. NPC System (NYTT)
+
+**Ny NPCType enum:**
+```typescript
+type NPCType =
+  | 'civilian' | 'child' | 'elderly' | 'merchant'
+  | 'wounded' | 'scholar' | 'cultist_defector'
+  | 'police_officer' | 'journalist' | 'priest'
+  | 'mad_prophet' | 'mysterious_stranger';
+```
+
+**NPC interface:**
+```typescript
+interface NPC {
+  id: string;
+  name: string;
+  type: NPCType;
+  disposition: NPCDisposition;
+  description: string;
+  dialogues: NPCDialogue;
+
+  // Services
+  canHeal?: boolean;
+  canTrade?: boolean;
+  tradeItems?: string[];
+
+  // Rewards
+  sanityEffect?: number;
+  insightReward?: number;
+  itemReward?: string;
+
+  // Spawn conditions
+  spawnWeight: number;
+  minDoom?: number;
+  maxDoom?: number;
+  preferredTileTypes?: string[];
+}
+```
+
+**NPCs opprettet (15 totalt):**
+
+| NPC | Type | Tjenester | Belønning |
+|-----|------|-----------|-----------|
+| Frightened Woman | civilian | - | +1 Sanity, Bandages |
+| Shell-Shocked Man | civilian | - | Flashlight |
+| Lost Child | child | - | +2 Sanity, +1 Insight |
+| Strange Girl | child | - | +2 Insight, -1 Sanity |
+| Old Librarian | elderly | - | +2 Insight, Protective Ward |
+| Grizzled Fisherman | elderly | - | Lucky Charm |
+| Black Market Dealer | merchant | Trade | Weapons, supplies |
+| Occult Shop Owner | merchant | Trade | Relics, occult items |
+| Traveling Medicine Man | merchant | Trade, Heal | Medical supplies |
+| Miskatonic Professor | scholar | Clues | +3 Insight |
+| Repentant Cultist | defector | - | +4 Insight, Cultist Robes |
+| Father O'Malley | priest | Heal Sanity | +2 Sanity, Holy Water |
+| The Rambling Man | mad_prophet | - | +3 Insight, -2 Sanity |
+| The Man in Black | mysterious | - | +5 Insight, Elder Sign |
+
+**Dialogues inkluderer:**
+- Greeting, farewell, help, scared, hint
+- Alle har tematisk Lovecraftian dialog
+- NPCs har unike personligheter og historier
+
+**Spawn system:**
+- `getRandomNPC(currentDoom, tileType)` - Vektet tilfeldig valg
+- Doom constraints (min/max)
+- Tile type preferences med 2x weight bonus
+- Service NPCs kan filtreres med `getServiceNPCs()`
+
+### Filer Modifisert
+
+**src/game/constants.ts:**
+- HQ_WEAPONS: +13 nye våpen
+- HQ_ARMOR: +8 nye rustninger
+- ITEMS: +30 nye items (våpen, rustninger, relics, tools, consumables)
+- EVENTS: +35 nye event cards
+- LORE_ITEMS: Ny array med 17 lore items (NY)
+- NPCS: Ny array med 15 NPCs (NY)
+- getRandomLoreItem(): Ny funksjon (NY)
+- getRandomNPC(): Ny funksjon (NY)
+- getServiceNPCs(): Ny funksjon (NY)
+- getNPCsByType(): Ny funksjon (NY)
+
+### Tekniske Detaljer
+
+**Event effects fungerer via:**
+- `resolveEventEffect()` i eventDeckManager.ts
+- `applyEffect()` håndterer sanity, health, spawn, doom, weather, etc.
+- Skill checks gir mulighet til å unngå negative effekter
+
+**Lore items kan:**
+- Gi insight bonus ved lesing
+- Påvirke sanity (negativ for disturbing content)
+- Variere i condition (pristine → barely_legible)
+- Weighted random discovery
+
+**NPCs kan:**
+- Tilby healing (HP eller Sanity)
+- Drive handel med items
+- Gi clues/insight
+- Ha doom-basert spawning
+- Preferere visse tile types
+
+### Statistikk
+
+| Kategori | Før | Etter | Økning |
+|----------|-----|-------|--------|
+| Weapons | 9 | 22 | +13 |
+| Armor | 4 | 12 | +8 |
+| Relics | 3 | 16 | +13 |
+| Consumables | 4 | 9 | +5 |
+| Tools | 4 | 9 | +5 |
+| Event Cards | 35 | 70 | +35 |
+| Lore Items | 0 | 17 | +17 |
+| NPCs | 0 | 15 | +15 |
+
+### Build Status
+Venter på testing
+

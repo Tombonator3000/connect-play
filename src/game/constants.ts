@@ -190,7 +190,24 @@ export const HQ_WEAPONS: HQWeapon[] = [
   { id: 'revolver', name: 'Revolver', attackDice: 3, weaponType: 'ranged', range: 3, ammo: 6, goldCost: 200, notes: 'Standard sidearm' },
   { id: 'shotgun', name: 'Shotgun', attackDice: 4, weaponType: 'ranged', range: 2, ammo: 2, goldCost: 400, notes: 'Devastating close range' },
   { id: 'rifle', name: 'Rifle', attackDice: 3, weaponType: 'ranged', range: 5, ammo: 5, goldCost: 350, notes: 'Long range precision' },
-  { id: 'tommy_gun', name: 'Tommy Gun', attackDice: 5, weaponType: 'ranged', range: 1, ammo: 20, goldCost: 800, requiredLevel: 2, notes: 'Rare, devastating at close range only (neighbor tiles)' }
+  { id: 'tommy_gun', name: 'Tommy Gun', attackDice: 5, weaponType: 'ranged', range: 1, ammo: 20, goldCost: 800, requiredLevel: 2, notes: 'Rare, devastating at close range only (neighbor tiles)' },
+
+  // === NEW MELEE WEAPONS ===
+  { id: 'brass_knuckles', name: 'Brass Knuckles', attackDice: 2, weaponType: 'melee', goldCost: 40, silent: true, notes: 'Concealable, +1 vs unarmored' },
+  { id: 'fire_axe', name: 'Fire Axe', attackDice: 3, weaponType: 'melee', goldCost: 120, notes: 'Can break barricades easily' },
+  { id: 'cavalry_saber', name: 'Cavalry Saber', attackDice: 3, weaponType: 'melee', goldCost: 180, notes: 'Elegant and deadly' },
+  { id: 'sledgehammer', name: 'Sledgehammer', attackDice: 4, weaponType: 'melee', goldCost: 200, notes: 'Slow but devastating' },
+  { id: 'ceremonial_dagger', name: 'Ceremonial Dagger', attackDice: 2, weaponType: 'melee', goldCost: 250, silent: true, notes: '+1 die vs cultists, occult origins' },
+  { id: 'switchblade', name: 'Switchblade', attackDice: 1, weaponType: 'melee', goldCost: 25, silent: true, notes: 'Quick draw, easily hidden' },
+  { id: 'war_trophy_club', name: 'War Trophy Club', attackDice: 3, weaponType: 'melee', goldCost: 100, notes: 'Carved bones from the Pacific Islands' },
+
+  // === NEW RANGED WEAPONS ===
+  { id: 'flare_gun', name: 'Flare Gun', attackDice: 2, weaponType: 'ranged', range: 3, ammo: 3, goldCost: 75, notes: 'Can illuminate dark areas, scares some creatures' },
+  { id: 'crossbow', name: 'Crossbow', attackDice: 3, weaponType: 'ranged', range: 4, ammo: 1, goldCost: 250, silent: true, notes: 'Silent, slow reload' },
+  { id: 'hunting_rifle', name: 'Hunting Rifle', attackDice: 4, weaponType: 'ranged', range: 6, ammo: 3, goldCost: 450, notes: 'Extreme range, powerful' },
+  { id: 'sawed_off', name: 'Sawed-Off Shotgun', attackDice: 5, weaponType: 'ranged', range: 1, ammo: 2, goldCost: 350, notes: 'Devastating at point-blank' },
+  { id: 'luger', name: 'Luger Pistol', attackDice: 3, weaponType: 'ranged', range: 3, ammo: 8, goldCost: 225, notes: 'German precision, quick reload' },
+  { id: 'throwing_knives', name: 'Throwing Knives', attackDice: 2, weaponType: 'ranged', range: 2, ammo: 4, goldCost: 80, silent: true, notes: 'Silent, retrievable' }
 ];
 
 // ============================================================================
@@ -203,7 +220,17 @@ export const HQ_ARMOR: HQArmor[] = [
   { id: 'none', name: 'No Armor', defenseDice: 0, goldCost: 0 },
   { id: 'leather_jacket', name: 'Leather Jacket', defenseDice: 1, goldCost: 100, notes: 'Light protection' },
   { id: 'trench_coat', name: 'Trench Coat', defenseDice: 1, goldCost: 150, notes: 'Conceals weapons' },
-  { id: 'armored_vest', name: 'Armored Vest', defenseDice: 2, goldCost: 500, requiredLevel: 2, notes: 'Military grade' }
+  { id: 'armored_vest', name: 'Armored Vest', defenseDice: 2, goldCost: 500, requiredLevel: 2, notes: 'Military grade' },
+
+  // === NEW ARMOR ===
+  { id: 'wool_overcoat', name: 'Wool Overcoat', defenseDice: 1, goldCost: 80, notes: 'Warm, many pockets' },
+  { id: 'police_vest', name: 'Police Vest', defenseDice: 2, goldCost: 400, notes: 'Standard issue protection' },
+  { id: 'cultist_robes', name: 'Cultist Robes', defenseDice: 1, goldCost: 200, notes: 'Blends in with enemies, +1 vs horror' },
+  { id: 'ritual_vestments', name: 'Ritual Vestments', defenseDice: 1, goldCost: 350, requiredLevel: 2, notes: '+1 die on occult checks' },
+  { id: 'explorers_jacket', name: "Explorer's Jacket", defenseDice: 1, goldCost: 175, notes: 'Many pockets, +1 bag slot' },
+  { id: 'sailors_coat', name: "Sailor's Oilskin", defenseDice: 1, goldCost: 125, notes: 'Waterproof, resists Deep One attacks' },
+  { id: 'chain_mail_vest', name: 'Hidden Chain Mail', defenseDice: 2, goldCost: 600, requiredLevel: 3, notes: 'Ancient protection, concealed' },
+  { id: 'elder_mantle', name: 'Elder Mantle', defenseDice: 2, goldCost: 800, requiredLevel: 3, notes: 'Woven with protective wards, +2 vs sanity loss' }
 ];
 
 // ============================================================================
@@ -2355,8 +2382,543 @@ export const ITEMS: Item[] = [
   // ===== RELICS =====
   { id: 'elder_sign', name: 'Elder Sign', type: 'relic', effect: 'Opens sealed doors, banishes spirits', goldCost: 750, slotType: 'bag' },
   { id: 'protective_ward', name: 'Protective Ward', type: 'relic', effect: '+1 die on Horror checks', bonus: 1, goldCost: 300, slotType: 'bag' },
-  { id: 'book', name: 'Necronomicon', type: 'relic', effect: '+3 Insight, -1 Sanity per read', bonus: 3, goldCost: 400, slotType: 'bag' }
+  { id: 'book', name: 'Necronomicon', type: 'relic', effect: '+3 Insight, -1 Sanity per read', bonus: 3, goldCost: 400, slotType: 'bag' },
+
+  // === NEW RELICS ===
+  { id: 'silver_key', name: 'Silver Key', type: 'relic', effect: 'Opens any locked door once', goldCost: 500, slotType: 'bag' },
+  { id: 'dream_crystal', name: 'Dream Crystal', type: 'relic', effect: 'Restores 2 Sanity once per scenario', goldCost: 400, slotType: 'bag', uses: 1, maxUses: 1 },
+  { id: 'mi_go_brain_cylinder', name: 'Mi-Go Brain Cylinder', type: 'relic', effect: '+2 Intellect checks, -1 Sanity per use', bonus: 2, goldCost: 600, slotType: 'bag' },
+  { id: 'powder_of_ibn_ghazi', name: 'Powder of Ibn-Ghazi', type: 'relic', effect: 'Reveals invisible enemies', goldCost: 350, slotType: 'bag', uses: 3, maxUses: 3 },
+  { id: 'lucky_charm', name: 'Lucky Rabbit Foot', type: 'relic', effect: 'Reroll one failed check per scenario', goldCost: 200, slotType: 'bag', uses: 1, maxUses: 1 },
+  { id: 'ancient_medallion', name: 'Ancient Medallion', type: 'relic', effect: 'Reduces Horror damage by 1', bonus: 1, goldCost: 450, slotType: 'bag' },
+  { id: 'eye_of_light', name: 'Eye of Light and Darkness', type: 'relic', effect: 'See through walls in adjacent tiles', goldCost: 550, slotType: 'bag' },
+  { id: 'shrivelling_scroll', name: 'Shrivelling Scroll', type: 'relic', effect: 'Deals 3 damage to one enemy, destroyed after use', goldCost: 300, slotType: 'bag', uses: 1, maxUses: 1 },
+  { id: 'warding_statue', name: 'Warding Statue', type: 'relic', effect: 'Enemies avoid this tile', goldCost: 400, slotType: 'bag' },
+  { id: 'black_book', name: 'Black Book of the Skull', type: 'relic', effect: '+4 Insight, -2 Sanity per read', bonus: 4, goldCost: 650, slotType: 'bag' },
+  { id: 'ritual_candles', name: 'Ritual Candles', type: 'relic', effect: 'Required for performing rituals', goldCost: 100, slotType: 'bag', uses: 5, maxUses: 5 },
+  { id: 'holy_water', name: 'Holy Water', type: 'relic', effect: '+2 damage vs undead, 3 uses', goldCost: 150, slotType: 'bag', uses: 3, maxUses: 3 },
+  { id: 'ghost_lantern', name: 'Ghost Lantern', type: 'relic', effect: 'Reveals spirit barriers and hidden doors', goldCost: 475, slotType: 'hand', isLightSource: true },
+
+  // ===== NEW WEAPONS (matching HQ_WEAPONS) =====
+  {
+    id: 'brass_knuckles', name: 'Brass Knuckles', type: 'weapon',
+    effect: '2 Attack Dice, Silent, Concealable',
+    attackDice: 2, weaponType: 'melee', ammo: -1,
+    goldCost: 40, silent: true, slotType: 'hand'
+  },
+  {
+    id: 'fire_axe', name: 'Fire Axe', type: 'weapon',
+    effect: '3 Attack Dice, Good vs barricades',
+    attackDice: 3, weaponType: 'melee', ammo: -1,
+    goldCost: 120, slotType: 'hand'
+  },
+  {
+    id: 'cavalry_saber', name: 'Cavalry Saber', type: 'weapon',
+    effect: '3 Attack Dice, Elegant',
+    attackDice: 3, weaponType: 'melee', ammo: -1,
+    goldCost: 180, slotType: 'hand'
+  },
+  {
+    id: 'sledgehammer', name: 'Sledgehammer', type: 'weapon',
+    effect: '4 Attack Dice, Slow but devastating',
+    attackDice: 4, weaponType: 'melee', ammo: -1,
+    goldCost: 200, slotType: 'hand'
+  },
+  {
+    id: 'ceremonial_dagger', name: 'Ceremonial Dagger', type: 'weapon',
+    effect: '2 Attack Dice, +1 vs cultists',
+    attackDice: 2, weaponType: 'melee', ammo: -1,
+    goldCost: 250, silent: true, slotType: 'hand'
+  },
+  {
+    id: 'flare_gun', name: 'Flare Gun', type: 'weapon',
+    effect: '2 Attack Dice, Illuminates area',
+    attackDice: 2, weaponType: 'ranged', range: 3, ammo: 3,
+    goldCost: 75, slotType: 'hand'
+  },
+  {
+    id: 'crossbow', name: 'Crossbow', type: 'weapon',
+    effect: '3 Attack Dice, Silent, Slow reload',
+    attackDice: 3, weaponType: 'ranged', range: 4, ammo: 1,
+    goldCost: 250, silent: true, slotType: 'hand'
+  },
+  {
+    id: 'hunting_rifle', name: 'Hunting Rifle', type: 'weapon',
+    effect: '4 Attack Dice, Extreme range',
+    attackDice: 4, weaponType: 'ranged', range: 6, ammo: 3,
+    goldCost: 450, slotType: 'hand'
+  },
+  {
+    id: 'sawed_off', name: 'Sawed-Off Shotgun', type: 'weapon',
+    effect: '5 Attack Dice, Point-blank only',
+    attackDice: 5, weaponType: 'ranged', range: 1, ammo: 2,
+    goldCost: 350, slotType: 'hand'
+  },
+
+  // ===== NEW ARMOR (matching HQ_ARMOR) =====
+  {
+    id: 'wool_overcoat', name: 'Wool Overcoat', type: 'armor',
+    effect: '+1 Defense Die, Warm',
+    defenseDice: 1, goldCost: 80, slotType: 'body'
+  },
+  {
+    id: 'police_vest', name: 'Police Vest', type: 'armor',
+    effect: '+2 Defense Dice, Standard issue',
+    defenseDice: 2, goldCost: 400, slotType: 'body'
+  },
+  {
+    id: 'cultist_robes', name: 'Cultist Robes', type: 'armor',
+    effect: '+1 Defense Die, Blends with enemies',
+    defenseDice: 1, goldCost: 200, slotType: 'body'
+  },
+  {
+    id: 'ritual_vestments', name: 'Ritual Vestments', type: 'armor',
+    effect: '+1 Defense Die, +1 occult checks',
+    defenseDice: 1, goldCost: 350, slotType: 'body'
+  },
+  {
+    id: 'elder_mantle', name: 'Elder Mantle', type: 'armor',
+    effect: '+2 Defense Dice, Ward against sanity loss',
+    defenseDice: 2, goldCost: 800, slotType: 'body'
+  },
+
+  // ===== NEW TOOLS =====
+  { id: 'rope', name: 'Rope & Grapple', type: 'tool', effect: '+1 on climbing, can cross chasms', bonus: 1, goldCost: 50, slotType: 'bag' },
+  { id: 'camera', name: 'Camera', type: 'tool', effect: 'Document evidence, +1 Insight from clues', bonus: 1, goldCost: 150, slotType: 'bag' },
+  { id: 'binoculars', name: 'Binoculars', type: 'tool', effect: 'See 2 extra tiles ahead', bonus: 1, goldCost: 100, slotType: 'bag' },
+  { id: 'magnifying_glass', name: 'Magnifying Glass', type: 'tool', effect: '+1 on Investigation checks', bonus: 1, goldCost: 75, slotType: 'bag' },
+  { id: 'compass', name: 'Compass', type: 'tool', effect: 'Always know direction to exit', goldCost: 50, slotType: 'bag' },
+
+  // ===== NEW CONSUMABLES =====
+  { id: 'morphine', name: 'Morphine Syringe', type: 'consumable', effect: 'Heal 3 HP, -1 Agility next round', bonus: 3, goldCost: 150, uses: 1, maxUses: 1, slotType: 'bag' },
+  { id: 'smelling_salts', name: 'Smelling Salts', type: 'consumable', effect: 'Restore 1 Sanity instantly', bonus: 1, goldCost: 50, uses: 2, maxUses: 2, slotType: 'bag' },
+  { id: 'adrenaline', name: 'Adrenaline Shot', type: 'consumable', effect: '+1 AP this turn', goldCost: 200, uses: 1, maxUses: 1, slotType: 'bag' },
+  { id: 'antidote', name: 'Antidote', type: 'consumable', effect: 'Cures poison effects', goldCost: 100, uses: 1, maxUses: 1, slotType: 'bag' },
+  { id: 'rations', name: 'Field Rations', type: 'consumable', effect: 'Heal 1 HP', bonus: 1, goldCost: 15, uses: 3, maxUses: 3, slotType: 'bag' }
 ];
+
+// ============================================================================
+// LORE ITEMS - Journals, Diaries, Torn Pages (Lovecraftian Fluff)
+// ============================================================================
+// These items provide atmosphere and can give small insight bonuses
+// They are discoverable objects that add immersion to the game
+
+export interface LoreItem {
+  id: string;
+  name: string;
+  type: 'journal' | 'diary' | 'letter' | 'torn_page' | 'newspaper' | 'photograph' | 'recording';
+  title: string;
+  content: string;
+  insightBonus?: number;    // Insight gained from reading
+  sanityEffect?: number;    // Sanity change from reading (-1 for disturbing content)
+  condition: 'pristine' | 'worn' | 'damaged' | 'barely_legible';
+  author?: string;
+  date?: string;
+}
+
+export const LORE_ITEMS: LoreItem[] = [
+  // ===== JOURNALS =====
+  {
+    id: 'lore_journal_01',
+    name: 'Research Journal',
+    type: 'journal',
+    title: "Dr. Armitage's Research Notes",
+    content: `March 15th - The Whateley case has opened my eyes to horrors I had only read about in forbidden texts. The calculations in the Necronomicon are not mere superstition - they describe geometric principles that exist beyond our three dimensions.
+
+March 22nd - I have begun to suspect that the walls between worlds are thinner than we believed. In certain configurations of stone and star, the barrier weakens.
+
+April 3rd - God help me. I have seen what waits on the other side. It is patient. It is hungry. And it KNOWS we are here.`,
+    insightBonus: 2,
+    sanityEffect: -1,
+    condition: 'worn',
+    author: 'Dr. Henry Armitage',
+    date: '1928'
+  },
+  {
+    id: 'lore_journal_02',
+    name: 'Explorer\'s Journal',
+    type: 'journal',
+    title: 'Antarctic Expedition Notes',
+    content: `Day 47 - We found the city today. It should not exist. No human hands built these cyclopean structures. The angles hurt to look at.
+
+Day 48 - Danforth won't stop screaming about what he saw beyond the mountains. I did not look. I was afraid to look.
+
+Day 49 - Something followed us back. We can hear it at night, mimicking our voices. It knows our names.
+
+Day 50 - [THE REST OF THE PAGES ARE STAINED WITH SOMETHING DARK]`,
+    insightBonus: 2,
+    sanityEffect: -1,
+    condition: 'damaged',
+    author: 'Unknown Expedition Member',
+    date: '1931'
+  },
+  {
+    id: 'lore_journal_03',
+    name: 'Occultist\'s Grimoire',
+    type: 'journal',
+    title: 'Notes on the Outer Gods',
+    content: `They are not evil. They are not good. They simply ARE, in ways that our minds cannot comprehend. To call them gods is to anthropomorphize the void itself.
+
+Azathoth dreams at the center of all things. When It wakes, reality ends.
+
+Nyarlathotep walks among us in a thousand forms. It finds our suffering amusing.
+
+Yog-Sothoth is the gate, the key, and the guardian. Time and space mean nothing to It.
+
+To attract their attention is death. To understand them is madness. To worship them is both.`,
+    insightBonus: 3,
+    sanityEffect: -2,
+    condition: 'pristine',
+    author: 'A. Blackwood',
+    date: '1925'
+  },
+
+  // ===== DIARIES =====
+  {
+    id: 'lore_diary_01',
+    name: 'Weathered Diary',
+    type: 'diary',
+    title: 'Personal Diary of [Name Scratched Out]',
+    content: `October 12th - The dreams have started again. I see a vast city beneath the waves. Towers of impossible architecture. Something sleeps there.
+
+October 15th - I can hear the ocean in my head now. Even here, hundreds of miles from any coast. The call is getting stronger.
+
+October 20th - I know what I must do. The water calls. The depths welcome me. I will join them in the deep.
+
+October 21st - IA! IA! THE STARS ARE RIGHT! HE WAITS DREAMING! I COME, GREAT DAGON! I COME!`,
+    insightBonus: 1,
+    sanityEffect: -1,
+    condition: 'worn',
+    date: '1927'
+  },
+  {
+    id: 'lore_diary_02',
+    name: 'Child\'s Diary',
+    type: 'diary',
+    title: 'Emily\'s Secret Diary',
+    content: `Dear Diary,
+The night friend came again. He says he lives in the walls and watches me sleep. He has too many eyes but he says that's normal where he comes from.
+
+He taught me a song today. When I sing it, the shadows move. Mommy got scared when she heard me singing. She called the priest.
+
+The priest tried to make my friend go away. The priest is gone now. My friend says he "went somewhere else." I don't know what that means.
+
+My friend says soon I can come visit his home. He says I'll like it there. He says I'll never have to sleep again.`,
+    insightBonus: 1,
+    sanityEffect: -2,
+    condition: 'pristine',
+    author: 'Emily, Age 9',
+    date: '1924'
+  },
+  {
+    id: 'lore_diary_03',
+    name: 'Asylum Patient Diary',
+    type: 'diary',
+    title: 'Ward B, Patient #447',
+    content: `They say I'm mad. They say the things I see aren't real. But I know the truth.
+
+The walls breathe at night. The doctors have too many joints in their fingers. The other patients whisper in languages that predate humanity.
+
+I tried to tell them about the thing in the basement. They increased my medication.
+
+It's coming up the stairs now. I can hear its wet footsteps. They'll know I was right. They'll know when they find what's left of me.
+
+Tell my wife I'm sorry I couldn't protect her from what's coming.`,
+    insightBonus: 2,
+    sanityEffect: -1,
+    condition: 'damaged',
+    author: 'Patient #447',
+    date: '1929'
+  },
+
+  // ===== TORN PAGES =====
+  {
+    id: 'lore_page_01',
+    name: 'Torn Page',
+    type: 'torn_page',
+    title: 'Fragment from Unknown Text',
+    content: `...and when the alignment occurs, the barrier shall weaken. Those who know the words may call through, and those who dwell beyond may answer.
+
+Speak not these words lightly, for once spoken, they cannot be unheard by Those Who Listen:
+
+Ph'nglui mglw'nafh [TEXT TORN]
+...fhtagn.
+
+The price of knowledge is sanity. The price of power is soul. Choose wisely what you seek, for once found, it cannot be unfound...`,
+    insightBonus: 1,
+    sanityEffect: -1,
+    condition: 'damaged'
+  },
+  {
+    id: 'lore_page_02',
+    name: 'Bloodstained Page',
+    type: 'torn_page',
+    title: 'Final Entry',
+    content: `If you're reading this, RUN.
+
+Don't investigate. Don't try to understand. Don't look for the source of the sounds.
+
+There is no stopping them. There is no reasoning with them. There is only fleeing or dying.
+
+I was curious once. I had to know. Now I know, and the knowing has killed me.
+
+The walls have eyes. The floor has mouths. The ceiling breathes.
+
+Run. Run. Run. Run. Run. [THE WORD CONTINUES TO THE EDGE OF THE PAGE, WRITTEN IN INCREASINGLY FRANTIC STROKES]`,
+    sanityEffect: -1,
+    condition: 'damaged',
+    author: 'Unknown'
+  },
+  {
+    id: 'lore_page_03',
+    name: 'Ancient Parchment',
+    type: 'torn_page',
+    title: 'The Oath of the Esoteric Order',
+    content: `I, [NAME], do solemnly swear to serve the Deep Ones, now and forever.
+
+I accept the Gift of Dagon, that my children may bear the blessed Mark.
+
+I shall keep the faith in secret, until the day of Rising.
+
+I shall bring sacrifices to the reef when the moon is dark.
+
+When the stars align, I shall open the Gate and welcome our masters home.
+
+This I swear by my blood, by my seed, by my eternal soul which I forfeit to the Deep.
+
+IA! IA! CTHULHU FHTAGN!`,
+    insightBonus: 2,
+    sanityEffect: -1,
+    condition: 'worn',
+    date: '1846'
+  },
+  {
+    id: 'lore_page_04',
+    name: 'Charred Page Fragment',
+    type: 'torn_page',
+    title: 'Warning',
+    content: `...the ritual must NEVER be completed. If the circle is closed and the words spoken while the stars are right, nothing can stop what comes through.
+
+I have hidden the components in three locations:
+- The silver key beneath the [BURNED]
+- The star-stone in the [BURNED]
+- The blood of [BURNED] in the [BURNED]
+
+May God forgive me for what I have learned. May He protect us from what I have almost done.
+
+DESTROY THIS PAGE WHEN YOU HAVE [REST BURNED AWAY]`,
+    insightBonus: 2,
+    condition: 'barely_legible'
+  },
+
+  // ===== LETTERS =====
+  {
+    id: 'lore_letter_01',
+    name: 'Unsent Letter',
+    type: 'letter',
+    title: 'Letter to Wife',
+    content: `My Dearest Margaret,
+
+By the time you read this, I will be gone. Not dead - worse than dead.
+
+The things I have seen in this place have changed me. I can feel myself becoming something else. Something that was once human but will not be for much longer.
+
+Do not search for me. Do not mourn me. The man you loved died the moment he opened that accursed book.
+
+Forget me. Take the children and leave Arkham. Go somewhere far from any coast. Never speak of the sea.
+
+What wears my face now is not your husband.
+
+Forever yours (what remains of me),
+Jonathan`,
+    insightBonus: 1,
+    sanityEffect: -1,
+    condition: 'pristine',
+    author: 'Jonathan W.',
+    date: '1926'
+  },
+  {
+    id: 'lore_letter_02',
+    name: 'Threatening Letter',
+    type: 'letter',
+    title: 'Anonymous Warning',
+    content: `WE KNOW WHAT YOU SEEK.
+
+THE ORDER HAS EYES EVERYWHERE. YOUR INVESTIGATION ENDS NOW.
+
+LEAVE ARKHAM. LEAVE MASSACHUSETTS. FORGET WHAT YOU HAVE LEARNED.
+
+THIS IS YOUR ONLY WARNING.
+
+THE NEXT MESSAGE WILL NOT BE WRITTEN IN INK.
+
+[A STRANGE SYMBOL IS DRAWN AT THE BOTTOM - LOOKING AT IT MAKES YOUR HEAD ACHE]`,
+    sanityEffect: -1,
+    condition: 'pristine'
+  },
+  {
+    id: 'lore_letter_03',
+    name: 'Desperate Plea',
+    type: 'letter',
+    title: 'Letter to Miskatonic University',
+    content: `To Whom It May Concern,
+
+I write to you in desperation. The faculty of your institution are the only ones who might believe me.
+
+Something has taken residence in my cellar. It speaks to me through the walls. It knows things about my family - things it should not know.
+
+My wife has begun to change. She no longer eats regular food. She spends hours staring at the sea.
+
+Please send someone. Anyone. Before it's too late.
+
+I can hear it coming up the stairs as I write this.
+
+Please hur`,
+    insightBonus: 1,
+    condition: 'damaged',
+    author: 'Unknown Resident',
+    date: '1928'
+  },
+
+  // ===== NEWSPAPERS =====
+  {
+    id: 'lore_news_01',
+    name: 'Old Newspaper',
+    type: 'newspaper',
+    title: 'Arkham Advertiser - February 13, 1924',
+    content: `MASS DISAPPEARANCE BAFFLES AUTHORITIES
+
+Seventeen residents of the Merchant District vanished last night without a trace. Police report no signs of struggle in any of the homes.
+
+"It's like they simply walked out into the night and never came back," said Chief of Police Morrison.
+
+Witnesses report strange lights over the harbor and unusual sounds "like flutes played by someone who had never heard music."
+
+The investigation is ongoing. Citizens are advised to remain indoors after dark.
+
+[CONTINUED ON PAGE 7 - BUT PAGE 7 IS MISSING]`,
+    insightBonus: 1,
+    condition: 'worn',
+    date: '1924'
+  },
+  {
+    id: 'lore_news_02',
+    name: 'Newspaper Clipping',
+    type: 'newspaper',
+    title: 'Innsmouth Scandal Continues',
+    content: `FEDERAL RAID ON INNSMOUTH - HUNDREDS ARRESTED
+
+In what officials are calling "the largest bootlegging operation in Massachusetts history," federal agents descended on the coastal town of Innsmouth last Tuesday.
+
+However, sources close to the investigation hint at darker discoveries. "The bootlegging was a cover," whispered one agent. "What we found in those tunnels... God help us all."
+
+Naval vessels were seen off the coast conducting "depth charge exercises." The Navy has declined to comment on what they were targeting.
+
+Innsmouth remains under quarantine indefinitely.`,
+    insightBonus: 2,
+    condition: 'worn',
+    date: '1928'
+  },
+
+  // ===== PHOTOGRAPHS =====
+  {
+    id: 'lore_photo_01',
+    name: 'Disturbing Photograph',
+    type: 'photograph',
+    title: 'Group Portrait - Esoteric Order of Dagon',
+    content: `A formal photograph showing approximately thirty individuals in ceremonial robes, standing before an altar carved with oceanic motifs.
+
+Upon closer inspection, something is wrong with their faces. Their eyes are too large, too far apart. Their necks show the faint lines of... gills?
+
+In the center stands a figure that might once have been human but is now something else entirely. It smiles for the camera with too many teeth.
+
+On the back is written: "The faithful await the Rising. 1919."`,
+    sanityEffect: -1,
+    condition: 'worn',
+    date: '1919'
+  },
+  {
+    id: 'lore_photo_02',
+    name: 'Faded Photograph',
+    type: 'photograph',
+    title: 'Antarctic Expedition',
+    content: `A photograph of a research camp against an icy backdrop. The expedition members pose proudly before their tents.
+
+In the background, barely visible, are what appear to be structures - massive, geometric shapes that dwarf the tiny human figures.
+
+The architecture is wrong. Alien. The angles suggest dimensions that shouldn't exist.
+
+Someone has circled this section of the photograph and written: "THEY WERE ALREADY THERE. WAITING."`,
+    insightBonus: 1,
+    sanityEffect: -1,
+    condition: 'damaged',
+    date: '1930'
+  },
+
+  // ===== RECORDINGS (Phonograph Cylinders) =====
+  {
+    id: 'lore_recording_01',
+    name: 'Wax Cylinder',
+    type: 'recording',
+    title: 'Final Recording of Dr. West',
+    content: `[TRANSCRIPT OF RECORDING]
+
+"This is Dr. Herbert West, recording my final observations. The reanimation process has been... more successful than anticipated. Perhaps too successful.
+
+The subjects have begun to remember. Not just motor functions - they remember who they were. What was done to them.
+
+They communicate now. In whispers. Planning something.
+
+I can hear them gathering outside my laboratory door. They've learned to use tools.
+
+If anyone finds this recording, know that death is not the end. It is merely a door. And I have propped that door open.
+
+[SOUNDS OF SPLINTERING WOOD]
+
+God forgive me. They're com-"
+
+[RECORDING ENDS]`,
+    insightBonus: 2,
+    sanityEffect: -1,
+    condition: 'pristine',
+    author: 'Dr. Herbert West',
+    date: '1921'
+  }
+];
+
+// ============================================================================
+// LORE ITEM DISCOVERY POOL
+// Categories for random discovery during exploration
+// ============================================================================
+
+export const LORE_DISCOVERY_WEIGHTS: Record<LoreItem['type'], number> = {
+  torn_page: 30,      // Most common - fragments everywhere
+  letter: 20,         // Common - correspondence found
+  diary: 15,          // Uncommon - personal writings
+  journal: 15,        // Uncommon - research notes
+  newspaper: 10,      // Rare - preserved news
+  photograph: 7,      // Very rare - disturbing images
+  recording: 3        // Extremely rare - audio evidence
+};
+
+/**
+ * Get a random lore item based on weights
+ */
+export function getRandomLoreItem(): LoreItem {
+  const totalWeight = Object.values(LORE_DISCOVERY_WEIGHTS).reduce((a, b) => a + b, 0);
+  let random = Math.random() * totalWeight;
+
+  for (const [type, weight] of Object.entries(LORE_DISCOVERY_WEIGHTS)) {
+    random -= weight;
+    if (random <= 0) {
+      const itemsOfType = LORE_ITEMS.filter(item => item.type === type as LoreItem['type']);
+      return itemsOfType[Math.floor(Math.random() * itemsOfType.length)];
+    }
+  }
+
+  // Fallback
+  return LORE_ITEMS[Math.floor(Math.random() * LORE_ITEMS.length)];
+}
 
 /**
  * EVENT CARD DECK - Drawn during MYTHOS phase
@@ -2705,8 +3267,778 @@ export const EVENTS: EventCard[] = [
       successDescription: 'You push through the fatigue.',
       failureDescription: 'Your body betrays you...'
     }
+  },
+
+  // ============================================================================
+  // === NEW EVENT CARDS - MORE VARIETY AND EFFECTS ===
+  // ============================================================================
+
+  // === SANITY EVENTS ===
+  {
+    id: 'e36',
+    title: 'The Mirror Lies',
+    description: 'Your reflection moves independently. It grins with teeth that are not yours.',
+    effectType: 'sanity',
+    value: -2,
+    skillCheck: {
+      attribute: 'willpower',
+      dc: 4,
+      successDescription: 'You avert your eyes. It was just a trick of light.',
+      failureDescription: 'You cannot unsee what you saw...'
+    },
+    flavorText: 'Who looks back when you look away?'
+  },
+  {
+    id: 'e37',
+    title: 'Childhood Memories',
+    description: 'Visions of your past flood your mind. But the memories are wrong. Twisted.',
+    effectType: 'sanity',
+    value: -1,
+    secondaryEffect: { type: 'insight', value: 1 },
+    flavorText: 'Were those really your parents?'
+  },
+  {
+    id: 'e38',
+    title: 'The Geometry is Wrong',
+    description: 'The walls meet at angles that should not exist. Your eyes water trying to understand.',
+    effectType: 'sanity',
+    value: -1,
+    skillCheck: {
+      attribute: 'intellect',
+      dc: 5,
+      successDescription: 'You realize the trick - forced perspective, nothing more.',
+      failureDescription: 'Your mind cannot process what it sees...'
+    }
+  },
+  {
+    id: 'e39',
+    title: 'Drowning in Air',
+    description: 'For a terrible moment, you forget how to breathe. Panic sets in.',
+    effectType: 'sanity',
+    value: -1,
+    secondaryEffect: { type: 'health', value: -1 },
+    skillCheck: {
+      attribute: 'willpower',
+      dc: 3,
+      successDescription: 'You calm yourself. In... out... in... out...',
+      failureDescription: 'Your body refuses to obey...'
+    }
+  },
+  {
+    id: 'e40',
+    title: 'They Know Your Name',
+    description: 'From the darkness, voices call your name. They know things about you. Private things.',
+    effectType: 'all_sanity',
+    value: -1,
+    flavorText: 'How do they know about your childhood pet?'
+  },
+
+  // === HEALTH EVENTS ===
+  {
+    id: 'e41',
+    title: 'Ceiling Collapse',
+    description: 'Rotten timbers give way above you!',
+    effectType: 'health',
+    value: -2,
+    skillCheck: {
+      attribute: 'agility',
+      dc: 4,
+      successDescription: 'You dive clear as debris crashes down.',
+      failureDescription: 'Heavy beams strike your back...'
+    }
+  },
+  {
+    id: 'e42',
+    title: 'Glass Shard Floor',
+    description: 'Broken glass crunches underfoot. Too late - some has pierced your boots.',
+    effectType: 'health',
+    value: -1,
+    flavorText: 'Every step leaves bloody footprints...'
+  },
+  {
+    id: 'e43',
+    title: 'Poisoned Air',
+    description: 'A sickly sweet smell fills the room. Your vision blurs.',
+    effectType: 'health',
+    value: -1,
+    secondaryEffect: { type: 'sanity', value: -1 },
+    skillCheck: {
+      attribute: 'strength',
+      dc: 4,
+      successDescription: 'You hold your breath and push through.',
+      failureDescription: 'The toxins seep into your lungs...'
+    }
+  },
+  {
+    id: 'e44',
+    title: 'Bitten',
+    description: 'Something lurked in the shadows. Its teeth find your flesh.',
+    effectType: 'health',
+    value: -2,
+    skillCheck: {
+      attribute: 'agility',
+      dc: 4,
+      successDescription: 'You jerk away - only a scratch!',
+      failureDescription: 'The bite is deep and burns...'
+    }
+  },
+  {
+    id: 'e45',
+    title: 'Exhaustion',
+    description: 'Your body screams for rest. Your legs tremble.',
+    effectType: 'all_health',
+    value: -1,
+    flavorText: 'How long has it been since you slept?'
+  },
+
+  // === SPAWN EVENTS ===
+  {
+    id: 'e46',
+    title: 'The Pack Arrives',
+    description: 'Ghouls emerge from the shadows, drawn by the scent of the living.',
+    effectType: 'spawn',
+    value: 2,
+    spawnType: 'ghoul',
+    flavorText: 'Their hunger is eternal...'
+  },
+  {
+    id: 'e47',
+    title: 'Cultist Reinforcements',
+    description: 'The alarm has been raised! More robed figures flood into the area.',
+    effectType: 'spawn',
+    value: 3,
+    spawnType: 'cultist',
+    skillCheck: {
+      attribute: 'agility',
+      dc: 4,
+      successDescription: 'You hide before they spot you - only 1 cultist notices.',
+      failureDescription: 'They see you!'
+    }
+  },
+  {
+    id: 'e48',
+    title: 'From the Waters',
+    description: 'Webbed hands grasp at the floor. The Deep Ones have found you.',
+    effectType: 'spawn',
+    value: 2,
+    spawnType: 'deep_one',
+    doomThreshold: 7,
+    flavorText: 'Ia! Ia! Dagon!'
+  },
+  {
+    id: 'e49',
+    title: 'Night Terror',
+    description: 'A Nightgaunt descends from above, silent as death.',
+    effectType: 'spawn',
+    value: 1,
+    spawnType: 'nightgaunt',
+    secondaryEffect: { type: 'sanity', value: -1 }
+  },
+  {
+    id: 'e50',
+    title: 'The Priest Arrives',
+    description: 'A dark-robed figure enters, ancient power crackling at their fingertips.',
+    effectType: 'spawn',
+    value: 1,
+    spawnType: 'priest',
+    doomThreshold: 5,
+    flavorText: 'The true servants of the Old Ones...'
+  },
+
+  // === POSITIVE EVENTS ===
+  {
+    id: 'e51',
+    title: 'Safe Room',
+    description: 'You find a hidden room, sealed and untouched. A moment of peace.',
+    effectType: 'health',
+    value: 2,
+    secondaryEffect: { type: 'sanity', value: 2 },
+    flavorText: 'Rest now, while you can...'
+  },
+  {
+    id: 'e52',
+    title: 'Old Bandolier',
+    description: 'An abandoned ammunition belt - still fully loaded!',
+    effectType: 'item',
+    value: 1,
+    itemId: 'bandages',
+    flavorText: 'Someone else was prepared...'
+  },
+  {
+    id: 'e53',
+    title: 'Professor\'s Notes',
+    description: 'Scattered papers reveal crucial information about your enemies.',
+    effectType: 'insight',
+    value: 3,
+    flavorText: 'Knowledge is power, even forbidden knowledge...'
+  },
+  {
+    id: 'e54',
+    title: 'Second Wind',
+    description: 'Adrenaline surges through you. You can do this!',
+    effectType: 'health',
+    value: 1,
+    secondaryEffect: { type: 'sanity', value: 1 },
+    flavorText: 'Not today, darkness. Not today.'
+  },
+  {
+    id: 'e55',
+    title: 'Ritual Disrupted',
+    description: 'You accidentally interrupt an enemy ritual! The dark energy dissipates.',
+    effectType: 'doom',
+    value: 2,
+    flavorText: 'Their plans are delayed!'
+  },
+
+  // === WEATHER EVENTS ===
+  {
+    id: 'e56',
+    title: 'Miasma Rises',
+    description: 'A sickening purple mist seeps from the ground. It whispers as it moves.',
+    effectType: 'weather',
+    value: 4,
+    weatherType: 'miasma',
+    secondaryEffect: { type: 'all_sanity', value: -1 }
+  },
+  {
+    id: 'e57',
+    title: 'Oppressive Darkness',
+    description: 'The darkness here is unnatural. It swallows light.',
+    effectType: 'weather',
+    value: 3,
+    weatherType: 'darkness',
+    flavorText: 'Even your flashlight seems dimmer...'
+  },
+  {
+    id: 'e58',
+    title: 'Torrential Rain',
+    description: 'Rain hammers down, reducing visibility and making footing treacherous.',
+    effectType: 'weather',
+    value: 4,
+    weatherType: 'rain'
+  },
+  {
+    id: 'e59',
+    title: 'The Fog Lifts',
+    description: 'The oppressive atmosphere clears momentarily. A respite.',
+    effectType: 'sanity',
+    value: 1,
+    flavorText: 'A brief glimpse of normality...'
+  },
+
+  // === DOOM EVENTS ===
+  {
+    id: 'e60',
+    title: 'The Chanting Grows',
+    description: 'Somewhere, cultists raise their voices in terrible harmony.',
+    effectType: 'doom',
+    value: -1,
+    secondaryEffect: { type: 'all_sanity', value: -1 },
+    flavorText: 'Ph\'nglui mglw\'nafh Cthulhu R\'lyeh wgah\'nagl fhtagn!'
+  },
+  {
+    id: 'e61',
+    title: 'Cosmic Alignment',
+    description: 'The stars shift. Time itself seems to accelerate.',
+    effectType: 'doom',
+    value: -2,
+    doomThreshold: 6,
+    flavorText: 'When the stars are right...'
+  },
+  {
+    id: 'e62',
+    title: 'Blood Moon',
+    description: 'The moon turns red. Ancient seals weaken.',
+    effectType: 'doom',
+    value: -1,
+    secondaryEffect: { type: 'spawn', value: 1 },
+    spawnType: 'cultist'
+  },
+  {
+    id: 'e63',
+    title: 'Seal Weakens',
+    description: 'You feel a tremor. Something vast stirs in its prison.',
+    effectType: 'doom',
+    value: -1,
+    doomThreshold: 4,
+    flavorText: 'It is almost free...'
+  },
+
+  // === COMPLEX/MIXED EVENTS ===
+  {
+    id: 'e64',
+    title: 'Forbidden Reading',
+    description: 'You find arcane text. The knowledge calls to you.',
+    effectType: 'insight',
+    value: 4,
+    secondaryEffect: { type: 'sanity', value: -2 },
+    skillCheck: {
+      attribute: 'intellect',
+      dc: 4,
+      successDescription: 'You parse the text carefully, minimizing the mental strain.',
+      failureDescription: 'The words sear themselves into your mind...'
+    },
+    flavorText: 'Some books were never meant to be opened...'
+  },
+  {
+    id: 'e65',
+    title: 'Dark Pact',
+    description: 'A shadowy presence offers aid... for a price.',
+    effectType: 'health',
+    value: 4,
+    secondaryEffect: { type: 'doom', value: -2 },
+    skillCheck: {
+      attribute: 'willpower',
+      dc: 5,
+      successDescription: 'You reject the offer. Your soul remains your own.',
+      failureDescription: 'The bargain is struck...'
+    }
+  },
+  {
+    id: 'e66',
+    title: 'Memory Fragment',
+    description: 'A vision of the past shows you a hidden truth.',
+    effectType: 'insight',
+    value: 2,
+    secondaryEffect: { type: 'sanity', value: -1 },
+    flavorText: 'The dead have stories to tell...'
+  },
+  {
+    id: 'e67',
+    title: 'Ally in Darkness',
+    description: 'A mysterious figure aids you, then vanishes.',
+    effectType: 'health',
+    value: 2,
+    secondaryEffect: { type: 'insight', value: 1 },
+    flavorText: 'You are not alone in this fight...'
+  },
+  {
+    id: 'e68',
+    title: 'Sacrificial Energy',
+    description: 'The residue of a dark ritual can be turned to your advantage.',
+    effectType: 'insight',
+    value: 3,
+    secondaryEffect: { type: 'sanity', value: -1 },
+    flavorText: 'Power has no morality...'
+  },
+  {
+    id: 'e69',
+    title: 'Desperate Measures',
+    description: 'You push yourself beyond your limits.',
+    effectType: 'health',
+    value: -1,
+    secondaryEffect: { type: 'doom', value: 1 },
+    flavorText: 'Pain is temporary. Victory is eternal.'
+  },
+  {
+    id: 'e70',
+    title: 'Ancient Guardian',
+    description: 'An old ward activates, driving back the darkness briefly.',
+    effectType: 'doom',
+    value: 1,
+    secondaryEffect: { type: 'sanity', value: 1 },
+    flavorText: 'The old defenses still hold...'
   }
 ];
+
+// ============================================================================
+// NPC SYSTEM - Random Encounters with Non-Player Characters
+// ============================================================================
+// NPCs can be friendly, neutral, or suspicious
+// They provide dialogue, items, services, or plot hints
+
+export type NPCType =
+  | 'civilian'           // Regular person - scared but helpful
+  | 'child'              // Vulnerable - bonus sanity if helped
+  | 'elderly'            // Old person - may have wisdom/items
+  | 'merchant'           // Sells items for gold
+  | 'wounded'            // Needs medical attention
+  | 'scholar'            // Provides insight/clues
+  | 'cultist_defector'   // Former cultist - valuable info
+  | 'police_officer'     // May help or hinder
+  | 'journalist'         // Seeking the same truth
+  | 'priest'             // Holy person - helps with sanity
+  | 'mad_prophet'        // Crazy but speaks truth
+  | 'mysterious_stranger'; // Cryptic help
+
+export type NPCDisposition = 'friendly' | 'neutral' | 'suspicious' | 'hostile' | 'terrified';
+
+export interface NPCDialogue {
+  greeting: string;
+  farewell: string;
+  help?: string;        // When offering help
+  refuse?: string;      // When declining help
+  trade?: string;       // When trading
+  hint?: string;        // Gives plot hint
+  scared?: string;      // When frightened
+}
+
+export interface NPC {
+  id: string;
+  name: string;
+  type: NPCType;
+  disposition: NPCDisposition;
+  description: string;
+  portrait?: string;    // Visual identifier
+
+  // Dialogue trees
+  dialogues: NPCDialogue;
+
+  // Services
+  canHeal?: boolean;
+  healAmount?: number;
+  healCost?: number;    // Gold cost
+  canTrade?: boolean;
+  tradeItems?: string[]; // Item IDs for sale
+  canProvideClue?: boolean;
+  insightReward?: number;
+
+  // Effects on players
+  sanityEffect?: number;  // Positive if comforting, negative if disturbing
+  goldReward?: number;
+  itemReward?: string;    // Item ID given
+
+  // Spawn conditions
+  spawnWeight: number;    // Relative spawn chance
+  minDoom?: number;       // Only spawn when doom >= this
+  maxDoom?: number;       // Only spawn when doom <= this
+  preferredTileTypes?: string[];  // Tile categories where likely to spawn
+}
+
+export const NPCS: NPC[] = [
+  // ===== CIVILIANS =====
+  {
+    id: 'npc_civilian_01',
+    name: 'Frightened Woman',
+    type: 'civilian',
+    disposition: 'terrified',
+    description: 'A woman in a torn nightgown, eyes wide with terror. She clutches a kitchen knife.',
+    dialogues: {
+      greeting: '"Thank God! Another person! I thought I was the only one left alive!"',
+      farewell: '"Please... be careful. They\'re everywhere."',
+      help: '"I found this in the basement. Take it. I don\'t want to go back down there."',
+      scared: '"Did you hear that?! Something\'s coming! We have to hide!"',
+      hint: '"The cellar... there\'s something in the cellar. I heard them chanting down there."'
+    },
+    itemReward: 'bandages',
+    sanityEffect: 1,
+    spawnWeight: 20,
+    preferredTileTypes: ['room', 'corridor']
+  },
+  {
+    id: 'npc_civilian_02',
+    name: 'Shell-Shocked Man',
+    type: 'civilian',
+    disposition: 'neutral',
+    description: 'A middle-aged man staring at nothing. He barely acknowledges your presence.',
+    dialogues: {
+      greeting: '"Hm? Oh. You\'re real. I think. Are you real?"',
+      farewell: '"It doesn\'t matter. Nothing matters anymore."',
+      help: '"Here. Take these matches. The darkness... the darkness is the worst part."',
+      scared: '"*quietly* They can\'t see you if you don\'t move. That\'s what I tell myself."',
+      hint: '"I used to work here, you know. Before. The locked room on the third floor... that\'s where it started."'
+    },
+    itemReward: 'flash',
+    spawnWeight: 15,
+    preferredTileTypes: ['room', 'foyer']
+  },
+
+  // ===== CHILDREN =====
+  {
+    id: 'npc_child_01',
+    name: 'Lost Child',
+    type: 'child',
+    disposition: 'terrified',
+    description: 'A small boy, maybe seven years old, hiding under a table. Tear tracks stain his dirty face.',
+    dialogues: {
+      greeting: '"*sniff* Are you... are you a monster? The monsters took Mommy."',
+      farewell: '"Please find Mommy. Please."',
+      help: '"I found this in the garden. Mommy said it was special."',
+      scared: '"*whimpering* I want to go home. I want my Mommy."',
+      hint: '"The man in the black robe... he smiled when he took her. He had too many teeth."'
+    },
+    sanityEffect: 2, // Protecting a child gives hope
+    insightReward: 1,
+    spawnWeight: 10,
+    preferredTileTypes: ['room', 'basement']
+  },
+  {
+    id: 'npc_child_02',
+    name: 'Strange Girl',
+    type: 'child',
+    disposition: 'neutral',
+    description: 'A pale girl in an old-fashioned dress. She hums a tuneless melody.',
+    dialogues: {
+      greeting: '"Hello. The shadows told me you were coming."',
+      farewell: '"Goodbye. I hope you don\'t scream too loud when they find you."',
+      help: '"Here. My imaginary friend said to give you this. He\'s not imaginary, but Mommy doesn\'t believe me."',
+      hint: '"The key is where the dead man sleeps. But don\'t wake him. He gets angry when he wakes up."'
+    },
+    sanityEffect: -1, // Disturbing child
+    insightReward: 2,
+    spawnWeight: 5,
+    maxDoom: 5
+  },
+
+  // ===== ELDERLY =====
+  {
+    id: 'npc_elderly_01',
+    name: 'Old Librarian',
+    type: 'elderly',
+    disposition: 'friendly',
+    description: 'An ancient woman with thick spectacles, surrounded by stacks of books.',
+    dialogues: {
+      greeting: '"Ah, a seeker of knowledge! Be careful what you find, young one."',
+      farewell: '"Remember: the answers you seek may destroy you."',
+      help: '"Take this book. It contains... protection. Of a sort."',
+      hint: '"I\'ve read things. Terrible things. The truth is in the restricted section. But the truth comes at a cost."'
+    },
+    insightReward: 2,
+    itemReward: 'protective_ward',
+    spawnWeight: 8,
+    preferredTileTypes: ['room']
+  },
+  {
+    id: 'npc_elderly_02',
+    name: 'Grizzled Fisherman',
+    type: 'elderly',
+    disposition: 'suspicious',
+    description: 'An old man who smells of salt and fish. His eyes are strangely large.',
+    dialogues: {
+      greeting: '"*stares* You ain\'t from \'round here. That\'s good. Don\'t stay long."',
+      farewell: '"Stay away from the water, stranger. Trust me on that."',
+      help: '"Take this. My father gave it to me. Said it keeps the Deep Ones away. Maybe it works, maybe it don\'t."',
+      hint: '"The Marsh family... they made a deal, years back. Their blood ain\'t fully human no more."'
+    },
+    sanityEffect: -1,
+    insightReward: 1,
+    itemReward: 'lucky_charm',
+    spawnWeight: 6,
+    preferredTileTypes: ['urban', 'street']
+  },
+
+  // ===== MERCHANTS =====
+  {
+    id: 'npc_merchant_01',
+    name: 'Black Market Dealer',
+    type: 'merchant',
+    disposition: 'neutral',
+    description: 'A thin man in a long coat, his pockets bulging with mysterious items.',
+    dialogues: {
+      greeting: '"Psst. You look like someone who needs... special supplies. I can help. For a price."',
+      farewell: '"Pleasure doing business. Don\'t tell anyone where you got that."',
+      trade: '"I\'ve got weapons, medicine, and things the law don\'t want you to have. Interested?"',
+      refuse: '"Suit yourself. But when you\'re dying in the dark, you\'ll wish you\'d bought that flashlight."'
+    },
+    canTrade: true,
+    tradeItems: ['revolver', 'shotgun', 'med', 'flash', 'lockpick'],
+    spawnWeight: 12,
+    preferredTileTypes: ['street', 'urban']
+  },
+  {
+    id: 'npc_merchant_02',
+    name: 'Occult Shop Owner',
+    type: 'merchant',
+    disposition: 'friendly',
+    description: 'A mysterious figure behind a counter covered in arcane symbols and strange artifacts.',
+    dialogues: {
+      greeting: '"Welcome, seeker. I sense darkness around you. Perhaps I can provide... illumination."',
+      farewell: '"May the Elder Signs protect you. You\'re going to need it."',
+      trade: '"My wares are not for the faint of heart. But I suspect you are beyond such concerns."',
+      hint: '"The items I sell are old. Older than this town. They remember the time before, when THEY walked freely."'
+    },
+    canTrade: true,
+    tradeItems: ['elder_sign', 'protective_ward', 'ritual_candles', 'holy_water', 'book'],
+    spawnWeight: 8,
+    preferredTileTypes: ['room', 'urban']
+  },
+  {
+    id: 'npc_merchant_03',
+    name: 'Traveling Medicine Man',
+    type: 'merchant',
+    disposition: 'friendly',
+    description: 'An old man with a cart full of bottles, tinctures, and remedies.',
+    dialogues: {
+      greeting: '"Remedies! Cures! Tonics for what ails you! Step right up!"',
+      farewell: '"Stay healthy out there. In body AND mind."',
+      trade: '"I\'ve got medicine for wounds, medicine for the nerves, medicine for things you can\'t even name!"',
+      help: '"You look rough. Here, first one\'s free. Can\'t have customers dying before they buy."'
+    },
+    canTrade: true,
+    canHeal: true,
+    healAmount: 2,
+    healCost: 20,
+    tradeItems: ['med', 'bandages', 'whiskey', 'sedatives', 'smelling_salts', 'morphine'],
+    spawnWeight: 10,
+    preferredTileTypes: ['street', 'urban', 'foyer']
+  },
+
+  // ===== SCHOLARS =====
+  {
+    id: 'npc_scholar_01',
+    name: 'Miskatonic Professor',
+    type: 'scholar',
+    disposition: 'friendly',
+    description: 'A disheveled academic clutching a leather satchel full of notes.',
+    dialogues: {
+      greeting: '"Finally! Someone rational! I\'ve been documenting everything. The scientific community must know!"',
+      farewell: '"If I don\'t survive, get my notes to Miskatonic University. The world must be warned."',
+      help: '"My research has led me to certain... conclusions. Take these notes. They may save your life."',
+      hint: '"The geometry of this place is non-Euclidean. I\'ve calculated the dimensional weak points. There\'s one in the basement."'
+    },
+    insightReward: 3,
+    canProvideClue: true,
+    spawnWeight: 8,
+    preferredTileTypes: ['room']
+  },
+
+  // ===== CULTIST DEFECTORS =====
+  {
+    id: 'npc_defector_01',
+    name: 'Repentant Cultist',
+    type: 'cultist_defector',
+    disposition: 'friendly',
+    description: 'A figure in torn robes, the symbols on their skin fresh and raw from scratching.',
+    dialogues: {
+      greeting: '"Please... I didn\'t know. They told me it was just a philosophy group. I didn\'t know what they really worshipped."',
+      farewell: '"Kill them all if you can. Before they complete the ritual."',
+      help: '"Take my robe. It will let you blend in... for a while. They\'ll smell your humanity eventually."',
+      hint: '"The ritual requires three components: the blood of the innocent, the tears of the faithful, and the name of the Dreamer. They have two already."'
+    },
+    insightReward: 4,
+    itemReward: 'cultist_robes',
+    sanityEffect: -1,
+    spawnWeight: 5,
+    maxDoom: 6,
+    preferredTileTypes: ['crypt', 'basement']
+  },
+
+  // ===== RELIGIOUS =====
+  {
+    id: 'npc_priest_01',
+    name: 'Father O\'Malley',
+    type: 'priest',
+    disposition: 'friendly',
+    description: 'A Catholic priest clutching a rosary, his knuckles white from gripping it so tight.',
+    dialogues: {
+      greeting: '"In nomine Patris... Oh thank God. A living soul. The Lord has not forsaken us entirely."',
+      farewell: '"Go with God, my child. I fear He is all we have left."',
+      help: '"Take this holy water. It won\'t stop them, but it will slow them. And pray. Pray like your soul depends on it."',
+      hint: '"I performed last rites for a man who... came back. He spoke of cities under the sea. Gods older than Scripture. I think... I think our faith may be younger than the things we fight."'
+    },
+    sanityEffect: 2,
+    itemReward: 'holy_water',
+    canHeal: true,
+    healAmount: 0, // Heals sanity, not HP
+    spawnWeight: 7,
+    preferredTileTypes: ['room', 'facade']
+  },
+
+  // ===== MAD PROPHETS =====
+  {
+    id: 'npc_prophet_01',
+    name: 'The Rambling Man',
+    type: 'mad_prophet',
+    disposition: 'neutral',
+    description: 'A wild-eyed man covered in symbols drawn in what might be blood. He mutters constantly.',
+    dialogues: {
+      greeting: '"They speak! Can you hear them? The stars SING and the void DANCES! *cackling laughter*"',
+      farewell: '"Go go go run run run they see you NOW hahahaha!"',
+      hint: '"The Black Goat has a thousand young! One thousand! And she knows your NAME! *whispers* The key is under the dead tree. The key opens the gate. But don\'t open the gate. Don\'t don\'t don\'t..."',
+      scared: '"*screaming* THE ANGLES ARE WRONG THE ANGLES ARE WRONG THEY\'RE COMING THROUGH THE ANGLES!"'
+    },
+    insightReward: 3,
+    sanityEffect: -2,
+    spawnWeight: 4,
+    maxDoom: 4,
+    preferredTileTypes: ['crypt', 'basement', 'corridor']
+  },
+
+  // ===== MYSTERIOUS =====
+  {
+    id: 'npc_stranger_01',
+    name: 'The Man in Black',
+    type: 'mysterious_stranger',
+    disposition: 'neutral',
+    description: 'A tall figure in an impeccable black suit. His smile never quite reaches his eyes.',
+    dialogues: {
+      greeting: '"We meet at last. I\'ve been watching your progress with great interest."',
+      farewell: '"Until next time. And there WILL be a next time. There always is."',
+      help: '"A gift. No strings attached. Well... no strings you could see."',
+      hint: '"The ones you fight are merely servants. The true enemy? You couldn\'t comprehend it. I can barely comprehend it, and I\'ve been doing this for... longer than you\'d believe."'
+    },
+    insightReward: 5,
+    itemReward: 'elder_sign',
+    sanityEffect: -1,
+    spawnWeight: 2,
+    maxDoom: 3,
+    preferredTileTypes: ['crypt', 'corridor']
+  }
+];
+
+// ============================================================================
+// NPC SPAWN SYSTEM
+// ============================================================================
+
+/**
+ * Get weighted random NPC for spawning
+ * Considers doom level and tile type
+ */
+export function getRandomNPC(currentDoom: number, tileType?: string): NPC | null {
+  const eligibleNPCs = NPCS.filter(npc => {
+    // Check doom constraints
+    if (npc.minDoom !== undefined && currentDoom < npc.minDoom) return false;
+    if (npc.maxDoom !== undefined && currentDoom > npc.maxDoom) return false;
+
+    // Check tile type preference (optional)
+    if (tileType && npc.preferredTileTypes) {
+      // NPCs with matching tile type get priority, but can still spawn elsewhere
+    }
+
+    return true;
+  });
+
+  if (eligibleNPCs.length === 0) return null;
+
+  // Calculate total weight
+  let totalWeight = eligibleNPCs.reduce((sum, npc) => {
+    let weight = npc.spawnWeight;
+    // Bonus weight if tile type matches preference
+    if (tileType && npc.preferredTileTypes?.includes(tileType)) {
+      weight *= 2;
+    }
+    return sum + weight;
+  }, 0);
+
+  // Random selection
+  let random = Math.random() * totalWeight;
+  for (const npc of eligibleNPCs) {
+    let weight = npc.spawnWeight;
+    if (tileType && npc.preferredTileTypes?.includes(tileType)) {
+      weight *= 2;
+    }
+    random -= weight;
+    if (random <= 0) {
+      return npc;
+    }
+  }
+
+  return eligibleNPCs[0];
+}
+
+/**
+ * Get NPCs that can provide services (healing, trading)
+ */
+export function getServiceNPCs(): NPC[] {
+  return NPCS.filter(npc => npc.canHeal || npc.canTrade);
+}
+
+/**
+ * Get NPCs by type
+ */
+export function getNPCsByType(type: NPCType): NPC[] {
+  return NPCS.filter(npc => npc.type === type);
+}
 
 export const MADNESS_CONDITIONS: Madness[] = [
   { 
