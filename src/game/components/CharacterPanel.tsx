@@ -140,8 +140,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       <div className="p-6 pb-4 border-b-2 border-border relative z-10 shrink-0">
         <div className="flex gap-4 items-start">
           <div className="w-20 h-20 rounded-xl border-4 border-leather shadow-lg overflow-hidden bg-background shrink-0">
-            <img 
-              src={getCharacterPortrait(player.id as CharacterType)} 
+            <img
+              src={player.customPortraitUrl || getCharacterPortrait(player.id as CharacterType)}
               alt={player.name}
               className="w-full h-full object-cover"
               onError={(e) => {

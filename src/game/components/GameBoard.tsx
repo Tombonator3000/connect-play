@@ -1329,7 +1329,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
         {players.map((player, playerIndex) => {
           if (player.isDead) return null;
           const { x, y } = hexToPixel(player.position.q, player.position.r);
-          const portraitUrl = getCharacterPortrait(player.id as CharacterType);
+          // Use custom portrait if available, otherwise fall back to default character portrait
+          const portraitUrl = player.customPortraitUrl || getCharacterPortrait(player.id as CharacterType);
 
           // Calculate offset for multiple entities on same tile
           const alivePlayers = players.filter(p => !p.isDead);
