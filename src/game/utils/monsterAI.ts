@@ -1392,6 +1392,26 @@ export function processEnemyTurn(
             ...enemy,
             position: decision.targetPosition
           };
+
+          // CRITICAL FIX: After moving, check if monster can now attack a player
+          // This allows monsters to move AND attack in the same turn (Hero Quest style)
+          const movedEnemy = updatedEnemies[i];
+          const alivePlayers = players.filter(p => !p.isDead);
+          for (const player of alivePlayers) {
+            const distanceAfterMove = hexDistance(movedEnemy.position, player.position);
+            if (distanceAfterMove <= movedEnemy.attackRange) {
+              // Check if monster can see the player from new position
+              if (hasLineOfSight(movedEnemy.position, player.position, tiles, movedEnemy.visionRange)) {
+                attacks.push({
+                  enemy: movedEnemy,
+                  targetPlayer: player,
+                  weatherHorrorBonus: weatherMods.horrorBonus
+                });
+                messages.push(`${movedEnemy.name} angriper ${player.name}!`);
+                break; // Only attack one player
+              }
+            }
+          }
         }
         break;
 
@@ -1436,6 +1456,24 @@ export function processEnemyTurn(
             enemy: updatedEnemies[i],
             description: decision.message || `${enemy.name} bruker sin spesielle evne!`
           });
+
+          // CRITICAL FIX: After special movement, check if monster can attack
+          const specialMovedEnemy = updatedEnemies[i];
+          const alivePlayersForSpecial = players.filter(p => !p.isDead);
+          for (const player of alivePlayersForSpecial) {
+            const distanceAfterSpecial = hexDistance(specialMovedEnemy.position, player.position);
+            if (distanceAfterSpecial <= specialMovedEnemy.attackRange) {
+              if (hasLineOfSight(specialMovedEnemy.position, player.position, tiles, specialMovedEnemy.visionRange)) {
+                attacks.push({
+                  enemy: specialMovedEnemy,
+                  targetPlayer: player,
+                  weatherHorrorBonus: weatherMods.horrorBonus
+                });
+                messages.push(`${specialMovedEnemy.name} angriper ${player.name}!`);
+                break;
+              }
+            }
+          }
         }
         break;
 
