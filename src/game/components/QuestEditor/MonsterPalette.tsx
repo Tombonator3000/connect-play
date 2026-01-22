@@ -3,11 +3,14 @@
  *
  * Panel for placing monsters on tiles.
  * Shows all available monster types with their stats.
+ * Now supports custom monsters created with MonsterDesigner.
  */
 
-import React, { useState } from 'react';
-import { Skull, Heart, Swords, Shield, Plus, Minus, X, Brain, ChevronDown, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Skull, Heart, Swords, Shield, Plus, Minus, Brain, ChevronDown, ChevronRight, Sparkles, Pencil, Trash2 } from 'lucide-react';
 import { EnemyType } from '../../types';
+import { CustomMonster } from './MonsterDesigner';
+import { getCustomMonsters, deleteCustomMonster } from './customEntityStorage';
 
 // ============================================================================
 // MONSTER DATA
@@ -76,12 +79,42 @@ export interface MonsterPlacement {
 interface MonsterPaletteProps {
   monsters: MonsterPlacement[];
   onMonstersChange: (monsters: MonsterPlacement[]) => void;
+  onCreateCustomMonster?: () => void;
+  onEditCustomMonster?: (monster: CustomMonster) => void;
+  customMonstersRefreshKey?: number; // Increment to force refresh of custom monsters
 }
 
-const MonsterPalette: React.FC<MonsterPaletteProps> = ({ monsters, onMonstersChange }) => {
+const MonsterPalette: React.FC<MonsterPaletteProps> = ({
+  monsters,
+  onMonstersChange,
+  onCreateCustomMonster,
+  onEditCustomMonster,
+  customMonstersRefreshKey = 0
+}) => {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(['minion', 'warrior'])
+    new Set(['minion', 'warrior', 'custom'])
   );
+  const [customMonsters, setCustomMonsters] = useState<CustomMonster[]>([]);
+
+  // Load custom monsters from localStorage
+  useEffect(() => {
+    setCustomMonsters(getCustomMonsters());
+  }, [customMonstersRefreshKey]);
+
+  // Handle deleting a custom monster
+  const handleDeleteCustomMonster = (monsterId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (window.confirm('Delete this custom monster? This cannot be undone.')) {
+      deleteCustomMonster(monsterId);
+      setCustomMonsters(getCustomMonsters());
+    }
+  };
+
+  // Handle editing a custom monster
+  const handleEditCustomMonster = (monster: CustomMonster, event: React.MouseEvent) => {
+    event.stopPropagation();
+    onEditCustomMonster?.(monster);
+  };
 
   const toggleCategory = (category: string) => {
     setExpandedCategories(prev => {
@@ -95,18 +128,18 @@ const MonsterPalette: React.FC<MonsterPaletteProps> = ({ monsters, onMonstersCha
     });
   };
 
-  const addMonster = (type: EnemyType) => {
+  const addMonster = (type: EnemyType | string) => {
     const existing = monsters.find(m => m.type === type);
     if (existing) {
       onMonstersChange(
         monsters.map(m => m.type === type ? { ...m, count: m.count + 1 } : m)
       );
     } else {
-      onMonstersChange([...monsters, { type, count: 1 }]);
+      onMonstersChange([...monsters, { type: type as EnemyType, count: 1 }]);
     }
   };
 
-  const removeMonster = (type: EnemyType) => {
+  const removeMonster = (type: EnemyType | string) => {
     const existing = monsters.find(m => m.type === type);
     if (existing && existing.count > 1) {
       onMonstersChange(
@@ -121,7 +154,7 @@ const MonsterPalette: React.FC<MonsterPaletteProps> = ({ monsters, onMonstersCha
     onMonstersChange([]);
   };
 
-  const getMonsterCount = (type: EnemyType): number => {
+  const getMonsterCount = (type: EnemyType | string): number => {
     return monsters.find(m => m.type === type)?.count || 0;
   };
 
@@ -134,6 +167,13 @@ const MonsterPalette: React.FC<MonsterPaletteProps> = ({ monsters, onMonstersCha
     acc[monster.category].push(monster);
     return acc;
   }, {} as Record<string, MonsterInfo[]>);
+
+  // Get monster info including custom monsters
+  const getMonsterInfo = (type: string): MonsterInfo | CustomMonster | undefined => {
+    const standard = MONSTER_LIST.find(m => m.type === type);
+    if (standard) return standard;
+    return customMonsters.find(m => m.type === type);
+  };
 
   return (
     <div className="space-y-3">
@@ -162,18 +202,25 @@ const MonsterPalette: React.FC<MonsterPaletteProps> = ({ monsters, onMonstersCha
             </button>
           </div>
           {monsters.map(m => {
-            const info = MONSTER_LIST.find(monster => monster.type === m.type);
+            const info = getMonsterInfo(m.type);
             if (!info) return null;
+            const isCustom = 'isCustom' in info && info.isCustom;
             return (
               <div
                 key={m.type}
-                className="flex items-center justify-between bg-slate-600/50 rounded px-2 py-1"
+                className={`flex items-center justify-between rounded px-2 py-1 ${
+                  isCustom ? 'bg-purple-600/30' : 'bg-slate-600/50'
+                }`}
               >
                 <div className="flex items-center gap-2">
-                  <span
-                    className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: CATEGORY_COLORS[info.category] }}
-                  />
+                  {isCustom ? (
+                    <Sparkles className="w-3 h-3 text-purple-400" />
+                  ) : (
+                    <span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: CATEGORY_COLORS[info.category] }}
+                    />
+                  )}
                   <span className="text-white text-xs">{info.name}</span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -199,6 +246,117 @@ const MonsterPalette: React.FC<MonsterPaletteProps> = ({ monsters, onMonstersCha
 
       {/* Monster list by category */}
       <div className="space-y-1 max-h-64 overflow-y-auto">
+        {/* Custom Monsters Section */}
+        {(customMonsters.length > 0 || onCreateCustomMonster) && (
+          <div className="rounded overflow-hidden mb-1">
+            <button
+              onClick={() => toggleCategory('custom')}
+              className="w-full flex items-center gap-2 px-2 py-1.5 bg-purple-900/30 hover:bg-purple-900/50 text-left"
+            >
+              {expandedCategories.has('custom') ? (
+                <ChevronDown className="w-3 h-3 text-purple-400" />
+              ) : (
+                <ChevronRight className="w-3 h-3 text-purple-400" />
+              )}
+              <Sparkles className="w-3 h-3 text-purple-400" />
+              <span className="text-xs font-medium text-purple-300 flex-1">
+                Custom Monsters
+              </span>
+              <span className="text-xs text-purple-400">{customMonsters.length}</span>
+            </button>
+
+            {expandedCategories.has('custom') && (
+              <div className="bg-purple-900/10 p-1 space-y-0.5">
+                {/* Create new button */}
+                {onCreateCustomMonster && (
+                  <button
+                    onClick={onCreateCustomMonster}
+                    className="w-full flex items-center justify-center gap-2 px-2 py-2 rounded border-2 border-dashed border-purple-600/50 hover:border-purple-500 hover:bg-purple-900/30 text-purple-400 hover:text-purple-300 transition-colors"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span className="text-xs">Create Custom Monster</span>
+                  </button>
+                )}
+
+                {/* Custom monsters list */}
+                {customMonsters.map(monster => {
+                  const count = getMonsterCount(monster.type);
+                  return (
+                    <div
+                      key={monster.id}
+                      className={`
+                        flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer transition-colors relative group
+                        ${count > 0 ? 'bg-purple-600/30 border border-purple-500' : 'hover:bg-purple-900/30'}
+                      `}
+                      onClick={() => addMonster(monster.type)}
+                    >
+                      {/* Edit/Delete buttons */}
+                      <div className="absolute top-1 right-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => handleEditCustomMonster(monster, e)}
+                          className="p-0.5 bg-slate-600 hover:bg-amber-600 rounded text-white"
+                          title="Edit monster"
+                        >
+                          <Pencil className="w-2.5 h-2.5" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteCustomMonster(monster.id, e)}
+                          className="p-0.5 bg-slate-600 hover:bg-red-600 rounded text-white"
+                          title="Delete monster"
+                        >
+                          <Trash2 className="w-2.5 h-2.5" />
+                        </button>
+                      </div>
+
+                      {/* Monster image or icon */}
+                      {monster.customImage ? (
+                        <img
+                          src={monster.customImage}
+                          alt={monster.name}
+                          className="w-6 h-6 rounded object-cover"
+                        />
+                      ) : (
+                        <Sparkles className="w-4 h-4 text-purple-400" />
+                      )}
+
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-medium text-white truncate">
+                          {monster.name}
+                        </div>
+                        <div className="flex items-center gap-2 text-[10px] text-slate-400">
+                          <span className="flex items-center gap-0.5">
+                            <Heart className="w-2.5 h-2.5" />{monster.hp}
+                          </span>
+                          <span className="flex items-center gap-0.5">
+                            <Swords className="w-2.5 h-2.5" />{monster.attackDice}
+                          </span>
+                          <span className="flex items-center gap-0.5">
+                            <Shield className="w-2.5 h-2.5" />{monster.defenseDice}
+                          </span>
+                          <span className="flex items-center gap-0.5">
+                            <Brain className="w-2.5 h-2.5" />{monster.horror}
+                          </span>
+                        </div>
+                      </div>
+                      {count > 0 && (
+                        <span className="bg-purple-500 text-white text-[10px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                          {count}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {customMonsters.length === 0 && (
+                  <div className="text-center text-purple-400/60 py-2 text-xs">
+                    No custom monsters yet
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {(['minion', 'warrior', 'elite', 'boss'] as const).map(category => {
           const categoryMonsters = groupedMonsters[category] || [];
           const isExpanded = expandedCategories.has(category);
