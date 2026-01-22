@@ -16600,3 +16600,130 @@ const { resetPlayers } = resetPlayersForNewTurn(updatedPlayers);
 ### Build Status
 ✅ TypeScript kompilerer uten feil
 ✅ Build vellykket (1,617.82 kB bundle)
+
+---
+
+## 2026-01-22: Quest Items - Enklere å Finne
+
+### Problem
+Quest items var altfor vanskelig å få tak i. Spillere rapporterte at de kunne bruke 20+ runder uten å finne en eneste quest item, noe som gjorde scenarioer umulige å vinne.
+
+### Rotårsak-analyse
+
+**Gamle verdier var for konservative:**
+| Parameter | Gammel verdi | Problem |
+|-----------|--------------|---------|
+| Tidlig spawn-sjanse | 10% | Nesten ingen items de første tiles |
+| Normal spawn-sjanse | 25% | For lavt i "sweet spot" |
+| Behind schedule | 50% | Fortsatt for lavt |
+| Doom critical | ≤4 | For sent - spiller har allerede tapt |
+| Doom warning | ≤7 | Fortsatt ganske sent |
+| Exploration force | 85% | Alt for mye exploration nødvendig |
+| Min items per tiles | 1 per 10 | Ikke aggressiv nok |
+
+**Ingen "pity timer"** - Systemet hadde ingen mekanisme for å garantere spawns etter langvarig uflaks.
+
+### Løsning: Nytt Spawn-system med Pity Timer
+
+#### 1. Ny Spawn Probability Config
+```typescript
+export const SPAWN_PROBABILITY_CONFIG = {
+  EARLY_GAME_THRESHOLD: 0.15,
+  EARLY_SPAWN_CHANCE: 0.35,           // 35% (var 10%)
+  NORMAL_SPAWN_CHANCE: 0.45,          // 45% (var 25%)
+  BEHIND_SCHEDULE_CHANCE: 0.70,       // 70% (var 50%)
+  PITY_TIMER_TILES: 4,                // Garantert spawn etter 4 tiles
+  FIRST_ITEM_GUARANTEE_TILES: 3,      // Første item innen 3 tiles
+  MAX_SPAWN_CHANCE: 0.90,             // Maks 90% (var 80%)
+};
+```
+
+#### 2. Oppdatert Guaranteed Spawn Config
+```typescript
+export const GUARANTEED_SPAWN_CONFIG = {
+  DOOM_CRITICAL: 6,           // (var 4) - force spawn ALT
+  DOOM_WARNING: 9,            // (var 7) - øk spawn-rate
+  EXPLORATION_FORCE: 0.60,    // (var 0.85) - force ved 60%
+  EXPLORATION_WARNING: 0.45,  // Ny - warning ved 45%
+  MIN_ITEMS_PER_5_TILES: 1,   // (var 10) - mer aggressive
+  MAX_TILES_WITHOUT_SPAWN: 6, // Ny backup pity timer
+};
+```
+
+#### 3. Pity Timer System
+
+Nytt felt i `ObjectiveSpawnState`:
+```typescript
+tilesSinceLastSpawn: number  // Tracker tiles uten funn
+```
+
+**Hvordan det fungerer:**
+1. Teller økes for hver tile som utforskes
+2. Hvis teller ≥ 4: **100% spawn-sjanse** (pity timer trigger)
+3. Teller **resettes til 0** når et item spawner
+4. Bonus: +15% spawn-sjanse per tile uten spawn (progressiv)
+
+#### 4. Første Item Garanti
+
+Sikrer at spillere finner noe tidlig:
+- Etter 3 tiles uten items → **garantert spawn**
+- Forhindrer frustrerende start på scenarioer
+
+#### 5. Spawn-sjanse Beregning
+
+```
+finalChance = min(90%, baseChance + roomBonus + pityBonus)
+
+Hvor:
+- baseChance = 35-70% avhengig av progress
+- roomBonus = 0-25% for tematiske rom (ritual +25%, study +20%, etc.)
+- pityBonus = tilesSinceLastSpawn × 15%
+```
+
+**Eksempel:** Etter 3 tiles uten spawn i et ritual-rom:
+```
+finalChance = min(90%, 45% + 25% + 45%) = 90%
+```
+
+### Endrede Filer
+
+**`src/game/utils/objectiveSpawner.ts`:**
+- Lagt til `tilesSinceLastSpawn` i `ObjectiveSpawnState`
+- Ny `SPAWN_PROBABILITY_CONFIG` med høyere verdier
+- Oppdatert `GUARANTEED_SPAWN_CONFIG` med tidligere thresholds
+- Refaktorert `shouldSpawnQuestItem()` med pity timer
+- Ny hjelpefunksjon `selectItemToSpawn()`
+- Oppdatert `onTileExplored()` for å tracke pity timer
+- Oppdatert `checkGuaranteedSpawns()` med nye thresholds
+- Lagt til console.log debugging for spawn-hendelser
+
+### Sammenligning: Før vs Etter
+
+| Situasjon | Før | Etter |
+|-----------|-----|-------|
+| Tidlig spill (første 3 tiles) | ~10% sjanse | 35% + garantert innen 3 tiles |
+| Normal spill | 25% sjanse | 45% sjanse |
+| Etter 4 tiles uten funn | Fortsatt 25-50% | **100% garantert** |
+| Doom = 6 | Ingen spesiell handling | **Force spawn ALT** |
+| 60% exploration | Ingen spesiell handling | **Force spawn ALT** |
+
+### Forventet Effekt
+
+**Med nye verdier:**
+- Spillere vil typisk finne første quest item innen 2-4 tiles
+- Maksimalt 4-5 tiles mellom hvert funn (pity timer)
+- Scenarioer forblir alltid vinnbare (guaranteed spawns trigger tidligere)
+- Bedre spilleropplevelse med jevnere progresjon
+
+### Debug Logging
+
+Lagt til console.log for å spore spawn-systemet:
+```
+[QuestSpawn] Tile "Study": chance=70% (base=45%, room=+20%, pity=+5%)
+[QuestSpawn] ✨ Item "Iron Key" spawned on "Study"! Resetting pity timer.
+[GuaranteedSpawn] Doom: 8, Exploration: 40%, TilesSinceSpawn: 2, Urgency: none
+```
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,619.69 kB bundle)
