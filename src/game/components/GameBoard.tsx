@@ -16,6 +16,7 @@ import { getMonsterPortrait } from '../utils/monsterAssets';
 import { getEdgeIconInfo, getEdgeIconPosition } from './EdgeIcons';
 import { calculateCombinedOffset } from '../utils/entityPositioning';
 import { TileObjectRenderer } from './TileObjectRenderer';
+import { TileAtmosphericEffects, DoomOverlay, SanityOverlay } from './ParticleEmitter';
 
 // Import AI-generated tile images
 import tileLibrary from '@/assets/tiles/tile-library.png';
@@ -1433,6 +1434,15 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   </div>
                 )}
 
+                {/* Tile Atmospheric Effects - ambient lighting and particles based on tile type */}
+                <TileAtmosphericEffects
+                  tileName={tile.name}
+                  tileType={tile.type}
+                  isVisible={isVisible}
+                  containerWidth={100}
+                  containerHeight={100}
+                />
+
                 {/* Dark Room Overlay - requires flashlight to see contents */}
                 {tile.isDarkRoom && isVisible && !tile.darkRoomIlluminated && (() => {
                   const currentPlayer = players[0]; // Check first player (can be extended for multiplayer)
@@ -2058,6 +2068,18 @@ const GameBoard: React.FC<GameBoardProps> = ({
           });
         })}
       </div>
+
+      {/* Doom Overlay - visual feedback when doom is critical */}
+      <DoomOverlay doomLevel={doom} maxDoom={12} />
+
+      {/* Sanity Overlay - visual distortion based on current player sanity */}
+      {players.length > 0 && (
+        <SanityOverlay
+          sanityLevel={players[0].sanity}
+          maxSanity={players[0].maxSanity}
+          hasMadness={players[0].madnessConditions?.length > 0}
+        />
+      )}
 
       {/* Cursor-following tooltip for hover feedback */}
       <CursorTooltip hoverData={hoverData} />

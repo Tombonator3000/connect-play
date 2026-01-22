@@ -1832,6 +1832,9 @@ const ShadowsGame: React.FC = () => {
     setState(prev => ({ ...prev, enemies: [...prev.enemies, newEnemy] }));
     playSound('enemySpawn');
     addToLog(`A ${bestiary.name} emerges from the shadows!`);
+
+    // Emit spawn particle effect - eldritch portal manifestation
+    emitSpellEffect(q, r, 'banish'); // Uses implode animation reversed visually
   }, []);
 
   /**
