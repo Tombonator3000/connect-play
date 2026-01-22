@@ -1,5 +1,87 @@
 # Development Log
 
+## 2026-01-22: Expanded Cthulhu Mythos Bestiary - 14 New Monsters
+
+### Oppgave
+Legge til mange flere monstre fra Cthulhu Mythos for å gi spillet mer variasjon og dybde.
+
+### Research
+Basert på søk i:
+- [Chaosium's Call of Cthulhu Wiki](https://cthulhuwiki.chaosium.com/bestiary/)
+- [Wikipedia: Cthulhu Mythos species](https://en.wikipedia.org/wiki/Cthulhu_Mythos_species)
+- [Den of Geek: Scariest Lovecraft Monsters](https://www.denofgeek.com/books/the-10-scariest-monsters-from-lovecrafts-cthulu-mythos/)
+
+### Nye Monstre (14 stk)
+
+#### MINIONS (Svake - 1 attack die)
+| Monster | HP | Attack | Defense | Horror | Beskrivelse |
+|---------|-----|--------|---------|--------|-------------|
+| **Ghast** | 3 | 1 | 1 | 2 | Blinde, hovslagende humanoiderer fra underverdenen |
+| **Zoog** | 1 | 1 | 1 | 1 | Små gnageraktige vesener med tentakler, intelligente |
+| **Rat-Thing** | 2 | 1 | 1 | 2 | Hybrid av rotte og menneske (Brown Jenkin-type) |
+| **Fire Vampire** | 3 | 1 | 2 | 2 | Levende flammer fra verdensrommet, tjener Cthugha |
+
+#### WARRIORS (Middels - 2 attack dice)
+| Monster | HP | Attack | Defense | Horror | Beskrivelse |
+|---------|-----|--------|---------|--------|-------------|
+| **Dimensional Shambler** | 4 | 2 | 2 | 3 | Apeaktige vesener som vandrer mellom dimensjoner |
+| **Serpent Man** | 4 | 2 | 2 | 2 | Eldgamle reptilske humanoiderer med hypnotiske krefter |
+| **Gug** | 6 | 2 | 3 | 3 | Gigantiske undergrunns-monstre med vertikal munn |
+| **Cthonian** | 5 | 2 | 3 | 3 | Massive gravende ormer med tentakler |
+| **Tcho-Tcho** | 3 | 2 | 1 | 1 | Degenererte mennesker som tilber Great Old Ones |
+
+#### ELITES (Sterke - 3 attack dice)
+| Monster | HP | Attack | Defense | Horror | Beskrivelse |
+|---------|-----|--------|---------|--------|-------------|
+| **Flying Polyp** | 7 | 3 | 3 | 4 | Delvis usynlige vesener som kontrollerer vinden |
+| **Lloigor** | 6 | 3 | 2 | 4 | "Many-Angled Ones" - rene energi-vesener |
+| **Gnoph-Keh** | 6 | 3 | 3 | 3 | Arktiske monstre som kan påkalle snøstormer |
+
+#### BOSSES (Veldig sterke - 3+ attack dice)
+| Monster | HP | Attack | Defense | Horror | Beskrivelse |
+|---------|-----|--------|---------|--------|-------------|
+| **Colour Out of Space** | 8 | 3 | 4 | 5 | Fremmed parasittisk entitet som drenerer liv |
+| **Elder Thing** | 7 | 3 | 4 | 4 | Tønneformede romvesener som skapte shoggothene |
+
+### Nye Traits
+- `light_sensitive` - Ghasts dør i sollys
+- `swarm` - Zoogs angriper i grupper
+- `teleport` - Dimensional Shamblers kan teleportere
+- `hypnosis` - Serpent Men kan hypnotisere
+- `burrow` - Cthonians graver under bakken
+- `invisible` - Flying Polyps og Lloigors kan bli usynlige
+- `wind_blast` - Flying Polyps kontrollerer vinden
+- `telekinesis` - Lloigors bruker telekinese
+- `cold_aura` - Gnoph-Kehs fryseaura
+- `drain` - Colour Out of Space drenerer liv
+- `fire` - Fire Vampires brenner
+- `burn` - Ildbaserte angrep
+
+### Oppdaterte Spawn Tables
+De nye monstrene spawner nå i passende områder:
+- **Nature**: Zoogs, Gnoph-Keh, Tcho-Tcho
+- **Urban/Street**: Rat-Things, Dimensional Shamblers, Serpent Men
+- **Basement**: Ghasts, Gugs, Cthonians, Elder Things
+- **Crypt**: Ghasts, Gugs, Flying Polyps, Lloigors, Colour Out of Space
+
+### Endrede filer
+| Fil | Endring |
+|-----|---------|
+| `src/game/types.ts` | Lagt til 14 nye EnemyType verdier |
+| `src/game/constants.ts` | Lagt til alle nye monstre i BESTIARY med stats |
+| `src/game/utils/monsterAssets.ts` | Lagt til display names og placeholder-bilder |
+| `src/game/utils/monsterConstants.ts` | Lagt til behaviors, personalities, target prefs og spawn tables |
+
+### Testing
+- Build kompilerer uten feil
+- Alle 30 monstre (16 eksisterende + 14 nye) er nå tilgjengelige
+
+### Neste steg
+- Generere unike bilder for de nye monstrene (bruker foreløpig placeholder-bilder)
+- Eventuelt justere balanse basert på testing
+
+---
+
 ## 2026-01-22: Hero Archive Redesign og Custom Portrait Upload
 
 ### Oppgave

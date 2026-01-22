@@ -2295,6 +2295,130 @@ export const BESTIARY: Record<EnemyType, BestiaryEntry> = {
     lore: 'An intrusion from outside the ordered universe.',
     traits: ['massive'],
     defeatFlavor: 'The avatar is pulled back into the void.'
+  },
+
+  // ============================================================================
+  // NEW MONSTERS FROM CTHULHU MYTHOS (2026-01-22)
+  // ============================================================================
+
+  // --- NEW MINIONS ---
+  ghast: {
+    name: 'Ghast', type: 'ghast', hp: 3, damage: 1,
+    attackDice: 1, defenseDice: 1, horror: 2,
+    description: 'A blind, hooved humanoid from the underworld.',
+    lore: 'Ghasts dwell in the vaults of Zin where sunlight never reaches. They hunt by sound and smell.',
+    traits: ['scavenger', 'light_sensitive'],
+    defeatFlavor: 'The ghast collapses, its eyeless face frozen in a snarl.'
+  },
+  zoog: {
+    name: 'Zoog', type: 'zoog', hp: 1, damage: 1,
+    attackDice: 1, defenseDice: 1, horror: 1,
+    description: 'A small, brown rodent-like creature with tentacles.',
+    lore: 'Intelligent and cunning, zoogs inhabit the Enchanted Wood. They speak in high-pitched voices.',
+    traits: ['swarm', 'fast'],
+    defeatFlavor: 'The zoog squeals and vanishes into the shadows.'
+  },
+  rat_thing: {
+    name: 'Rat-Thing', type: 'rat_thing', hp: 2, damage: 1,
+    attackDice: 1, defenseDice: 1, horror: 2,
+    description: 'A hybrid of rat and something disturbingly human.',
+    lore: 'Brown Jenkin and its kin - witch familiars with human-like faces and tiny hands.',
+    traits: ['fast', 'ambusher'],
+    defeatFlavor: 'The abomination twitches and goes still, its human-like eyes glazing over.'
+  },
+  fire_vampire: {
+    name: 'Fire Vampire', type: 'fire_vampire', hp: 3, damage: 2,
+    attackDice: 1, defenseDice: 2, horror: 2,
+    description: 'A living flame from beyond the stars.',
+    lore: 'Servants of Cthugha, these beings of living fire descend from the cosmos to consume.',
+    traits: ['flying', 'fire'],
+    defeatFlavor: 'The flame sputters and extinguishes with an unearthly shriek.'
+  },
+
+  // --- NEW WARRIORS ---
+  dimensional_shambler: {
+    name: 'Dimensional Shambler', type: 'dimensional_shambler', hp: 4, damage: 2,
+    attackDice: 2, defenseDice: 2, horror: 3,
+    description: 'A gaunt, ape-like being that walks between dimensions.',
+    lore: 'These creatures can step through the fabric of reality, appearing and disappearing at will.',
+    traits: ['teleport', 'ambusher'],
+    defeatFlavor: 'The shambler folds in on itself and vanishes into another dimension.'
+  },
+  serpent_man: {
+    name: 'Serpent Man', type: 'serpent_man', hp: 4, damage: 2,
+    attackDice: 2, defenseDice: 2, horror: 2,
+    description: 'An ancient reptilian humanoid with hypnotic powers.',
+    lore: 'Remnants of a pre-human civilization, serpent men can disguise themselves as humans.',
+    traits: ['elite', 'ranged'],
+    defeatFlavor: 'The serpent man hisses and collapses, its disguise failing.'
+  },
+  gug: {
+    name: 'Gug', type: 'gug', hp: 6, damage: 2,
+    attackDice: 2, defenseDice: 3, horror: 3,
+    description: 'A towering giant with a vertical mouth and four arms.',
+    lore: 'Banished to the underworld by the Great Ones, gugs hunt in the lightless depths.',
+    traits: ['massive', 'slow'],
+    defeatFlavor: 'The gug crashes to the ground, its vertical maw gaping in death.'
+  },
+  cthonian: {
+    name: 'Cthonian', type: 'cthonian', hp: 5, damage: 2,
+    attackDice: 2, defenseDice: 3, horror: 3,
+    description: 'A massive burrowing worm with tentacles.',
+    lore: 'These subterranean horrors communicate telepathically and can cause earthquakes.',
+    traits: ['burrow', 'massive'],
+    defeatFlavor: 'The worm-thing convulses and sinks back into the earth.'
+  },
+  tcho_tcho: {
+    name: 'Tcho-Tcho', type: 'tcho_tcho', hp: 3, damage: 2,
+    attackDice: 2, defenseDice: 1, horror: 1,
+    description: 'A degenerate human who worships the Great Old Ones.',
+    lore: 'The Tcho-Tcho people practice dark rituals and cannibalism in service to alien gods.',
+    traits: ['ranged'],
+    defeatFlavor: 'The Tcho-Tcho falls, clutching a profane idol.'
+  },
+
+  // --- NEW ELITES ---
+  flying_polyp: {
+    name: 'Flying Polyp', type: 'flying_polyp', hp: 7, damage: 3,
+    attackDice: 3, defenseDice: 3, horror: 4,
+    description: 'A partially invisible entity that controls the wind.',
+    lore: 'Ancient enemies of the Great Race, polyps dwell in cyclopean ruins beneath the earth.',
+    traits: ['flying', 'invisible', 'massive'],
+    defeatFlavor: 'The polyp shrieks with an alien wind and dissipates.'
+  },
+  lloigor: {
+    name: 'Lloigor', type: 'lloigor', hp: 6, damage: 3,
+    attackDice: 3, defenseDice: 2, horror: 4,
+    description: 'A being of pure malevolent energy.',
+    lore: 'The Many-Angled Ones can manifest as invisible vortexes or serpentine forms.',
+    traits: ['invisible', 'telekinesis'],
+    defeatFlavor: 'The lloigor howls and retreats to its angular dimension.'
+  },
+  gnoph_keh: {
+    name: 'Gnoph-Keh', type: 'gnoph_keh', hp: 6, damage: 3,
+    attackDice: 3, defenseDice: 3, horror: 3,
+    description: 'A six-limbed arctic horror with sharp horns.',
+    lore: 'These territorial beasts can summon blizzards and serve Ithaqua, the Wind-Walker.',
+    traits: ['fast', 'cold'],
+    defeatFlavor: 'The gnoph-keh lets out a final howl and the temperature rises.'
+  },
+
+  // --- NEW BOSSES ---
+  colour_out_of_space: {
+    name: 'Colour Out of Space', type: 'colour_out_of_space', hp: 8, damage: 3,
+    attackDice: 3, defenseDice: 4, horror: 5,
+    description: 'An alien entity of incomprehensible color that drains life.',
+    lore: 'This parasitic being arrived on a meteorite and slowly consumes all life around it.',
+    traits: ['drain', 'invisible', 'massive'],
+    defeatFlavor: 'The colour shrieks silently and shoots back toward the stars.'
+  },
+  elder_thing: {
+    name: 'Elder Thing', type: 'elder_thing', hp: 7, damage: 3,
+    attackDice: 3, defenseDice: 4, horror: 4,
+    description: 'A barrel-shaped being with starfish-like appendages.',
+    lore: 'The Old Ones created the shoggoths and built cities across primordial Earth.',
+    traits: ['aquatic', 'elite'],
+    defeatFlavor: 'The elder thing falls, its alien mind finally silenced.'
   }
 };
 

@@ -516,7 +516,12 @@ export type EnemyType =
   | 'cultist' | 'deepone' | 'ghoul' | 'shoggoth' | 'boss'
   | 'sniper' | 'priest' | 'mi-go' | 'nightgaunt' | 'hound'
   | 'dark_young' | 'byakhee' | 'star_spawn' | 'formless_spawn'
-  | 'hunting_horror' | 'moon_beast';
+  | 'hunting_horror' | 'moon_beast'
+  // New monsters from Cthulhu Mythos
+  | 'ghast' | 'zoog' | 'rat_thing' | 'fire_vampire'
+  | 'dimensional_shambler' | 'serpent_man' | 'gug' | 'cthonian' | 'tcho_tcho'
+  | 'flying_polyp' | 'lloigor' | 'gnoph_keh'
+  | 'colour_out_of_space' | 'elder_thing';
 
 export interface Enemy {
   id: string;

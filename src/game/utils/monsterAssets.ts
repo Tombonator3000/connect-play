@@ -25,6 +25,7 @@ import { EnemyType } from '../types';
 
 /**
  * Map enemy types to their portrait images
+ * Note: New monsters use cultist image as placeholder until custom art is created
  */
 export const MONSTER_PORTRAITS: Record<EnemyType, string> = {
   cultist: cultistImg,
@@ -42,7 +43,22 @@ export const MONSTER_PORTRAITS: Record<EnemyType, string> = {
   star_spawn: starSpawnImg,
   formless_spawn: formlessSpawnImg,
   hunting_horror: huntingHorrorImg,
-  moon_beast: moonBeastImg
+  moon_beast: moonBeastImg,
+  // New monsters (2026-01-22) - using placeholder images
+  ghast: ghoulImg,           // Similar underground creature
+  zoog: miGoImg,             // Small creature
+  rat_thing: ghoulImg,       // Creature-like
+  fire_vampire: bossImg,     // Eldritch entity
+  dimensional_shambler: nightgauntImg, // Otherworldly
+  serpent_man: deeponeImg,   // Humanoid creature
+  gug: shoggothImg,          // Massive creature
+  cthonian: shoggothImg,     // Massive worm
+  tcho_tcho: cultistImg,     // Human-like cultist
+  flying_polyp: huntingHorrorImg, // Flying horror
+  lloigor: bossImg,          // Energy being
+  gnoph_keh: darkYoungImg,   // Large beast
+  colour_out_of_space: bossImg, // Cosmic entity
+  elder_thing: starSpawnImg  // Alien being
 };
 
 /**
@@ -74,7 +90,22 @@ export function getMonsterDisplayName(enemyType: EnemyType): string {
     star_spawn: 'Star Spawn',
     formless_spawn: 'Formless Spawn',
     hunting_horror: 'Hunting Horror',
-    moon_beast: 'Moon Beast'
+    moon_beast: 'Moon Beast',
+    // New monsters (2026-01-22)
+    ghast: 'Ghast',
+    zoog: 'Zoog',
+    rat_thing: 'Rat-Thing',
+    fire_vampire: 'Fire Vampire',
+    dimensional_shambler: 'Dimensional Shambler',
+    serpent_man: 'Serpent Man',
+    gug: 'Gug',
+    cthonian: 'Cthonian',
+    tcho_tcho: 'Tcho-Tcho',
+    flying_polyp: 'Flying Polyp',
+    lloigor: 'Lloigor',
+    gnoph_keh: 'Gnoph-Keh',
+    colour_out_of_space: 'Colour Out of Space',
+    elder_thing: 'Elder Thing'
   };
   return names[enemyType] || enemyType;
 }
