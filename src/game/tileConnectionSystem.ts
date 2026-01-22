@@ -3991,6 +3991,26 @@ export function synchronizeEdgesWithNeighbors(
       newEdges[dir] = { type: 'stairs_up' };
       updatedBoard.set(newTileKey, { ...updatedNewTile, edges: newEdges });
     }
+
+    // CRITICAL FIX: Synchronize OPEN edges to prevent player getting stuck
+    // If neighbor has OPEN edge (passable) and new tile has WALL, player could enter but not exit
+    // This converts the WALL to OPEN to ensure bidirectional movement is possible
+    if (neighborEdge.type === 'open' && newTileEdge.type === 'wall') {
+      const updatedNewTile = updatedBoard.get(newTileKey)!;
+      const newEdges = [...updatedNewTile.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+      newEdges[dir] = { type: 'open' };
+      updatedBoard.set(newTileKey, { ...updatedNewTile, edges: newEdges });
+      console.log(`[EdgeSync] Converted WALL to OPEN at direction ${dir} on tile ${newTileKey} (neighbor has OPEN)`);
+    }
+
+    // Also check the reverse: if new tile has OPEN but neighbor has WALL
+    // This ensures bidirectional passage is always possible
+    if (newTileEdge.type === 'open' && neighborEdge.type === 'wall') {
+      const neighborEdges = [...neighbor.edges] as [EdgeData, EdgeData, EdgeData, EdgeData, EdgeData, EdgeData];
+      neighborEdges[oppositeDir] = { type: 'open' };
+      updatedBoard.set(neighborKey, { ...neighbor, edges: neighborEdges });
+      console.log(`[EdgeSync] Converted neighbor WALL to OPEN at direction ${oppositeDir} on tile ${neighborKey} (new tile has OPEN)`);
+    }
   }
 
   return updatedBoard;
