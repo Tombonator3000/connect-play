@@ -104,6 +104,17 @@ import {
   processWeatherForNewRound
 } from './utils/mythosPhaseHelpers';
 import {
+  collectActivePortals,
+  processPortalSpawns,
+  processGuaranteedSpawns,
+  processEnemyCombatPhase,
+  applyDamageToPlayer,
+  tryDrawEventCard,
+  resetPlayersForNewTurn,
+  shouldApplyMadnessEffects,
+  areAllPlayersDead
+} from './utils/mythosPhaseUtils';
+import {
   processActionEffect,
   ActionEffectContext,
   ActionEffectResult,
@@ -274,253 +285,134 @@ const ShadowsGame: React.FC = () => {
     saveLegacyData(legacyData);
   }, [legacyData]);
 
+  // ============================================================================
+  // MYTHOS PHASE - REFACTORED
+  // Previously ~280 lines, now ~100 lines using extracted utilities
+  // See: src/game/utils/mythosPhaseUtils.ts for the extracted logic
+  // ============================================================================
   useEffect(() => {
     if (state.phase === GamePhase.MYTHOS) {
       addToLog("Mythos-fasen vekkes. Eldgamle hjul snurrer i morket.");
 
       const runEnemyAI = async () => {
-        // === ELDRITCH PORTAL SPAWNING ===
-        // Check for active portals on the board and spawn enemies
-        const portalsToSpawn: Array<{tileId: string; q: number; r: number; types: EnemyType[]; chance: number}> = [];
-        state.board.forEach(tile => {
-          if (tile.object?.type === 'eldritch_portal' && tile.object.portalActive) {
-            const spawnChance = tile.object.portalSpawnChance ?? 50;
-            const spawnTypes = tile.object.portalSpawnTypes ?? ['cultist' as EnemyType];
-            portalsToSpawn.push({ tileId: tile.id, q: tile.q, r: tile.r, types: spawnTypes, chance: spawnChance });
-          }
-        });
+        // === STEP 1: PORTAL SPAWNING ===
+        const portals = collectActivePortals(state.board);
+        const portalResult = processPortalSpawns(portals);
 
-        // Process portal spawning
-        for (const portal of portalsToSpawn) {
-          if (Math.random() * 100 < portal.chance) {
-            const enemyType = portal.types[Math.floor(Math.random() * portal.types.length)];
-            spawnEnemy(enemyType, portal.q, portal.r);
-            addToLog(`⚡ En ${enemyType} kryper ut av den eldritiske portalen!`);
-            addFloatingText(portal.q, portal.r, "PORTAL SPAWN!", "text-purple-400");
-          }
+        // Execute portal spawns
+        for (const spawn of portalResult.spawns) {
+          spawnEnemy(spawn.enemyType, spawn.q, spawn.r);
         }
+        portalResult.messages.forEach(msg => addToLog(msg));
+        portalResult.floatingTexts.forEach(ft => addFloatingText(ft.q, ft.r, ft.text, ft.colorClass));
 
-        // === GUARANTEED SPAWN SYSTEM ===
-        // Check if any quest items/tiles need to be force-spawned to ensure scenario is winnable
+        // === STEP 2: GUARANTEED SPAWNS (quest items/tiles) ===
         if (state.objectiveSpawnState && state.activeScenario) {
-          const completedObjectiveIds = state.activeScenario.objectives
-            .filter(o => o.completed)
-            .map(o => o.id);
-
-          const spawnCheck = checkGuaranteedSpawns(
+          const guaranteedResult = processGuaranteedSpawns(
             state.objectiveSpawnState,
             state.activeScenario,
             state.doom,
-            state.board,
-            completedObjectiveIds
+            state.board
           );
 
-          // Execute forced spawns if needed
-          if (spawnCheck.forcedItems.length > 0 || spawnCheck.forcedTiles.length > 0) {
-            const { updatedState, itemSpawnLocations, tileModifications } = executeGuaranteedSpawns(
-              state.objectiveSpawnState,
-              spawnCheck,
-              state.board
-            );
+          if (guaranteedResult) {
+            guaranteedResult.messages.forEach(msg => addToLog(msg));
+            guaranteedResult.floatingTexts.forEach(ft => addFloatingText(ft.q, ft.r, ft.text, ft.colorClass));
 
-            // Log warnings
-            spawnCheck.warnings.forEach(warning => {
-              addToLog(`⚠️ ${warning}`);
-            });
-
-            // Update board with spawned items and quest tiles
-            let updatedBoard = [...state.board];
-
-            // Add items to tiles
-            for (const spawn of itemSpawnLocations) {
-              const tileIndex = updatedBoard.findIndex(t => t.id === spawn.tileId);
-              if (tileIndex >= 0) {
-                const tile = updatedBoard[tileIndex];
-                const newItem: Item = {
-                  id: spawn.item.id,
-                  name: spawn.item.name,
-                  description: spawn.item.description,
-                  type: 'quest_item',
-                  category: 'special',
-                  isQuestItem: true,
-                  questItemType: spawn.item.type,
-                  objectiveId: spawn.item.objectiveId,
-                };
-                updatedBoard[tileIndex] = {
-                  ...tile,
-                  items: [...(tile.items || []), newItem],
-                  hasQuestItem: true,
-                };
-                addToLog(`✨ ${spawn.item.name} har materialisert seg i ${tile.name}!`);
-                addFloatingText(tile.q, tile.r, "QUEST ITEM!", "text-yellow-400");
-              }
-            }
-
-            // Apply quest tile modifications
-            for (const mod of tileModifications) {
-              const tileIndex = updatedBoard.findIndex(t => t.id === mod.tileId);
-              if (tileIndex >= 0) {
-                updatedBoard[tileIndex] = {
-                  ...updatedBoard[tileIndex],
-                  ...mod.modifications,
-                };
-                const tile = updatedBoard[tileIndex];
-                addToLog(`🌟 ${mod.questTile.name} har blitt avslørt i ${tile.name}!`);
-                addFloatingText(tile.q, tile.r, mod.questTile.type.toUpperCase() + "!", "text-purple-400");
-              }
-            }
-
-            // Log urgency status before state update (addToLog updates state synchronously anyway)
-            // This ensures the log message appears in sequence with the state change
-            const urgencyMessage = spawnCheck.urgency === 'critical'
-              ? "📜 Doom nærmer seg! Kritiske elementer har blitt avslørt for å gi deg en sjanse..."
-              : spawnCheck.urgency === 'warning'
-                ? "📜 Tiden er knapp. Noen skjulte elementer har avslørt seg selv..."
-                : null;
-
-            // Update state with new spawns and urgency log together
             setState(prev => {
-              const newLog = urgencyMessage
-                ? [{ 
-                    timestamp: new Date().toLocaleTimeString(), 
-                    message: urgencyMessage, 
-                    category: 'quest_progress' as const 
+              const newLog = guaranteedResult.urgencyMessage
+                ? [{
+                    timestamp: new Date().toLocaleTimeString(),
+                    message: guaranteedResult.urgencyMessage,
+                    category: 'quest_progress' as const
                   }, ...prev.log].slice(0, 50)
                 : prev.log;
               return {
                 ...prev,
-                board: updatedBoard,
-                objectiveSpawnState: updatedState,
+                board: guaranteedResult.updatedBoard,
+                objectiveSpawnState: guaranteedResult.updatedSpawnState,
                 log: newLog,
               };
             });
           }
         }
 
-        // Use the enhanced AI system with smart targeting and special abilities
-        const { updatedEnemies, attacks, messages, specialEvents } = processEnemyTurn(
+        // === STEP 3: ENEMY COMBAT ===
+        const combatResult = processEnemyCombatPhase(
           state.enemies,
           state.players,
-          state.board
+          state.board,
+          state.doom,
+          state.globalEnemyAttackBonus || 0
         );
 
-        // Log AI messages
-        messages.forEach(msg => addToLog(msg));
-
-        // Log special events (teleportation, phasing, etc.)
-        if (specialEvents && specialEvents.length > 0) {
-          for (const event of specialEvents) {
-            addToLog(`⚡ ${event.description}`);
-            if (event.type === 'teleport') {
-              // Visual effect for teleportation
-              addFloatingText(
-                event.enemy.position.q,
-                event.enemy.position.r,
-                "✦ TELEPORT ✦",
-                "text-accent"
-              );
-              triggerScreenShake();
-            }
+        // Log AI messages and special events
+        combatResult.aiMessages.forEach(msg => addToLog(msg));
+        for (const event of combatResult.specialEvents) {
+          addToLog(`⚡ ${event.description}`);
+          if (event.type === 'teleport') {
+            addFloatingText(event.enemy.position.q, event.enemy.position.r, "✦ TELEPORT ✦", "text-accent");
+            triggerScreenShake();
           }
         }
 
-        // Process attacks with enhanced damage calculation
+        // Apply damage to players (using component's checkMadness/applyAllyDeathSanityLoss)
         let updatedPlayers = [...state.players];
-        const combatModifier = getCombatModifier(state.doom);
-
-        for (const attack of attacks) {
-          const { enemy, targetPlayer, isRanged, coverPenalty } = attack;
-          // Include global enemy attack bonus from buff_enemies events
-          const { hpDamage, sanityDamage, message } = calculateEnemyDamage(enemy, targetPlayer, state.globalEnemyAttackBonus || 0);
-
-          // Apply cover penalty for ranged attacks (reduces damage)
-          const coverReduction = isRanged && coverPenalty ? Math.min(coverPenalty, hpDamage) : 0;
-          const totalHpDamage = Math.max(0, hpDamage + combatModifier.enemyDamageBonus - coverReduction);
-
-          // Enhanced log message for ranged attacks
-          if (isRanged) {
-            const coverMsg = coverReduction > 0 ? ` (${coverReduction} blokkert av dekning)` : '';
-            addToLog(`🎯 ${message}${coverMsg}`);
-          } else {
-            addToLog(message);
-          }
-
-          const damageText = `-${totalHpDamage} HP${sanityDamage > 0 ? ` -${sanityDamage} SAN` : ''}`;
-          addFloatingText(
-            targetPlayer.position.q,
-            targetPlayer.position.r,
-            damageText,
-            "text-primary"
-          );
+        for (const attack of combatResult.processedAttacks) {
+          addToLog(attack.message);
+          addFloatingText(attack.targetPosition.q, attack.targetPosition.r,
+            `-${attack.hpDamage} HP${attack.sanityDamage > 0 ? ` -${attack.sanityDamage} SAN` : ''}`,
+            "text-primary");
           triggerScreenShake();
 
-          // Add blood stains when physical damage is dealt
-          if (totalHpDamage > 0) {
-            addBloodstains(targetPlayer.position.q, targetPlayer.position.r, totalHpDamage);
+          if (attack.hpDamage > 0) {
+            addBloodstains(attack.targetPosition.q, attack.targetPosition.r, attack.hpDamage);
           }
 
           let newlyDeadPlayerId: string | null = null;
           updatedPlayers = updatedPlayers.map(p => {
-            if (p.id === targetPlayer.id) {
-              const newHp = Math.max(0, p.hp - totalHpDamage);
-              const newSanity = Math.max(0, p.sanity - sanityDamage);
-              const wasDead = p.isDead;
-              const isDead = newHp <= 0;
-              if (isDead && !wasDead) {
+            if (p.id === attack.targetPlayerId) {
+              const { updatedPlayer, newlyDead } = applyDamageToPlayer(p, attack.hpDamage, attack.sanityDamage);
+              if (newlyDead) {
                 addToLog(`${p.name} har falt for morket...`);
                 newlyDeadPlayerId = p.id;
               }
-              return checkMadness({ ...p, hp: newHp, sanity: newSanity, isDead });
+              return checkMadness(updatedPlayer);
             }
             return p;
           });
 
-          // Apply sanity loss to allies witnessing death
           if (newlyDeadPlayerId) {
             updatedPlayers = applyAllyDeathSanityLoss(newlyDeadPlayerId, updatedPlayers);
           }
         }
 
-        // Check for doom events
+        // === STEP 4: DOOM EVENTS ===
         checkDoomEvents(state.doom - 1);
 
-        // === EVENT CARD DRAWING ===
-        // Draw an event card at the end of MYTHOS phase (50% chance)
-        if (Math.random() < 0.5) {
-          const { card, newDeck, newDiscardPile, reshuffled } = drawEventCard(
-            state.eventDeck,
-            state.eventDiscardPile,
-            state.doom
-          );
-
-          if (card) {
-            if (reshuffled) {
-              addToLog("📜 Event-kortstokken ble blandet på nytt.");
-            }
-
-            // Update deck state and show event
-            setState(prev => ({
-              ...prev,
-              eventDeck: newDeck,
-              eventDiscardPile: newDiscardPile,
-              activeEvent: card
-            }));
-
-            playSound('eventCard');
-            addToLog(`📜 EVENT: ${card.title}`);
-          }
+        // === STEP 5: EVENT CARD DRAWING ===
+        const eventResult = tryDrawEventCard(state.eventDeck, state.eventDiscardPile, state.doom);
+        if (eventResult) {
+          if (eventResult.message) addToLog(eventResult.message);
+          setState(prev => ({
+            ...prev,
+            eventDeck: eventResult.newDeck,
+            eventDiscardPile: eventResult.newDiscardPile,
+            activeEvent: eventResult.card
+          }));
+          playSound('eventCard');
+          addToLog(`📜 EVENT: ${eventResult.card.title}`);
         }
 
-        // Check for game over after enemy attacks
-        const allDead = updatedPlayers.every(p => p.isDead);
-        if (allDead) {
+        // === STEP 6: GAME OVER CHECK ===
+        if (areAllPlayersDead(updatedPlayers)) {
           setTimeout(() => {
             playSound('defeat');
             addToLog("All investigators have fallen. The darkness claims victory.");
             setGameOverType('defeat_death');
             setState(prev => ({
               ...prev,
-              enemies: updatedEnemies.filter(e => e.hp > 0),
+              enemies: combatResult.updatedEnemies.filter(e => e.hp > 0),
               phase: GamePhase.GAME_OVER,
               players: updatedPlayers
             }));
@@ -528,25 +420,17 @@ const ShadowsGame: React.FC = () => {
           return;
         }
 
-        // Transition back to investigator phase after a delay
+        // === STEP 7: PHASE TRANSITION ===
         setTimeout(() => {
           setState(prev => {
-            // Reset actions for all players, applying any AP penalties and then clearing them
-            const resetPlayers = updatedPlayers.map(p => {
-              const basActions = p.isDead ? 0 : 2;
-              const penalty = p.apPenaltyNextTurn || 0;
-              const finalActions = Math.max(0, basActions - penalty);
-              // Clear the penalty after applying it
-              return { ...p, actions: finalActions, apPenaltyNextTurn: undefined };
-            });
-            // Apply madness effects to first player (index 0)
-            const firstPlayer = resetPlayers[0];
-            if (firstPlayer && !firstPlayer.isDead && firstPlayer.activeMadness) {
-              resetPlayers[0] = applyMadnessTurnStartEffects(firstPlayer);
+            const { resetPlayers } = resetPlayersForNewTurn(updatedPlayers);
+            const { shouldApply, playerIndex } = shouldApplyMadnessEffects(resetPlayers);
+            if (shouldApply) {
+              resetPlayers[playerIndex] = applyMadnessTurnStartEffects(resetPlayers[playerIndex]);
             }
             return {
               ...prev,
-              enemies: updatedEnemies.filter(e => e.hp > 0),
+              enemies: combatResult.updatedEnemies.filter(e => e.hp > 0),
               phase: GamePhase.INVESTIGATOR,
               activePlayerIndex: 0,
               players: resetPlayers

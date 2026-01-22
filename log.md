@@ -16500,3 +16500,103 @@ Brukere kan nå:
 - ✅ Slette custom entities
 - ✅ Bruke custom tiles og monstre i scenarioer
 - ✅ Custom entities lagres i localStorage
+
+---
+
+## 2026-01-22: Refactor runEnemyAI Function
+
+### Oppgave
+Refaktorere kompleks kode for bedre lesbarhet og vedlikeholdbarhet.
+
+### Problemidentifikasjon
+`runEnemyAI`-funksjonen i ShadowsGame.tsx var svært kompleks:
+- **~280 linjer** inne i en useEffect hook
+- **6 distinkte ansvarsområder** blandet sammen
+- **5-6 nivåer av nesting** i setState-callbacks
+- Vanskelig å teste og vedlikeholde
+
+### Løsning: Ekstrahert til `mythosPhaseUtils.ts`
+
+Opprettet ny utility-fil: `src/game/utils/mythosPhaseUtils.ts`
+
+#### Ekstraherte Funksjoner
+
+| Funksjon | Ansvar | Linjer |
+|----------|--------|--------|
+| `collectActivePortals()` | Samler aktive portaler fra brettet | ~15 |
+| `processPortalSpawns()` | Ruller for og bestemmer portal-spawns | ~30 |
+| `processGuaranteedSpawns()` | Sikrer quest items/tiles spawner for vinnbart scenario | ~80 |
+| `processEnemyCombatPhase()` | Prosesserer fiendekamp med AI | ~80 |
+| `applyDamageToPlayer()` | Ren funksjon for skadeberegning | ~15 |
+| `tryDrawEventCard()` | Trekker event-kort (50% sjanse) | ~20 |
+| `resetPlayersForNewTurn()` | Nullstiller AP for ny runde | ~15 |
+| `shouldApplyMadnessEffects()` | Sjekker om madness-effekter trengs | ~10 |
+| `areAllPlayersDead()` | Game over-sjekk | ~5 |
+
+#### Typer Eksportert
+
+```typescript
+interface PortalSpawnData { tileId, q, r, types, chance }
+interface PortalSpawnResult { spawns, messages, floatingTexts }
+interface GuaranteedSpawnProcessResult { updatedBoard, updatedSpawnState, messages, floatingTexts, urgencyMessage }
+interface ProcessedAttack { enemy, targetPlayerId, hpDamage, sanityDamage, isRanged, coverPenalty, message }
+interface EnemyCombatResult { updatedEnemies, processedAttacks, aiMessages, floatingTexts, bloodstains, specialEvents }
+interface EventCardResult { card, newDeck, newDiscardPile, reshuffled, message }
+interface PlayerResetResult { resetPlayers }
+```
+
+### Endringer i ShadowsGame.tsx
+
+**Før**: ~280 linjer kompleks logikk inne i useEffect
+
+**Etter**: ~100 linjer med klare steg:
+```typescript
+// === STEP 1: PORTAL SPAWNING ===
+const portals = collectActivePortals(state.board);
+const portalResult = processPortalSpawns(portals);
+
+// === STEP 2: GUARANTEED SPAWNS ===
+const guaranteedResult = processGuaranteedSpawns(...);
+
+// === STEP 3: ENEMY COMBAT ===
+const combatResult = processEnemyCombatPhase(...);
+
+// === STEP 4: DOOM EVENTS ===
+checkDoomEvents(state.doom - 1);
+
+// === STEP 5: EVENT CARD DRAWING ===
+const eventResult = tryDrawEventCard(...);
+
+// === STEP 6: GAME OVER CHECK ===
+if (areAllPlayersDead(updatedPlayers)) { ... }
+
+// === STEP 7: PHASE TRANSITION ===
+const { resetPlayers } = resetPlayersForNewTurn(updatedPlayers);
+```
+
+### Filer Opprettet
+- `src/game/utils/mythosPhaseUtils.ts` (NEW - ~300 linjer)
+
+### Filer Modifisert
+- `src/game/ShadowsGame.tsx`
+  - Lagt til imports fra mythosPhaseUtils
+  - Refaktorert runEnemyAI fra ~280 til ~100 linjer
+  - Bedre kommentarer og struktur
+
+### Fordeler med Refaktoreringen
+
+1. **Lesbarhet**: Klare steg i hovedfunksjonen med beskrivende kommentarer
+2. **Testbarhet**: Hver utility-funksjon kan enhetstestes isolert
+3. **Vedlikeholdbarhet**: Endringer i én fase påvirker ikke andre faser
+4. **Gjenbrukbarhet**: Funksjonene kan brukes andre steder ved behov
+5. **Debugging**: Lettere å finne feil når logikken er separert
+
+### Design-beslutninger
+
+- **Rene funksjoner**: Utility-funksjonene returnerer data i stedet for å endre state direkte
+- **Madness-funksjoner**: Forblir i komponenten siden de avhenger av `addFloatingText`/`addToLog`
+- **Progressiv anvendelse**: Skade appliseres fortsatt i komponenten for å bruke lokale checkMadness
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,617.82 kB bundle)
