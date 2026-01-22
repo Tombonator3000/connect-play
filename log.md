@@ -15146,3 +15146,396 @@ interface NPC {
 ### Build Status
 Venter på testing
 
+---
+
+## 2026-01-22: RPG-lite og Roguelite Forbedringsforslag
+
+### Bakgrunn
+
+Analyse av eksisterende systemer viser at spillet har solid fundament:
+- ✅ Hero Quest-stil kampsystem (terninger, skulls/shields)
+- ✅ Karakterprogresjon (level 1-5, XP, attributter)
+- ✅ Legacy-system med permadeath
+- ✅ Prosedyrell generering (scenarios, tiles, events)
+- ✅ 121+ items, 70 events, 17 lore items, 15 NPCs
+- ✅ Doom tracker og sanity/madness system
+
+### Mangler for fullverdig Roguelite-opplevelse
+
+Følgende er identifisert som hovedmangler:
+
+1. **Meta-progression mellom runs** - Permanent fremgang selv ved død
+2. **Run modifiers** - Valgbare utfordringer for ekstra belønninger
+3. **Synergier og combos** - Item/ability interaksjoner
+4. **Ascension/unlock system** - Låse opp nytt innhold
+5. **Relic system** - Kraftige unike items med trade-offs
+
+---
+
+## FORSLAG: RPG-lite og Roguelite Forbedringer
+
+> **Designprinsipp**: Alt skal være enkelt nok til å passe Hero Quest-filosofien. Ingen kompliserte matematiske formler eller mange regler å huske.
+
+---
+
+### 1. META-PROGRESSION: "The Archive" (Arkivet)
+
+**Konsept**: Selv når helter dør, samler etterforskergruppen kunnskap som hjelper fremtidige helter.
+
+#### 1.1 Archive Points (AP)
+```
+Tjen Archive Points fra:
+- Fullført scenario: +10 AP
+- Overleve scenario: +5 AP
+- Drept boss: +5 AP
+- Funnet lore item: +2 AP
+- Reddet survivor: +3 AP
+- Helt som dør: +2 AP (kunnskap fra deres offer)
+```
+
+#### 1.2 Permanent Upgrades (kjøpes med AP)
+
+| Upgrade | Kostnad | Effekt | Max Level |
+|---------|---------|--------|-----------|
+| **Bedre Utstyr** | 20 AP | Nye helter starter med 50g ekstra | 3 |
+| **Erfarne Rekrutter** | 30 AP | Nye helter starter på level 2 | 1 |
+| **Utvidet Stash** | 15 AP | +5 equipment stash slots | 2 |
+| **Lokalkunnskap** | 25 AP | Start med 1 tile avslørt | 2 |
+| **Kontakter** | 20 AP | +1 NPC spawn per scenario | 2 |
+| **Ritualkunnskap** | 40 AP | Alle klasser kan bruke 1 spell | 1 |
+| **Forberedt** | 15 AP | +1 starting AP første runde | 1 |
+
+**Implementering**:
+```typescript
+interface Archive {
+  totalPoints: number;
+  upgrades: {
+    betterEquipment: number; // 0-3
+    experiencedRecruits: boolean;
+    extendedStash: number; // 0-2
+    localKnowledge: number; // 0-2
+    contacts: number; // 0-2
+    ritualKnowledge: boolean;
+    prepared: boolean;
+  };
+  statistics: {
+    totalRuns: number;
+    totalDeaths: number;
+    totalVictories: number;
+    bossesKilled: number;
+    loreFound: number;
+  };
+}
+```
+
+---
+
+### 2. RUN MODIFIERS: "Forbannelser og Velsignelser"
+
+**Konsept**: Ved scenario-start kan spilleren velge modifiers som gjør spillet vanskeligere for ekstra belønninger.
+
+#### 2.1 Forbannelser (Curses) - Øker vanskelighet
+
+| Forbannelse | Effekt | Bonus |
+|-------------|--------|-------|
+| **Hastig Doom** | Doom synker 2 per runde i stedet for 1 | +50% XP, +50% Gold |
+| **Rustent Utstyr** | Alle våpen har -1 attack die | +25% XP |
+| **Svekket Vilje** | -1 på alle Willpower checks | +25% XP |
+| **Mørkets Grep** | Starter med 1 mindre Sanity | +20% XP |
+| **Fattigdom** | Ingen gold drops dette scenario | +30% XP |
+| **Alene** | Ingen NPC spawns | +40% XP |
+| **Forfølgelse** | +1 fiende spawn per Mythos fase | +50% XP |
+
+#### 2.2 Velsignelser (Blessings) - Koster ressurser
+
+| Velsignelse | Effekt | Kostnad |
+|-------------|--------|---------|
+| **Styrket** | +1 HP for hele scenario | 50 Gold |
+| **Fokusert** | +1 die på første skill check | 30 Gold |
+| **Lykke** | Reroll én terning per runde | 100 Gold |
+| **Beskyttet** | Første Horror check auto-success | 75 Gold |
+| **Forsynt** | Start med 2 Bandages | 40 Gold |
+
+**UI**: Vises som toggles på scenario-start skjermen. Maks 3 curses samtidig.
+
+---
+
+### 3. SYNERGIER: "Kombinasjoner"
+
+**Konsept**: Visse item-kombinasjoner gir bonuseffekter. Enkelt å forstå, belønner utforskning.
+
+#### 3.1 Våpen + Rustning Synergier
+
+| Kombinasjon | Bonus |
+|-------------|-------|
+| **Revolver + Trench Coat** | "Noir Detective": +1 Investigate die |
+| **Shotgun + Leather Jacket** | "Frontier Justice": +1 damage vs cultists |
+| **Knife + Cultist Robes** | "Infiltrator": Enemies don't attack first round |
+| **Machete + Explorer's Jacket** | "Expedition Ready": +1 movement |
+
+#### 3.2 Relic Synergier
+
+| Kombinasjon | Bonus |
+|-------------|-------|
+| **Elder Sign + Necronomicon** | "Balanced Knowledge": No sanity loss from reading |
+| **Protective Ward + Holy Water** | "Divine Shield": +2 defense vs undead |
+| **Dream Crystal + Lucky Rabbit Foot** | "Fortunate Dreamer": Heal 1 sanity per round |
+
+#### 3.3 Klasse-Specific Synergier
+
+| Klasse | Item | Bonus |
+|--------|------|-------|
+| **Detective** | Magnifying Glass | "Sharp Eye": Auto-find secret doors |
+| **Professor** | Necronomicon | "Scholar": +2 Insight per reading (no sanity loss) |
+| **Veteran** | Tommy Gun | "One Man Army": +1 attack die |
+| **Occultist** | Ritual Candles | "Empowered Ritual": Spells cost 1 less Insight |
+| **Doctor** | First Aid Kit | "Field Surgeon": Heal 3 HP instead of 2 |
+| **Journalist** | Camera (nytt item) | "Scoop": +2 Insight per lore item found |
+
+**Implementering**:
+```typescript
+interface Synergy {
+  id: string;
+  name: string;
+  requirements: {
+    items?: string[];
+    class?: string;
+    armor?: string;
+    weapon?: string;
+  };
+  bonus: {
+    type: 'stat' | 'ability' | 'passive';
+    effect: string;
+    value?: number;
+  };
+  description: string;
+}
+```
+
+---
+
+### 4. ASCENSION SYSTEM: "Mysterienivåer"
+
+**Konsept**: Etter å ha vunnet på Normal, låses opp høyere vanskelighetsgrader med nye regler og belønninger.
+
+#### 4.1 Mysterienivåer (0-5)
+
+| Nivå | Navn | Endringer | Unlock Requirement |
+|------|------|-----------|-------------------|
+| **0** | Våkner | Standard spill | Start |
+| **1** | Ser | -1 starting Doom, +1 enemy per spawn | Vinn 3 scenarios på Nivå 0 |
+| **2** | Forstår | Enemies get +1 attack die | Vinn 3 scenarios på Nivå 1 |
+| **3** | Frykter | -1 Max Sanity for alle | Vinn 3 scenarios på Nivå 2 |
+| **4** | Kjemper | Boss spawns at Doom 6 instead of 3 | Vinn 3 scenarios på Nivå 3 |
+| **5** | Transcenderer | All curses active | Vinn 3 scenarios på Nivå 4 |
+
+#### 4.2 Ascension Rewards
+
+| Nivå fullført | Unlock |
+|---------------|--------|
+| Nivå 1 | Ny klasse: **The Medium** (spirit communication) |
+| Nivå 2 | Ny relic: **Yithian Device** (see future events) |
+| Nivå 3 | Ny scenario-type: **Endless Mode** |
+| Nivå 4 | Ny klasse: **The Hunted** (starts cursed, high stats) |
+| Nivå 5 | **Golden Archive** - All AP gains doubled |
+
+---
+
+### 5. RELIC SYSTEM: "Eldgamle Artefakter"
+
+**Konsept**: Sjeldne, kraftige items med både fordeler og ulemper. Kun 1 relic kan bæres om gangen.
+
+#### 5.1 Tier 1 Relics (Uncommon)
+
+| Relic | Fordel | Ulempe |
+|-------|--------|--------|
+| **Drømmernes Øye** | Se fiender gjennom vegger (1 tile) | -1 Max Sanity |
+| **Blodstein** | Heal 1 HP når du dreper fiende | -1 starting Sanity |
+| **Skyggens Kappe** | Enemies need 2 rounds to detect you | Cannot use ranged weapons |
+| **Jernvilje-Amulett** | Immune to Paranoia madness | -1 Willpower |
+
+#### 5.2 Tier 2 Relics (Rare)
+
+| Relic | Fordel | Ulempe |
+|-------|--------|--------|
+| **R'lyeh-Fragment** | +2 attack dice vs bosses | Doom -1 ekstra per runde |
+| **Tidløs Lomme** | +2 AP per runde | Cannot rest (no sanity recovery) |
+| **Dagonittisk Skjell** | Immune to Deep One attacks | -2 Sanity ved scenario start |
+| **Yog-Sothoths Linse** | See all hidden doors/items | Horror checks are DC 5 |
+
+#### 5.3 Tier 3 Relics (Legendary) - Kun 1 eksisterer
+
+| Relic | Fordel | Ulempe |
+|-------|--------|--------|
+| **Necronomicon (Original)** | +5 Insight, can cast any spell | -1 Sanity per runde |
+| **Elder Sign (True)** | Immune to all Horror | Cannot attack (pacifist) |
+| **Shining Trapezohedron** | See entire map | Nyarlathotep hunts you |
+
+**Implementering**:
+```typescript
+interface Relic {
+  id: string;
+  name: string;
+  tier: 1 | 2 | 3;
+  description: string;
+  lore: string;
+  benefit: {
+    type: string;
+    value: number | string;
+    description: string;
+  };
+  drawback: {
+    type: string;
+    value: number | string;
+    description: string;
+  };
+  isUnique: boolean;
+}
+```
+
+---
+
+### 6. ENKLE TILLEGG (Quick Wins)
+
+#### 6.1 "Siste Ord" - Death Perks
+Når en helt dør, velg én bonus for neste helt:
+- **Hevn**: +1 damage vs enemy type som drepte forrige helt
+- **Arv**: Behold 1 item fra forrige helt
+- **Visdom**: +10 XP starting bonus
+- **Advarsler**: Start scenario med Doom +1
+
+#### 6.2 "Veteranmerker" - Achievement Badges
+Synlige merker på karakterkortet som viser prestasjoner:
+- 🎖️ **Overlevende**: Overlev 5 scenarios
+- 💀 **Demonslayer**: Drep 10 bosses totalt
+- 📚 **Forsker**: Finn 20 lore items totalt
+- 🏃 **Flyktning**: Escape 3 scenarios med <3 Doom
+- 🩸 **Såret**: Overlev med 1 HP
+
+#### 6.3 "Desperate Tiltak" - Clutch Mechanics
+Når HP = 1:
+- **Adrenalin**: +1 AP denne runden
+- Når Sanity = 1:
+- **Galskaps Styrke**: +1 attack die, men auto-fail Willpower
+
+#### 6.4 "Kritiske Øyeblikk" - Expanded Crits
+- **Kritisk Suksess** (alle terninger treffer): +1 damage OG velg bonus:
+  - Gratis ekstra attack
+  - Heal 1 HP
+  - +1 Insight
+- **Kritisk Feil** (ingen terninger treffer): Fienden får bonus:
+  - Gratis counter-attack
+  - Du mister 1 AP neste runde
+
+---
+
+### 7. FORENKLET CRAFTING: "Improvisasjon"
+
+**Konsept**: Kombiner 2 items for å lage noe nytt. Kun 5-10 oppskrifter totalt.
+
+| Ingrediens 1 | Ingrediens 2 | Resultat |
+|--------------|--------------|----------|
+| Bandage + Bandage | - | First Aid Kit |
+| Knife + Torch | - | Flaming Knife (+1 damage, lyskilde) |
+| Lockpick + Crowbar | - | Master Thief Tools (+2 lockpick) |
+| Holy Water + Knife | - | Blessed Blade (+2 vs undead) |
+| Flashlight + Ritual Candles | - | Spirit Lamp (see ghosts) |
+
+**Mekanikk**:
+- Bruk 2 AP på "Craft" handling
+- Begge items forbrukes
+- Nytt item legges til inventory
+
+---
+
+### 8. PRIORITERT IMPLEMENTERINGSREKKEFØLGE
+
+#### Fase 1: Foundation (Anbefalt først)
+1. **Archive System** - Meta-progression er kjernen i roguelite
+2. **Run Modifiers** - Curses/Blessings for variasjon
+3. **Death Perks** - Gjør død mindre frustrerende
+
+#### Fase 2: Depth
+4. **Synergier** - Belønner itemkunnskap
+5. **Expanded Crits** - Mer spennende combat
+6. **Desperate Tiltak** - Clutch moments
+
+#### Fase 3: Endgame
+7. **Ascension System** - Langsiktig mål
+8. **Relic System** - Kraftige rewards
+9. **Crafting** - Ekstra dybde
+
+#### Fase 4: Polish
+10. **Veteranmerker** - Visuell progression
+11. **Nye klasser** - Belønning for Ascension
+12. **Endless Mode** - Infinite replayability
+
+---
+
+### 9. TEKNISKE NOTATER
+
+#### Nye Interfaces
+```typescript
+// Meta-progression
+interface Archive { ... }
+
+// Run modifiers
+interface RunModifier {
+  id: string;
+  type: 'curse' | 'blessing';
+  name: string;
+  effect: ModifierEffect;
+  cost?: { type: 'gold' | 'sanity' | 'hp'; amount: number };
+  reward?: { xpMultiplier?: number; goldMultiplier?: number };
+}
+
+// Synergies
+interface Synergy { ... }
+
+// Relics
+interface Relic { ... }
+
+// Ascension
+interface AscensionProgress {
+  currentLevel: number;
+  victoriesPerLevel: number[];
+  unlockedRewards: string[];
+}
+```
+
+#### Påvirker eksisterende systemer
+- `LegacyHero` - Legg til relic slot, synergy tracking
+- `GameState` - Legg til active modifiers, archive reference
+- `constants.ts` - Legg til RELICS, SYNERGIES, MODIFIERS arrays
+- `eventDeckManager.ts` - Modifier effects on events
+
+---
+
+### Oppsummering
+
+**Kjernefilosofi**:
+- Roguelite = "Hver run teller, selv ved tap"
+- RPG-lite = "Enkle valg med merkbar effekt"
+- Hero Quest = "Terningkast, enkle regler, rask action"
+
+**Ikke implementer**:
+- Kompliserte talent trees
+- Matematisk tunge formler
+- For mange valg per runde
+- Systemer som krever mye lesing
+
+**Implementer**:
+- Permanente upgrades mellom runs
+- Enkle trade-offs (curse for bonus XP)
+- Synergier som belønner kombinasjoner
+- Escalating difficulty for veteraner
+
+---
+
+### Neste Steg
+
+Bruker kan velge hvilke forslag som skal implementeres først. Anbefalt start:
+1. Archive System (meta-progression)
+2. Run Modifiers (curses/blessings)
+3. Synergier (item combos)
+
