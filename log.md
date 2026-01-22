@@ -16926,3 +16926,106 @@ if (result.rewards.doomBonus > 0) {
 - ✅ Norske rescue-meldinger lagt til for hver survivor-type
 - ⏳ Full survivor-integrasjon i ShadowsGame venter på fremtidig implementering
 
+---
+
+## 2026-01-22: Fix Player Stuck in Rooms - OPEN Edge Synchronization
+
+### Problem
+Spillere kunne gå inn i rom men ikke komme ut igjen. De satt fast fordi rommet var omringet av vegger (WALL) som blokkerte alle utganger.
+
+### Rotårsak-analyse
+
+**Tidligere fix (edge-indexing) løste ikke hele problemet:**
+Den tidligere fiksen rettet opp inkonsistent edge-indeksering, men problemet kunne fortsatt oppstå når:
+
+1. Spiller står på tile A med **OPEN** edge mot retning X
+2. Spiller går mot X, ny tile B genereres
+3. Tile B har template med **WALL** på siden som peker tilbake mot A
+4. `synchronizeEdgesWithNeighbors` kjører, men synkroniserte IKKE OPEN↔WALL
+5. Spilleren kan gå INN (A sin OPEN tillater det)
+6. Spilleren kan IKKE gå UT (B sin WALL blokkerer)
+
+**Hva `synchronizeEdgesWithNeighbors` gjorde FØR:**
+| Edge-par | Synkronisert? | Resultat |
+|----------|---------------|----------|
+| WINDOW ↔ WALL | ✅ Ja | WALL → WINDOW |
+| DOOR ↔ ikke-DOOR | ✅ Ja | begge → DOOR |
+| STAIRS_UP ↔ STAIRS_DOWN | ✅ Ja | Riktig retning |
+| **OPEN ↔ WALL** | ❌ Nei | **WALL forblir = spiller stuck** |
+
+### Løsning
+
+Lagt til OPEN-synkronisering i `synchronizeEdgesWithNeighbors()`:
+
+```typescript
+// CRITICAL FIX: Synchronize OPEN edges to prevent player getting stuck
+// If neighbor has OPEN edge (passable) and new tile has WALL, player could enter but not exit
+// This converts the WALL to OPEN to ensure bidirectional movement is possible
+if (neighborEdge.type === 'open' && newTileEdge.type === 'wall') {
+  const updatedNewTile = updatedBoard.get(newTileKey)!;
+  const newEdges = [...updatedNewTile.edges];
+  newEdges[dir] = { type: 'open' };
+  updatedBoard.set(newTileKey, { ...updatedNewTile, edges: newEdges });
+  console.log(`[EdgeSync] Converted WALL to OPEN at direction ${dir} on tile ${newTileKey}`);
+}
+
+// Also check the reverse: if new tile has OPEN but neighbor has WALL
+if (newTileEdge.type === 'open' && neighborEdge.type === 'wall') {
+  const neighborEdges = [...neighbor.edges];
+  neighborEdges[oppositeDir] = { type: 'open' };
+  updatedBoard.set(neighborKey, { ...neighbor, edges: neighborEdges });
+  console.log(`[EdgeSync] Converted neighbor WALL to OPEN at direction ${oppositeDir}`);
+}
+```
+
+### Hva `synchronizeEdgesWithNeighbors` gjør NÅ:
+
+| Edge-par | Synkronisert? | Resultat |
+|----------|---------------|----------|
+| WINDOW ↔ WALL | ✅ Ja | WALL → WINDOW |
+| DOOR ↔ ikke-DOOR | ✅ Ja | begge → DOOR |
+| STAIRS_UP ↔ STAIRS_DOWN | ✅ Ja | Riktig retning |
+| **OPEN ↔ WALL** | ✅ **Ja** | **WALL → OPEN** |
+
+### Debug Logging
+
+Lagt til console.log for å spore edge-synkronisering:
+```
+[EdgeSync] Converted WALL to OPEN at direction 2 on tile 3,4 (neighbor has OPEN)
+[EdgeSync] Converted neighbor WALL to OPEN at direction 5 on tile 2,5 (new tile has OPEN)
+```
+
+### Endret fil
+- `src/game/tileConnectionSystem.ts` - Lagt til OPEN↔WALL synkronisering i `synchronizeEdgesWithNeighbors()`
+
+### Teknisk forklaring
+
+**Før (spiller stuck):**
+```
+Tile A (eksisterende)    Tile B (ny)
+   ┌────────┐           ┌────────┐
+   │        │           │        │
+   │   OPEN─┼───────────┼─WALL   │  ← Spiller kan gå INN men ikke UT
+   │        │           │        │
+   └────────┘           └────────┘
+```
+
+**Etter (spiller kan bevege seg fritt):**
+```
+Tile A (eksisterende)    Tile B (synkronisert)
+   ┌────────┐           ┌────────┐
+   │        │           │        │
+   │   OPEN─┼───────────┼─OPEN   │  ← Spiller kan gå begge veier
+   │        │           │        │
+   └────────┘           └────────┘
+```
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,620.35 kB bundle)
+
+### Resultat
+Spillere skal nå ALLTID kunne gå tilbake den veien de kom fra. Hvis en nabo-tile har OPEN kant, vil den nye tilen også få OPEN kant på motsatt side, noe som sikrer toveis bevegelse.
+
+---
+
