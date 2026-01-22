@@ -15642,9 +15642,184 @@ Implementere "Quick Wins" fra forslagsdokumentet:
 
 ### Neste Steg for UI
 
-1. Death Perks modal ved hero-død
-2. Badge display på karakterkort
-3. Desperate indicators i combat UI
-4. Crit choice modal
-5. Crafting panel
+1. ~~Death Perks modal ved hero-død~~ ✅
+2. ~~Badge display på karakterkort~~ ✅
+3. ~~Desperate indicators i combat UI~~ ✅
+4. ~~Crit choice modal~~ ✅
+5. ~~Crafting panel~~ ✅
+
+---
+
+## 2026-01-22: RPG-Lite UI Components Implementation
+
+### Oppgave
+Implementere alle UI-komponenter for RPG-lite systemene som ble lagt til i forrige sesjon:
+- Death Perks modal ved hero-død
+- Badge display på karakterkort
+- Desperate indicators i combat UI
+- Crit choice modal
+- Crafting panel
+
+### Implementerte Komponenter
+
+#### 1. DeathPerkModal.tsx (Siste Ord)
+Modal som vises når en helt dør. Spilleren velger en "death perk" som gir bonus til fremtidige helter.
+
+**Features:**
+- Viser alle 4 death perks med ikoner og farger
+- Revenge perk: Viser fienden som drepte helten
+- Inheritance perk: Velg item å arve (egen item-velger)
+- Wisdom perk: +15 XP start
+- Warnings perk: +1 Doom bonus
+
+**Props:**
+```typescript
+interface DeathPerkModalProps {
+  deadHeroName: string;
+  deadHeroId: string;
+  killerEnemyType?: string;
+  heroItems: Item[];
+  onConfirm: (perk: ActiveDeathPerk) => void;
+  onSkip?: () => void;
+}
+```
+
+#### 2. CritChoiceModal.tsx (Kritisk Treff Bonus)
+Modal som vises ved kritisk treff i kamp. Spilleren velger bonus-effekt.
+
+**Features:**
+- Animert header med sparkle-effekter
+- 4 bonus-valg: Ekstra Angrep, Helbredelse, Innsikt, Mental Styrke
+- Fargekodet kort-valg
+- Visuell feedback på valgt bonus
+
+**Props:**
+```typescript
+interface CritChoiceModalProps {
+  playerName: string;
+  enemyName: string;
+  damageDealt: number;
+  availableBonuses: CriticalBonus[];
+  onChoose: (bonusId: CriticalBonusType) => void;
+}
+```
+
+#### 3. CraftingPanel.tsx (Crafting System)
+Full crafting interface for item-kombinasjoner.
+
+**Features:**
+- To-panel layout: oppskriftsliste + detaljer
+- Viser tilgjengelige vs. manglende ingredienser
+- AP-kostnad og skill check krav
+- Resultat-preview med item-detaljer
+- Visuell crafting-resultat overlay
+
+**Props:**
+```typescript
+interface CraftingPanelProps {
+  player: Player;
+  onCraft: (recipe: CraftingRecipe) => CraftingResult | null;
+  onClose: () => void;
+}
+```
+
+#### 4. DesperateIndicator.tsx (Desperasjon Status)
+Visuell indikator for desperate measures bonuser.
+
+**Features:**
+- Kompakt modus: Inline display med badges
+- Full modus: Detaljert kort med alle aktive bonuser
+- Fargekodede indikatorer per bonus-type
+- Auto-fail varsler for skill checks
+- Animert pulse-effekt når aktiv
+
+**Props:**
+```typescript
+interface DesperateIndicatorProps {
+  hp: number;
+  sanity: number;
+  compact?: boolean;
+  className?: string;
+}
+```
+
+#### 5. BadgeDisplay.tsx (Achievement Badges)
+Viser opptjente achievement badges på karakterkort.
+
+**Features:**
+- Sorterer badges etter rarity (legendary først)
+- Tooltip med badge-detaljer, beskrivelse og belønning
+- Overflow-indikator (+X flere)
+- 3 størrelser: sm, md, lg
+- Rarity-baserte farger og glow-effekter
+
+**Props:**
+```typescript
+interface BadgeDisplayProps {
+  earnedBadges: EarnedBadge[];
+  maxDisplay?: number;
+  size?: 'sm' | 'md' | 'lg';
+  showTooltip?: boolean;
+  className?: string;
+}
+```
+
+### Integrering i CharacterPanel
+
+Oppdatert `CharacterPanel.tsx` for å inkludere:
+1. **BadgeDisplay** - Vises under karakterens navn/klasse
+2. **DesperateIndicator** - Vises under HP/Sanity bars
+
+**Nye imports:**
+```typescript
+import BadgeDisplay from './BadgeDisplay';
+import DesperateIndicator from './DesperateIndicator';
+```
+
+**Nye props:**
+```typescript
+earnedBadges?: EarnedBadge[];
+```
+
+### Filer Opprettet
+
+| Fil | Linjer | Beskrivelse |
+|-----|--------|-------------|
+| `DeathPerkModal.tsx` | ~230 | Death perk selection modal |
+| `CritChoiceModal.tsx` | ~180 | Critical hit bonus selection |
+| `CraftingPanel.tsx` | ~330 | Full crafting interface |
+| `DesperateIndicator.tsx` | ~160 | Desperate measures display |
+| `BadgeDisplay.tsx` | ~230 | Achievement badge display |
+
+### Filer Modifisert
+
+| Fil | Endringer |
+|-----|-----------|
+| `CharacterPanel.tsx` | +30 linjer: Integrert BadgeDisplay og DesperateIndicator |
+
+### Design Patterns Brukt
+
+1. **Modal Pattern**: Alle modaler følger samme struktur med overlay, header, content, footer
+2. **Card Selection**: Konsistent kortvalg-UI med ring/scale feedback
+3. **Color Coding**: Rarity/type-baserte farger gjennomgående
+4. **Compound Components**: Badge og tooltip som separate gjenbrukbare deler
+5. **Conditional Rendering**: Kompakt vs. full modus i DesperateIndicator
+
+### Styling Konsistens
+
+Alle komponenter følger eksisterende design:
+- Primary color: `#e94560` (rød/crimson)
+- Secondary: `#16213e` (mørk blå)
+- Borders: 2px med primary/secondary farger
+- Shadows: `var(--shadow-doom)` for atmosfære
+- Animasjoner: Tailwind animate-in, slide-in-from-bottom
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+### Neste Steg
+- Integrere modaler i ShadowsGame.tsx game flow
+- Koble crafting til AP-system og inventory
+- Legge til badge-tracking i legacy system
+- Trigger death perk modal ved hero-død
 

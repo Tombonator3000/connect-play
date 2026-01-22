@@ -1,15 +1,19 @@
 import React, { useState } from 'react';
-import { Player, Item, countInventoryItems, InventorySlotName, CharacterType } from '../types';
-import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User, Hand, Shirt, Key, X, ArrowRight, Trash2, Pill } from 'lucide-react';
+import { Player, Item, countInventoryItems, InventorySlotName, CharacterType, EarnedBadge } from '../types';
+import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User, Hand, Shirt, Key, X, ArrowRight, Trash2, Pill, Award } from 'lucide-react';
 import { ItemTooltip } from './ItemTooltip';
 import { getCharacterPortrait, getCharacterDisplayName } from '../utils/characterAssets';
 import { getItemIcon as getSpecificItemIcon } from './ItemIcons';
+import BadgeDisplay from './BadgeDisplay';
+import DesperateIndicator from './DesperateIndicator';
+
 interface CharacterPanelProps {
   player: Player | null;
   onUseItem?: (item: Item, slotName: InventorySlotName) => void;
   onUnequipItem?: (slotName: InventorySlotName) => void;
   onEquipFromBag?: (bagIndex: number, targetSlot: 'leftHand' | 'rightHand') => void;
   onDropItem?: (slotName: InventorySlotName) => void;
+  earnedBadges?: EarnedBadge[];  // Earned badges to display
 }
 
 const CharacterPanel: React.FC<CharacterPanelProps> = ({
@@ -17,7 +21,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   onUseItem,
   onUnequipItem,
   onEquipFromBag,
-  onDropItem
+  onDropItem,
+  earnedBadges = []
 }) => {
   const [selectedSlot, setSelectedSlot] = useState<InventorySlotName | null>(null);
   const [showSlotMenu, setShowSlotMenu] = useState(false);
@@ -149,6 +154,18 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
           <div className="flex-1 min-w-0 pt-1">
             <h2 className="text-2xl font-display italic text-parchment tracking-wide leading-none truncate">{player.name}</h2>
             <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mt-2">{getCharacterDisplayName(player.id as CharacterType)}</div>
+            {/* Achievement Badges */}
+            {earnedBadges.length > 0 && (
+              <div className="mt-2 flex items-center gap-1">
+                <Award size={10} className="text-amber-400 opacity-60" />
+                <BadgeDisplay
+                  earnedBadges={earnedBadges}
+                  maxDisplay={4}
+                  size="sm"
+                  showTooltip={true}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -173,6 +190,14 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
               <div className="h-full bg-gradient-to-r from-purple-900 to-purple-500 transition-all duration-700" style={{ width: `${sanPercent}%` }}></div>
             </div>
           </div>
+
+          {/* Desperate Measures Indicator */}
+          <DesperateIndicator
+            hp={player.hp}
+            sanity={player.sanity}
+            compact={false}
+            className="mt-3"
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-3">
