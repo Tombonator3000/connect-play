@@ -1,5 +1,75 @@
 # Development Log
 
+## 2026-01-22: Fix Player Stuck in Rooms - Edge Indexing Inconsistency
+
+### Problem
+Spillere kunne komme inn i noen rom, men ikke ut igjen. Årsaken var at veggkantene (walls) blokkerte utgang selv om inngang var mulig.
+
+### Årsak
+Det var en kritisk inkonsistens i edge-indekseringen på tvers av kodebasen. Tre forskjellige edge-retning-mappinger ble brukt:
+
+**Korrekt standard (brukt i roomSpawnHelpers.ts og contextActionEffects.ts):**
+- Index 0: North (dq=0, dr=-1)
+- Index 1: Northeast (dq=1, dr=-1)
+- Index 2: Southeast (dq=1, dr=0)
+- Index 3: South (dq=0, dr=1)
+- Index 4: Southwest (dq=-1, dr=1)
+- Index 5: Northwest (dq=-1, dr=0)
+
+**Feil mapping i ShadowsGame.tsx getEdgeIndexBetweenTiles:**
+- Index 0 var East i stedet for North
+- Index 2 var North i stedet for Southeast
+- Index 3 var West i stedet for South
+- Index 5 var South i stedet for Northeast
+
+**Feil mapping i hexUtils.ts getEdgeDirection:**
+- Lignende inkonsistens med forskjellig retnings-mapping
+
+### Konsekvens
+Når spilleren prøvde å bevege seg, ble feil edge sjekket. For eksempel:
+- Spilleren ville gå Nord (dq=0, dr=-1)
+- `getEdgeIndexBetweenTiles` returnerte index 2
+- Men tilens Nord-edge var lagret på index 0
+- Dermed ble feil edge sjekket, og spilleren kunne blokkeres av en vegg som ikke eksisterte i den retningen
+
+### Løsning
+Synkronisert edge-indeksering i alle filer til å bruke samme standard:
+
+**Endrede filer:**
+| Fil | Endring |
+|-----|---------|
+| `src/game/ShadowsGame.tsx` | Oppdatert `getEdgeIndexBetweenTiles()` til korrekt edge-mapping |
+| `src/game/hexUtils.ts` | Oppdatert `getEdgeDirection()` til korrekt edge-mapping |
+
+### Tekniske detaljer
+
+**ShadowsGame.tsx linje 2545-2559:**
+```typescript
+// FØR (feil):
+if (dq === 1 && dr === 0) return 0;  // East
+if (dq === 1 && dr === -1) return 1;
+if (dq === 0 && dr === -1) return 2; // North
+...
+
+// ETTER (korrekt):
+if (dq === 0 && dr === -1) return 0;  // North
+if (dq === 1 && dr === -1) return 1;  // Northeast
+if (dq === 1 && dr === 0) return 2;   // Southeast
+...
+```
+
+**hexUtils.ts linje 20-31:**
+Samme korreksjon for `getEdgeDirection()` funksjonen.
+
+### Verifisering
+- Build kjører uten feil
+- Edge-indeksering er nå konsistent med:
+  - `roomSpawnHelpers.ts` EDGE_DIRECTIONS
+  - `contextActionEffects.ts` ADJACENT_OFFSETS
+  - `GameBoard.tsx` HEX_EDGE_POINTS (visuell rendering)
+
+---
+
 ## 2026-01-22: Game Mechanics Implementation (Event Cards, Shop, Crafting, Field Guide)
 
 ### Oppgave
