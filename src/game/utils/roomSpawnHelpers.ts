@@ -361,3 +361,114 @@ export function calculateEnemySpawnPosition(
     r: sourceR + (Math.random() > 0.5 ? 1 : 0)
   };
 }
+
+// ============================================================================
+// FALLBACK TILE SPAWN RESULT
+// ============================================================================
+
+/**
+ * Result of spawning a fallback tile.
+ * Contains all data needed to update game state and log messages.
+ */
+export interface FallbackTileSpawnResult {
+  /** The created fallback tile */
+  tile: Tile;
+  /** The category of the new tile */
+  category: TileCategory;
+  /** The name of the new room */
+  roomName: string;
+  /** Log messages to display */
+  logMessages: string[];
+}
+
+/**
+ * Configuration for creating a fallback tile spawn result.
+ */
+export interface CreateFallbackSpawnConfig {
+  /** Starting Q coordinate */
+  startQ: number;
+  /** Starting R coordinate */
+  startR: number;
+  /** The source category (where player is coming from) */
+  sourceCategory: TileCategory;
+  /** The tile set preference */
+  tileSet: 'indoor' | 'outdoor' | 'mixed';
+  /** Room ID for the new tile */
+  roomId: string;
+  /** Map of existing tiles for edge creation */
+  boardMap: Map<string, Tile>;
+  /** Location descriptions lookup for logging */
+  locationDescriptions: Record<string, string>;
+  /** Function to select a random connectable category */
+  selectCategoryFn: (fromCategory: TileCategory, preferIndoor: boolean) => TileCategory;
+}
+
+/**
+ * Creates a complete fallback tile spawn result.
+ *
+ * This function consolidates the repeated fallback logic that was duplicated
+ * in spawnRoom(). It handles:
+ * - Category selection based on source tile
+ * - Room name selection based on category
+ * - Tile creation with proper edges
+ * - Log message generation
+ *
+ * The caller is responsible for:
+ * - Synchronizing edges with neighbors
+ * - Updating game state
+ * - Calling addToLog with the messages
+ *
+ * @param config - Configuration for fallback tile creation
+ * @returns FallbackTileSpawnResult with tile and log messages
+ */
+export function createFallbackSpawnResult(
+  config: CreateFallbackSpawnConfig
+): FallbackTileSpawnResult {
+  const {
+    startQ,
+    startR,
+    sourceCategory,
+    tileSet,
+    roomId,
+    boardMap,
+    locationDescriptions,
+    selectCategoryFn
+  } = config;
+
+  // Select category based on source
+  const newCategory = selectCategoryFn(
+    sourceCategory,
+    tileSet === 'indoor'
+  );
+
+  // Select room name based on category
+  const roomName = selectRandomRoomName(newCategory, tileSet);
+
+  // Create the fallback tile
+  const tile = createFallbackTile({
+    startQ,
+    startR,
+    newCategory,
+    roomName,
+    roomId,
+    boardMap
+  });
+
+  // Build log messages
+  const logMessages: string[] = [
+    `UTFORSKET: ${roomName}. [${newCategory.toUpperCase()}]`
+  ];
+
+  // Add location description if available
+  const locationDescription = locationDescriptions[roomName];
+  if (locationDescription) {
+    logMessages.push(locationDescription);
+  }
+
+  return {
+    tile,
+    category: newCategory,
+    roomName,
+    logMessages
+  };
+}

@@ -129,7 +129,8 @@ import {
   selectRandomRoomName,
   categoryMatchesTileSet,
   processQuestItemOnNewTile,
-  calculateEnemySpawnPosition
+  calculateEnemySpawnPosition,
+  createFallbackSpawnResult
 } from './utils/roomSpawnHelpers';
 
 const STORAGE_KEY = 'shadows_1920s_save';
@@ -1813,36 +1814,28 @@ const ShadowsGame: React.FC = () => {
       // Fallback: Use legacy system if no templates match
       console.warn(`No valid templates for (${startQ},${startR}), using fallback`);
 
-      // Select category and room name using helpers
-      const newCategory = selectRandomConnectableCategory(
-        sourceCategory as TileCategory,
-        tileSet === 'indoor'
-      );
-      const roomName = selectRandomRoomName(newCategory, tileSet);
-
-      // Create fallback tile using helper
-      const fallbackTile = createFallbackTile({
+      // Use consolidated fallback helper to reduce code duplication
+      const fallbackResult = createFallbackSpawnResult({
         startQ,
         startR,
-        newCategory,
-        roomName,
+        sourceCategory: sourceCategory as TileCategory,
+        tileSet,
         roomId,
-        boardMap
+        boardMap,
+        locationDescriptions: LOCATION_DESCRIPTIONS,
+        selectCategoryFn: selectRandomConnectableCategory
       });
 
-      // Synchronize edges with neighboring tiles using functional setState to avoid stale closure
+      // Synchronize edges with neighboring tiles using functional setState
       setState(prev => {
         const prevBoardMap = boardArrayToMap(prev.board);
-        const syncBoardMap = synchronizeEdgesWithNeighbors(fallbackTile, prevBoardMap);
+        const syncBoardMap = synchronizeEdgesWithNeighbors(fallbackResult.tile, prevBoardMap);
         const syncBoard = boardMapToArray(syncBoardMap);
         return { ...prev, board: syncBoard };
       });
-      addToLog(`UTFORSKET: ${roomName}. [${newCategory.toUpperCase()}]`);
 
-      const locationDescription = LOCATION_DESCRIPTIONS[roomName];
-      if (locationDescription) {
-        addToLog(locationDescription);
-      }
+      // Log all messages from the fallback result
+      fallbackResult.logMessages.forEach(msg => addToLog(msg));
 
       return;
     }
@@ -1853,33 +1846,28 @@ const ShadowsGame: React.FC = () => {
       // Fallback: Create a basic tile if template selection fails (should never happen, but safety net)
       console.warn(`Template selection failed for (${startQ},${startR}), using fallback`);
 
-      const fallbackCategory = selectRandomConnectableCategory(
-        sourceCategory as TileCategory,
-        tileSet === 'indoor'
-      );
-      const fallbackRoomName = selectRandomRoomName(fallbackCategory, tileSet);
-      const fallbackTile = createFallbackTile({
+      // Use consolidated fallback helper to reduce code duplication
+      const fallbackResult = createFallbackSpawnResult({
         startQ,
         startR,
-        newCategory: fallbackCategory,
-        roomName: fallbackRoomName,
+        sourceCategory: sourceCategory as TileCategory,
+        tileSet,
         roomId,
-        boardMap
+        boardMap,
+        locationDescriptions: LOCATION_DESCRIPTIONS,
+        selectCategoryFn: selectRandomConnectableCategory
       });
 
-      // Synchronize edges with neighboring tiles using functional setState to avoid stale closure
+      // Synchronize edges with neighboring tiles using functional setState
       setState(prev => {
         const prevBoardMap = boardArrayToMap(prev.board);
-        const syncBoardMap2 = synchronizeEdgesWithNeighbors(fallbackTile, prevBoardMap);
-        const syncBoard2 = boardMapToArray(syncBoardMap2);
-        return { ...prev, board: syncBoard2 };
+        const syncBoardMap = synchronizeEdgesWithNeighbors(fallbackResult.tile, prevBoardMap);
+        const syncBoard = boardMapToArray(syncBoardMap);
+        return { ...prev, board: syncBoard };
       });
-      addToLog(`UTFORSKET: ${fallbackRoomName}. [${fallbackCategory.toUpperCase()}]`);
 
-      const locationDescription = LOCATION_DESCRIPTIONS[fallbackRoomName];
-      if (locationDescription) {
-        addToLog(locationDescription);
-      }
+      // Log all messages from the fallback result
+      fallbackResult.logMessages.forEach(msg => addToLog(msg));
 
       return;
     }
