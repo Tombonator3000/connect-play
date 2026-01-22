@@ -528,10 +528,38 @@ export function startFollowing(
 
 /**
  * Rescue a survivor (they reach exit or objective)
+ * Returns updated survivor state, rewards, and doom bonus.
+ * The caller should apply the doom bonus using scenario.doomOnSurvivorRescue (default +1).
+ *
+ * Example usage in ShadowsGame.tsx:
+ * const result = rescueSurvivor(survivor);
+ * const doomBonus = state.activeScenario?.doomOnSurvivorRescue ?? 1;
+ * if (doomBonus > 0) {
+ *   setState(prev => ({ ...prev, doom: Math.min(prev.activeScenario?.startDoom || 15, prev.doom + doomBonus) }));
+ * }
  */
 export function rescueSurvivor(
-  survivor: Survivor
-): { survivor: Survivor; rewards: { insight: number; sanity: number; gold: number; item?: string } } {
+  survivor: Survivor,
+  scenarioDoomBonus?: number
+): {
+  survivor: Survivor;
+  rewards: { insight: number; sanity: number; gold: number; item?: string; doomBonus: number };
+  message: string;
+} {
+  // Default doom bonus is +1 (hope from rescue restores resolve)
+  const doomBonus = scenarioDoomBonus ?? 1;
+
+  const rescueMessages: Record<SurvivorType, string> = {
+    civilian: `${survivor.name} er reddet! "Takk! Takk!"`,
+    wounded: `${survivor.name} er brakt i sikkerhet! Deres sår kan nå behandles.`,
+    researcher: `${survivor.name} er reddet! "Mine notater... vi må stoppe dem!"`,
+    cultist_defector: `${survivor.name} har kommet seg unna kulten. "Jeg kan fortelle dere alt."`,
+    child: `${survivor.name} er trygg! Et smil bryter gjennom tårene.`,
+    asylum_patient: `${survivor.name} er fri fra asylet. "Jeg er ikke gal... ikke lenger."`,
+    reporter: `${survivor.name} er reddet! "Verden må få vite sannheten!"`,
+    occultist_ally: `${survivor.name} har overlevd. "Jeg kan hjelpe med ritualene."`
+  };
+
   return {
     survivor: {
       ...survivor,
@@ -541,8 +569,10 @@ export function rescueSurvivor(
       insight: survivor.insightReward,
       sanity: survivor.sanityReward,
       gold: survivor.goldReward,
-      item: survivor.itemReward
-    }
+      item: survivor.itemReward,
+      doomBonus
+    },
+    message: rescueMessages[survivor.type]
   };
 }
 

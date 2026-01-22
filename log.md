@@ -553,7 +553,7 @@ For å beholde noe press, kan scenarioer konfigurere:
 4. ✅ Legge til doom-modifikasjon ved fiende-spawn
 5. ✅ Legge til doom+1 ved elite/boss kill
 6. ✅ Legge til doom+1 ved objective completion
-7. [ ] Legge til doom+1 ved survivor rescue (TODO: survivor system)
+7. ✅ Legge til doom+1 ved survivor rescue (implementert i survivorSystem.ts)
 8. ✅ Oppdatere scenario-defaults til `doomTickPerRound: 0`
 9. [ ] Teste balanse
 
@@ -16839,4 +16839,90 @@ if (!edgeValidation.allowed) {
 ### Build Status
 ✅ TypeScript kompilerer uten feil
 ✅ Build vellykket (1,619.93 kB bundle)
+
+---
+
+## 2026-01-22: Survivor Rescue Doom Bonus Implementert
+
+### Oppgave
+Fikset TODO-kommentar: "Legge til doom+1 ved survivor rescue (TODO: survivor system)"
+
+### Bakgrunn
+Doom-systemet ble omdesignet til et "pressure-based" system hvor gode handlinger (som å redde survivors) gir +doom, og dårlige hendelser (monster spawn, player death) gir -doom. Feltet `doomOnSurvivorRescue` eksisterte allerede i Scenario-interfacet, men logikken for å anvende doom-bonus ved rescue manglet.
+
+### Løsning
+Oppdatert `rescueSurvivor()` funksjonen i `survivorSystem.ts` til å:
+
+1. **Returnere doom bonus** som del av rewards-objektet
+2. **Inkludere rescue-melding** for bedre spillerfeedback
+3. **Dokumentere bruksmønster** for når survivor-systemet integreres i ShadowsGame
+
+### Kodeendring
+
+**Før:**
+```typescript
+export function rescueSurvivor(
+  survivor: Survivor
+): { survivor: Survivor; rewards: { insight: number; sanity: number; gold: number; item?: string } } {
+  return {
+    survivor: { ...survivor, state: 'rescued' },
+    rewards: {
+      insight: survivor.insightReward,
+      sanity: survivor.sanityReward,
+      gold: survivor.goldReward,
+      item: survivor.itemReward
+    }
+  };
+}
+```
+
+**Etter:**
+```typescript
+export function rescueSurvivor(
+  survivor: Survivor,
+  scenarioDoomBonus?: number
+): {
+  survivor: Survivor;
+  rewards: { insight: number; sanity: number; gold: number; item?: string; doomBonus: number };
+  message: string;
+} {
+  const doomBonus = scenarioDoomBonus ?? 1;
+  const rescueMessages: Record<SurvivorType, string> = { ... };
+
+  return {
+    survivor: { ...survivor, state: 'rescued' },
+    rewards: {
+      insight: survivor.insightReward,
+      sanity: survivor.sanityReward,
+      gold: survivor.goldReward,
+      item: survivor.itemReward,
+      doomBonus
+    },
+    message: rescueMessages[survivor.type]
+  };
+}
+```
+
+### Bruk i ShadowsGame.tsx (når survivor-systemet integreres)
+```typescript
+// Når en survivor reddes:
+const result = rescueSurvivor(survivor, state.activeScenario?.doomOnSurvivorRescue);
+addToLog(result.message);
+if (result.rewards.doomBonus > 0) {
+  addToLog(`Håp gjenoppstår! (+${result.rewards.doomBonus} doom)`);
+  setState(prev => ({
+    ...prev,
+    doom: Math.min(prev.activeScenario?.startDoom || 15, prev.doom + result.rewards.doomBonus)
+  }));
+}
+```
+
+### Fil Modifisert
+- `src/game/utils/survivorSystem.ts` - Oppdatert `rescueSurvivor()` funksjon
+
+### Status
+- ✅ TODO-kommentar fikset
+- ✅ Doom bonus inkludert i rescue rewards
+- ✅ Norske rescue-meldinger lagt til for hver survivor-type
+- ⏳ Full survivor-integrasjon i ShadowsGame venter på fremtidig implementering
 
