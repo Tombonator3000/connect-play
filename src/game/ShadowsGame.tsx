@@ -7,7 +7,8 @@ import ContextActionBar from './components/ContextActionBar';
 import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
 import { performSkillCheck } from './utils/combatUtils';
 import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, OCCULTIST_SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES, validateTileConnection, selectRandomConnectableCategory, isDoorRequired, CATEGORY_ZONE_LEVELS, LOCATION_DESCRIPTIONS, getWeatherForDoom, getWeatherEffect, calculateWeatherAgilityPenalty, rollWeatherHorror, WEATHER_EFFECTS, getDarkRoomItem, DARK_ROOM_LOOT_TABLES, getAvailableSurvivorTraits } from './constants';
-import { hexDistance, findPath } from './hexUtils';
+import { hexDistance, findPath, getEdgeDirection, getOppositeEdgeDirection } from './hexUtils';
+import { validateMovementEdges } from './utils/movementUtils';
 import GameBoard from './components/GameBoard';
 import CharacterPanel from './components/CharacterPanel';
 import EnemyPanel from './components/EnemyPanel';
@@ -2425,24 +2426,6 @@ const ShadowsGame: React.FC = () => {
     return tiles;
   };
 
-  // Helper function to get edge index between two tiles
-  const getEdgeIndexBetweenTiles = (from: { q: number; r: number }, to: { q: number; r: number }): number => {
-    const dq = to.q - from.q;
-    const dr = to.r - from.r;
-
-    // Hex edge directions - MUST match roomSpawnHelpers.ts EDGE_DIRECTIONS
-    // and contextActionEffects.ts ADJACENT_OFFSETS for consistent edge indexing
-    // 0: North, 1: Northeast, 2: Southeast, 3: South, 4: Southwest, 5: Northwest
-    if (dq === 0 && dr === -1) return 0;  // North
-    if (dq === 1 && dr === -1) return 1;  // Northeast
-    if (dq === 1 && dr === 0) return 2;   // Southeast (East)
-    if (dq === 0 && dr === 1) return 3;   // South
-    if (dq === -1 && dr === 1) return 4;  // Southwest
-    if (dq === -1 && dr === 0) return 5;  // Northwest (West)
-
-    return -1; // Not adjacent
-  };
-
   const handleAction = (actionType: string, payload?: any) => {
     const activePlayer = state.players[state.activePlayerIndex];
     if (!activePlayer || activePlayer.actions <= 0 || activePlayer.isDead || state.phase !== GamePhase.INVESTIGATOR) return;
@@ -2504,96 +2487,24 @@ const ShadowsGame: React.FC = () => {
           return;
         }
 
-        // Check for blocked edges (walls, blocked, windows) between tiles
+        // Check for blocked edges (walls, blocked, windows, doors, stairs) between tiles
+        // Uses validateMovementEdges from movementUtils to avoid code duplication
         const sourcePos = activePlayer.position;
         const sourceTile = state.board.find(t => t.q === sourcePos.q && t.r === sourcePos.r);
-        const edgeFromSource = getEdgeIndexBetweenTiles(sourcePos, { q, r });
-        const edgeFromTarget = edgeFromSource !== -1 ? (edgeFromSource + 3) % 6 : -1;
+        const edgeFromSource = getEdgeDirection(sourcePos, { q, r });
+        const edgeFromTarget = edgeFromSource !== -1 ? getOppositeEdgeDirection(edgeFromSource) : -1;
 
-        // Check source tile's edge (the side we're leaving from)
-        if (sourceTile && edgeFromSource !== -1 && sourceTile.edges?.[edgeFromSource]) {
-          const sourceEdge = sourceTile.edges[edgeFromSource];
-          // Block movement through walls
-          if (sourceEdge.type === 'wall') {
-            addToLog(`BLOCKED: A solid wall prevents passage.`);
-            return;
+        const edgeValidation = validateMovementEdges(sourceTile, targetTile, edgeFromSource, edgeFromTarget);
+        if (!edgeValidation.allowed) {
+          addToLog(edgeValidation.message);
+          if (edgeValidation.showContextActions && edgeValidation.contextTileId) {
+            const contextTile = state.board.find(t => t.id === edgeValidation.contextTileId);
+            if (contextTile) {
+              setState(prev => ({ ...prev, selectedTileId: contextTile.id }));
+              showContextActions(contextTile, edgeValidation.contextEdgeIndex);
+            }
           }
-          // Block movement through blocked edges (rubble, collapsed, etc)
-          if (sourceEdge.type === 'blocked') {
-            const blockingDesc = sourceEdge.blockingType
-              ? sourceEdge.blockingType.replace('_', ' ')
-              : 'debris';
-            addToLog(`BLOCKED: ${blockingDesc.charAt(0).toUpperCase() + blockingDesc.slice(1)} blocks the way.`);
-            // Show context actions on SOURCE tile since that's where the blocking is
-            setState(prev => ({ ...prev, selectedTileId: sourceTile.id }));
-            showContextActions(sourceTile, edgeFromSource);
-            return;
-          }
-          // Windows require Athletics check (handled as special case)
-          if (sourceEdge.type === 'window') {
-            addToLog(`WINDOW: Cannot pass through window (Athletics DC 4 required).`);
-            // Show context actions on SOURCE tile
-            setState(prev => ({ ...prev, selectedTileId: sourceTile.id }));
-            showContextActions(sourceTile, edgeFromSource);
-            return;
-          }
-          // Stairs require extra AP - show context actions
-          if (sourceEdge.type === 'stairs_up' || sourceEdge.type === 'stairs_down') {
-            const stairsDirection = sourceEdge.type === 'stairs_up' ? 'opp' : 'ned';
-            addToLog(`TRAPP: Trappen går ${stairsDirection}. Bruk 2 AP for å passere.`);
-            setState(prev => ({ ...prev, selectedTileId: sourceTile.id }));
-            showContextActions(sourceTile, edgeFromSource);
-            return;
-          }
-          // Check for closed/locked doors on source tile (can't walk through locked doors!)
-          if (sourceEdge.type === 'door' && sourceEdge.doorState !== 'open' && sourceEdge.doorState !== 'broken') {
-            setState(prev => ({ ...prev, selectedTileId: sourceTile.id }));
-            showContextActions(sourceTile, edgeFromSource);
-            addToLog(`DØR: ${sourceEdge.doorState === 'locked' ? 'Døren er låst' : 'Døren er lukket'}. Du må åpne den først.`);
-            return;
-          }
-        }
-
-        // Check target tile's edge (the side we're entering from)
-        if (targetTile && edgeFromTarget !== -1 && targetTile.edges?.[edgeFromTarget]) {
-          const targetEdge = targetTile.edges[edgeFromTarget];
-          // Block movement through walls
-          if (targetEdge.type === 'wall') {
-            addToLog(`BLOCKED: A solid wall prevents passage.`);
-            return;
-          }
-          // Block movement through blocked edges
-          if (targetEdge.type === 'blocked') {
-            const blockingDesc = targetEdge.blockingType
-              ? targetEdge.blockingType.replace('_', ' ')
-              : 'debris';
-            addToLog(`BLOCKED: ${blockingDesc.charAt(0).toUpperCase() + blockingDesc.slice(1)} blocks the way.`);
-            setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
-            showContextActions(targetTile, edgeFromTarget);
-            return;
-          }
-          // Windows require Athletics check
-          if (targetEdge.type === 'window') {
-            addToLog(`WINDOW: Cannot pass through window (Athletics DC 4 required).`);
-            setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
-            showContextActions(targetTile, edgeFromTarget);
-            return;
-          }
-          // Stairs require extra AP - show context actions
-          if (targetEdge.type === 'stairs_up' || targetEdge.type === 'stairs_down') {
-            const stairsDirection = targetEdge.type === 'stairs_up' ? 'opp' : 'ned';
-            addToLog(`TRAPP: Trappen går ${stairsDirection}. Bruk 2 AP for å passere.`);
-            setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
-            showContextActions(targetTile, edgeFromTarget);
-            return;
-          }
-          // Check for closed/locked doors
-          if (targetEdge.type === 'door' && targetEdge.doorState !== 'open' && targetEdge.doorState !== 'broken') {
-            setState(prev => ({ ...prev, selectedTileId: targetTile.id }));
-            showContextActions(targetTile, edgeFromTarget);
-            addToLog(`DOOR: ${targetEdge.doorState || 'closed'}.`);
-            return;
-          }
+          return;
         }
 
         // Paranoia: Cannot share tile with other players
