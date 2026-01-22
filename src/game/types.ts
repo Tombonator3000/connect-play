@@ -838,6 +838,16 @@ export interface Scenario {
   doomEvents: DoomEvent[];
   estimatedTime?: string;        // e.g. "30-45 min"
   recommendedPlayers?: string;   // e.g. "2-4"
+
+  // Doom Timer Configuration (new pressure-based system)
+  doomTickPerRound?: number;            // Doom decrease per round (default 0 = no auto-tick)
+  doomTickEveryNRounds?: number;        // Alternative: doom decreases every N rounds
+  doomOnMonsterSpawn?: number;          // Doom decrease when monsters spawn (default -1)
+  doomOnEliteKill?: number;             // Doom increase when elite/boss killed (default +1)
+  doomOnObjectiveComplete?: number;     // Doom increase when objective completed (default +1)
+  doomOnSurvivorRescue?: number;        // Doom increase when survivor rescued (default +1)
+  doomOnPlayerDeath?: number;           // Doom decrease when player dies (default -2)
+  doomOnPortalOpen?: number;            // Doom decrease when portal opens (default -2)
 }
 
 // ============================================================================

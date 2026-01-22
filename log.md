@@ -1,5 +1,133 @@
 # Development Log
 
+## 2026-01-22: Redesign av Doom Timer System
+
+### Problemanalyse
+
+**Det opprinnelige systemet:**
+- Doom synker med 1 **automatisk hver runde** uansett hva spilleren gjør
+- Dark Insight madness gir ekstra -1 doom per runde
+- Noen events gir -1 doom
+- **INGEN** måte å bremse eller reversere doom-nedgangen
+
+**Hvorfor dette er problematisk:**
+- Med 10-12 startdoom har du bare 10-12 runder totalt
+- Utforsking tar tid (1-2 AP per tile)
+- Åpne dører, lockpick, undersøke tar handlinger
+- Monstre må håndteres
+- Det er **ingen agency** - spilleren kan ikke påvirke doom
+- Spillet føles som en ren tidsklemme uten strategisk dybde
+
+---
+
+### Nytt Doom-system: "Pressure-Based Doom"
+
+#### Konsept
+I stedet for automatisk nedtelling, synker doom basert på **fiendtlige handlinger og negative events**. Spilleren kan også **motvirke doom** gjennom positive handlinger.
+
+---
+
+#### A) Doom SYNKER (-) ved:
+
+| Trigger | Doom-endring | Beskrivelse |
+|---------|--------------|-------------|
+| **Monster spawn** | -1 | Hver gang nye monstre spawner |
+| **Mythos Event (farlig)** | -1 til -2 | Farlige events fra mythos-kortstokken |
+| **Kultist ritualer** | -1 | Hvis en kultist får utført et ritual (uforstyrret) |
+| **Spiller død/knocked out** | -2 | Tap av en etterforsker |
+| **Kritisk feil på Occult check** | -1 | Okkulte krefter gir motstand |
+| **Boss fiende angriper** | -1 | Større trusler akselererer doom |
+| **Portal aktiveres** | -2 | Dimensjonale rifter |
+| **Objective feiler** | -1 til -2 | Mislykket hovedmål |
+
+---
+
+#### B) Doom ØKER (+) ved:
+
+| Trigger | Doom-endring | Beskrivelse |
+|---------|--------------|-------------|
+| **Drep Elite/Boss fiende** | +1 | Reduserer kultens makt |
+| **Fullfør et objective** | +1 til +2 | Fremgang i etterforskningen |
+| **Bruk Elder Sign** | +1 | Okkult forsvar styrker barrierene |
+| **Banish ritual (Occultist)** | +1 | Sender entiteter tilbake |
+| **Redd en Survivor** | +1 | Håp gir motstandskraft |
+| **Forsegl en portal** | +2 | Blokkerer inntrengere |
+| **Ødelegg et alter/shrine** | +1 | Fjerner kultens kraftkilder |
+
+---
+
+#### C) Doom-events (justert)
+
+Doom-events (fiende-spawn, sanity-tap, etc.) trigges fortsatt ved terskler, men er nå en del av et **balansert økosystem** i stedet for en nedtellings-timer.
+
+---
+
+#### D) Valgfri "Tick" per runde (konfigurerbar)
+
+For å beholde noe press, kan scenarioer konfigurere:
+- `doomTickPerRound: 0` - Ingen automatisk doom (anbefalt for de fleste)
+- `doomTickPerRound: 1` - Klassisk modus (vanskelig)
+- `doomTickEveryNRounds: 2` - Doom synker hver 2. runde (middels)
+
+---
+
+### Implementeringsplan
+
+1. ✅ Dokumentere design (denne seksjonen)
+2. ✅ Legge til `doomTickPerRound` og `doomTickEveryNRounds` i scenario-config
+3. ✅ Modifisere `handleMythosOverlayComplete` til å bruke konfigurerbar tick
+4. ✅ Legge til doom-modifikasjon ved fiende-spawn
+5. ✅ Legge til doom+1 ved elite/boss kill
+6. ✅ Legge til doom+1 ved objective completion
+7. [ ] Legge til doom+1 ved survivor rescue (TODO: survivor system)
+8. ✅ Oppdatere scenario-defaults til `doomTickPerRound: 0`
+9. [ ] Teste balanse
+
+---
+
+### Implementert (2026-01-22)
+
+#### Endrede filer:
+
+| Fil | Endringer |
+|-----|-----------|
+| `src/game/types.ts` | Lagt til nye doom-konfigurasjonsfelt i Scenario interface |
+| `src/game/utils/mythosPhaseHelpers.ts` | Ny funksjon `calculateBaseDoomTick()`, oppdatert `calculateDoomWithDarkInsightPenalty()` |
+| `src/game/ShadowsGame.tsx` | Oppdatert `spawnEnemy()`, combat kill-logikk, objective completion |
+| `src/game/constants.ts` | Dokumentasjon og doom-config for scenario 1, 2, 3 |
+
+#### Nye Scenario-felt (alle valgfrie):
+
+```typescript
+// I Scenario interface (types.ts)
+doomTickPerRound?: number;            // Doom decrease per round (default 0 = no auto-tick)
+doomTickEveryNRounds?: number;        // Alternative: doom decreases every N rounds
+doomOnMonsterSpawn?: number;          // Doom decrease when monsters spawn (default -1)
+doomOnEliteKill?: number;             // Doom increase when elite/boss killed (default +1)
+doomOnObjectiveComplete?: number;     // Doom increase when objective completed (default +1)
+doomOnSurvivorRescue?: number;        // Doom increase when survivor rescued (default +1)
+doomOnPlayerDeath?: number;           // Doom decrease when player dies (default -2)
+doomOnPortalOpen?: number;            // Doom decrease when portal opens (default -2)
+```
+
+#### Eksempel scenario-konfigurasjon:
+
+```typescript
+{
+  id: 's1',
+  title: 'Escape from Blackwood Manor',
+  startDoom: 12,
+  // Pressure-based doom configuration
+  doomTickPerRound: 0,           // No automatic doom decrease
+  doomOnMonsterSpawn: -1,        // Doom decreases when monsters spawn
+  doomOnEliteKill: 1,            // Doom increases when elite/boss killed
+  doomOnObjectiveComplete: 1,    // Doom increases when objective completed
+  // ... rest of scenario
+}
+```
+
+---
+
 ## 2026-01-22: Implementert Partikkel- og Lyseffekter
 
 ### Oppgave

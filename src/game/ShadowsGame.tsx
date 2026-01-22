@@ -1809,7 +1809,8 @@ const ShadowsGame: React.FC = () => {
   }, [activeContextTarget]);
 
   // Spawn enemy helper - must be defined before functions that use it
-  const spawnEnemy = useCallback((type: EnemyType, q: number, r: number) => {
+  // UPDATED: Now includes doom modification based on scenario config (pressure-based doom)
+  const spawnEnemy = useCallback((type: EnemyType, q: number, r: number, applyDoomPenalty: boolean = true) => {
     const bestiary = BESTIARY[type];
     if (!bestiary) return;
 
@@ -1829,7 +1830,21 @@ const ShadowsGame: React.FC = () => {
       traits: bestiary.traits
     };
 
-    setState(prev => ({ ...prev, enemies: [...prev.enemies, newEnemy] }));
+    setState(prev => {
+      // Calculate doom penalty for monster spawn (pressure-based doom system)
+      let doomPenalty = 0;
+      if (applyDoomPenalty) {
+        // Use scenario config or default to -1 per spawn
+        doomPenalty = prev.activeScenario?.doomOnMonsterSpawn ?? -1;
+      }
+      const newDoom = Math.max(0, prev.doom + doomPenalty);
+
+      return {
+        ...prev,
+        enemies: [...prev.enemies, newEnemy],
+        doom: newDoom
+      };
+    });
     playSound('enemySpawn');
     addToLog(`A ${bestiary.name} emerges from the shadows!`);
 
@@ -2056,6 +2071,16 @@ const ShadowsGame: React.FC = () => {
 
         if (exploreCheck.shouldComplete) {
           addToLog(`OBJECTIVE COMPLETE: ${exploreCheck.objective.shortDescription}`);
+
+          // DOOM BONUS: Completing objectives pushes back the darkness (pressure-based doom)
+          const doomBonus = state.activeScenario?.doomOnObjectiveComplete ?? 1;
+          if (doomBonus > 0) {
+            addToLog(`Your progress weakens the darkness! (+${doomBonus} doom)`);
+            setState(prev => ({
+              ...prev,
+              doom: Math.min(prev.activeScenario?.startDoom || 15, prev.doom + doomBonus)
+            }));
+          }
         }
       }
     }
@@ -2970,6 +2995,15 @@ const ShadowsGame: React.FC = () => {
                   setState(prev => ({ ...prev, activeScenario: updatedScenario }));
                   if (killCheck.shouldComplete) {
                     addToLog(`OBJECTIVE COMPLETE: ${killCheck.objective.shortDescription}`);
+                    // DOOM BONUS for kill objective completion
+                    const doomBonus = state.activeScenario?.doomOnObjectiveComplete ?? 1;
+                    if (doomBonus > 0) {
+                      addToLog(`Your progress weakens the darkness! (+${doomBonus} doom)`);
+                      setState(prev => ({
+                        ...prev,
+                        doom: Math.min(prev.activeScenario?.startDoom || 15, prev.doom + doomBonus)
+                      }));
+                    }
                   }
                 }
               }
@@ -3386,6 +3420,19 @@ const ShadowsGame: React.FC = () => {
             const heroId = activePlayer.heroId || activePlayer.id;
             incrementHeroKills(heroId);
 
+            // DOOM BONUS: Check if elite/boss kill grants doom (pressure-based doom system)
+            const isEliteOrBoss = enemy.traits?.includes('elite') ||
+                                  enemy.traits?.includes('massive') ||
+                                  ['shoggoth', 'star_spawn', 'boss', 'high_priest', 'dark_young'].includes(enemy.type);
+            if (isEliteOrBoss) {
+              const doomBonus = state.activeScenario?.doomOnEliteKill ?? 1;
+              if (doomBonus > 0) {
+                addToLog(`The darkness retreats! (+${doomBonus} doom)`);
+                addFloatingText(enemy.position.q, enemy.position.r, `+${doomBonus} DOOM`, "text-green-400");
+                setState(prev => ({ ...prev, doom: Math.min(prev.activeScenario?.startDoom || 15, prev.doom + doomBonus) }));
+              }
+            }
+
             // Update kill objectives
             if (state.activeScenario) {
               const killCheck = checkKillObjectives(state.activeScenario, enemy.type);
@@ -3399,6 +3446,15 @@ const ShadowsGame: React.FC = () => {
                 if (killCheck.shouldComplete) {
                   addToLog(`OBJECTIVE COMPLETE: ${killCheck.objective.shortDescription}`);
                   addFloatingText(activePlayer.position.q, activePlayer.position.r, "OBJECTIVE!", "text-accent");
+                  // DOOM BONUS for kill objective completion (pressure-based doom)
+                  const doomBonus = state.activeScenario?.doomOnObjectiveComplete ?? 1;
+                  if (doomBonus > 0) {
+                    addToLog(`Your progress weakens the darkness! (+${doomBonus} doom)`);
+                    setState(prev => ({
+                      ...prev,
+                      doom: Math.min(prev.activeScenario?.startDoom || 15, prev.doom + doomBonus)
+                    }));
+                  }
                 }
               }
             }
@@ -3550,6 +3606,7 @@ const ShadowsGame: React.FC = () => {
 
     // 2. Update survival objectives
     let updatedScenario = state.activeScenario;
+    let survivalDoomBonus = 0;
     if (state.activeScenario) {
       updatedScenario = updateSurvivalObjectives(state.activeScenario, newRound);
 
@@ -3560,12 +3617,30 @@ const ShadowsGame: React.FC = () => {
       );
       newlyCompletedObjectives.forEach(obj => {
         addToLog(`OBJECTIVE COMPLETE: ${obj.shortDescription}`);
+        // DOOM BONUS for survival objective completion (pressure-based doom)
+        const doomBonus = state.activeScenario?.doomOnObjectiveComplete ?? 1;
+        if (doomBonus > 0) {
+          addToLog(`Your perseverance weakens the darkness! (+${doomBonus} doom)`);
+          survivalDoomBonus += doomBonus;
+        }
       });
     }
 
-    // 3. Calculate doom with dark insight penalty
-    const doomResult = calculateDoomWithDarkInsightPenalty(state.doom, state.players);
-    const newDoom = doomResult.newDoom;
+    // 3. Calculate doom with dark insight penalty (using new configurable system)
+    const doomResult = calculateDoomWithDarkInsightPenalty(
+      state.doom,
+      state.players,
+      state.activeScenario,
+      newRound
+    );
+    // Add survival objective doom bonus to final doom calculation
+    const maxDoom = state.activeScenario?.startDoom || 15;
+    const newDoom = Math.min(maxDoom, Math.max(0, doomResult.newDoom + survivalDoomBonus));
+
+    // Log doom changes based on new pressure-based system
+    if (doomResult.baseDoomTick < 0) {
+      addToLog(`DOOM: The darkness grows closer... (${doomResult.baseDoomTick} doom)`);
+    }
 
     // Log dark insight effects
     if (doomResult.darkInsightPenalty > 0) {

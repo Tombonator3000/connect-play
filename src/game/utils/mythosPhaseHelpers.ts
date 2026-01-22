@@ -18,6 +18,7 @@ import { getWeatherForDoom, getWeatherEffect } from '../constants';
 export interface DoomCalculationResult {
   newDoom: number;
   darkInsightPenalty: number;
+  baseDoomTick: number;
   affectedPlayers: Player[];
 }
 
@@ -44,25 +45,74 @@ export interface WeatherUpdateResult {
 // ============================================================================
 
 /**
+ * Calculate the base doom tick for a round based on scenario configuration.
+ * New pressure-based doom system: doom can tick 0, 1, or every N rounds.
+ *
+ * @param scenario - Current scenario with doom configuration
+ * @param currentRound - The round number (used for doomTickEveryNRounds)
+ * @returns The base doom tick amount (0 or negative number)
+ */
+export function calculateBaseDoomTick(
+  scenario: Scenario | null,
+  currentRound: number
+): number {
+  if (!scenario) {
+    // No scenario - use legacy default of -1 per round
+    return -1;
+  }
+
+  // Check for explicit doomTickPerRound setting
+  const tickPerRound = scenario.doomTickPerRound;
+  if (tickPerRound !== undefined) {
+    return -tickPerRound; // Negative because it's a decrease
+  }
+
+  // Check for doomTickEveryNRounds (doom ticks only every N rounds)
+  const tickEveryN = scenario.doomTickEveryNRounds;
+  if (tickEveryN !== undefined && tickEveryN > 0) {
+    // Only tick on rounds divisible by N
+    if (currentRound % tickEveryN === 0) {
+      return -1;
+    }
+    return 0; // No tick this round
+  }
+
+  // Default: NO automatic doom tick (new default for pressure-based system)
+  return 0;
+}
+
+/**
  * Calculate new doom value including dark insight penalty.
  * Players with dark_insight madness cause extra doom loss.
  *
+ * UPDATED: Now uses scenario-configurable doom tick instead of always -1.
+ *
  * @param currentDoom - Current doom value
  * @param players - All players in the game
+ * @param scenario - Current scenario with doom configuration (optional)
+ * @param currentRound - Current round number (for doomTickEveryNRounds)
  * @returns Doom calculation result with penalty details
  */
 export function calculateDoomWithDarkInsightPenalty(
   currentDoom: number,
-  players: Player[]
+  players: Player[],
+  scenario?: Scenario | null,
+  currentRound: number = 1
 ): DoomCalculationResult {
   const affectedPlayers = players.filter(
     p => !p.isDead && p.activeMadness?.type === 'dark_insight'
   );
   const darkInsightPenalty = affectedPlayers.length;
-  const newDoom = currentDoom - 1 - darkInsightPenalty;
+
+  // Get configurable base doom tick (0 by default in new system)
+  const baseDoomTick = calculateBaseDoomTick(scenario ?? null, currentRound);
+
+  // Calculate new doom: current + baseTick - darkInsightPenalty
+  const newDoom = currentDoom + baseDoomTick - darkInsightPenalty;
 
   return {
     newDoom,
+    baseDoomTick,
     darkInsightPenalty,
     affectedPlayers
   };
