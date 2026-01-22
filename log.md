@@ -1,5 +1,87 @@
 # Development Log
 
+## 2026-01-22: Refactor performAttack Function - Extract Helper Functions
+
+### Oppgave
+Refaktorere kompleks kode i `performAttack`-funksjonen i combatUtils.ts for bedre lesbarhet og vedlikeholdbarhet.
+
+### Problem
+`performAttack`-funksjonen (ca. 127 linjer) hadde flere problemer:
+1. **Blandet ansvar**: Funksjonen håndterte terningkast, kritisk treff/bom-logikk, desperate measures, OG meldingsgenerering
+2. **Kompleks kritisk treff-logikk**: Nøstede if-setninger for å bestemme bonus-alternativer
+3. **Kompleks kritisk bom-logikk**: Separat nøstet logikk for straffer
+4. **Kompleks meldingsgenerering**: 5+ betingede grener for å bygge resultatmelding
+5. **Vanskelig å følge flyt**: Mange lokale variabler og betingelser gjør koden vanskelig å lese
+
+### Løsning
+Ekstraherte fire hjelpefunksjoner for å separere ansvar:
+
+| Funksjon | Ansvar |
+|----------|--------|
+| `formatDiceRolls()` | Formatterer terningkast med suksesser uthevet |
+| `calculateVeteranMeleeBonus()` | Beregner Veteran-klassebonus for nærkampvåpen |
+| `processCriticalHit()` | Håndterer kritisk treff og returnerer bonus-alternativer |
+| `processCriticalMiss()` | Håndterer kritisk bom og returnerer straff |
+| `buildAttackMessage()` | Bygger resultatmelding basert på kampresultat |
+
+### Endrede filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/utils/combatUtils.ts` | Refaktorert `performAttack` med 5 nye hjelpefunksjoner |
+
+### Tekniske detaljer
+
+**Nye hjelpefunksjoner (linje 278-380):**
+```typescript
+function formatDiceRolls(rolls: number[], dc: number): string
+function calculateVeteranMeleeBonus(player: Player, isRanged: boolean): number
+function processCriticalHit(): { expandedCrit, availableCritBonuses, bonusDamage }
+function processCriticalMiss(): { expandedCrit, appliedCritPenalty }
+function buildAttackMessage(params: {...}): string
+```
+
+**Før (kompleks monolittisk funksjon):**
+```typescript
+export function performAttack(...) {
+  // 127 linjer med blandet logikk
+  // Kritisk treff-håndtering inline
+  // Kritisk bom-håndtering inline
+  // Meldingsgenerering med 5+ if/else
+}
+```
+
+**Etter (klar separasjon av ansvar):**
+```typescript
+export function performAttack(...) {
+  // Step 1: Get weapon info
+  // Step 2: Calculate total attack dice
+  // Step 3: Roll attack and defense dice
+  // Step 4: Calculate base damage
+  // Step 5: Determine critical hit/miss
+  // Step 6: Process expanded crits (bruker hjelpefunksjoner)
+  // Step 7: Build result message (bruker buildAttackMessage)
+  // Step 8: Return combat result
+}
+```
+
+### Fordeler med refaktoreringen
+
+1. **Enklere testing**: Hver hjelpefunksjon kan testes isolert
+2. **Bedre lesbarhet**: Hovedfunksjonen har klare steg med beskrivende kommentarer
+3. **Enklere vedlikehold**: Endringer i kritisk-logikk påvirker kun én hjelpefunksjon
+4. **Gjenbrukbarhet**: `formatDiceRolls` og `buildAttackMessage` kan brukes andre steder
+5. **Single Responsibility**: Hver funksjon har ett klart ansvar
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,621.41 kB bundle)
+
+### Resultat
+`performAttack`-funksjonen er nå lettere å forstå og vedlikeholde. Flyten er klar med 8 nummererte steg, og kompleks logikk er ekstrahert til dedikerte hjelpefunksjoner.
+
+---
+
 ## 2026-01-22: Refactor spawnRoom Fallback Logic - Remove Code Duplication
 
 ### Oppgave

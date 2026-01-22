@@ -275,6 +275,110 @@ export function getDefenseDice(player: Player): { defenseDice: number; armorName
   };
 }
 
+// ============================================================================
+// ATTACK HELPER FUNCTIONS - Extracted for clarity
+// ============================================================================
+
+/**
+ * Format dice rolls for display with successes highlighted
+ */
+function formatDiceRolls(rolls: number[], dc: number): string {
+  return rolls.map(r => r >= dc ? `[${r}]` : `${r}`).join(' ');
+}
+
+/**
+ * Calculate veteran class bonus for melee weapons
+ * "Veteran: +1 angrepsterning med narkampvapen (melee)" - REGELBOK.MD
+ */
+function calculateVeteranMeleeBonus(player: Player, isRanged: boolean): number {
+  const isVeteranWithMelee = player.specialAbility === 'combat_bonus' && !isRanged;
+  return isVeteranWithMelee ? 1 : 0;
+}
+
+/**
+ * Process critical hit and return expanded crit result with bonus options
+ */
+function processCriticalHit(): {
+  expandedCrit: ExpandedCritResult;
+  availableCritBonuses: CriticalBonusType[];
+  bonusDamage: number;
+} {
+  const bonusOptions = getRandomCriticalBonuses(3);
+  return {
+    expandedCrit: {
+      isCriticalHit: true,
+      isCriticalMiss: false,
+      bonusDamage: 1,
+      message: 'KRITISK TREFF! Velg en bonus!'
+    },
+    availableCritBonuses: bonusOptions.map(b => b.id),
+    bonusDamage: 1
+  };
+}
+
+/**
+ * Process critical miss and return expanded crit result with applied penalty
+ */
+function processCriticalMiss(): {
+  expandedCrit: ExpandedCritResult;
+  appliedCritPenalty: CriticalPenaltyType;
+} {
+  const penalty = getRandomCriticalPenalty();
+  return {
+    expandedCrit: {
+      isCriticalHit: false,
+      isCriticalMiss: true,
+      bonusDamage: 0,
+      penaltyApplied: penalty.id,
+      message: `KRITISK BOM! ${penalty.name}: ${penalty.description}`
+    },
+    appliedCritPenalty: penalty.id
+  };
+}
+
+/**
+ * Build the combat result message based on attack outcome
+ */
+function buildAttackMessage(params: {
+  player: Player;
+  enemy: Enemy;
+  weaponName: string;
+  damage: number;
+  criticalHit: boolean;
+  criticalMiss: boolean;
+  attackSuccesses: number;
+  defenseSuccesses: number;
+  attackDiceStr: string;
+  defenseDiceStr: string;
+  desperateInfo: string;
+  expandedCrit?: ExpandedCritResult;
+}): string {
+  const {
+    player, enemy, weaponName, damage, criticalHit, criticalMiss,
+    attackSuccesses, defenseSuccesses, attackDiceStr, defenseDiceStr,
+    desperateInfo, expandedCrit
+  } = params;
+
+  if (criticalHit) {
+    return `KRITISK TREFF! ${player.name} (${weaponName}) knuser ${enemy.name}! ${damage} skade!${desperateInfo} (Angrep: ${attackDiceStr} = ${attackSuccesses} | Forsvar: ${defenseDiceStr} = ${defenseSuccesses})`;
+  }
+
+  if (criticalMiss) {
+    const penaltyMsg = expandedCrit ? ` - ${expandedCrit.message}` : '';
+    return `BOMMERT! ${player.name} (${weaponName}) treffer ikke!${penaltyMsg} (${attackDiceStr})`;
+  }
+
+  if (damage > 0) {
+    return `TREFF! ${player.name} (${weaponName}) gjor ${damage} skade mot ${enemy.name}.${desperateInfo} (Angrep: ${attackDiceStr} = ${attackSuccesses} | Forsvar: ${defenseDiceStr} = ${defenseSuccesses})`;
+  }
+
+  if (attackSuccesses > 0) {
+    return `${enemy.name} blokkerer angrepet! (Angrep: ${attackDiceStr} = ${attackSuccesses} | Forsvar: ${defenseDiceStr} = ${defenseSuccesses})`;
+  }
+
+  return `BOMMERT! ${player.name} (${weaponName}) treffer ikke ${enemy.name}. (${attackDiceStr})`;
+}
+
 /**
  * Perform HERO QUEST STYLE attack
  *
@@ -295,102 +399,63 @@ export function performAttack(
 ): CombatResult {
   const dc = 4; // Standard Hero Quest DC (skulls)
 
-  // Get weapon info including whether it's ranged
+  // Step 1: Get weapon info
   const weaponInfo = getWeaponAttackDice(player);
-  const attackDice = weaponInfo.attackDice;
-  const weaponName = weaponInfo.weaponName;
+  const { attackDice, weaponName } = weaponInfo;
 
-  // Veteran class bonus: +1 attack die ONLY with melee weapons (REGELBOK.MD)
-  // "Veteran: +1 angrepsterning med narkampvapen (melee)"
-  const isVeteranWithMelee = player.specialAbility === 'combat_bonus' && !weaponInfo.isRanged;
-  const classBonusDice = isVeteranWithMelee ? 1 : 0;
-
-  // DESPERATE MEASURES: Check for bonuses from low HP/Sanity
+  // Step 2: Calculate total attack dice (weapon + class bonus + desperate bonus)
+  const classBonusDice = calculateVeteranMeleeBonus(player, weaponInfo.isRanged);
   const desperateBonuses = calculateDesperateBonuses(player.hp, player.sanity);
-  const desperateAttackBonus = desperateBonuses.bonusAttackDice;
-  const desperateDamageBonus = desperateBonuses.bonusDamage;
+  const totalAttackDice = attackDice + classBonusDice + desperateBonuses.bonusAttackDice;
 
-  const totalAttackDice = attackDice + classBonusDice + desperateAttackBonus;
-
-  // Roll player's attack dice
+  // Step 3: Roll attack and defense dice
   const attackRolls = rollDice(totalAttackDice);
   const attackSuccesses = countSuccesses(attackRolls, dc);
 
-  // Get enemy defense dice from bestiary
   const bestiaryEntry = BESTIARY[enemy.type];
-  const defenseDice = bestiaryEntry?.defenseDice || 1;
-
-  // Roll enemy's defense dice
-  const defenseRolls = rollDice(defenseDice);
+  const defenseRolls = rollDice(bestiaryEntry?.defenseDice || 1);
   const defenseSuccesses = countSuccesses(defenseRolls, dc);
 
-  // Calculate net damage
+  // Step 4: Calculate base damage
   let damage = Math.max(0, attackSuccesses - defenseSuccesses);
-
-  // Add desperate damage bonus
-  if (damage > 0 && desperateDamageBonus > 0) {
-    damage += desperateDamageBonus;
+  if (damage > 0 && desperateBonuses.bonusDamage > 0) {
+    damage += desperateBonuses.bonusDamage;
   }
 
-  // Critical hit: all attack dice succeeded AND more than defense
+  // Step 5: Determine critical hit/miss
   const criticalHit = attackSuccesses === totalAttackDice && attackSuccesses > defenseSuccesses && totalAttackDice > 0;
   const criticalMiss = attackSuccesses === 0 && totalAttackDice > 0;
 
-  // EXPANDED CRITS
+  // Step 6: Process expanded crits
   let expandedCrit: ExpandedCritResult | undefined;
   let availableCritBonuses: CriticalBonusType[] | undefined;
   let appliedCritPenalty: CriticalPenaltyType | undefined;
 
-  // Critical hit bonus: +1 extra damage + player chooses additional bonus
   if (criticalHit && damage > 0) {
-    damage += 1;
-    // Get random bonus options for player to choose from
-    const bonusOptions = getRandomCriticalBonuses(3);
-    availableCritBonuses = bonusOptions.map(b => b.id);
-    expandedCrit = {
-      isCriticalHit: true,
-      isCriticalMiss: false,
-      bonusDamage: 1,
-      message: 'KRITISK TREFF! Velg en bonus!'
-    };
+    const critResult = processCriticalHit();
+    damage += critResult.bonusDamage;
+    expandedCrit = critResult.expandedCrit;
+    availableCritBonuses = critResult.availableCritBonuses;
+  } else if (criticalMiss) {
+    const critResult = processCriticalMiss();
+    expandedCrit = critResult.expandedCrit;
+    appliedCritPenalty = critResult.appliedCritPenalty;
   }
 
-  // Critical miss penalty: random penalty applied
-  if (criticalMiss) {
-    const penalty = getRandomCriticalPenalty();
-    appliedCritPenalty = penalty.id;
-    expandedCrit = {
-      isCriticalHit: false,
-      isCriticalMiss: true,
-      bonusDamage: 0,
-      penaltyApplied: penalty.id,
-      message: `KRITISK BOM! ${penalty.name}: ${penalty.description}`
-    };
-  }
-
-  // Build message with dice results
-  const attackDiceStr = attackRolls.map(r => r >= dc ? `[${r}]` : `${r}`).join(' ');
-  const defenseDiceStr = defenseRolls.map(r => r >= dc ? `[${r}]` : `${r}`).join(' ');
-
-  // Add desperate measures info to message if active
-  const desperateInfo = desperateAttackBonus > 0 || desperateDamageBonus > 0
-    ? ` [Desperat: +${desperateAttackBonus} terninger, +${desperateDamageBonus} skade]`
+  // Step 7: Build result message
+  const attackDiceStr = formatDiceRolls(attackRolls, dc);
+  const defenseDiceStr = formatDiceRolls(defenseRolls, dc);
+  const desperateInfo = (desperateBonuses.bonusAttackDice > 0 || desperateBonuses.bonusDamage > 0)
+    ? ` [Desperat: +${desperateBonuses.bonusAttackDice} terninger, +${desperateBonuses.bonusDamage} skade]`
     : '';
 
-  let message = '';
-  if (criticalHit) {
-    message = `KRITISK TREFF! ${player.name} (${weaponName}) knuser ${enemy.name}! ${damage} skade!${desperateInfo} (Angrep: ${attackDiceStr} = ${attackSuccesses} | Forsvar: ${defenseDiceStr} = ${defenseSuccesses})`;
-  } else if (criticalMiss) {
-    const penaltyMsg = expandedCrit ? ` - ${expandedCrit.message}` : '';
-    message = `BOMMERT! ${player.name} (${weaponName}) treffer ikke!${penaltyMsg} (${attackDiceStr})`;
-  } else if (damage > 0) {
-    message = `TREFF! ${player.name} (${weaponName}) gjor ${damage} skade mot ${enemy.name}.${desperateInfo} (Angrep: ${attackDiceStr} = ${attackSuccesses} | Forsvar: ${defenseDiceStr} = ${defenseSuccesses})`;
-  } else if (attackSuccesses > 0) {
-    message = `${enemy.name} blokkerer angrepet! (Angrep: ${attackDiceStr} = ${attackSuccesses} | Forsvar: ${defenseDiceStr} = ${defenseSuccesses})`;
-  } else {
-    message = `BOMMERT! ${player.name} (${weaponName}) treffer ikke ${enemy.name}. (${attackDiceStr})`;
-  }
+  const message = buildAttackMessage({
+    player, enemy, weaponName, damage, criticalHit, criticalMiss,
+    attackSuccesses, defenseSuccesses, attackDiceStr, defenseDiceStr,
+    desperateInfo, expandedCrit
+  });
 
+  // Step 8: Return combat result
   return {
     hit: damage > 0,
     damage,
@@ -405,15 +470,12 @@ export function performAttack(
     horrorTriggered: false,
     sanityLoss: 0,
     message,
-    // Expanded crits
     expandedCrit,
     availableCritBonuses,
     appliedCritPenalty,
-    // Desperate measures
-    desperateBonusesApplied: (desperateAttackBonus > 0 || desperateDamageBonus > 0) ? {
-      bonusAttackDice: desperateAttackBonus,
-      bonusDamage: desperateDamageBonus
-    } : undefined
+    desperateBonusesApplied: (desperateBonuses.bonusAttackDice > 0 || desperateBonuses.bonusDamage > 0)
+      ? { bonusAttackDice: desperateBonuses.bonusAttackDice, bonusDamage: desperateBonuses.bonusDamage }
+      : undefined
   };
 }
 
