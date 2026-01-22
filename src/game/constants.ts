@@ -1,4 +1,17 @@
-import { Character, CharacterType, Item, EventCard, Tile, Scenario, Madness, Spell, BestiaryEntry, EnemyType, Obstacle, ObstacleType, EdgeData, TileCategory, SkillType, OccultistSpell, HQWeapon, HQArmor, WeatherEffect, WeatherType, WeatherCondition, WeatherIntensity, DarkRoomDiscoveryType, DarkRoomContent, createDarkRoomContent, Player, hasLightSource, MilestoneBonus, SurvivorTrait, ClassLevelBonus } from './types';
+import {
+  Character, CharacterType, Item, EventCard, Tile, Scenario, Madness, Spell,
+  BestiaryEntry, EnemyType, Obstacle, ObstacleType, EdgeData, TileCategory,
+  SkillType, OccultistSpell, HQWeapon, HQArmor, WeatherEffect, WeatherType,
+  WeatherCondition, WeatherIntensity, DarkRoomDiscoveryType, DarkRoomContent,
+  createDarkRoomContent, Player, hasLightSource, MilestoneBonus, SurvivorTrait,
+  ClassLevelBonus,
+  // Quick Wins types
+  DeathPerk, DeathPerkType, ActiveDeathPerk,
+  AchievementBadge, EarnedBadge,
+  DesperateMeasure,
+  CriticalBonus, CriticalPenalty, CriticalBonusType, CriticalPenaltyType,
+  CraftingRecipe
+} from './types';
 
 // ============================================================================
 // 1.1 TILE CONNECTION SYSTEM
@@ -4929,4 +4942,671 @@ export function getAutomaticAPBonus(level: number): number {
   if (level >= 5) return 2;
   if (level >= 3) return 1;
   return 0;
+}
+
+// ============================================================================
+// QUICK WINS: RPG-LITE AND ROGUELITE SYSTEMS
+// ============================================================================
+
+// ============================================================================
+// 1. SISTE ORD (DEATH PERKS)
+// ============================================================================
+
+export const DEATH_PERKS: DeathPerk[] = [
+  {
+    id: 'revenge',
+    name: 'Hevn',
+    description: '+1 skade mot fienden som drepte forrige helt',
+    icon: '⚔️',
+    effect: {
+      type: 'damage_bonus',
+      value: 1
+    }
+  },
+  {
+    id: 'inheritance',
+    name: 'Arv',
+    description: 'Behold 1 item fra forrige helt',
+    icon: '🎁',
+    effect: {
+      type: 'item_inherit'
+    }
+  },
+  {
+    id: 'wisdom',
+    name: 'Visdom',
+    description: '+15 XP startbonus',
+    icon: '📖',
+    effect: {
+      type: 'xp_bonus',
+      value: 15
+    }
+  },
+  {
+    id: 'warnings',
+    name: 'Advarsler',
+    description: 'Start scenario med Doom +1',
+    icon: '⚠️',
+    effect: {
+      type: 'doom_bonus',
+      value: 1
+    }
+  }
+];
+
+/**
+ * Get death perk by ID
+ */
+export function getDeathPerk(id: DeathPerkType): DeathPerk | undefined {
+  return DEATH_PERKS.find(p => p.id === id);
+}
+
+// ============================================================================
+// 2. VETERANMERKER (ACHIEVEMENT BADGES)
+// ============================================================================
+
+export const ACHIEVEMENT_BADGES: AchievementBadge[] = [
+  // SURVIVAL BADGES
+  {
+    id: 'survivor_bronze',
+    name: 'Overlevende',
+    description: 'Overlev 3 scenarios',
+    icon: '🎖️',
+    rarity: 'bronze',
+    requirement: { type: 'scenarios_survived', count: 3, perHero: true },
+    reward: { type: 'title', value: 'Overlevende' }
+  },
+  {
+    id: 'survivor_silver',
+    name: 'Hardhudet',
+    description: 'Overlev 7 scenarios med samme helt',
+    icon: '🛡️',
+    rarity: 'silver',
+    requirement: { type: 'scenarios_survived', count: 7, perHero: true },
+    reward: { type: 'starting_bonus', value: 1 } // +1 starting HP
+  },
+  {
+    id: 'survivor_gold',
+    name: 'Udødelig',
+    description: 'Overlev 15 scenarios med samme helt',
+    icon: '👑',
+    rarity: 'gold',
+    requirement: { type: 'scenarios_survived', count: 15, perHero: true },
+    reward: { type: 'title', value: 'Den Udødelige' }
+  },
+
+  // COMBAT BADGES
+  {
+    id: 'demonslayer_bronze',
+    name: 'Monsterjeger',
+    description: 'Drep 10 fiender totalt',
+    icon: '💀',
+    rarity: 'bronze',
+    requirement: { type: 'enemies_killed', count: 10, perHero: false }
+  },
+  {
+    id: 'demonslayer_silver',
+    name: 'Demonslayer',
+    description: 'Drep 5 bosser totalt',
+    icon: '☠️',
+    rarity: 'silver',
+    requirement: { type: 'bosses_killed', count: 5, perHero: false },
+    reward: { type: 'starting_bonus', value: 1 } // +1 damage vs bosses
+  },
+  {
+    id: 'demonslayer_gold',
+    name: 'Titanslayer',
+    description: 'Drep 15 bosser totalt',
+    icon: '🏆',
+    rarity: 'gold',
+    requirement: { type: 'bosses_killed', count: 15, perHero: false },
+    reward: { type: 'title', value: 'Titanslayer' }
+  },
+
+  // SCHOLAR BADGES
+  {
+    id: 'scholar_bronze',
+    name: 'Forsker',
+    description: 'Finn 10 lore items totalt',
+    icon: '📚',
+    rarity: 'bronze',
+    requirement: { type: 'lore_found', count: 10, perHero: false }
+  },
+  {
+    id: 'scholar_silver',
+    name: 'Arkivar',
+    description: 'Finn 25 lore items totalt',
+    icon: '🔮',
+    rarity: 'silver',
+    requirement: { type: 'lore_found', count: 25, perHero: false },
+    reward: { type: 'starting_bonus', value: 2 } // +2 starting Insight
+  },
+  {
+    id: 'scholar_gold',
+    name: 'Vokter av Kunnskap',
+    description: 'Finn 50 lore items totalt',
+    icon: '✨',
+    rarity: 'gold',
+    requirement: { type: 'lore_found', count: 50, perHero: false },
+    reward: { type: 'title', value: 'Vokter av Kunnskap' }
+  },
+
+  // DARING BADGES
+  {
+    id: 'escapist_bronze',
+    name: 'Flyktning',
+    description: 'Fullfør 3 scenarios med Doom under 3',
+    icon: '🏃',
+    rarity: 'bronze',
+    requirement: { type: 'narrow_escapes', count: 3, perHero: false }
+  },
+  {
+    id: 'wounded_bronze',
+    name: 'Såret',
+    description: 'Overlev et scenario med 1 HP',
+    icon: '🩸',
+    rarity: 'bronze',
+    requirement: { type: 'low_hp_survival', count: 1, perHero: true }
+  },
+  {
+    id: 'madness_survivor',
+    name: 'Galskapsberørt',
+    description: 'Overlev 3 scenarios mens du har en Madness',
+    icon: '🌀',
+    rarity: 'silver',
+    requirement: { type: 'madness_survived', count: 3, perHero: true },
+    reward: { type: 'starting_bonus', value: 1 } // +1 Willpower check vs Horror
+  },
+
+  // MASTERY BADGES
+  {
+    id: 'perfectionist',
+    name: 'Perfeksjonist',
+    description: 'Fullfør scenario uten at noen helter dør',
+    icon: '⭐',
+    rarity: 'silver',
+    requirement: { type: 'perfect_scenario', count: 1, perHero: false }
+  },
+  {
+    id: 'untouchable',
+    name: 'Urørlig',
+    description: 'Fullfør scenario uten å ta skade',
+    icon: '💫',
+    rarity: 'legendary',
+    requirement: { type: 'no_damage_scenario', count: 1, perHero: true },
+    reward: { type: 'title', value: 'Den Urørlige' }
+  },
+
+  // WEALTH BADGES
+  {
+    id: 'treasure_hunter',
+    name: 'Skattejeger',
+    description: 'Tjen 500 gold totalt',
+    icon: '💰',
+    rarity: 'bronze',
+    requirement: { type: 'gold_earned', count: 500, perHero: false }
+  },
+  {
+    id: 'millionaire',
+    name: 'Rikmann',
+    description: 'Tjen 2000 gold totalt',
+    icon: '💎',
+    rarity: 'gold',
+    requirement: { type: 'gold_earned', count: 2000, perHero: false },
+    reward: { type: 'starting_bonus', value: 50 } // +50 starting gold
+  }
+];
+
+/**
+ * Check if a badge requirement is met
+ */
+export function checkBadgeRequirement(
+  badge: AchievementBadge,
+  stats: {
+    scenariosSurvived: number;
+    bossesKilled: number;
+    loreFound: number;
+    narrowEscapes: number;
+    lowHpSurvival: number;
+    enemiesKilled: number;
+    goldEarned: number;
+    insightEarned: number;
+    perfectScenarios: number;
+    madnessSurvived: number;
+    noDamageScenarios: number;
+  }
+): boolean {
+  const { requirement } = badge;
+
+  switch (requirement.type) {
+    case 'scenarios_survived': return stats.scenariosSurvived >= requirement.count;
+    case 'bosses_killed': return stats.bossesKilled >= requirement.count;
+    case 'lore_found': return stats.loreFound >= requirement.count;
+    case 'narrow_escapes': return stats.narrowEscapes >= requirement.count;
+    case 'low_hp_survival': return stats.lowHpSurvival >= requirement.count;
+    case 'enemies_killed': return stats.enemiesKilled >= requirement.count;
+    case 'gold_earned': return stats.goldEarned >= requirement.count;
+    case 'insight_earned': return stats.insightEarned >= requirement.count;
+    case 'perfect_scenario': return stats.perfectScenarios >= requirement.count;
+    case 'madness_survived': return stats.madnessSurvived >= requirement.count;
+    case 'no_damage_scenario': return stats.noDamageScenarios >= requirement.count;
+    default: return false;
+  }
+}
+
+/**
+ * Get all badges earned by a hero or globally
+ */
+export function getEarnedBadges(earnedBadgeIds: string[]): AchievementBadge[] {
+  return ACHIEVEMENT_BADGES.filter(b => earnedBadgeIds.includes(b.id));
+}
+
+/**
+ * Get badge progress as percentage
+ */
+export function getBadgeProgress(badge: AchievementBadge, currentCount: number): number {
+  return Math.min(100, Math.round((currentCount / badge.requirement.count) * 100));
+}
+
+// ============================================================================
+// 3. DESPERATE TILTAK (DESPERATE MEASURES)
+// ============================================================================
+
+export const DESPERATE_MEASURES: DesperateMeasure[] = [
+  {
+    id: 'adrenaline',
+    name: 'Adrenalin',
+    description: '+1 AP denne runden når HP = 1',
+    triggerCondition: { type: 'low_hp', threshold: 1 },
+    effect: { type: 'bonus_ap', value: 1, duration: 'round' }
+  },
+  {
+    id: 'madness_strength',
+    name: 'Galskaps Styrke',
+    description: '+1 attack die når Sanity = 1, men auto-fail Willpower',
+    triggerCondition: { type: 'low_sanity', threshold: 1 },
+    effect: { type: 'bonus_attack', value: 1, duration: 'round' },
+    drawback: { type: 'auto_fail_check', skillType: 'willpower' }
+  },
+  {
+    id: 'survival_instinct',
+    name: 'Overlevelsesinstinkt',
+    description: '+1 defense die når HP <= 2',
+    triggerCondition: { type: 'low_hp', threshold: 2 },
+    effect: { type: 'bonus_defense', value: 1, duration: 'round' }
+  },
+  {
+    id: 'desperate_focus',
+    name: 'Desperat Fokus',
+    description: '+2 attack dice når HP = 1 OG Sanity = 1',
+    triggerCondition: { type: 'both', threshold: 1 },
+    effect: { type: 'bonus_attack', value: 2, duration: 'round' }
+  },
+  {
+    id: 'final_stand',
+    name: 'Siste Kamp',
+    description: '+1 damage på alle angrep når HP = 1',
+    triggerCondition: { type: 'low_hp', threshold: 1 },
+    effect: { type: 'bonus_damage', value: 1, duration: 'round' }
+  }
+];
+
+/**
+ * Check which desperate measures are active for a player
+ */
+export function getActiveDesperateMeasures(hp: number, sanity: number): DesperateMeasure[] {
+  return DESPERATE_MEASURES.filter(measure => {
+    const { triggerCondition } = measure;
+    switch (triggerCondition.type) {
+      case 'low_hp':
+        return hp <= triggerCondition.threshold;
+      case 'low_sanity':
+        return sanity <= triggerCondition.threshold;
+      case 'both':
+        return hp <= triggerCondition.threshold && sanity <= triggerCondition.threshold;
+      default:
+        return false;
+    }
+  });
+}
+
+/**
+ * Calculate total bonuses from desperate measures
+ */
+export function calculateDesperateBonuses(hp: number, sanity: number): {
+  bonusAP: number;
+  bonusAttackDice: number;
+  bonusDefenseDice: number;
+  bonusDamage: number;
+  autoFailSkills: ('willpower' | 'strength' | 'agility' | 'intellect')[];
+} {
+  const activeMeasures = getActiveDesperateMeasures(hp, sanity);
+
+  const result = {
+    bonusAP: 0,
+    bonusAttackDice: 0,
+    bonusDefenseDice: 0,
+    bonusDamage: 0,
+    autoFailSkills: [] as ('willpower' | 'strength' | 'agility' | 'intellect')[]
+  };
+
+  for (const measure of activeMeasures) {
+    switch (measure.effect.type) {
+      case 'bonus_ap':
+        result.bonusAP += measure.effect.value;
+        break;
+      case 'bonus_attack':
+        result.bonusAttackDice += measure.effect.value;
+        break;
+      case 'bonus_defense':
+        result.bonusDefenseDice += measure.effect.value;
+        break;
+      case 'bonus_damage':
+        result.bonusDamage += measure.effect.value;
+        break;
+    }
+
+    if (measure.drawback?.type === 'auto_fail_check') {
+      result.autoFailSkills.push(measure.drawback.skillType as typeof result.autoFailSkills[0]);
+    }
+  }
+
+  return result;
+}
+
+// ============================================================================
+// 4. EXPANDED CRITS
+// ============================================================================
+
+export const CRITICAL_BONUSES: CriticalBonus[] = [
+  {
+    id: 'extra_attack',
+    name: 'Ekstra Angrep',
+    description: 'Få et gratis ekstra angrep',
+    icon: '⚔️',
+    effect: { type: 'action', value: 1 }
+  },
+  {
+    id: 'heal_hp',
+    name: 'Helbredelse',
+    description: 'Gjenopprett 1 HP',
+    icon: '❤️',
+    effect: { type: 'heal', value: 1, resource: 'hp' }
+  },
+  {
+    id: 'gain_insight',
+    name: 'Innsikt',
+    description: 'Få +1 Insight',
+    icon: '💡',
+    effect: { type: 'resource', value: 1, resource: 'insight' }
+  },
+  {
+    id: 'recover_sanity',
+    name: 'Mental Styrke',
+    description: 'Gjenopprett 1 Sanity',
+    icon: '🧠',
+    effect: { type: 'heal', value: 1, resource: 'sanity' }
+  }
+];
+
+export const CRITICAL_PENALTIES: CriticalPenalty[] = [
+  {
+    id: 'counter_attack',
+    name: 'Motangrep',
+    description: 'Fienden får et gratis angrep',
+    effect: { type: 'damage', value: 1 }
+  },
+  {
+    id: 'lose_ap',
+    name: 'Mist AP',
+    description: 'Mist 1 AP neste runde',
+    effect: { type: 'lose_resource', value: 1, resource: 'ap' }
+  },
+  {
+    id: 'drop_item',
+    name: 'Mist Utstyr',
+    description: 'Drop et tilfeldig item på bakken',
+    effect: { type: 'lose_resource', value: 1, resource: 'item' }
+  },
+  {
+    id: 'attract_enemy',
+    name: 'Tiltrekk Fiende',
+    description: 'Støy tiltrekker en fiende nærmere',
+    effect: { type: 'spawn', value: 1 }
+  }
+];
+
+/**
+ * Get random critical bonus (player chooses from these)
+ */
+export function getRandomCriticalBonuses(count: number = 3): CriticalBonus[] {
+  const shuffled = [...CRITICAL_BONUSES].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(count, CRITICAL_BONUSES.length));
+}
+
+/**
+ * Get random critical penalty (auto-applied)
+ */
+export function getRandomCriticalPenalty(): CriticalPenalty {
+  const index = Math.floor(Math.random() * CRITICAL_PENALTIES.length);
+  return CRITICAL_PENALTIES[index];
+}
+
+// ============================================================================
+// 5. ENKEL CRAFTING
+// ============================================================================
+
+export const CRAFTING_RECIPES: CraftingRecipe[] = [
+  {
+    id: 'craft_first_aid',
+    name: 'Førstehjelpsutstyr',
+    description: 'Kombiner to bandasjer til et førstehjelpssett',
+    ingredients: [
+      { itemId: 'bandage', quantity: 2 }
+    ],
+    result: { itemId: 'first_aid_kit', quantity: 1 },
+    apCost: 2
+  },
+  {
+    id: 'craft_flaming_knife',
+    name: 'Flammende Kniv',
+    description: 'Kombiner kniv og fakkel for ekstra skade',
+    ingredients: [
+      { itemId: 'knife', quantity: 1 },
+      { itemId: 'torch', quantity: 1 }
+    ],
+    result: { itemId: 'flaming_knife', quantity: 1 },
+    apCost: 2
+  },
+  {
+    id: 'craft_master_tools',
+    name: 'Mestertyv-verktøy',
+    description: 'Kombiner dirker og brekkjern for +2 på låsedirking',
+    ingredients: [
+      { itemId: 'lockpick_set', quantity: 1 },
+      { itemId: 'crowbar', quantity: 1 }
+    ],
+    result: { itemId: 'master_thief_tools', quantity: 1 },
+    apCost: 2
+  },
+  {
+    id: 'craft_blessed_blade',
+    name: 'Velsignet Blad',
+    description: 'Kombiner hellig vann og kniv for +2 skade mot udøde',
+    ingredients: [
+      { itemId: 'holy_water', quantity: 1 },
+      { itemId: 'knife', quantity: 1 }
+    ],
+    result: { itemId: 'blessed_blade', quantity: 1 },
+    apCost: 2,
+    skillCheck: { skill: 'willpower', dc: 4 }
+  },
+  {
+    id: 'craft_spirit_lamp',
+    name: 'Åndelanterne',
+    description: 'Kombiner lommelykt og ritualslys for å se spøkelser',
+    ingredients: [
+      { itemId: 'flashlight', quantity: 1 },
+      { itemId: 'ritual_candles', quantity: 1 }
+    ],
+    result: { itemId: 'spirit_lamp', quantity: 1 },
+    apCost: 2,
+    skillCheck: { skill: 'intellect', dc: 4 }
+  },
+  {
+    id: 'craft_molotov',
+    name: 'Molotov Cocktail',
+    description: 'Kombiner whiskey og bandasje for brennende våpen',
+    ingredients: [
+      { itemId: 'old_whiskey', quantity: 1 },
+      { itemId: 'bandage', quantity: 1 }
+    ],
+    result: { itemId: 'molotov', quantity: 1 },
+    apCost: 1
+  },
+  {
+    id: 'craft_reinforced_vest',
+    name: 'Forsterket Vest',
+    description: 'Forbedre lærjakke med ekstra beskyttelse',
+    ingredients: [
+      { itemId: 'leather_jacket', quantity: 1 },
+      { itemId: 'chain_mail_vest', quantity: 1 }
+    ],
+    result: { itemId: 'reinforced_vest', quantity: 1 },
+    apCost: 3
+  },
+  {
+    id: 'craft_eldritch_torch',
+    name: 'Eldgammel Fakkel',
+    description: 'Kombiner fakkel og ritualslys for mystisk lys',
+    ingredients: [
+      { itemId: 'torch', quantity: 1 },
+      { itemId: 'ritual_candles', quantity: 1 }
+    ],
+    result: { itemId: 'eldritch_torch', quantity: 1 },
+    apCost: 2,
+    skillCheck: { skill: 'willpower', dc: 3 }
+  }
+];
+
+// Crafted items that need to be added to ITEMS array
+export const CRAFTED_ITEMS: Item[] = [
+  {
+    id: 'flaming_knife',
+    name: 'Flammende Kniv',
+    type: 'weapon',
+    effect: '3 Attack Dice, Light Source, +1 vs creatures',
+    attackDice: 3,
+    weaponType: 'melee',
+    ammo: -1,
+    isLightSource: true,
+    goldCost: 0, // Cannot be bought
+    description: 'En kniv med flammer langs bladet. Gir lys og ekstra skade.'
+  },
+  {
+    id: 'master_thief_tools',
+    name: 'Mestertyv-verktøy',
+    type: 'tool',
+    effect: '+2 dice on lockpicking',
+    bonus: 2,
+    statModifier: 'agility',
+    slotType: 'hand',
+    goldCost: 0,
+    description: 'Avanserte verktøy for selv de vanskeligste låser.'
+  },
+  {
+    id: 'blessed_blade',
+    name: 'Velsignet Blad',
+    type: 'weapon',
+    effect: '2 Attack Dice, +2 vs undead',
+    attackDice: 2,
+    weaponType: 'melee',
+    ammo: -1,
+    silent: true,
+    goldCost: 0,
+    description: 'En kniv velsignet med hellig vann. Særlig effektiv mot udøde.'
+  },
+  {
+    id: 'spirit_lamp',
+    name: 'Åndelanterne',
+    type: 'tool',
+    effect: 'Light source, reveals spirits and hidden doors',
+    isLightSource: true,
+    slotType: 'hand',
+    goldCost: 0,
+    description: 'En lanterne som avslører det usynlige.'
+  },
+  {
+    id: 'molotov',
+    name: 'Molotov Cocktail',
+    type: 'consumable',
+    effect: '3 damage to target and adjacent tiles, 1 use',
+    uses: 1,
+    maxUses: 1,
+    goldCost: 0,
+    description: 'En improvisert brannbombe. Bruk med forsiktighet.'
+  },
+  {
+    id: 'reinforced_vest',
+    name: 'Forsterket Vest',
+    type: 'armor',
+    effect: '3 Defense Dice',
+    defenseDice: 3,
+    slotType: 'body',
+    goldCost: 0,
+    description: 'Tungt forsterket beskyttelse.'
+  },
+  {
+    id: 'eldritch_torch',
+    name: 'Eldgammel Fakkel',
+    type: 'tool',
+    effect: 'Light source, +1 die on Horror checks, reveals secrets',
+    isLightSource: true,
+    bonus: 1,
+    statModifier: 'mental_defense',
+    slotType: 'hand',
+    goldCost: 0,
+    description: 'Flammer som brenner med unaturlig lys.'
+  }
+];
+
+/**
+ * Check if player has ingredients for a recipe
+ */
+export function canCraftRecipe(recipe: CraftingRecipe, inventory: Item[]): {
+  canCraft: boolean;
+  missingItems: string[];
+} {
+  const missingItems: string[] = [];
+
+  for (const ingredient of recipe.ingredients) {
+    const count = inventory.filter(item => item.id === ingredient.itemId).length;
+    if (count < ingredient.quantity) {
+      for (let i = count; i < ingredient.quantity; i++) {
+        missingItems.push(ingredient.itemId);
+      }
+    }
+  }
+
+  return {
+    canCraft: missingItems.length === 0,
+    missingItems
+  };
+}
+
+/**
+ * Get available recipes based on inventory
+ */
+export function getAvailableCraftingRecipes(inventory: Item[]): CraftingRecipe[] {
+  return CRAFTING_RECIPES.filter(recipe => {
+    const { canCraft } = canCraftRecipe(recipe, inventory);
+    return canCraft;
+  });
+}
+
+/**
+ * Get crafted item by ID
+ */
+export function getCraftedItem(itemId: string): Item | undefined {
+  return CRAFTED_ITEMS.find(item => item.id === itemId);
 }

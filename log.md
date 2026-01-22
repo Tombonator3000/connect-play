@@ -15539,3 +15539,112 @@ Bruker kan velge hvilke forslag som skal implementeres først. Anbefalt start:
 2. Run Modifiers (curses/blessings)
 3. Synergier (item combos)
 
+---
+
+## 2026-01-22: Quick Wins Implementering - RPG-lite & Roguelite Systems
+
+### Oppgave
+
+Implementere "Quick Wins" fra forslagsdokumentet:
+1. Siste Ord (Death Perks) - Bonus når helt dør
+2. Veteranmerker (Achievement Badges) - Visuelle prestasjonsmerker
+3. Desperate Tiltak (Desperate Measures) - Bonuser ved lav HP/Sanity
+4. Expanded Crits - Mer dramatiske kritiske treff og bom
+5. Enkel Crafting - Simple item-kombinasjoner
+
+### Implementerte Systemer
+
+#### 1. Siste Ord (Death Perks)
+
+**4 Death Perks:**
+| Perk | Navn | Effekt |
+|------|------|--------|
+| revenge | Hevn | +1 skade mot fienden som drepte forrige helt |
+| inheritance | Arv | Behold 1 item fra forrige helt |
+| wisdom | Visdom | +15 XP startbonus |
+| warnings | Advarsler | Start scenario med Doom +1 |
+
+---
+
+#### 2. Veteranmerker (Achievement Badges)
+
+**17 Achievement Badges med 4 rarity-nivåer:**
+- 🥉 Bronze: Overlevende, Monsterjeger, Forsker, Flyktning, Såret, Skattejeger
+- 🥈 Silver: Hardhudet, Demonslayer, Arkivar, Galskapsberørt, Perfeksjonist
+- 🥇 Gold: Udødelig, Titanslayer, Vokter av Kunnskap, Rikmann
+- 💎 Legendary: Urørlig (fullført scenario uten skade)
+
+**Belønninger inkluderer:** Titler, +1 HP start, +2 Insight start, +50 gold start
+
+---
+
+#### 3. Desperate Tiltak (Desperate Measures)
+
+**5 Desperate Measures integrert i kamp:**
+| Measure | Trigger | Effekt |
+|---------|---------|--------|
+| Adrenalin | HP = 1 | +1 AP denne runden |
+| Galskaps Styrke | Sanity = 1 | +1 attack die (auto-fail Willpower) |
+| Overlevelsesinstinkt | HP ≤ 2 | +1 defense die |
+| Desperat Fokus | HP=1 OG Sanity=1 | +2 attack dice |
+| Siste Kamp | HP = 1 | +1 damage på alle angrep |
+
+---
+
+#### 4. Expanded Crits
+
+**Critical Hit Bonuses (spiller velger):**
+- Ekstra Angrep, Helbredelse (+1 HP), Innsikt (+1), Mental Styrke (+1 Sanity)
+
+**Critical Miss Penalties (auto):**
+- Motangrep, Mist AP, Mist Utstyr, Tiltrekk Fiende
+
+---
+
+#### 5. Enkel Crafting System
+
+**8 Crafting Recipes:**
+| Oppskrift | Ingredienser | Resultat |
+|-----------|--------------|----------|
+| Førstehjelpsutstyr | 2x Bandage | First Aid Kit |
+| Flammende Kniv | Knife + Torch | 3 dice weapon + lyskilde |
+| Mestertyv-verktøy | Lockpick + Crowbar | +2 lockpicking |
+| Velsignet Blad | Holy Water + Knife | +2 vs undead |
+| Åndelanterne | Flashlight + Candles | Reveals spirits |
+| Molotov Cocktail | Whiskey + Bandage | 3 AoE damage |
+| Forsterket Vest | 2 armor pieces | 3 defense dice |
+| Eldgammel Fakkel | Torch + Candles | +1 Horror check |
+
+---
+
+### Endrede Filer
+
+| Fil | Endringer |
+|-----|-----------|
+| `src/game/types.ts` | +140 linjer: Nye interfaces for alle 5 systemer |
+| `src/game/constants.ts` | +450 linjer: Konstanter og hjelpefunksjoner |
+| `src/game/utils/combatUtils.ts` | +200 linjer: Integrert i kamp |
+
+### Build Status
+
+✅ Build vellykket
+
+### Statistikk
+
+| System | Antall |
+|--------|--------|
+| Death Perks | 4 |
+| Achievement Badges | 17 |
+| Desperate Measures | 5 |
+| Critical Bonuses/Penalties | 8 |
+| Crafting Recipes + Items | 15 |
+| **Totalt nye elementer** | **49** |
+
+### Neste Steg for UI
+
+1. Death Perks modal ved hero-død
+2. Badge display på karakterkort
+3. Desperate indicators i combat UI
+4. Crit choice modal
+5. Crafting panel
+
