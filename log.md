@@ -1,5 +1,51 @@
 # Development Log
 
+## 2026-01-22: Tile Count Analysis
+
+### Oppgave
+Kartlegge hvor mange tiles spillet har.
+
+### Kilder
+- `src/game/tileConnectionSystem.ts` (TILE_TEMPLATES objekt, linje 2417-2607)
+- `src/assets/tiles/` (bildefiler)
+- `src/game/utils/tileImageAssets.ts` (bilde-mappinger)
+
+### Resultat: 145 Tile Templates
+
+| Kategori | Antall | Tiles |
+|----------|--------|-------|
+| **Foyer** | 6 | foyer_grand, foyer_small, foyer_church, foyer_asylum, foyer_museum, foyer_hotel |
+| **Corridor** | 10 | corridor_straight, corridor_t, corridor_corner, corridor_cross, corridor_wide, corridor_asylum, corridor_museum, corridor_hotel, corridor_hospital, corridor_police |
+| **Room** | 41 | study, bedroom, kitchen, ritual, library, lab, dining, living, parlor, office, gallery, conservatory, nursery, maproom, attic, bathroom, cellarwine, trophy, music, asylum (4), museum (4), hotel (3), hospital (5), police (6) |
+| **Stairs** | 3 | stairs_down, stairs_up, stairs_spiral |
+| **Basement** | 11 | cellar, wine, tunnel, sewer, mine, boiler, icehouse, workshop, cistern, asylum, hotel |
+| **Crypt** | 10 | tomb, altar, tunnel, portal, sanctum, massgrave, starchamber, ossuary, laboratory, prison |
+| **Facade** | 17 | manor, shop, church, warehouse, asylum, hospital, museum, police, witchhouse, hotel, lighthouse, funeral, farmhouse, tavern, bookshop, pawnshop, observatory |
+| **Street** | 13 | main, alley, crossing, corner, bridge, deadend, foggy, market, t_junction, wide, cobbled, narrow, railway |
+| **Urban** | 11 | square, harbor, cemetery, station, market, park, dock, pier, boathouse, fountain, almshouse |
+| **Nature** | 23 | forest (6 varianter), clearing, path, marsh, stones, ruins, swamp, cave, blackpool, shore, tidepools, hilltop, deadtrees, farmfield, trail_corner, trail_crossing, trail_t, forest_stream |
+
+### Totalt
+- **145 tile templates** (definert i `TILE_TEMPLATES`)
+- **83 unike tile-bilder** (.png filer i `src/assets/tiles/`)
+- **200+ bilde-mappinger** (keywords i `TILE_IMAGES` for fleksibel matching)
+
+### Kategori-fordeling (Pie chart data)
+```
+Nature:    23 (15.9%)
+Room:      41 (28.3%)
+Facade:    17 (11.7%)
+Street:    13 (9.0%)
+Urban:     11 (7.6%)
+Basement:  11 (7.6%)
+Crypt:     10 (6.9%)
+Corridor:  10 (6.9%)
+Foyer:      6 (4.1%)
+Stairs:     3 (2.1%)
+```
+
+---
+
 ## 2026-01-22: Refactoring - Extract Tile Image Assets from GameBoard
 
 ### Oppgave
