@@ -8,7 +8,7 @@
  */
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { ArrowLeft, Download, Trash2, RotateCw, Save, Upload, Grid3X3, Eraser, MousePointer, Skull, Package, Target, Settings, CheckCircle, Play, Zap, Users, AlertTriangle, Undo2, Redo2, BookOpen } from 'lucide-react';
+import { ArrowLeft, Download, Trash2, RotateCw, Save, Upload, Grid3X3, Eraser, MousePointer, Skull, Package, Target, Settings, CheckCircle, Play, Zap, Users, AlertTriangle, Undo2, Redo2, BookOpen, Library, Check } from 'lucide-react';
 import useUndoRedo, { UndoableState } from './useUndoRedo';
 import { TileTemplate, ConnectionEdgeType, rotateEdges } from '../../tileConnectionSystem';
 import { TileCategory, FloorType, ZoneLevel, EdgeData, Item, EnemyType, DoorState } from '../../types';
@@ -129,6 +129,7 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
   const [rightPanelTab, setRightPanelTab] = useState<RightPanelTab>('properties');
   const [showPreview, setShowPreview] = useState(false);
   const [showCampaignEditor, setShowCampaignEditor] = useState(false);
+  const [showSavedFeedback, setShowSavedFeedback] = useState(false);
 
   // Undo/Redo
   const {
@@ -426,6 +427,60 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
   }, [tiles, metadata, objectives]);
 
   // ============================================================================
+  // SAVE TO LIBRARY (for Campaign integration)
+  // ============================================================================
+
+  const handleSaveToLibrary = useCallback(() => {
+    if (tiles.size === 0) {
+      alert('Cannot save empty scenario. Add some tiles first.');
+      return;
+    }
+
+    const tilesArray = Array.from(tiles.values());
+
+    // Create SavedQuest object matching the format expected by CampaignEditor and CustomQuestLoader
+    const savedQuest: SavedQuest = {
+      id: metadata.id,
+      metadata,
+      tiles: tilesArray,
+      objectives,
+      triggers,
+      doomEvents,
+      savedAt: new Date().toISOString(),
+      version: '3.1',
+    };
+
+    try {
+      // Load existing saved quests
+      const existingJson = localStorage.getItem('quest_editor_saved_quests');
+      const existingQuests: SavedQuest[] = existingJson ? JSON.parse(existingJson) : [];
+
+      // Check if quest with this ID already exists
+      const existingIndex = existingQuests.findIndex(q => q.id === savedQuest.id);
+
+      if (existingIndex >= 0) {
+        // Update existing quest
+        existingQuests[existingIndex] = savedQuest;
+      } else {
+        // Add new quest
+        existingQuests.push(savedQuest);
+      }
+
+      // Save to localStorage
+      localStorage.setItem('quest_editor_saved_quests', JSON.stringify(existingQuests));
+
+      // Show success feedback
+      setShowSavedFeedback(true);
+      setTimeout(() => setShowSavedFeedback(false), 2000);
+
+      console.log(`Scenario "${metadata.title}" saved to library. Now available in Campaign Editor.`);
+    } catch (error) {
+      console.error('Failed to save to library:', error);
+      alert('Failed to save scenario to library');
+    }
+  }, [tiles, metadata, objectives, triggers, doomEvents]);
+
+  // ============================================================================
   // JSON IMPORT
   // ============================================================================
 
@@ -650,9 +705,31 @@ const QuestEditor: React.FC<QuestEditorProps> = ({ onBack }) => {
           size="sm"
           onClick={handleExport}
           className="text-slate-300 hover:text-white"
-          title="Export scenario"
+          title="Export scenario as JSON file"
         >
           <Download className="w-4 h-4" />
+        </Button>
+
+        {/* Save to Library button - makes quest available for Campaign Editor */}
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleSaveToLibrary}
+          disabled={tiles.size === 0}
+          className={`${showSavedFeedback ? 'text-green-400' : 'text-amber-400'} hover:text-amber-300 disabled:opacity-50`}
+          title="Save to Library - Makes this quest available in Campaign Editor"
+        >
+          {showSavedFeedback ? (
+            <>
+              <Check className="w-4 h-4 mr-1" />
+              Saved!
+            </>
+          ) : (
+            <>
+              <Library className="w-4 h-4 mr-1" />
+              Save to Library
+            </>
+          )}
         </Button>
 
         <Button

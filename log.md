@@ -15823,3 +15823,108 @@ Alle komponenter følger eksisterende design:
 - Legge til badge-tracking i legacy system
 - Trigger death perk modal ved hero-død
 
+
+---
+
+## 2026-01-22: Quest Editor - Save to Library for Campaign Integration
+
+### Oppgave
+Implementere funksjonalitet for at lagrede scenarier/quests fra Quest Editor kan kobles til kampanjer i Campaign Editor.
+
+### Problem
+Quest Editor kunne bare eksportere scenarier som JSON-filer (nedlasting). CampaignEditor og CustomQuestLoader forventet quests lagret i localStorage (`quest_editor_saved_quests`). Dette betydde at brukere ikke kunne velge sine egne lagde quests når de laget kampanjer.
+
+### Løsning
+Lagt til en "Save to Library" funksjon i QuestEditor som lagrer det aktive questet direkte til localStorage, slik at det blir tilgjengelig i:
+- CampaignEditor's quest-velger dropdown
+- CustomQuestLoader's quest-liste
+
+### Implementering
+
+#### 1. Ny "Save to Library" knapp i QuestEditor toolbar
+
+**Fil:** `src/game/components/QuestEditor/index.tsx`
+
+**Nye imports:**
+```typescript
+import { Library, Check } from 'lucide-react';
+```
+
+**Ny state:**
+```typescript
+const [showSavedFeedback, setShowSavedFeedback] = useState(false);
+```
+
+**Ny funksjon `handleSaveToLibrary()`:**
+- Validerer at scenarioet ikke er tomt
+- Konverterer tiles, objectives, triggers og doomEvents til SavedQuest format
+- Sjekker om quest med samme ID allerede eksisterer (oppdaterer i så fall)
+- Lagrer til localStorage under `quest_editor_saved_quests`
+- Viser visuell feedback (grønn "Saved!" tekst i 2 sekunder)
+
+#### 2. UI for Save to Library knapp
+
+**Plassering:** Mellom Export og Clear All knappene i toolbar
+
+**Features:**
+- Amber farge som indikerer "lagre til bibliotek"
+- Skifter til grønn "Saved!" med check-ikon i 2 sekunder etter lagring
+- Deaktivert når scenarioet er tomt
+- Tooltip forklarer at quest blir tilgjengelig i Campaign Editor
+
+### Bruksflyt etter endring
+
+1. **Lag scenario i Quest Editor**
+   - Plasser tiles, monstre, items
+   - Definer objectives
+   - Sett metadata (tittel, difficulty, briefing)
+
+2. **Klikk "Save to Library"**
+   - Scenarioet lagres til localStorage
+   - Visuell feedback viser at det er lagret
+
+3. **Åpne Campaign Editor**
+   - Klikk "Campaign" knappen i QuestEditor toolbar
+   - Opprett ny kampanje
+
+4. **Legg til quest i kampanje**
+   - Klikk "Add Quest"
+   - I "Quest File ID" dropdown, velg ditt lagrede scenario
+   - Questet er nå koblet til kampanjen
+
+### Tekniske Detaljer
+
+**SavedQuest format (fra CustomQuestLoader):**
+```typescript
+interface SavedQuest {
+  id: string;
+  metadata: ScenarioMetadata;
+  tiles: EditorTile[];
+  objectives: EditorObjective[];
+  triggers?: EditorTrigger[];
+  doomEvents?: EditorDoomEvent[];
+  savedAt: string;
+  version: string;
+}
+```
+
+**localStorage nøkkel:** `quest_editor_saved_quests`
+
+### Filer Modifisert
+- `src/game/components/QuestEditor/index.tsx`
+  - Lagt til Library og Check ikoner i imports
+  - Ny state: `showSavedFeedback`
+  - Ny funksjon: `handleSaveToLibrary()`
+  - Ny knapp i toolbar med visuell feedback
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,529.65 kB bundle)
+
+### Resultat
+Brukere kan nå:
+- Lage scenarier i Quest Editor
+- Lagre dem til biblioteket med ett klikk
+- Bruke dem i Campaign Editor for å lage multi-quest kampanjer
+- Scenarier er også tilgjengelige i Custom Quest Loader
+
