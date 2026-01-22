@@ -41,6 +41,7 @@ export interface ObjectiveSpawnState {
   questTiles: QuestTile[];
   tilesExplored: number;
   itemsCollected: number;
+  tilesSinceLastSpawn: number;  // Pity timer - tracks tiles explored without finding items
 }
 
 // ============================================================================
@@ -352,6 +353,7 @@ export function initializeObjectiveSpawns(scenario: Scenario): ObjectiveSpawnSta
     questTiles,
     tilesExplored: 0,
     itemsCollected: 0,
+    tilesSinceLastSpawn: 0,
   };
 }
 
@@ -398,8 +400,40 @@ function createQuestTile(objective: ScenarioObjective): QuestTile {
 // ============================================================================
 
 /**
+ * SPAWN PROBABILITY CONFIGURATION
+ * These values control how often quest items appear.
+ * Increased significantly to ensure items are findable within reasonable time.
+ */
+export const SPAWN_PROBABILITY_CONFIG = {
+  // Early game (first 15% of exploration)
+  EARLY_GAME_THRESHOLD: 0.15,
+  EARLY_SPAWN_CHANCE: 0.35,           // 35% base chance early game (was 10%)
+
+  // Normal game
+  NORMAL_SPAWN_CHANCE: 0.45,          // 45% base chance (was 25%)
+  BEHIND_SCHEDULE_CHANCE: 0.70,       // 70% when behind (was 50%)
+
+  // Pity timer - guaranteed spawn after X tiles without finding anything
+  PITY_TIMER_TILES: 4,                // Force spawn after 4 tiles without quest item
+
+  // First item guarantee - ensure players find something early
+  FIRST_ITEM_GUARANTEE_TILES: 3,      // Guarantee first item within 3 tiles
+
+  // Maximum spawn chance cap
+  MAX_SPAWN_CHANCE: 0.90,             // Cap at 90% (was 80%)
+
+  // Room bonuses are added on top (ritual +25%, study +20%, etc.)
+};
+
+/**
  * Determines if a quest item should spawn on the given tile.
- * Items spawn progressively as players explore more tiles.
+ * Uses a "pity timer" system to ensure items spawn at a reasonable rate.
+ *
+ * Key improvements:
+ * - Higher base spawn chances (35-70% vs old 10-50%)
+ * - Pity timer: guaranteed spawn after 4 tiles without finding anything
+ * - First item guarantee: ensure something spawns within first 3 tiles
+ * - Room bonuses for thematic locations
  */
 export function shouldSpawnQuestItem(
   state: ObjectiveSpawnState,
@@ -410,56 +444,83 @@ export function shouldSpawnQuestItem(
   // Don't spawn on non-searchable tiles
   if (!tile.searchable) return null;
 
-  // Don't spawn on corridors or streets
+  // Don't spawn on corridors or streets (too common/boring)
   if (tile.category === 'corridor' || tile.category === 'street') return null;
 
   // Find unspawned items
   const unspawnedItems = state.questItems.filter(item => !item.spawned);
   if (unspawnedItems.length === 0) return null;
 
-  // Calculate spawn probability based on exploration progress
-  // More tiles explored = higher chance items spawn
-  const totalItemsNeeded = state.questItems.length;
-  const estimatedTilesToExplore = scenario.startDoom * 1.5; // Rough estimate
-  const explorationProgress = totalTilesExplored / estimatedTilesToExplore;
+  const config = SPAWN_PROBABILITY_CONFIG;
+  const tilesSinceLastSpawn = state.tilesSinceLastSpawn;
 
-  // Items should start spawning after ~20% exploration
-  // and all should be available by ~80% exploration
-  const minProgress = 0.2;
-  const maxProgress = 0.8;
-
-  if (explorationProgress < minProgress) {
-    // Too early - only 10% chance
-    if (Math.random() > 0.1) return null;
+  // === PITY TIMER: Guaranteed spawn after X tiles without finding anything ===
+  if (tilesSinceLastSpawn >= config.PITY_TIMER_TILES) {
+    console.log(`[QuestSpawn] Pity timer triggered! ${tilesSinceLastSpawn} tiles without spawn.`);
+    return selectItemToSpawn(unspawnedItems, scenario);
   }
 
-  // Calculate how many items should have spawned by now
-  const progressInRange = Math.min(1, (explorationProgress - minProgress) / (maxProgress - minProgress));
-  const targetSpawnedItems = Math.ceil(progressInRange * totalItemsNeeded);
-  const currentSpawnedItems = state.questItems.filter(i => i.spawned).length;
+  // === FIRST ITEM GUARANTEE: Ensure something spawns early ===
+  const noItemsYet = state.questItems.filter(i => i.spawned).length === 0;
+  if (noItemsYet && totalTilesExplored >= config.FIRST_ITEM_GUARANTEE_TILES) {
+    console.log(`[QuestSpawn] First item guarantee triggered at tile ${totalTilesExplored}.`);
+    return selectItemToSpawn(unspawnedItems, scenario);
+  }
 
-  // If we're behind schedule, higher spawn chance
-  const behindSchedule = currentSpawnedItems < targetSpawnedItems;
-  const baseSpawnChance = behindSchedule ? 0.5 : 0.25;
+  // Calculate spawn probability based on exploration progress
+  const totalItemsNeeded = state.questItems.length;
+  const estimatedTilesToExplore = scenario.startDoom * 1.5;
+  const explorationProgress = totalTilesExplored / estimatedTilesToExplore;
 
-  // Room type bonuses - some rooms are more likely to have items
+  // === CALCULATE BASE SPAWN CHANCE ===
+  let baseSpawnChance: number;
+
+  // Early game - still generous
+  if (explorationProgress < config.EARLY_GAME_THRESHOLD) {
+    baseSpawnChance = config.EARLY_SPAWN_CHANCE;
+  } else {
+    // Check if we're behind schedule
+    const progressInRange = Math.min(1, explorationProgress / 0.7); // Items should spawn by 70%
+    const targetSpawnedItems = Math.ceil(progressInRange * totalItemsNeeded);
+    const currentSpawnedItems = state.questItems.filter(i => i.spawned).length;
+    const behindSchedule = currentSpawnedItems < targetSpawnedItems;
+
+    baseSpawnChance = behindSchedule ? config.BEHIND_SCHEDULE_CHANCE : config.NORMAL_SPAWN_CHANCE;
+  }
+
+  // === ROOM TYPE BONUSES ===
   const roomBonus = getRoomSpawnBonus(tile.name);
 
-  const finalChance = Math.min(0.8, baseSpawnChance + roomBonus);
+  // === PITY TIMER BONUS: Increase chance as we go longer without spawning ===
+  const pityBonus = tilesSinceLastSpawn * 0.15; // +15% per tile without spawn
+
+  const finalChance = Math.min(config.MAX_SPAWN_CHANCE, baseSpawnChance + roomBonus + pityBonus);
+
+  console.log(`[QuestSpawn] Tile "${tile.name}": chance=${(finalChance*100).toFixed(0)}% (base=${(baseSpawnChance*100).toFixed(0)}%, room=+${(roomBonus*100).toFixed(0)}%, pity=+${(pityBonus*100).toFixed(0)}%)`);
 
   if (Math.random() < finalChance) {
-    // Select which item to spawn
-    // Prioritize non-optional items
-    const requiredItems = unspawnedItems.filter(item => {
-      const obj = scenario.objectives.find(o => o.id === item.objectiveId);
-      return obj && !obj.isOptional;
-    });
-
-    const itemPool = requiredItems.length > 0 ? requiredItems : unspawnedItems;
-    return itemPool[Math.floor(Math.random() * itemPool.length)];
+    return selectItemToSpawn(unspawnedItems, scenario);
   }
 
   return null;
+}
+
+/**
+ * Selects which quest item to spawn from the available pool.
+ * Prioritizes required (non-optional) items.
+ */
+function selectItemToSpawn(unspawnedItems: QuestItem[], scenario: Scenario): QuestItem {
+  // Prioritize non-optional items
+  const requiredItems = unspawnedItems.filter(item => {
+    const obj = scenario.objectives.find(o => o.id === item.objectiveId);
+    return obj && !obj.isOptional;
+  });
+
+  const itemPool = requiredItems.length > 0 ? requiredItems : unspawnedItems;
+  const selectedItem = itemPool[Math.floor(Math.random() * itemPool.length)];
+
+  console.log(`[QuestSpawn] Selected item: "${selectedItem.name}" (${selectedItem.type})`);
+  return selectedItem;
 }
 
 /**
@@ -589,6 +650,8 @@ export function collectQuestItem(
 /**
  * Called when a player explores a new tile.
  * Handles quest tile discovery and item spawning.
+ *
+ * Also manages the "pity timer" - tracking tiles explored without finding items.
  */
 export function onTileExplored(
   state: ObjectiveSpawnState,
@@ -602,13 +665,21 @@ export function onTileExplored(
   tileModifications?: Partial<Tile>;
 } {
   const newTilesExplored = state.tilesExplored + 1;
-  let updatedState = { ...state, tilesExplored: newTilesExplored };
+
+  // Increment pity timer (reset happens below if we spawn something)
+  let updatedState = {
+    ...state,
+    tilesExplored: newTilesExplored,
+    tilesSinceLastSpawn: state.tilesSinceLastSpawn + 1,
+  };
 
   // Check for quest item spawn
   const spawnedItem = shouldSpawnQuestItem(updatedState, tile, newTilesExplored, scenario);
   if (spawnedItem) {
+    console.log(`[QuestSpawn] ✨ Item "${spawnedItem.name}" spawned on "${tile.name}"! Resetting pity timer.`);
     updatedState = {
       ...updatedState,
+      tilesSinceLastSpawn: 0,  // Reset pity timer on successful spawn
       questItems: updatedState.questItems.map(qi =>
         qi.id === spawnedItem.id ? { ...qi, spawned: true, spawnedOnTileId: tile.id } : qi
       ),
@@ -618,6 +689,7 @@ export function onTileExplored(
   // Check for quest tile spawn
   const spawnedQuestTile = shouldSpawnQuestTile(updatedState, tile, newTilesExplored, completedObjectiveIds);
   if (spawnedQuestTile) {
+    console.log(`[QuestSpawn] 🏛️ Quest tile "${spawnedQuestTile.name}" activated on "${tile.name}"!`);
     updatedState = {
       ...updatedState,
       questTiles: updatedState.questTiles.map(qt =>
@@ -707,17 +779,22 @@ export function getObjectiveProgress(
 /**
  * Configuration for guaranteed spawn thresholds.
  * These determine when the game forces items/tiles to spawn.
+ *
+ * UPDATED: Thresholds moved earlier to ensure scenarios remain winnable.
+ * Old values were too late (Doom 4/7, 85% exploration).
  */
 export const GUARANTEED_SPAWN_CONFIG = {
-  // Doom thresholds for guaranteed spawns
-  DOOM_CRITICAL: 4,        // Force spawn all remaining items when doom is this low
-  DOOM_WARNING: 7,         // Increase spawn chance significantly
+  // Doom thresholds for guaranteed spawns (EARLIER THAN BEFORE)
+  DOOM_CRITICAL: 6,        // Force spawn all remaining items when doom <= 6 (was 4)
+  DOOM_WARNING: 9,         // Increase spawn chance significantly at doom <= 9 (was 7)
 
-  // Exploration thresholds
-  EXPLORATION_FORCE: 0.85, // Force spawn after exploring 85% of estimated tiles
+  // Exploration thresholds (EARLIER THAN BEFORE)
+  EXPLORATION_FORCE: 0.60, // Force spawn after exploring 60% of tiles (was 85%)
+  EXPLORATION_WARNING: 0.45, // Warning level at 45% exploration
 
-  // Per-round guarantees
-  MIN_ITEMS_PER_10_TILES: 1, // At least 1 item should spawn per 10 explored tiles
+  // Per-round guarantees (MORE AGGRESSIVE)
+  MIN_ITEMS_PER_5_TILES: 1,  // At least 1 item should spawn per 5 explored tiles (was 10)
+  MAX_TILES_WITHOUT_SPAWN: 6, // If no spawns after 6 tiles, force spawn (backup to pity timer)
 };
 
 /**
@@ -738,6 +815,8 @@ export interface GuaranteedSpawnResult {
  * - At the start of each round (Mythos phase)
  * - When doom changes
  * - When a tile is explored (in addition to normal spawn logic)
+ *
+ * UPDATED: More aggressive thresholds to ensure items spawn in time.
  */
 export function checkGuaranteedSpawns(
   state: ObjectiveSpawnState,
@@ -769,53 +848,66 @@ export function checkGuaranteedSpawns(
     return obj && !obj.isOptional;
   });
 
-  // Calculate urgency based on doom
+  // Calculate urgency based on doom (UPDATED THRESHOLDS)
   const doomUrgency = currentDoom <= GUARANTEED_SPAWN_CONFIG.DOOM_CRITICAL ? 'critical'
     : currentDoom <= GUARANTEED_SPAWN_CONFIG.DOOM_WARNING ? 'warning'
     : 'none';
 
-  // Calculate urgency based on exploration
+  // Calculate urgency based on exploration (UPDATED THRESHOLDS)
   const estimatedTotalTiles = scenario.startDoom * 1.5;
   const explorationProgress = state.tilesExplored / estimatedTotalTiles;
   const explorationUrgency = explorationProgress >= GUARANTEED_SPAWN_CONFIG.EXPLORATION_FORCE ? 'critical'
-    : explorationProgress >= 0.7 ? 'warning'
+    : explorationProgress >= GUARANTEED_SPAWN_CONFIG.EXPLORATION_WARNING ? 'warning'
     : 'none';
+
+  // Check pity timer backup - if way too long without spawns
+  const pityUrgency = state.tilesSinceLastSpawn >= GUARANTEED_SPAWN_CONFIG.MAX_TILES_WITHOUT_SPAWN ? 'warning' : 'none';
 
   // Combined urgency (take the worst)
   result.urgency = doomUrgency === 'critical' || explorationUrgency === 'critical' ? 'critical'
-    : doomUrgency === 'warning' || explorationUrgency === 'warning' ? 'warning'
+    : doomUrgency === 'warning' || explorationUrgency === 'warning' || pityUrgency === 'warning' ? 'warning'
     : 'none';
 
-  // Check spawn rate - items should spawn at a reasonable pace
-  const expectedItemsSpawned = Math.floor(state.tilesExplored / 10) * GUARANTEED_SPAWN_CONFIG.MIN_ITEMS_PER_10_TILES;
+  // Check spawn rate - items should spawn at a reasonable pace (UPDATED: 5 tiles instead of 10)
+  const expectedItemsSpawned = Math.floor(state.tilesExplored / 5) * GUARANTEED_SPAWN_CONFIG.MIN_ITEMS_PER_5_TILES;
   const actualItemsSpawned = state.questItems.filter(i => i.spawned).length;
-  const behindOnSpawns = actualItemsSpawned < expectedItemsSpawned;
+  const behindOnSpawns = actualItemsSpawned < expectedItemsSpawned && unspawnedRequiredItems.length > 0;
 
-  // CRITICAL: Force spawn everything
+  // Log status for debugging
+  console.log(`[GuaranteedSpawn] Doom: ${currentDoom}, Exploration: ${(explorationProgress*100).toFixed(0)}%, TilesSinceSpawn: ${state.tilesSinceLastSpawn}, Urgency: ${result.urgency}`);
+  console.log(`[GuaranteedSpawn] Items: ${actualItemsSpawned}/${state.questItems.length} spawned, ${expectedItemsSpawned} expected by now`);
+
+  // CRITICAL: Force spawn everything remaining
   if (result.urgency === 'critical') {
     result.forcedItems = [...unspawnedRequiredItems];
     result.forcedTiles = [...unspawnedRequiredTiles];
 
     if (unspawnedRequiredItems.length > 0) {
-      result.warnings.push(`CRITICAL: ${unspawnedRequiredItems.length} required items have not spawned yet!`);
+      result.warnings.push(`⚠️ KRITISK: ${unspawnedRequiredItems.length} nødvendige gjenstander har ikke dukket opp!`);
+      console.log(`[GuaranteedSpawn] CRITICAL: Forcing ${unspawnedRequiredItems.length} items to spawn!`);
     }
     if (unspawnedRequiredTiles.length > 0) {
-      result.warnings.push(`CRITICAL: ${unspawnedRequiredTiles.length} required locations have not appeared!`);
+      result.warnings.push(`⚠️ KRITISK: ${unspawnedRequiredTiles.length} nødvendige lokasjoner mangler!`);
+      console.log(`[GuaranteedSpawn] CRITICAL: Forcing ${unspawnedRequiredTiles.length} tiles to spawn!`);
     }
   }
-  // WARNING: Force spawn if behind schedule
+  // WARNING: Force spawn some items to catch up
   else if (result.urgency === 'warning' || behindOnSpawns) {
-    // Force spawn at least half of remaining items
-    const itemsToForce = Math.ceil(unspawnedRequiredItems.length / 2);
+    // Force spawn at least half of remaining items (more aggressive now)
+    const itemsToForce = Math.max(1, Math.ceil(unspawnedRequiredItems.length * 0.6)); // 60% instead of 50%
     result.forcedItems = unspawnedRequiredItems.slice(0, itemsToForce);
 
     // Force spawn tiles if any are pending
     if (unspawnedRequiredTiles.length > 0) {
-      result.forcedTiles = [unspawnedRequiredTiles[0]]; // At least one tile
+      result.forcedTiles = [unspawnedRequiredTiles[0]];
     }
 
     if (behindOnSpawns) {
-      result.warnings.push(`Warning: Spawn rate behind schedule (${actualItemsSpawned}/${expectedItemsSpawned} expected)`);
+      result.warnings.push(`⏰ Advarsel: Leter du godt nok? (${actualItemsSpawned}/${expectedItemsSpawned} forventet)`);
+      console.log(`[GuaranteedSpawn] WARNING: Behind schedule, forcing ${itemsToForce} items`);
+    }
+    if (pityUrgency === 'warning') {
+      console.log(`[GuaranteedSpawn] WARNING: Pity backup triggered after ${state.tilesSinceLastSpawn} tiles`);
     }
   }
 
