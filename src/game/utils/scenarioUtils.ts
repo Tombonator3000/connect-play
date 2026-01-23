@@ -429,17 +429,22 @@ function checkRitualVictory(
 }
 
 /**
- * Check investigation victory - found all required clues
+ * Check investigation victory - all required investigation objectives complete
+ * This includes: collect (gathering clues), find_item, find_tile, and interact (final confrontation)
  */
 function checkInvestigationVictory(
   scenario: Scenario,
   _gameState: unknown
 ): boolean {
+  // Investigation missions require ALL non-optional, non-hidden objectives to be complete
   const investigationObjectives = scenario.objectives.filter(
-    obj => (obj.type === 'find_item' || obj.type === 'find_tile') && !obj.isOptional
+    obj => !obj.isOptional && !obj.isHidden &&
+           (obj.type === 'collect' || obj.type === 'find_item' ||
+            obj.type === 'find_tile' || obj.type === 'interact')
   );
 
-  return investigationObjectives.every(obj => obj.completed);
+  return investigationObjectives.length > 0 &&
+         investigationObjectives.every(obj => obj.completed);
 }
 
 // ============================================================================
@@ -686,6 +691,23 @@ export function checkKillObjectives(
       objective: killObjective,
       shouldComplete: newAmount >= (killObjective.targetAmount || 1)
     };
+  }
+
+  // Check for final_confrontation interact objectives (killed the final boss)
+  // This handles investigation missions where the "confront_truth" objective
+  // requires killing the spawned boss
+  const isBossType = ['shoggoth', 'star_spawn', 'dark_young', 'hunting_horror', 'ancient_one'].includes(enemyType);
+  if (isBossType) {
+    const confrontObjective = scenario.objectives.find(
+      obj => obj.type === 'interact' &&
+             obj.targetId?.includes('final_confrontation') &&
+             !obj.completed &&
+             !obj.isHidden
+    );
+
+    if (confrontObjective) {
+      return { objective: confrontObjective, shouldComplete: true };
+    }
   }
 
   return { objective: null, shouldComplete: false };
