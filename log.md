@@ -1,5 +1,861 @@
 # Development Log
 
+## 2026-01-23: COMPLETE DESIGN PROPOSAL - GameOverOverlay.tsx Improvements
+
+### Oversikt
+Komplett designdokument for forbedringer av scenario-avslutningsskjermen. Denne proposalen dekker 8 hovedområder for forbedringer, TypeScript interfaces, visuell layout, og en 5-fase implementasjonsveikart.
+
+---
+
+## 1. Scenario Performance Summary (Statistikk-kort)
+
+Detaljerte statistikker som gir spilleren meningsfull tilbakemelding på prestasjon:
+
+| Statistikk | Beskrivelse | Tracking Location |
+|------------|-------------|-------------------|
+| **Enemies Vanquished** | Totalt antall fiender drept | Track i combat resolution |
+| **Horrors Witnessed** | Antall horror checks utført | Track i horror check handler |
+| **Sanity Lost** | Total sanity tapt gjennom scenariet | Track alle sanity changes |
+| **Wounds Suffered** | Total HP tapt | Track alle damage events |
+| **Clues Discovered** | Antall ledetråder/quest items funnet | Track item pickups |
+| **Tiles Explored** | Antall tiles utforsket | Track tile reveals |
+| **Rounds Survived** | Antall runder fullført | Game state round counter |
+| **Bosses Defeated** | Navneliste på beseirede bosser | Track boss kills |
+| **Items Used** | Forbruksvarer brukt | Track consumable usage |
+| **Skill Checks Passed** | Vellykkede skill checks | Track skill check results |
+
+### TypeScript Interface for GameStats
+
+```typescript
+/**
+ * Tracks gameplay statistics throughout a scenario
+ * Updated in real-time as events occur
+ */
+export interface GameStats {
+  // Combat statistics
+  enemiesKilled: number;
+  enemiesKilledByType: Record<EnemyType, number>;
+  bossesDefeated: string[];           // Boss names for display
+  totalDamageDealt: number;
+  criticalHits: number;
+  attacksMade: number;
+  attacksHit: number;
+  attacksMissed: number;
+
+  // Survival statistics
+  totalDamageTaken: number;
+  totalSanityLost: number;
+  totalHealingReceived: number;
+  totalSanityRestored: number;
+  timesKnockedDown: number;           // Reduced to 0 HP but saved
+
+  // Horror statistics
+  horrorChecksPerformed: number;
+  horrorChecksPassed: number;
+  horrorChecksFailed: number;
+  madnessAcquired: MadnessType[];
+
+  // Exploration statistics
+  tilesExplored: number;
+  secretDoorsFound: number;
+  trapsTriggered: number;
+  trapsDisarmed: number;
+
+  // Collection statistics
+  cluesFound: number;
+  questItemsCollected: number;
+  goldCollected: number;
+  itemsPickedUp: number;
+  itemsUsed: number;
+
+  // Skill check statistics
+  skillChecksAttempted: number;
+  skillChecksPassed: number;
+  skillChecksFailed: number;
+  skillChecksByType: Record<SkillType, { attempted: number; passed: number }>;
+
+  // Time statistics
+  roundsSurvived: number;
+  turnsTaken: number;
+  totalAPSpent: number;
+
+  // Meta statistics
+  highestDamageInOneHit: number;
+  longestKillStreak: number;
+  currentKillStreak: number;
+}
+
+/**
+ * Creates initial empty game stats
+ */
+export function createInitialGameStats(): GameStats {
+  return {
+    enemiesKilled: 0,
+    enemiesKilledByType: {} as Record<EnemyType, number>,
+    bossesDefeated: [],
+    totalDamageDealt: 0,
+    criticalHits: 0,
+    attacksMade: 0,
+    attacksHit: 0,
+    attacksMissed: 0,
+    totalDamageTaken: 0,
+    totalSanityLost: 0,
+    totalHealingReceived: 0,
+    totalSanityRestored: 0,
+    timesKnockedDown: 0,
+    horrorChecksPerformed: 0,
+    horrorChecksPassed: 0,
+    horrorChecksFailed: 0,
+    madnessAcquired: [],
+    tilesExplored: 0,
+    secretDoorsFound: 0,
+    trapsTriggered: 0,
+    trapsDisarmed: 0,
+    cluesFound: 0,
+    questItemsCollected: 0,
+    goldCollected: 0,
+    itemsPickedUp: 0,
+    itemsUsed: 0,
+    skillChecksAttempted: 0,
+    skillChecksPassed: 0,
+    skillChecksFailed: 0,
+    skillChecksByType: {
+      strength: { attempted: 0, passed: 0 },
+      agility: { attempted: 0, passed: 0 },
+      intellect: { attempted: 0, passed: 0 },
+      willpower: { attempted: 0, passed: 0 }
+    },
+    roundsSurvived: 0,
+    turnsTaken: 0,
+    totalAPSpent: 0,
+    highestDamageInOneHit: 0,
+    longestKillStreak: 0,
+    currentKillStreak: 0
+  };
+}
+```
+
+---
+
+## 2. Performance Rating System (Vurderingssystem)
+
+En S-F rank basert på prestasjon med tematiske Lovecraftianske titler:
+
+### Rating Calculation Formula
+
+```typescript
+/**
+ * Calculates performance rating based on scenario outcome and stats
+ */
+export function calculatePerformanceRating(
+  result: ScenarioResultData,
+  scenario: Scenario
+): PerformanceRating {
+  let score = 0;
+  const maxScore = 100;
+
+  // Victory bonus (40 points max)
+  if (result.type === 'victory') {
+    score += 40;
+  }
+
+  // Survival bonus (20 points max)
+  const survivalRate = result.characterFates.filter(c => c.survived).length /
+                       result.characterFates.length;
+  score += Math.floor(survivalRate * 20);
+
+  // Speed bonus (15 points max) - completing faster than expected
+  const expectedRounds = scenario.startDoom;
+  const roundRatio = result.round / expectedRounds;
+  if (roundRatio <= 0.5) score += 15;
+  else if (roundRatio <= 0.75) score += 10;
+  else if (roundRatio <= 1.0) score += 5;
+
+  // Sanity preservation bonus (10 points max)
+  const avgSanityPercent = result.characterFates.reduce((sum, c) =>
+    sum + (c.finalSanity / c.character.maxSanity), 0) / result.characterFates.length;
+  score += Math.floor(avgSanityPercent * 10);
+
+  // Optional objectives bonus (15 points max)
+  const optionalCompleted = scenario.objectives.filter(o =>
+    o.isOptional && o.completed).length;
+  const totalOptional = scenario.objectives.filter(o => o.isOptional).length;
+  if (totalOptional > 0) {
+    score += Math.floor((optionalCompleted / totalOptional) * 15);
+  }
+
+  // Determine rating
+  if (score >= 90) return { rank: 'S', title: 'Keeper of the Light', score };
+  if (score >= 75) return { rank: 'A', title: 'Seasoned Investigator', score };
+  if (score >= 60) return { rank: 'B', title: 'Survivor of the Dark', score };
+  if (score >= 40) return { rank: 'C', title: 'Touched by Madness', score };
+  return { rank: 'F', title: 'Lost to the Void', score };
+}
+```
+
+### Rating Tiers
+
+| Rank | Score Range | Lovecraftian Title | Description |
+|------|-------------|-------------------|-------------|
+| **S** | 90-100 | "Keeper of the Light" | *"You emerge unscathed, a beacon against the encroaching night."* |
+| **A** | 75-89 | "Seasoned Investigator" | *"The shadows know your name, but they dare not speak it."* |
+| **B** | 60-74 | "Survivor of the Dark" | *"You have walked through the valley of cosmic horror and lived."* |
+| **C** | 40-59 | "Touched by Madness" | *"You survived, but the whispers follow you still."* |
+| **F** | 0-39 | "Lost to the Void" | *"The darkness claims another soul. Perhaps next time..."* |
+
+---
+
+## 3. Dynamic Epilogue Text (Dynamisk Narrativ)
+
+Kontekst-sensitive epiloger generert basert på scenario-type, utfall og prestasjon.
+
+### Epilogue Generation System
+
+```typescript
+export type EpilogueContext = {
+  scenarioType: VictoryType;
+  outcome: 'victory' | 'defeat_death' | 'defeat_doom';
+  rating: 'S' | 'A' | 'B' | 'C' | 'F';
+  survivorCount: number;
+  totalPlayers: number;
+  doomRemaining: number;
+  hadMadness: boolean;
+  bossKilled: boolean;
+};
+
+export function generateEpilogue(context: EpilogueContext): string {
+  const key = `${context.scenarioType}_${context.outcome}_${context.rating}`;
+  const templates = EPILOGUE_TEMPLATES[key] || EPILOGUE_TEMPLATES.default;
+  const template = templates[Math.floor(Math.random() * templates.length)];
+
+  return interpolateEpilogue(template, context);
+}
+```
+
+### Epilogue Text Library
+
+#### ESCAPE Missions
+
+**Victory - S Rank:**
+> *"The old manor recedes into the mist behind you, its secrets still clawing at the edges of your consciousness. As the first rays of dawn pierce the horizon, you dare to believe it is over. You have done what so few manage—escaped with both life and sanity intact. But in the cold logic of your investigator's mind, you know: doors once opened cannot be truly closed. You have glimpsed behind the veil, and the veil has glimpsed you."*
+
+**Victory - B/C Rank (Lost teammate):**
+> *"You escaped, but [CHARACTER_NAME] did not. Their screams still echo in the chambers of your memory, a symphony that will play each night until madness or death grants you silence. The mission was a success—the files say so. Your soul knows otherwise. The things that dwell in that place feast tonight, and the blood on your hands will never truly wash clean."*
+
+**Defeat - All Dead:**
+> *"In the end, the darkness proved absolute. Your lanterns sputtered and died, your ammunition ran dry, and one by one, the screaming stopped. Perhaps in some distant archive, a yellowed newspaper clipping will mention the disappearance. Perhaps not. The cosmos does not mourn the insignificant, and you have learned too late that significance is a human delusion."*
+
+#### INVESTIGATION Missions
+
+**Victory - S/A Rank:**
+> *"The truth lies bare before you, terrible in its clarity. The Whateley bloodline, the summoning circles, the half-formed creatures in the cellar—it all connects to something older, something patient. You have answered one question, but a thousand more now crowd your thoughts, each more disturbing than the last. Knowledge, you now understand, is its own form of curse. Those who know sleep less soundly than those who do not."*
+
+**Victory - C Rank:**
+> *"You found what you came for, though the cost was higher than anticipated. The evidence is secured, the immediate threat neutralized. But as you compile your notes, you notice your handwriting has changed—angular, somehow wrong. And the words you've written... are they truly yours? Or have you become merely a vessel for something that needed its story told?"*
+
+**Defeat - Doom Zero:**
+> *"The ritual completes. Reality tears. Through the wound in existence, something vast becomes aware of this small, blue world. In Arkham, the citizens look up at a sky that now contains too many stars. In R'lyeh, Great Cthulhu turns in his death-sleep, and for the first time in aeons, he smiles. You failed. But do not despair—you will not have long to regret it. None of us will."*
+
+#### ASSASSINATION Missions
+
+**Victory - S Rank:**
+> *"The cult leader lies still, their connection to the entities beyond severed permanently. The ritual chamber grows quiet, the chanting silenced, the impossible geometries fading to mere stone. You have struck a blow against the darkness this night. But as you search the body, you find a journal—names, dates, locations. This was not an end. It was barely a beginning. The hydra has many heads."*
+
+**Defeat - Target Escaped:**
+> *"They knew you were coming. Of course they knew—they who commune with beings that perceive time as mortals perceive space. The target has fled to darker places, places you cannot follow. And in fleeing, they have learned your name, your face, your fears. Sleep well tonight, investigator. It may be the last peaceful rest you ever know."*
+
+#### SURVIVAL Missions
+
+**Victory:**
+> *"Dawn breaks. Against all probability, against all reason, you have survived the night. The creatures retreat to their lightless domains, the howling fades to silence, and for one precious moment, the world feels almost normal. Almost. You know it is only a reprieve. The night will come again, as it always does. But today, impossibly, you live."*
+
+**Defeat - Time Expired:**
+> *"The final hour struck, and with it, hope. The wards failed, the barriers broke, and darkness poured through like water through a shattered dam. Your desperate stand was valiant, perhaps even heroic. But heroism means nothing to entities that predate the concept of mortality. They do not hate you. They do not even notice you. You are simply... consumed."*
+
+#### RITUAL Missions
+
+**Victory - S Rank:**
+> *"The final syllable leaves your lips, and reality shudders. For one terrifying moment, you feel something vast turn its attention toward you—then away, as if unimpressed. The ritual is complete. The seal is restored. The cosmos continues its indifferent dance, and you, impossibly, have been its partner for one brief measure. The knowledge you now carry is heavier than any physical burden."*
+
+**Victory - Low Sanity:**
+> *"The ritual succeeds, but at what cost? Your companion's eyes have gone distant, their speech interrupted by whispers in no human tongue. You have sealed the breach, yes—but some part of each of you slipped through before it closed. You are no longer entirely of this world. And the things that notice such changes... they are patient."*
+
+---
+
+## 4. Consequence Cards (Konsekvenser)
+
+Visuelle kort som viser positive og negative utfall av spillerens valg.
+
+### Consequence Types
+
+```typescript
+export interface ConsequenceCard {
+  id: string;
+  type: 'positive' | 'negative' | 'neutral';
+  title: string;
+  description: string;
+  icon: string;  // Lucide icon name
+  category: 'combat' | 'investigation' | 'survival' | 'story' | 'character';
+  // For legacy impact
+  persistentEffect?: {
+    type: 'unlock' | 'gold' | 'reputation' | 'item' | 'lore';
+    value: string | number;
+  };
+}
+```
+
+### Example Consequences
+
+**Positive:**
+- ✓ *"The cult leader was destroyed. The ritual cannot be completed... for now."*
+- ✓ *"Dr. Hartwell's research was secured. Others may benefit from your sacrifice."*
+- ✓ *"The Elder Sign was placed. This gateway is sealed for another thousand years."*
+- ✓ *"The Necronomicon fragment was destroyed. The knowledge is lost—perhaps mercifully so."*
+- ✓ *"Three survivors were evacuated safely. Their gratitude, and silence, is assured."*
+
+**Negative:**
+- ✗ *"The Necronomicon remains in cultist hands. Its whispers will corrupt another."*
+- ✗ *"Three survivors were left behind in the asylum. You try not to think about their fate."*
+- ✗ *"The shoggoth escaped into the sewers beneath Arkham. It will feed."*
+- ✗ *"The professor's final notes were lost in the fire. What secrets died with them?"*
+- ✗ *"A witness survived. The authorities will have questions."*
+
+**Neutral/Story:**
+- ◐ *"You glimpsed something in the mirror. It glimpsed you back."*
+- ◐ *"The symbol is burned into your memory. Its meaning eludes you still."*
+- ◐ *"A letter was found. The address is local. Do you dare investigate?"*
+
+---
+
+## 5. Character Fate Summary
+
+For hvert karakter, vis deres personlige utfall og tilstand.
+
+### Character Fate Display
+
+```typescript
+export interface CharacterFate {
+  character: Player;
+  survived: boolean;
+  finalHp: number;
+  finalSanity: number;
+  madnessAcquired: MadnessType[];
+  personalEpilogue: string;
+
+  // Legacy mode additions
+  xpEarned?: number;
+  goldEarned?: number;
+  itemsAcquired?: Item[];
+  leveledUp?: boolean;
+}
+```
+
+### Visual Layout Per Character
+
+```
+┌─────────────────────────────────────────────┐
+│  👤 THE VETERAN - James Hartley             │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                              │
+│  ❤️ HP: 2/6        🧠 Sanity: 1/3           │
+│  ⚔️ Kills: 7       💀 Damage Taken: 4       │
+│                                              │
+│  Status: SURVIVED, BUT BROKEN                │
+│                                              │
+│  Madness Acquired:                          │
+│  🔮 PARANOIA - "They're all watching..."    │
+│                                              │
+│  "The war taught him to kill. Tonight       │
+│   taught him there are things that          │
+│   cannot be killed."                        │
+│                                              │
+│  [+125 XP]  [+75 Gold]  [Level Up! → 3]    │
+└─────────────────────────────────────────────┘
+```
+
+### Character-Specific Epilogues
+
+```typescript
+const CHARACTER_EPILOGUES: Record<CharacterType, { survived: string; died: string; mad: string }> = {
+  veteran: {
+    survived: "The war taught him to kill. Tonight taught him there are things that cannot be killed.",
+    died: "He faced the darkness as he faced every battle—head on. This time, he did not rise.",
+    mad: "The soldier's mind finally broke. He sees enemies everywhere now, and they see him."
+  },
+  detective: {
+    survived: "Some cases have no satisfying conclusions. He'll carry this one to his grave.",
+    died: "He found the truth. It was the last thing he ever found.",
+    mad: "Every shadow hides a suspect now. Every whisper is a confession. The case never ends."
+  },
+  professor: {
+    survived: "Knowledge has a price. Tonight, he paid more than most scholars ever will.",
+    died: "His final discovery was that some things are beyond human comprehension. Fatally beyond.",
+    mad: "The equations make sense now. All of them. That's the problem."
+  },
+  occultist: {
+    survived: "She touched powers meant for beings greater than humanity. Somehow, she withdrew.",
+    died: "The forces she bargained with finally collected their due.",
+    mad: "The voices no longer frighten her. She answers them now. Sometimes, they answer back."
+  },
+  journalist: {
+    survived: "The story of a lifetime. No editor will ever believe it. No reader should.",
+    died: "She got too close to the truth. Closer than ink and paper could follow.",
+    mad: "Everything is a headline now. Even the whispers. Especially the whispers."
+  },
+  doctor: {
+    survived: "He swore an oath to do no harm. Tonight, he learned that harm is relative.",
+    died: "He could not heal what came for him. No medicine exists for cosmic indifference.",
+    mad: "He sees what lives inside people now. The parasites. The passengers. He cannot unsee them."
+  }
+};
+```
+
+---
+
+## 6. Unlock/Reward Preview
+
+Vis hva spilleren har låst opp for Legacy-systemet.
+
+### Reward Categories
+
+```typescript
+export interface ScenarioRewardsDisplay {
+  // Currency
+  goldEarned: {
+    base: number;
+    speedBonus: number;
+    noDeathBonus: number;
+    optionalObjectives: number;
+    total: number;
+  };
+
+  xpEarned: {
+    base: number;
+    bonuses: { reason: string; amount: number }[];
+    total: number;
+  };
+
+  // Unlocks
+  achievementsUnlocked: {
+    id: string;
+    name: string;
+    description: string;
+    icon: string;
+    rarity: BadgeRarity;
+  }[];
+
+  // Lore
+  loreFragmentsUnlocked: {
+    id: string;
+    title: string;
+    preview: string;  // First line of lore text
+  }[];
+
+  // Items
+  itemsUnlocked: {
+    item: Item;
+    unlockType: 'shop' | 'stash' | 'starting';
+  }[];
+
+  // Scenarios
+  scenariosUnlocked: {
+    id: string;
+    title: string;
+    difficulty: string;
+  }[];
+}
+```
+
+### Reward Display Example
+
+```
+┌─────────────────────────────────────────────┐
+│  💰 REWARDS EARNED                          │
+│  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ │
+│                                              │
+│  Gold: 150 (Base) + 50 (Speed) + 25 (Clean) │
+│        = 225 Gold                           │
+│                                              │
+│  XP: 100 (Base) + 25 (All Objectives)       │
+│      = 125 XP                               │
+│                                              │
+├─────────────────────────────────────────────┤
+│  🏆 ACHIEVEMENTS UNLOCKED                   │
+│                                              │
+│  ⭐ "First Blood"                           │
+│     Complete your first scenario            │
+│                                              │
+│  ⭐ "The Quick and the Dead"               │
+│     Complete a scenario in under 8 rounds   │
+│                                              │
+├─────────────────────────────────────────────┤
+│  📜 LORE DISCOVERED                         │
+│                                              │
+│  "The Whateley Correspondence, Part I"      │
+│  "Dear colleague, I have made a most        │
+│   disturbing discovery regarding the..."    │
+│                                              │
+├─────────────────────────────────────────────┤
+│  🆕 UNLOCKED                                │
+│                                              │
+│  🗡️ Shotgun now available in shop          │
+│  📍 Scenario "The Innsmouth Connection"     │
+└─────────────────────────────────────────────┘
+```
+
+---
+
+## 7. Complete TypeScript Interfaces
+
+### ScenarioResult Interface (Extended)
+
+```typescript
+/**
+ * Complete result data for a finished scenario
+ * Used by GameOverOverlay and Legacy system
+ */
+export interface ScenarioResultData {
+  // Outcome
+  type: 'victory' | 'defeat_death' | 'defeat_doom';
+  scenario: Scenario;
+  round: number;
+  doomRemaining: number;
+
+  // Performance
+  stats: GameStats;
+  rating: PerformanceRating;
+
+  // Narrative
+  epilogue: string;
+  consequences: ConsequenceCard[];
+
+  // Character outcomes
+  characterFates: CharacterFate[];
+
+  // Objectives
+  objectivesCompleted: ScenarioObjective[];
+  objectivesFailed: ScenarioObjective[];
+  optionalObjectivesCompleted: ScenarioObjective[];
+
+  // Rewards (Legacy mode)
+  rewards?: ScenarioRewardsDisplay;
+
+  // Metadata
+  timestamp: string;
+  playTime: number;  // In seconds
+  difficulty: 'Normal' | 'Hard' | 'Nightmare';
+}
+
+export interface PerformanceRating {
+  rank: 'S' | 'A' | 'B' | 'C' | 'F';
+  title: string;
+  score: number;
+  breakdown?: {
+    category: string;
+    points: number;
+    maxPoints: number;
+  }[];
+}
+```
+
+---
+
+## 8. Visual Layout (ASCII Mockup)
+
+### Complete GameOverOverlay Layout
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                                                                     │
+│                          ⚰ FINIS ⚰                                 │
+│                                                                     │
+│              "The stars have aligned at last."                      │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  [EPILOGUE PANEL - 3-4 lines of Lovecraftian prose]                │
+│  "The ritual completes. Reality tears. Through the wound in        │
+│   existence, something vast becomes aware of this small, blue      │
+│   world. In Arkham, the citizens look up at a sky that now         │
+│   contains too many stars..."                                       │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│  MISSION: The Whateley Investigation    RATING: C                   │
+│  DIFFICULTY: Normal                     "Touched by Madness"       │
+│  ROUNDS: 12                             Score: 47/100              │
+├─────────────────────────────────────────────────────────────────────┤
+│                         STATISTICS                                  │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐          │
+│  │ ⚔️        │  │ 🧠        │  │ 🗺️        │  │ 🎯        │          │
+│  │ ENEMIES  │  │ SANITY   │  │ TILES    │  │ CLUES    │          │
+│  │    7     │  │  LOST    │  │ EXPLORED │  │ FOUND    │          │
+│  │vanquished│  │   -8     │  │    15    │  │   4/5    │          │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘          │
+├─────────────────────────────────────────────────────────────────────┤
+│                       CONSEQUENCES                                  │
+│                                                                     │
+│  ✓ The cult leader was destroyed                                   │
+│  ✓ The Elder Sign was placed                                       │
+│  ✗ Sarah Whateley escaped                                          │
+│  ✗ The Veteran acquired PARANOIA                                   │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                     CHARACTER FATES                                 │
+│  ┌────────────────────────┐  ┌────────────────────────┐           │
+│  │  👤 THE VETERAN        │  │  👤 THE PROFESSOR      │           │
+│  │  HP: 2/6  San: 1/3    │  │  HP: 1/3  San: 4/6    │           │
+│  │  Status: SURVIVED      │  │  Status: SURVIVED      │           │
+│  │  🔮 Paranoia acquired  │  │  No madness           │           │
+│  └────────────────────────┘  └────────────────────────┘           │
+├─────────────────────────────────────────────────────────────────────┤
+│                        REWARDS (Legacy Mode)                        │
+│                                                                     │
+│  💰 225 Gold    ⭐ 125 XP    🏆 2 Achievements    📜 1 Lore       │
+│                                                                     │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│         [🔄 TRY AGAIN]              [🏠 MAIN MENU]                │
+│                                                                     │
+│  ─────────────────────────────────────────────────────────────────  │
+│  "That is not dead which can eternal lie,                          │
+│   and with strange aeons even death may die."                      │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Implementation Roadmap (5 Phases)
+
+### Phase 1: GameStats Tracking Infrastructure
+**Priority: HIGH | Estimated Complexity: Medium**
+
+**Objective:** Add stat tracking throughout gameplay
+
+**Changes Required:**
+- `src/game/types.ts` - Add GameStats interface
+- `src/game/ShadowsGame.tsx` - Initialize and update stats in state
+- Create `src/game/utils/statsTracker.ts` - Helper functions for stat updates
+
+**Key Implementation Points:**
+```typescript
+// In ShadowsGame.tsx state
+const [gameStats, setGameStats] = useState<GameStats>(createInitialGameStats());
+
+// Helper to update stats
+const updateStats = (updates: Partial<GameStats>) => {
+  setGameStats(prev => ({ ...prev, ...updates }));
+};
+
+// Track on enemy kill
+updateStats({
+  enemiesKilled: gameStats.enemiesKilled + 1,
+  totalDamageDealt: gameStats.totalDamageDealt + damage,
+  currentKillStreak: gameStats.currentKillStreak + 1
+});
+```
+
+**Files Affected:**
+| File | Changes |
+|------|---------|
+| `types.ts` | Add GameStats interface and createInitialGameStats() |
+| `ShadowsGame.tsx` | Add gameStats state, pass to GameOverOverlay |
+| `statsTracker.ts` | NEW - Helper functions |
+
+---
+
+### Phase 2: Performance Rating System
+**Priority: HIGH | Estimated Complexity: Low**
+
+**Objective:** Calculate and display performance rating
+
+**Changes Required:**
+- Create `src/game/utils/performanceRating.ts` - Rating calculation logic
+- Update `GameOverOverlay.tsx` - Display rating with title
+
+**Files Affected:**
+| File | Changes |
+|------|---------|
+| `performanceRating.ts` | NEW - calculatePerformanceRating() |
+| `GameOverOverlay.tsx` | Display rating component |
+
+---
+
+### Phase 3: Epilogue System
+**Priority: MEDIUM | Estimated Complexity: Medium**
+
+**Objective:** Generate dynamic epilogue text
+
+**Changes Required:**
+- Create `src/game/data/epilogues.ts` - Epilogue text library
+- Create `src/game/utils/epilogueGenerator.ts` - Selection logic
+- Update `GameOverOverlay.tsx` - Display epilogue panel
+
+**Epilogue Template Structure:**
+```typescript
+export const EPILOGUE_TEMPLATES: Record<string, string[]> = {
+  'escape_victory_S': [...],
+  'escape_victory_A': [...],
+  'escape_defeat_death': [...],
+  'investigation_victory_S': [...],
+  // ... etc
+};
+```
+
+**Files Affected:**
+| File | Changes |
+|------|---------|
+| `epilogues.ts` | NEW - All epilogue text templates |
+| `epilogueGenerator.ts` | NEW - generateEpilogue() function |
+| `GameOverOverlay.tsx` | Epilogue display component |
+
+---
+
+### Phase 4: Enhanced UI Layout
+**Priority: MEDIUM | Estimated Complexity: High**
+
+**Objective:** Implement new visual layout
+
+**Changes Required:**
+- Redesign `GameOverOverlay.tsx` with new sections
+- Add responsive layout for all screen sizes
+- Add animations for reveal sequence
+
+**New Components to Add:**
+```tsx
+// Stats grid component
+<StatsGrid stats={gameStats} />
+
+// Consequences list
+<ConsequencesList consequences={consequences} />
+
+// Character fate cards
+<CharacterFateCards fates={characterFates} />
+
+// Rewards preview (legacy mode only)
+{isLegacyMode && <RewardsPreview rewards={rewards} />}
+```
+
+**Files Affected:**
+| File | Changes |
+|------|---------|
+| `GameOverOverlay.tsx` | Complete redesign |
+| `StatsGrid.tsx` | NEW - Stats display component |
+| `ConsequenceCard.tsx` | NEW - Single consequence |
+| `CharacterFateCard.tsx` | NEW - Character outcome |
+| `RewardsPreview.tsx` | NEW - Legacy rewards |
+
+---
+
+### Phase 5: Legacy System Integration
+**Priority: LOW | Estimated Complexity: Medium**
+
+**Objective:** Connect to Legacy system for rewards
+
+**Changes Required:**
+- Update Legacy data structures
+- Calculate and apply rewards
+- Unlock achievements based on stats
+
+**Files Affected:**
+| File | Changes |
+|------|---------|
+| `legacyService.ts` | Add scenario result processing |
+| `achievementChecker.ts` | NEW - Check achievement conditions |
+| `GameOverOverlay.tsx` | Conditional Legacy UI |
+
+---
+
+## Additional Lovecraftian Text Examples
+
+### Horror Check Failure Messages
+
+```typescript
+const HORROR_FAILURE_MESSAGES = [
+  "Your mind recoils. Some things were not meant for mortal comprehension.",
+  "The sight burns itself into your memory, a brand that will never heal.",
+  "Reality seems to thin around you. The walls are too close. Too far. Both.",
+  "You understand now why the ancients worshipped these things. Not from devotion, but from despair.",
+  "The geometry is wrong. Everything is wrong. Has it always been this way?",
+];
+```
+
+### Combat Victory Messages
+
+```typescript
+const COMBAT_VICTORY_MESSAGES = {
+  cultist: [
+    "The cultist falls, their final prayer unanswered.",
+    "One less voice for the chanting. The silence is sweeter.",
+  ],
+  ghoul: [
+    "The creature collapses into grave dirt. It will not rise again—probably.",
+    "Bone and sinew scatter. The scavenger becomes the scavenged.",
+  ],
+  deepone: [
+    "The Deep One dissolves into brine and scales. Father Dagon will know.",
+    "It sinks back to the depths from which it came. But the ocean is patient.",
+  ],
+  shoggoth: [
+    "The protoplasmic mass shudders and falls still. You dare not examine it closely.",
+    "Impossible. You have done the impossible. Enjoy this feeling—it will not last.",
+  ],
+};
+```
+
+### Madness Acquisition Messages
+
+```typescript
+const MADNESS_MESSAGES: Record<MadnessType, string> = {
+  hallucination: "The walls breathe now. They always did, you've realized. You just didn't see it before.",
+  paranoia: "They're watching. They're always watching. Trust no one. Not even yourself.",
+  hysteria: "The laughter bubbles up from somewhere deep inside. You can't stop it. Why would you want to?",
+  catatonia: "Movement seems... optional. Everything seems optional. Why struggle against the void?",
+  obsession: "There's more here. There's always more. You have to find it. You HAVE to.",
+  amnesia: "Where... where are you? How did you get here? Does it matter anymore?",
+  night_terrors: "Sleep is no escape now. Sleep is when they come. They always come.",
+  dark_insight: "You see it now. The pattern. The terrible, beautiful pattern of everything."
+};
+```
+
+---
+
+## Testing Plan
+
+### Unit Tests
+- `calculatePerformanceRating()` - Test all score ranges
+- `generateEpilogue()` - Test all scenario/outcome combinations
+- `createInitialGameStats()` - Verify initial values
+
+### Integration Tests
+- Stats tracking through complete scenario playthrough
+- Rating calculation with edge cases
+- Legacy reward processing
+
+### UI Tests
+- Responsive layout at different breakpoints
+- Animation timing and sequencing
+- Accessibility compliance
+
+---
+
+## Summary
+
+This complete design proposal covers all 8 major enhancement areas for GameOverOverlay.tsx:
+
+1. **Scenario Performance Summary** - Comprehensive stat tracking
+2. **Performance Rating System** - S-F rank with Lovecraftian titles
+3. **Dynamic Epilogue Text** - Context-aware narrative conclusions
+4. **Consequence Cards** - Visual outcome indicators
+5. **Character Fate Summary** - Individual character outcomes
+6. **Unlock/Reward Preview** - Legacy system integration
+7. **TypeScript Interfaces** - GameStats and ScenarioResult
+8. **Visual Layout** - Complete UI mockup
+
+Implementation is divided into 5 phases with clear file changes and priorities.
+
+---
+
 ## 2026-01-23: Forslag - Forbedret Scenario-avslutning (Game Over Screen)
 
 ### Oppgave
