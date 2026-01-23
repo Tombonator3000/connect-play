@@ -100,11 +100,11 @@ export function getRandomCriticalPenalty(): CriticalPenalty {
   if (CRITICAL_PENALTIES.length === 0) {
     console.error('[Criticals] No critical penalties defined');
     return {
-      id: 'none',
+      id: 'counter_attack',
       name: 'Ingen straff',
       description: 'Ingen straff',
       effect: { type: 'damage', value: 0 }
-    } as CriticalPenalty;
+    };
   }
 
   const index = Math.floor(Math.random() * CRITICAL_PENALTIES.length);

@@ -12,7 +12,7 @@ import { TargetPriority } from './monsterAI';
 // WAIT MESSAGES - When monster is waiting/ambushing
 // ============================================================================
 
-export const WAIT_MESSAGES: Record<EnemyType, string> = {
+export const WAIT_MESSAGES: Partial<Record<EnemyType, string>> = {
   ghoul: 'kryper sammen i mørket og venter...',
   nightgaunt: 'svever lydløst i skyggene...',
   cultist: 'patruljerer området...',
@@ -35,7 +35,7 @@ export const WAIT_MESSAGES: Record<EnemyType, string> = {
 // PATROL MESSAGES - When monster is patrolling without a target
 // ============================================================================
 
-export const PATROL_MESSAGES: Record<EnemyType, string> = {
+export const PATROL_MESSAGES: Partial<Record<EnemyType, string>> = {
   cultist: 'patruljerer vaktsomt...',
   deepone: 'svømmer sakte rundt...',
   ghoul: 'snuser etter føde...',
@@ -58,7 +58,7 @@ export const PATROL_MESSAGES: Record<EnemyType, string> = {
 // ATTACK MESSAGES - When monster attacks a player
 // ============================================================================
 
-export const ATTACK_MESSAGES: Record<EnemyType, (targetName: string) => string> = {
+export const ATTACK_MESSAGES: Partial<Record<EnemyType, (targetName: string) => string>> = {
   cultist: (targetName) => `stormer mot ${targetName} med offerkniven!`,
   deepone: (targetName) => `kaster seg mot ${targetName} med klør!`,
   ghoul: (targetName) => `hugger mot ${targetName} med skarpe tenner!`,

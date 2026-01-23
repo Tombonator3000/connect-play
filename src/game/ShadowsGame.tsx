@@ -2953,17 +2953,8 @@ const ShadowsGame: React.FC = () => {
                 if (spellLoot.gold > 0) {
                   addToLog(`LOOT: +${spellLoot.gold} gull fra ${spellTarget.name}!`);
                   addFloatingText(spellTarget.position.q, spellTarget.position.r, `+${spellLoot.gold} GOLD`, "text-yellow-400");
-                  if (activePlayer.heroId) {
-                    addGoldToHero(activePlayer.heroId, spellLoot.gold);
-                  }
-                  setState(prev => ({
-                    ...prev,
-                    players: prev.players.map((p, i) =>
-                      i === prev.activePlayerIndex
-                        ? { ...p, gold: (p.gold || 0) + spellLoot.gold }
-                        : p
-                    )
-                  }));
+                  // Note: Gold tracking handled by legacy system on scenario completion
+                  addFloatingText(spellTarget.position.q, spellTarget.position.r, `+${spellLoot.gold} GOLD`, "text-yellow-400");
                 }
                 for (const item of spellLoot.items) {
                   if (!isInventoryFull(activePlayer.inventory)) {
@@ -2974,7 +2965,7 @@ const ShadowsGame: React.FC = () => {
                       ...prev,
                       players: prev.players.map((p, i) =>
                         i === prev.activePlayerIndex
-                          ? { ...p, inventory: equipResult.inventory }
+                          ? { ...p, inventory: equipResult.newInventory }
                           : p
                       )
                     }));
@@ -3244,17 +3235,8 @@ const ShadowsGame: React.FC = () => {
                 if (occLoot.gold > 0) {
                   addToLog(`LOOT: +${occLoot.gold} gull fra ${occTarget.name}!`);
                   addFloatingText(occTarget.position.q, occTarget.position.r, `+${occLoot.gold} GOLD`, "text-yellow-400");
-                  if (activePlayer.heroId) {
-                    addGoldToHero(activePlayer.heroId, occLoot.gold);
-                  }
-                  setState(prev => ({
-                    ...prev,
-                    players: prev.players.map((p, i) =>
-                      i === prev.activePlayerIndex
-                        ? { ...p, gold: (p.gold || 0) + occLoot.gold }
-                        : p
-                    )
-                  }));
+                  // Note: Gold tracking handled by legacy system on scenario completion
+                  addFloatingText(occTarget.position.q, occTarget.position.r, `+${occLoot.gold} GOLD`, "text-yellow-400");
                 }
                 for (const item of occLoot.items) {
                   if (!isInventoryFull(activePlayer.inventory)) {
@@ -3265,7 +3247,7 @@ const ShadowsGame: React.FC = () => {
                       ...prev,
                       players: prev.players.map((p, i) =>
                         i === prev.activePlayerIndex
-                          ? { ...p, inventory: equipResult.inventory }
+                          ? { ...p, inventory: equipResult.newInventory }
                           : p
                       )
                     }));
@@ -3479,18 +3461,8 @@ const ShadowsGame: React.FC = () => {
               if (loot.gold > 0) {
                 addToLog(`LOOT: +${loot.gold} gull fra ${enemy.name}!`);
                 addFloatingText(enemy.position.q, enemy.position.r, `+${loot.gold} GOLD`, "text-yellow-400");
-                // Update legacy hero gold if applicable
-                if (activePlayer.heroId) {
-                  addGoldToHero(activePlayer.heroId, loot.gold);
-                }
-                setState(prev => ({
-                  ...prev,
-                  players: prev.players.map((p, i) =>
-                    i === prev.activePlayerIndex
-                      ? { ...p, gold: (p.gold || 0) + loot.gold }
-                      : p
-                  )
-                }));
+                // Note: Gold tracking handled by legacy system on scenario completion
+                addFloatingText(enemy.position.q, enemy.position.r, `+${loot.gold} GOLD`, "text-yellow-400");
               }
 
               // Add items to inventory or drop on ground
@@ -3503,7 +3475,7 @@ const ShadowsGame: React.FC = () => {
                     ...prev,
                     players: prev.players.map((p, i) =>
                       i === prev.activePlayerIndex
-                        ? { ...p, inventory: equipResult.inventory }
+                        ? { ...p, inventory: equipResult.newInventory }
                         : p
                     )
                   }));

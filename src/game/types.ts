@@ -1411,7 +1411,15 @@ export type MonsterSpecialAbility =
   | 'ranged_shot'     // Mi-Go/Moon Beast: Ranged attack
   | 'ritual'          // Dark Young: Increase doom by 1
   | 'cosmic_presence' // Star Spawn: All players -1 sanity per turn in range
-  | 'devour';         // Boss: Instant kill on crit
+  | 'devour'          // Boss: Instant kill on crit
+  // New monster abilities
+  | 'burn'            // Fire Vampire: Deals fire damage over time
+  | 'hypnosis'        // Serpent Man: Stuns target for 1 round
+  | 'burrow'          // Cthonian: Can move through solid ground
+  | 'wind_blast'      // Flying Polyp: Pushes targets away
+  | 'telekinesis'     // Lloigor: Attacks from a distance
+  | 'cold_aura'       // Gnoph-Keh: Slows nearby enemies
+  | 'drain';          // Colour Out of Space: Drains life force
 
 /**
  * Monster combat style - how they approach fights
@@ -1591,6 +1599,7 @@ export interface GameState {
     }[];
     tilesExplored: number;
     itemsCollected: number;
+    tilesSinceLastSpawn: number;  // Pity timer - tracks tiles explored without finding items
   };
 }
 

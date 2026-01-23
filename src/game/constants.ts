@@ -4504,15 +4504,7 @@ export const ENEMY_LOOT_TABLES: Partial<Record<EnemyType, EnemyLootConfig>> = {
     ],
     goldDrop: { min: 50, max: 150 }
   },
-  ancient_one: {
-    dropChance: 0.90, // Rare victory deserves reward
-    possibleDrops: [
-      { itemId: 'elder_key', weight: 30 },
-      { itemId: 'reality_fragment', weight: 30 },
-      { itemId: 'cosmic_truth', weight: 40 }
-    ],
-    goldDrop: { min: 100, max: 300 }
-  }
+  // Note: ancient_one is not a standard EnemyType - boss victories handled separately
 };
 
 /**
