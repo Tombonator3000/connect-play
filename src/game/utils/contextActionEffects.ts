@@ -139,16 +139,40 @@ export function setDoorState(
 }
 
 /**
- * Converts a blocked edge to an open edge
+ * Converts a blocked edge to an open edge AND the corresponding edge on the adjacent tile
+ * This ensures edges stay in sync on both sides, preventing player from getting stuck
  */
 export function clearBlockedEdge(
   board: Tile[],
   tileId: string,
   edgeIndex: number
 ): Tile[] {
-  return updateTileEdge(board, tileId, edgeIndex, () => ({
+  // First update the edge on the source tile
+  let updatedBoard = updateTileEdge(board, tileId, edgeIndex, () => ({
     type: 'open'
   }));
+
+  // Now find and update the adjacent tile's corresponding edge
+  const tile = board.find(t => t.id === tileId);
+  if (tile) {
+    const adjacentPos = getAdjacentPosition(tile, edgeIndex);
+    if (adjacentPos) {
+      const adjacentTile = updatedBoard.find(t => t.q === adjacentPos.q && t.r === adjacentPos.r);
+      if (adjacentTile) {
+        // The opposite edge index (0 <-> 3, 1 <-> 4, 2 <-> 5)
+        const oppositeEdgeIndex = (edgeIndex + 3) % 6;
+        const oppositeEdge = adjacentTile.edges?.[oppositeEdgeIndex];
+        // Update the opposite edge if it's blocked, wall, or any non-passable type
+        if (oppositeEdge && (oppositeEdge.type === 'blocked' || oppositeEdge.type === 'wall')) {
+          updatedBoard = updateTileEdge(updatedBoard, adjacentTile.id, oppositeEdgeIndex, () => ({
+            type: 'open'
+          }));
+        }
+      }
+    }
+  }
+
+  return updatedBoard;
 }
 
 /**
