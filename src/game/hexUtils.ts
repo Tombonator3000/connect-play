@@ -185,6 +185,53 @@ export const getHexNeighbors = (pos: { q: number; r: number }): { q: number; r: 
   ];
 };
 
+/**
+ * Check if an edge blocks movement
+ * Walls and closed/locked doors block movement
+ */
+const edgeBlocksMovement = (edge: EdgeData | undefined): boolean => {
+  if (!edge) return false;
+
+  switch (edge.type) {
+    case 'wall':
+      return true;
+    case 'door':
+      // Doors block unless open or broken
+      return edge.doorState !== 'open' && edge.doorState !== 'broken';
+    case 'blocked':
+      return true;
+    case 'secret':
+      // Secret doors block movement until discovered
+      return !edge.isRevealed;
+    default:
+      return false;
+  }
+};
+
+/**
+ * Check if movement is blocked by edges between two adjacent tiles
+ */
+const isMovementBlockedByEdge = (
+  currentTile: Tile,
+  neighborTile: Tile,
+  direction: number
+): boolean => {
+  // Check edge on current tile
+  const edgeOnCurrent = currentTile.edges?.[direction];
+  if (edgeBlocksMovement(edgeOnCurrent)) {
+    return true;
+  }
+
+  // Check opposite edge on neighbor tile
+  const oppositeDirection = (direction + 3) % 6;
+  const edgeOnNeighbor = neighborTile.edges?.[oppositeDirection];
+  if (edgeBlocksMovement(edgeOnNeighbor)) {
+    return true;
+  }
+
+  return false;
+};
+
 export const findPath = (
   start: { q: number; r: number },
   goals: { q: number; r: number }[],
@@ -195,6 +242,16 @@ export const findPath = (
   const queue: { pos: { q: number; r: number }; path: { q: number; r: number }[] }[] = [{ pos: start, path: [] }];
   const visited = new Set<string>([`${start.q},${start.r}`]);
   const maxDepth = 12;
+
+  // Neighbor offsets with their corresponding edge direction indices
+  const neighborOffsets = [
+    { dq: 0, dr: -1, dir: 0 },  // North
+    { dq: 1, dr: -1, dir: 1 },  // Northeast
+    { dq: 1, dr: 0, dir: 2 },   // Southeast/East
+    { dq: 0, dr: 1, dir: 3 },   // South
+    { dq: -1, dr: 1, dir: 4 },  // Southwest
+    { dq: -1, dr: 0, dir: 5 }   // Northwest/West
+  ];
 
   while (queue.length > 0) {
     const { pos, path } = queue.shift()!;
@@ -207,20 +264,23 @@ export const findPath = (
 
     if (path.length >= maxDepth) continue;
 
-    const neighbors = [
-      { q: pos.q + 1, r: pos.r }, { q: pos.q - 1, r: pos.r },
-      { q: pos.q, r: pos.r + 1 }, { q: pos.q, r: pos.r - 1 },
-      { q: pos.q + 1, r: pos.r - 1 }, { q: pos.q - 1, r: pos.r + 1 }
-    ];
+    const currentTile = board.find(t => t.q === pos.q && t.r === pos.r);
+    if (!currentTile) continue;
 
-    for (const n of neighbors) {
+    for (const offset of neighborOffsets) {
+      const n = { q: pos.q + offset.dq, r: pos.r + offset.dr };
       const key = `${n.q},${n.r}`;
       if (visited.has(key)) continue;
 
-      const tile = board.find(t => t.q === n.q && t.r === n.r);
-      if (!tile) continue;
+      const neighborTile = board.find(t => t.q === n.q && t.r === n.r);
+      if (!neighborTile) continue;
 
-      if (!isFlying && tile.object?.blocking) continue;
+      // Check if edge blocks movement (walls, closed doors, etc.)
+      // Flying enemies can still be blocked by walls and closed doors
+      if (isMovementBlockedByEdge(currentTile, neighborTile, offset.dir)) continue;
+
+      // Check for blocking objects (flying enemies can pass over obstacles but not through walls)
+      if (!isFlying && neighborTile.object?.blocking) continue;
 
       const isGoal = goals.some(g => g.q === n.q && g.r === n.r);
       if (!isGoal && blockers.has(key)) continue;

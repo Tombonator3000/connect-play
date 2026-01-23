@@ -98,6 +98,156 @@ export {
 };
 
 // ============================================================================
+// FLANKING AND PACK MENTALITY HELPERS
+// ============================================================================
+
+/**
+ * Check if an enemy is flanking a player (has ally on opposite side)
+ * Returns true if another enemy is positioned on the opposite side of the player
+ */
+export function isFlankingPlayer(
+  enemy: Enemy,
+  player: Player,
+  allEnemies: Enemy[]
+): boolean {
+  const enemyDir = {
+    dq: Math.sign(enemy.position.q - player.position.q),
+    dr: Math.sign(enemy.position.r - player.position.r)
+  };
+
+  // Check if any other enemy is on the opposite side
+  for (const other of allEnemies) {
+    if (other.id === enemy.id) continue;
+    if (hexDistance(other.position, player.position) > 1) continue;
+
+    const otherDir = {
+      dq: Math.sign(other.position.q - player.position.q),
+      dr: Math.sign(other.position.r - player.position.r)
+    };
+
+    // Check if roughly opposite direction
+    if ((enemyDir.dq !== 0 && enemyDir.dq === -otherDir.dq) ||
+        (enemyDir.dr !== 0 && enemyDir.dr === -otherDir.dr)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Count nearby allies of the same type for pack mentality bonus
+ */
+export function countNearbyPackMembers(
+  enemy: Enemy,
+  allEnemies: Enemy[],
+  maxRange: number = 2
+): number {
+  return allEnemies.filter(e =>
+    e.id !== enemy.id &&
+    e.type === enemy.type &&
+    hexDistance(e.position, enemy.position) <= maxRange
+  ).length;
+}
+
+/**
+ * Calculate flanking bonus for attack
+ * Returns bonus attack dice if flanking
+ */
+export function getFlankingBonus(
+  enemy: Enemy,
+  player: Player,
+  allEnemies: Enemy[]
+): number {
+  const personality = getMonsterPersonality(enemy.type);
+  const combatStyle = getCombatStyleModifiers(personality.combatStyle);
+
+  if (combatStyle.prefersFlanking && isFlankingPlayer(enemy, player, allEnemies)) {
+    return 1; // +1 attack die for flanking
+  }
+  return 0;
+}
+
+/**
+ * Calculate pack mentality bonus for attack
+ * Monsters with pack mentality get bonus from nearby allies
+ */
+export function getPackMentalityBonus(
+  enemy: Enemy,
+  allEnemies: Enemy[]
+): { attackBonus: number; morale: boolean } {
+  const personality = getMonsterPersonality(enemy.type);
+
+  if (!personality.packMentality) {
+    return { attackBonus: 0, morale: true };
+  }
+
+  const nearbyPack = countNearbyPackMembers(enemy, allEnemies);
+
+  // Pack members gain confidence and attack bonus from allies
+  if (nearbyPack >= 2) {
+    return { attackBonus: 1, morale: true }; // +1 attack die with 2+ pack members
+  } else if (nearbyPack === 1) {
+    return { attackBonus: 0, morale: true }; // Normal confidence with 1 ally
+  } else {
+    // Alone - may lose morale and be less aggressive
+    return { attackBonus: 0, morale: false };
+  }
+}
+
+/**
+ * Find best flanking position near a target player
+ * Returns position that would create a flank with existing enemies
+ */
+export function findFlankingPosition(
+  enemy: Enemy,
+  targetPlayer: Player,
+  tiles: Tile[],
+  allEnemies: Enemy[]
+): { q: number; r: number } | null {
+  const neighbors = getHexNeighbors(targetPlayer.position);
+  const occupiedPositions = new Set(
+    allEnemies.map(e => `${e.position.q},${e.position.r}`)
+  );
+
+  // Find existing enemy positions adjacent to player
+  const existingAttackers = allEnemies.filter(e =>
+    e.id !== enemy.id &&
+    hexDistance(e.position, targetPlayer.position) <= 1
+  );
+
+  if (existingAttackers.length === 0) {
+    return null; // No one to flank with
+  }
+
+  // Find position opposite to an existing attacker
+  for (const attacker of existingAttackers) {
+    const attackerDir = {
+      dq: attacker.position.q - targetPlayer.position.q,
+      dr: attacker.position.r - targetPlayer.position.r
+    };
+
+    // Calculate opposite position
+    const oppositePos = {
+      q: targetPlayer.position.q - attackerDir.dq,
+      r: targetPlayer.position.r - attackerDir.dr
+    };
+
+    const key = `${oppositePos.q},${oppositePos.r}`;
+    if (occupiedPositions.has(key)) continue;
+
+    const tile = tiles.find(t => t.q === oppositePos.q && t.r === oppositePos.r);
+    if (!tile) continue;
+
+    const passability = canEnemyPassTile(enemy, tile);
+    if (passability.canPass) {
+      return oppositePos;
+    }
+  }
+
+  return null;
+}
+
+// ============================================================================
 // TARGET PRIORITIZATION SYSTEM
 // ============================================================================
 
@@ -671,6 +821,40 @@ const SIMPLE_ABILITY_EFFECTS: Partial<Record<MonsterSpecialAbility, SimpleAbilit
   },
   teleport: {
     messageTemplate: '{name} beveger seg gjennom dimensjonene...'
+  },
+  // Newly implemented abilities (2026-01-23)
+  burrow: {
+    bonusAttackDice: 1,
+    messageTemplate: '{name} bryter opp fra bakken i et overraskelsesangrep!'
+  },
+  burn: {
+    damage: 1,
+    sanityDamage: 1,
+    messageTemplate: '{name} flammer opp og brenner alt i nærheten!'
+  },
+  hypnosis: {
+    sanityDamage: 2,
+    messageTemplate: '{name}s øyne fanger blikket ditt... du føler viljen din svekkes!'
+  },
+  cold_aura: {
+    damage: 1,
+    messageTemplate: '{name}s isnende tilstedeværelse suger varmen ut av rommet!'
+  },
+  wind_blast: {
+    damage: 2,
+    sanityDamage: 1,
+    messageTemplate: '{name} utløser en ødeleggende vindstøt som river gjennom alt!'
+  },
+  telekinesis: {
+    damage: 1,
+    bonusAttackDice: 1,
+    messageTemplate: '{name} kaster gjenstander med sinnet!'
+  },
+  drain: {
+    damage: 1,
+    healing: 1,
+    sanityDamage: 1,
+    messageTemplate: '{name} tapper livskraften din... du føler deg svakere!'
   }
 };
 
@@ -1327,6 +1511,8 @@ export function processEnemyTurn(
     isRanged?: boolean;
     coverPenalty?: number;
     weatherHorrorBonus?: number;
+    flankingBonus?: number;
+    packBonus?: number;
   }>;
   messages: string[];
   specialEvents: Array<{
@@ -1348,8 +1534,17 @@ export function processEnemyTurn(
     isRanged?: boolean;
     coverPenalty?: number;
     weatherHorrorBonus?: number;
+    flankingBonus?: number;
+    packBonus?: number;
   }> = [];
   const messages: string[] = [];
+
+  // Helper to calculate flanking and pack attack bonuses
+  const getAttackBonuses = (attacker: Enemy, target: Player) => {
+    const flankingBonus = getFlankingBonus(attacker, target, updatedEnemies);
+    const packMentality = getPackMentalityBonus(attacker, updatedEnemies);
+    return { flankingBonus, packBonus: packMentality.attackBonus };
+  };
   const specialEvents: Array<{
     type: 'teleport' | 'phase' | 'destruction';
     enemy: Enemy;
@@ -1403,10 +1598,13 @@ export function processEnemyTurn(
             if (distanceAfterMove <= movedEnemy.attackRange) {
               // Check if monster can see the player from new position
               if (hasLineOfSight(movedEnemy.position, player.position, tiles, movedEnemy.visionRange)) {
+                const bonuses = getAttackBonuses(movedEnemy, player);
                 attacks.push({
                   enemy: movedEnemy,
                   targetPlayer: player,
-                  weatherHorrorBonus: weatherMods.horrorBonus
+                  weatherHorrorBonus: weatherMods.horrorBonus,
+                  flankingBonus: bonuses.flankingBonus,
+                  packBonus: bonuses.packBonus
                 });
                 messages.push(`${movedEnemy.name} angriper ${player.name}!`);
                 break; // Only attack one player
@@ -1426,19 +1624,39 @@ export function processEnemyTurn(
           if (isRanged) {
             // Calculate cover penalty for ranged attacks
             const rangedCheck = canMakeRangedAttack(enemy, targetPlayer, tiles);
+            const rangedBonuses = getAttackBonuses(enemy, targetPlayer);
             attacks.push({
               enemy,
               targetPlayer,
               isRanged: true,
               coverPenalty: rangedCheck.coverPenalty,
-              weatherHorrorBonus: weatherMods.horrorBonus
+              weatherHorrorBonus: weatherMods.horrorBonus,
+              flankingBonus: rangedBonuses.flankingBonus,
+              packBonus: rangedBonuses.packBonus
             });
           } else {
+            const meleeBonuses = getAttackBonuses(enemy, targetPlayer);
             attacks.push({
               enemy,
               targetPlayer,
-              weatherHorrorBonus: weatherMods.horrorBonus
+              weatherHorrorBonus: weatherMods.horrorBonus,
+              flankingBonus: meleeBonuses.flankingBonus,
+              packBonus: meleeBonuses.packBonus
             });
+          }
+
+          // Handle hit_and_run and ambush combat styles - retreat after attack
+          const personality = getMonsterPersonality(enemy.type);
+          const combatStyle = getCombatStyleModifiers(personality.combatStyle);
+          if (combatStyle.retreatAfterAttack && !isRanged) {
+            const retreatPos = findRetreatPosition(enemy, targetPlayer, tiles, updatedEnemies);
+            if (retreatPos) {
+              updatedEnemies[i] = {
+                ...enemy,
+                position: retreatPos
+              };
+              messages.push(`${enemy.name} trekker seg tilbake etter angrepet!`);
+            }
           }
         }
         break;
@@ -1465,10 +1683,13 @@ export function processEnemyTurn(
             const distanceAfterSpecial = hexDistance(specialMovedEnemy.position, player.position);
             if (distanceAfterSpecial <= specialMovedEnemy.attackRange) {
               if (hasLineOfSight(specialMovedEnemy.position, player.position, tiles, specialMovedEnemy.visionRange)) {
+                const specialBonuses = getAttackBonuses(specialMovedEnemy, player);
                 attacks.push({
                   enemy: specialMovedEnemy,
                   targetPlayer: player,
-                  weatherHorrorBonus: weatherMods.horrorBonus
+                  weatherHorrorBonus: weatherMods.horrorBonus,
+                  flankingBonus: specialBonuses.flankingBonus,
+                  packBonus: specialBonuses.packBonus
                 });
                 messages.push(`${specialMovedEnemy.name} angriper ${player.name}!`);
                 break;

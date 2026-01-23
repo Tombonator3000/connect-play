@@ -19573,3 +19573,147 @@ Denne fixen gjør at monster target preferences nå fungerer korrekt:
 Enemy AI-systemet er generelt veldig godt strukturert og fungerer bra. Den kritiske buggen med target preferences ble fikset. De manglende special ability handlers er notert for fremtidig implementering, men påvirker ikke spillbarheten kritisk siden monstrene fortsatt angriper normalt.
 
 ---
+
+## 2026-01-23: Implementering av Dokumenterte Issues
+
+### Oppgave
+Fikse 5 dokumenterte issues fra tidligere AI-audit:
+1. 7 manglende special abilities
+2. Ufullstendig ETHEREAL_CREATURES liste
+3. Basic pathfinding ignorerer edges
+4. hit_and_run combat style ikke implementert
+5. Flanking og pack mentality ubrukt
+
+---
+
+### Fix 1: 7 Manglende Special Abilities
+**Fil:** `monsterAI.ts`
+
+Lagt til handlers for følgende abilities i `SIMPLE_ABILITY_EFFECTS`:
+
+| Ability | Monster | Effekt |
+|---------|---------|--------|
+| `burrow` | Cthonian | +1 attack die, overraskelsesangrep fra bakken |
+| `burn` | Fire Vampire | 1 damage + 1 sanity damage, brennende område |
+| `hypnosis` | Serpent Man | 2 sanity damage, svekker vilje |
+| `cold_aura` | Gnoph-Keh | 1 damage, suger varme fra rommet |
+| `wind_blast` | Flying Polyp | 2 damage + 1 sanity, ødeleggende vindstøt |
+| `telekinesis` | Lloigor | 1 damage + 1 attack die, kaster gjenstander |
+| `drain` | Colour Out of Space | 1 damage + 1 healing + 1 sanity, tapper livskraft |
+
+---
+
+### Fix 2: ETHEREAL_CREATURES Liste
+**Fil:** `monsterObstacles.ts`
+
+**FØR:**
+```typescript
+const ETHEREAL_CREATURES = ['nightgaunt', 'hunting_horror'] as const;
+```
+
+**ETTER:**
+```typescript
+const ETHEREAL_CREATURES = ['nightgaunt', 'hunting_horror', 'formless_spawn'] as const;
+```
+
+Formless Spawn får nå konsistent phase-bevegelse OG obstacle-passering.
+
+---
+
+### Fix 3: Basic Pathfinding Respekterer Edges
+**Fil:** `hexUtils.ts`
+
+Lagt til edge-sjekking i `findPath()`:
+
+**Nye hjelpefunksjoner:**
+- `edgeBlocksMovement(edge)`: Sjekker om edge blokkerer bevegelse
+- `isMovementBlockedByEdge(currentTile, neighborTile, direction)`: Sjekker begge sider av kanten
+
+**Endringer i pathfinding:**
+- Sjekker nå vegger mellom tiles
+- Sjekker lukkede/låste dører
+- Sjekker secret doors (blokkerer til oppdaget)
+- Flygende monstre kan fortsatt IKKE gå gjennom vegger/lukkede dører
+
+**Konsekvens:** Monstre kan ikke lenger finne sti gjennom vegger eller lukkede dører.
+
+---
+
+### Fix 4: hit_and_run Combat Style
+**Fil:** `monsterAI.ts` (processEnemyTurn)
+
+Implementert retreat etter angrep for monstre med `hit_and_run` eller `ambush` combat style:
+
+```typescript
+// Handle hit_and_run and ambush combat styles - retreat after attack
+const personality = getMonsterPersonality(enemy.type);
+const combatStyle = getCombatStyleModifiers(personality.combatStyle);
+if (combatStyle.retreatAfterAttack && !isRanged) {
+  const retreatPos = findRetreatPosition(enemy, targetPlayer, tiles, updatedEnemies);
+  if (retreatPos) {
+    updatedEnemies[i] = { ...enemy, position: retreatPos };
+    messages.push(`${enemy.name} trekker seg tilbake etter angrepet!`);
+  }
+}
+```
+
+**Påvirkede monstre:**
+- Mi-Go (`hit_and_run`)
+- Byakhee (`hit_and_run`)
+- Hunting Horror (`hit_and_run`)
+- Ghoul (`ambush`)
+- Ghast (`ambush`)
+- Nightgaunt (`ambush`)
+- Rat Thing (`ambush`)
+- Dimensional Shambler (`ambush`)
+- Cthonian (`ambush`)
+
+---
+
+### Fix 5: Flanking og Pack Mentality
+**Fil:** `monsterAI.ts`
+
+**Nye hjelpefunksjoner:**
+- `isFlankingPlayer(enemy, player, allEnemies)`: Sjekker om fiende på motsatt side
+- `countNearbyPackMembers(enemy, allEnemies, maxRange)`: Teller allierte av samme type
+- `getFlankingBonus(enemy, player, allEnemies)`: Returnerer +1 attack die ved flanking
+- `getPackMentalityBonus(enemy, allEnemies)`: Returnerer attack bonus og morale status
+- `findFlankingPosition(enemy, targetPlayer, tiles, allEnemies)`: Finner optimal flankeposisjon
+
+**Implementering i attacks:**
+Alle `attacks.push()` inkluderer nå:
+```typescript
+flankingBonus: number;  // +1 hvis flanking
+packBonus: number;      // +1 hvis 2+ pack members nearby
+```
+
+**Combat style bruk:**
+- `tactical`: prefersFlanking = true → +1 attack die ved flanking
+- `swarm`: prefersFlanking = true → +1 attack die ved flanking
+- `packMentality`: true → +1 attack die med 2+ allierte i nærheten
+
+---
+
+### Filer Endret
+
+| Fil | Endringer |
+|-----|-----------|
+| `monsterAI.ts` | 7 nye abilities, hit_and_run retreat, flanking/pack hjelpefunksjoner, attack bonuser |
+| `monsterObstacles.ts` | Lagt til formless_spawn i ETHEREAL_CREATURES |
+| `hexUtils.ts` | Edge-sjekking i pathfinding, edgeBlocksMovement, isMovementBlockedByEdge |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+### Oppsummering
+
+Alle 5 dokumenterte issues er nå fikset:
+1. ✅ 7 special abilities implementert med effekter og meldinger
+2. ✅ formless_spawn får nå riktig ethereal/phase bevegelse
+3. ✅ Pathfinding respekterer vegger, dører og edges
+4. ✅ hit_and_run og ambush monstre trekker seg tilbake etter angrep
+5. ✅ Flanking gir +1 attack die, pack mentality gir +1 med 2+ allierte
+
+Enemy AI-systemet er nå betydelig mer sofistikert med taktisk posisjonering og koordinert oppførsel.
+
+---
