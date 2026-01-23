@@ -17627,3 +17627,175 @@ Dette matcher Hero Quest-stilen hvor monstre beveger seg OG angriper på samme t
 
 ---
 
+
+## 2026-01-23: Implementering av Kritiske Mangler (Prioritet 1)
+
+### Oppgave
+Implementere kritiske mangler identifisert i den dype audit-rapporten:
+1. Puzzle-system: Verifisere 3 av 7 typer (Pressure Plate, Mirror Light, Astronomy)
+2. Visuelle effekter: Floor-teksturer, vannmerke-ikoner, madness CSS-animasjoner
+
+### Analyse - Hva som allerede var implementert
+
+**PUZZLES (alle 7 typer allerede implementert i PuzzleModal.tsx):**
+| Puzzle Type | Status | Linjer |
+|-------------|--------|--------|
+| sequence | ✅ Implementert | 45-171 |
+| code_lock | ✅ Implementert | 177-295 |
+| symbol_match | ✅ Implementert | 301-441 |
+| blood_ritual | ✅ Implementert | 447-557 |
+| astronomy | ✅ Implementert | 563-684 |
+| pressure_plate | ✅ Implementert | 690-831 |
+| mirror_light | ✅ Implementert | 837-975 |
+
+**MADNESS CSS (alle 8 typer allerede implementert i index.css):**
+| Madness Type | CSS Class | Linjer |
+|--------------|-----------|--------|
+| hallucination | .madness-hallucination | 340-347 |
+| paranoia | .madness-paranoia | 349-356 |
+| hysteria | .madness-hysteria | 358-366 |
+| catatonia | .madness-catatonia | 368-371 |
+| obsession | .madness-obsession | 373-380 |
+| amnesia | .madness-amnesia | 382-398 |
+| night_terrors | .madness-night-terrors | 400-408 |
+| dark_insight | .madness-dark-insight | 410-423 |
+
+### Hva som faktisk manglet
+
+**Floor-teksturer (manglende CSS-klasser):**
+- `.tile-tile` - Rene fliser for Hospital, Asylum, Morgue, Lab
+- `.tile-grass` - Gress-tekstur for Park, Cemetery, Forest edge
+- `.tile-dirt` - Jord-tekstur for Forest, Path, Cave
+- `.tile-ritual` - Okkulte symboler for Ritual Chamber, Altar, Portal
+
+**Integrasjon:**
+- FloorType fra tile-data ble ikke brukt i rendering
+- Vannmerke-ikoner (store bakgrunnsikoner) manglet
+
+### Implementerte endringer
+
+#### 1. Nye Floor-teksturer i CSS (`src/index.css`)
+
+```css
+/* Clean tile flooring - Hospital, Asylum, Morgue, Lab */
+.tile-tile {
+  background:
+    repeating-linear-gradient(90deg, ...),
+    repeating-linear-gradient(0deg, ...),
+    linear-gradient(135deg, ...);
+}
+
+/* Grass texture - Park, Cemetery, Forest edge */
+.tile-grass {
+  background:
+    radial-gradient(...),
+    linear-gradient(180deg, hsl(125 30% 10%) ...);
+}
+
+/* Dirt texture - Forest, Path, Cave */
+.tile-dirt {
+  background:
+    radial-gradient(...),
+    linear-gradient(145deg, hsl(30 30% 10%) ...);
+}
+
+/* Ritual flooring with pulsing animation */
+.tile-ritual {
+  background:
+    radial-gradient(circle, hsla(280 60% 25% / 0.4) ...),
+    conic-gradient(...),
+    linear-gradient(135deg, ...);
+  animation: ritual-pulse 4s ease-in-out infinite;
+}
+```
+
+#### 2. FloorType Integrasjon i GameBoard (`src/game/components/GameBoard.tsx`)
+
+**Ny hjelpefunksjon:**
+```typescript
+const getFloorTypeClass = (floorType: FloorType | undefined): string => {
+  switch (floorType) {
+    case 'wood': return 'tile-darkwood';
+    case 'cobblestone': return 'tile-cobblestone';
+    case 'tile': return 'tile-tile';
+    case 'stone': return 'tile-stone';
+    case 'grass': return 'tile-grass';
+    case 'dirt': return 'tile-dirt';
+    case 'water': return 'tile-water';
+    case 'ritual': return 'tile-ritual';
+    default: return 'tile-stone';
+  }
+};
+```
+
+**Oppdatert rendering:**
+```typescript
+// Bruker tile.floorType primært, fallback til visual.floorClass
+<div className={`... ${tile.floorType ? getFloorTypeClass(tile.floorType) : visual.floorClass} ...`}>
+```
+
+#### 3. Vannmerke-ikon system (`src/game/components/GameBoard.tsx`)
+
+**Nye ikoner importert:**
+- Bed, Utensils, FlaskConical, Cross, Lamp, TreePine
+
+**Watermark konfigurasjon:**
+```typescript
+const WATERMARK_PATTERNS: { patterns: string[]; config: WatermarkConfig }[] = [
+  { patterns: ['library', 'study', 'archive'], config: { Icon: BookOpen, colorClass: 'text-amber-600/20' } },
+  { patterns: ['bedroom', 'dormitory', 'rest'], config: { Icon: Bed, colorClass: 'text-amber-700/15' } },
+  { patterns: ['kitchen', 'pantry', 'dining'], config: { Icon: Utensils, colorClass: 'text-amber-600/20' } },
+  { patterns: ['laboratory', 'lab', 'morgue', 'hospital'], config: { Icon: FlaskConical, colorClass: 'text-cyan-500/20' } },
+  { patterns: ['ritual', 'altar', 'portal', 'occult'], config: { Icon: Sparkles, colorClass: 'text-purple-500/25' } },
+  { patterns: ['church', 'chapel', 'sanctuary'], config: { Icon: Church, colorClass: 'text-amber-500/20' } },
+  { patterns: ['forest', 'grove', 'garden', 'park'], config: { Icon: TreePine, colorClass: 'text-green-600/20' } },
+  { patterns: ['harbor', 'dock', 'pier', 'lighthouse', 'river'], config: { Icon: Anchor, colorClass: 'text-blue-500/20' } },
+  { patterns: ['crypt', 'tomb', 'grave', 'ossuary'], config: { Icon: Skull, colorClass: 'text-slate-400/25' } },
+  { patterns: ['street', 'alley', 'road', 'path'], config: { Icon: Lamp, colorClass: 'text-amber-500/15' } },
+  { patterns: ['cemetery', 'graveyard', 'burial'], config: { Icon: Cross, colorClass: 'text-slate-500/20' } },
+  // ... flere mønstre
+];
+```
+
+**Ny rendering-komponent:**
+```jsx
+{/* Watermark Icon - Large semi-transparent background icon */}
+{(() => {
+  const watermark = getTileWatermark(tile.name);
+  if (watermark && isVisible) {
+    const WatermarkIcon = watermark.Icon;
+    return (
+      <div className="absolute inset-0 z-[5] flex items-center justify-center pointer-events-none overflow-hidden">
+        <WatermarkIcon size={70} className={`${watermark.colorClass} transition-opacity duration-500`} strokeWidth={1} />
+      </div>
+    );
+  }
+  return null;
+})()}
+```
+
+### Filer Modifisert
+
+| Fil | Endring |
+|-----|---------|
+| `src/index.css` | +80 linjer - Nye floor-teksturer (tile-tile, tile-grass, tile-dirt, tile-ritual) |
+| `src/game/components/GameBoard.tsx` | +60 linjer - FloorType mapping, watermark-system |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,625.05 kB bundle)
+
+### Konklusjon
+
+**Allerede implementert før denne økten:**
+- Alle 7 puzzle-typer (sequence, code_lock, symbol_match, blood_ritual, astronomy, pressure_plate, mirror_light)
+- Alle 8 madness CSS-animasjoner
+
+**Implementert i denne økten:**
+1. ✅ 4 nye floor-teksturer CSS-klasser
+2. ✅ FloorType-integrasjon i tile rendering
+3. ✅ Vannmerke-ikon system med 14 rom-spesifikke ikoner
+
+Spillet følger nå game_design_bible.md Section 1.3 for visuelt tile-system.
+
+---

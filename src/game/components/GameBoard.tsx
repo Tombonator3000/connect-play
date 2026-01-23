@@ -1,10 +1,10 @@
 import React, { useRef, useEffect, useState, useMemo } from 'react';
-import { Tile, Player, Enemy, FloatingText, SpellParticle, EnemyType, ScenarioModifier, WeatherState, EdgeData, CharacterType } from '../types';
+import { Tile, Player, Enemy, FloatingText, SpellParticle, EnemyType, ScenarioModifier, WeatherState, EdgeData, CharacterType, FloorType } from '../types';
 import {
   User, Skull, DoorOpen, Lock, Flame, Hammer, Brain,
   BookOpen, Anchor, Church, MapPin, Building, ShoppingBag, Fish, PawPrint, Biohazard, Ghost, Bug, Search,
   Trees, AlertTriangle, Fence, Cloud, Archive, Radio, ToggleLeft, Sparkles, Moon, Package, CircleSlash,
-  Zap, Droplet, Key, Star, FileText, Gem
+  Zap, Droplet, Key, Star, FileText, Gem, Bed, Utensils, FlaskConical, Cross, Lamp, TreePine, type LucideIcon
 } from 'lucide-react';
 import { EnemyTooltip, TileObjectTooltip, EdgeFeatureTooltip } from './ItemTooltip';
 import CursorTooltip, { HoverData } from './CursorTooltip';
@@ -71,6 +71,66 @@ const HEX_EDGE_POINTS: Array<{ x1: number; y1: number; x2: number; y2: number }>
 const isDeadEndEdge = (edgeType: string | undefined): boolean => {
   if (!edgeType) return false;
   return edgeType === 'wall' || edgeType === 'blocked';
+};
+
+// Map FloorType to CSS class for tile textures
+// Per game_design_bible.md Section 1.3 - Visual tile-system
+const getFloorTypeClass = (floorType: FloorType | undefined): string => {
+  switch (floorType) {
+    case 'wood':
+      return 'tile-darkwood';       // Manor, Library, Study, Bedroom
+    case 'cobblestone':
+      return 'tile-cobblestone';    // Street, Alley, Square, Market
+    case 'tile':
+      return 'tile-tile';           // Hospital, Asylum, Morgue, Lab
+    case 'stone':
+      return 'tile-stone';          // Crypt, Cellar, Church, Tunnel
+    case 'grass':
+      return 'tile-grass';          // Park, Cemetery, Forest edge
+    case 'dirt':
+      return 'tile-dirt';           // Forest, Path, Cave
+    case 'water':
+      return 'tile-water';          // Harbor, Sewer, Underground River
+    case 'ritual':
+      return 'tile-ritual';         // Ritual Chamber, Altar, Portal
+    default:
+      return 'tile-stone';          // Fallback
+  }
+};
+
+// Watermark icon configuration per game_design_bible.md Section 1.3
+// Large, semi-transparent icons displayed in tile backgrounds
+interface WatermarkConfig {
+  Icon: LucideIcon;
+  colorClass: string;
+}
+
+const WATERMARK_PATTERNS: { patterns: string[]; config: WatermarkConfig }[] = [
+  { patterns: ['library', 'study', 'archive'], config: { Icon: BookOpen, colorClass: 'text-amber-600/20' } },
+  { patterns: ['bedroom', 'dormitory', 'rest'], config: { Icon: Bed, colorClass: 'text-amber-700/15' } },
+  { patterns: ['kitchen', 'pantry', 'dining'], config: { Icon: Utensils, colorClass: 'text-amber-600/20' } },
+  { patterns: ['laboratory', 'lab', 'morgue', 'hospital'], config: { Icon: FlaskConical, colorClass: 'text-cyan-500/20' } },
+  { patterns: ['ritual', 'altar', 'portal', 'occult'], config: { Icon: Sparkles, colorClass: 'text-purple-500/25' } },
+  { patterns: ['church', 'chapel', 'sanctuary'], config: { Icon: Church, colorClass: 'text-amber-500/20' } },
+  { patterns: ['forest', 'grove', 'garden', 'park'], config: { Icon: TreePine, colorClass: 'text-green-600/20' } },
+  { patterns: ['harbor', 'dock', 'pier', 'lighthouse', 'river'], config: { Icon: Anchor, colorClass: 'text-blue-500/20' } },
+  { patterns: ['crypt', 'tomb', 'grave', 'ossuary'], config: { Icon: Skull, colorClass: 'text-slate-400/25' } },
+  { patterns: ['street', 'alley', 'road', 'path'], config: { Icon: Lamp, colorClass: 'text-amber-500/15' } },
+  { patterns: ['cemetery', 'graveyard', 'burial'], config: { Icon: Cross, colorClass: 'text-slate-500/20' } },
+  { patterns: ['asylum', 'cell', 'ward'], config: { Icon: Brain, colorClass: 'text-purple-400/20' } },
+  { patterns: ['warehouse', 'storage', 'cellar'], config: { Icon: Package, colorClass: 'text-amber-700/15' } },
+  { patterns: ['market', 'shop', 'store'], config: { Icon: ShoppingBag, colorClass: 'text-amber-600/20' } },
+];
+
+// Get watermark icon for a tile based on its name
+const getTileWatermark = (tileName: string): WatermarkConfig | null => {
+  const name = tileName.toLowerCase();
+  for (const { patterns, config } of WATERMARK_PATTERNS) {
+    if (patterns.some(pattern => name.includes(pattern))) {
+      return config;
+    }
+  }
+  return null;
 };
 
 // Check if an edge is a window (semi-blocked - can see through but hard to pass)
@@ -667,7 +727,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
               {/* Board game tile with AI-generated oil painting texture and 3D depth */}
               {/* Touch feedback: brighten tile and show pulse when touched */}
               {/* Valid move highlighting for mobile: show where player can move */}
-              <div className={`absolute inset-0 hex-clip transition-all duration-150 ${visual.floorClass} ${visual.glowClass} ${isVisible ? depthClass : ''} overflow-hidden group ${isTouched ? 'brightness-125 scale-[1.02] touch-highlight' : ''} ${isValidMove && isVisible ? 'valid-move-tile' : ''} ${isSelectedTarget ? 'selected-move-target' : ''} ${isLongPressPreview ? 'long-press-preview' : ''}`}>
+              {/* Floor texture: Use tile.floorType if available, fallback to visual.floorClass */}
+              <div className={`absolute inset-0 hex-clip transition-all duration-150 ${tile.floorType ? getFloorTypeClass(tile.floorType) : visual.floorClass} ${visual.glowClass} ${isVisible ? depthClass : ''} overflow-hidden group ${isTouched ? 'brightness-125 scale-[1.02] touch-highlight' : ''} ${isValidMove && isVisible ? 'valid-move-tile' : ''} ${isSelectedTarget ? 'selected-move-target' : ''} ${isLongPressPreview ? 'long-press-preview' : ''}`}>
                 {/* AI-generated tile image - MUST be on top with z-index */}
                 {tileImage ? (
                   <img
@@ -707,7 +768,26 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   </div>
                 )}
 
-                {/* Tile icon - only show if no image */}
+                {/* Watermark Icon - Large semi-transparent background icon per game_design_bible.md */}
+                {/* Always shown as atmospheric background decoration */}
+                {(() => {
+                  const watermark = getTileWatermark(tile.name);
+                  if (watermark && isVisible) {
+                    const WatermarkIcon = watermark.Icon;
+                    return (
+                      <div className="absolute inset-0 z-[5] flex items-center justify-center pointer-events-none overflow-hidden">
+                        <WatermarkIcon
+                          size={70}
+                          className={`${watermark.colorClass} transition-opacity duration-500`}
+                          strokeWidth={1}
+                        />
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+
+                {/* Tile icon - only show if no image (fallback display) */}
                 {!tileImage && (
                   <div className={`relative z-10 flex flex-col items-center justify-center h-full pointer-events-none transition-opacity ${isVisible ? 'opacity-30 group-hover:opacity-50' : 'opacity-10'}`}>
                     <visual.Icon size={32} className={visual.iconColor} />
