@@ -1,5 +1,53 @@
 # Development Log
 
+## 2026-01-23: Critical Bug Fixes - Permadeath & Character Sheet
+
+### Bug 1: Permadeath Not Persisting (FIXED)
+
+**Problem:** Når en karakter med permadeath døde, ble de ikke lagret permanent til memorial. Neste gang spillet lastet, var de tilbake som levende.
+
+**Årsak:** I `ShadowsGame.tsx` linje 1084, i `handleScenarioComplete`, ble `setLegacyData()` kalt for å oppdatere React state, men `saveLegacyData()` ble IKKE kalt for å persistere til localStorage.
+
+**Løsning:** Lagt til `saveLegacyData(updatedLegacyData)` etter `setLegacyData()` i `handleScenarioComplete`.
+
+**Fil endret:** `src/game/ShadowsGame.tsx`
+
+```typescript
+// FØR:
+setLegacyData(updatedLegacyData);
+setLastScenarioResult(result);
+
+// ETTER:
+setLegacyData(updatedLegacyData);
+saveLegacyData(updatedLegacyData);  // CRITICAL: Persist permadeath and scenario results
+setLastScenarioResult(result);
+```
+
+### Bug 2: Character Sheet Crash Prevention (FIXED)
+
+**Problem:** Spillet kunne kræsje (svart skjerm) når man klikket på character sheet-knappen.
+
+**Årsak:** `CharacterPanel.tsx` manglet defensive sjekker for `player.inventory` - hvis inventory var undefined eller mangelfullt, ville komponenten kræsje.
+
+**Løsning:** Lagt til defensive fallback for inventory-objektet med default verdier.
+
+**Fil endret:** `src/game/components/CharacterPanel.tsx`
+
+```typescript
+// Defensive: ensure inventory exists with default values
+const inventory = player.inventory || {
+  leftHand: null,
+  rightHand: null,
+  body: null,
+  bag: [null, null, null, null],
+  questItems: []
+};
+```
+
+Oppdatert alle referanser fra `player.inventory` til å bruke den defensive `inventory` variabelen.
+
+---
+
 ## 2026-01-23: COMPLETE DESIGN PROPOSAL - GameOverOverlay.tsx Improvements
 
 ### Oversikt
