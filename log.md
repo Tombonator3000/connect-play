@@ -17980,3 +17980,139 @@ Alle fire høyprioriterte mangler fra Prioritet 2 er nå implementert:
 Spillet følger nå game_design_bible.md Section 6.3 (Enemy Loot) og Section 4.5 (Survivor NPCs).
 
 ---
+
+---
+
+## 2026-01-23: Kritiske Bug-fikser - Event Cards, Tile Visibility, Blocked Exits
+
+### Oppgaver
+1. Event cards gir ikke health damage selv om de viser at de gjør det
+2. Tile-grafikk forsvinner når spiller flytter ut
+3. Spiller kan bli stuck i rom fordi alle utganger er blokkert
+
+### Implementerte Fikser
+
+#### 1. Event Card Damage - Race Condition Fix
+
+**Problem:** Event card HP/Sanity-endringer ble overskrevet av Mythos-fase-overgangen fordi den brukte et fanget `updatedPlayers`-objekt fra closure i stedet for den nyeste staten.
+
+**Rotårsak:** I `ShadowsGame.tsx` Mythos-fasen:
+- Linje 373: `updatedPlayers` ble opprettet fra `state.players`
+- Linje 467: `setTimeout` callback brukte denne gamle `updatedPlayers`-referansen
+- Hvis spilleren løste et event kort FØR timeout-en firedde, ble event-effektene overskrevet
+
+**Fix i `ShadowsGame.tsx`:**
+```typescript
+// BEFORE:
+setTimeout(() => {
+  setState(prev => {
+    const { resetPlayers } = resetPlayersForNewTurn(updatedPlayers); // BAD: stale closure
+    // ...
+  });
+}, 1200);
+
+// AFTER:
+setTimeout(() => {
+  setState(prev => {
+    // Use prev.players to include any changes from event card resolution
+    const { resetPlayers } = resetPlayersForNewTurn(prev.players); // GOOD: current state
+    // ...
+  });
+}, 1200);
+```
+
+**Ekstra forbedringer:**
+- Game Over-sjekk flyttet inn i fase-overgang for å bruke `prev.players`
+- Kommentarer lagt til for å forklare race condition-faren
+
+#### 2. Tile Graphics Visibility - Fog Opacity Reduction
+
+**Problem:** Utforskede tiles som spilleren forlater ble for mørke (fog opacity 0.5), noe som fikk dem til å "forsvinne" visuelt.
+
+**Fix i `GameBoard.tsx`:**
+```typescript
+// BEFORE:
+fogOpacity = isExplored ? 0.5 : 0.95;
+
+// AFTER:
+fogOpacity = isExplored ? 0.35 : 0.95; // Reduced from 0.5 to 0.35 for better visibility
+```
+
+**Også justert kant-gradient:**
+```typescript
+// BEFORE:
+fogOpacity = 0.15 + (distance - 1) * 0.1;
+
+// AFTER:
+fogOpacity = 0.1 + (distance - 1) * 0.08; // Reduced for better visibility
+```
+
+#### 3. Blocked Exits - Edge Synchronization Fix
+
+**Problem:** Når en spiller ryddet en blokkert kant (rubble, etc.) og beveget seg gjennom, var naboflisens motsatte kant fremdeles blokkert. Dette førte til at spilleren kunne entre et rom men ikke forlate det.
+
+**Rotårsak:** `clearBlockedEdge()` funksjonen i `contextActionEffects.ts` oppdaterte bare kildeflisen, ikke naboflisen.
+
+**Fix i `contextActionEffects.ts`:**
+```typescript
+// BEFORE:
+export function clearBlockedEdge(board, tileId, edgeIndex): Tile[] {
+  return updateTileEdge(board, tileId, edgeIndex, () => ({
+    type: 'open'
+  }));
+}
+
+// AFTER:
+export function clearBlockedEdge(board, tileId, edgeIndex): Tile[] {
+  // Update source tile
+  let updatedBoard = updateTileEdge(board, tileId, edgeIndex, () => ({
+    type: 'open'
+  }));
+
+  // Also update adjacent tile's opposite edge
+  const tile = board.find(t => t.id === tileId);
+  if (tile) {
+    const adjacentPos = getAdjacentPosition(tile, edgeIndex);
+    if (adjacentPos) {
+      const adjacentTile = updatedBoard.find(t => t.q === adjacentPos.q && t.r === adjacentPos.r);
+      if (adjacentTile) {
+        const oppositeEdgeIndex = (edgeIndex + 3) % 6;
+        const oppositeEdge = adjacentTile.edges?.[oppositeEdgeIndex];
+        if (oppositeEdge && (oppositeEdge.type === 'blocked' || oppositeEdge.type === 'wall')) {
+          updatedBoard = updateTileEdge(updatedBoard, adjacentTile.id, oppositeEdgeIndex, () => ({
+            type: 'open'
+          }));
+        }
+      }
+    }
+  }
+  return updatedBoard;
+}
+```
+
+**Ekstra fix i `tileConnectionSystem.ts`:**
+- `synchronizeEdgesWithNeighbors()` oppdatert til å håndtere 'blocked' edges i tillegg til 'wall'
+- Sikrer at nye tiles ikke genereres med blokkerte kanter som peker mot åpne kanter på eksisterende tiles
+
+### Filer Modifisert
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/ShadowsGame.tsx` | Race condition fix i Mythos-fase, bruker `prev.players` i stedet for fanget `updatedPlayers` |
+| `src/game/components/GameBoard.tsx` | Redusert fog opacity fra 0.5 til 0.35 for utforskede-men-ikke-synlige tiles |
+| `src/game/utils/contextActionEffects.ts` | `clearBlockedEdge()` synkroniserer nå med naboflis |
+| `src/game/tileConnectionSystem.ts` | `synchronizeEdgesWithNeighbors()` håndterer nå 'blocked' edges |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,646.64 kB bundle)
+
+### Konklusjon
+
+Alle tre kritiske bugs er nå fikset:
+
+1. ✅ **Event Card Damage:** HP/Sanity-endringer fra events beholdes nå korrekt gjennom fase-overganger
+2. ✅ **Tile Visibility:** Utforskede tiles forblir synlige (med redusert fog) når spilleren beveger seg vekk
+3. ✅ **Blocked Exits:** Edge-synkronisering sikrer at spillere kan forlate rom de har entret
+
+---

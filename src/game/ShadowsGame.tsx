@@ -447,26 +447,30 @@ const ShadowsGame: React.FC = () => {
           addToLog(`📜 EVENT: ${eventResult.card.title}`);
         }
 
-        // === STEP 6: GAME OVER CHECK ===
-        if (areAllPlayersDead(updatedPlayers)) {
-          setTimeout(() => {
-            playSound('defeat');
-            addToLog("All investigators have fallen. The darkness claims victory.");
-            setGameOverType('defeat_death');
-            setState(prev => ({
-              ...prev,
-              enemies: combatResult.updatedEnemies.filter(e => e.hp > 0),
-              phase: GamePhase.GAME_OVER,
-              players: updatedPlayers
-            }));
-          }, 1200);
-          return;
-        }
+        // === STEP 6: (Moved to STEP 7) ===
+        // Game over check is now in phase transition to account for event card effects
 
         // === STEP 7: PHASE TRANSITION ===
+        // CRITICAL: Use prev.players in the callback to get the CURRENT state
+        // This ensures event card effects (HP/Sanity changes) are not overwritten
+        // by the closure-captured 'updatedPlayers' from earlier in this function
         setTimeout(() => {
           setState(prev => {
-            const { resetPlayers } = resetPlayersForNewTurn(updatedPlayers);
+            // Check for game over with CURRENT player state (event cards might have healed)
+            if (areAllPlayersDead(prev.players)) {
+              playSound('defeat');
+              addToLog("All investigators have fallen. The darkness claims victory.");
+              setGameOverType('defeat_death');
+              return {
+                ...prev,
+                enemies: combatResult.updatedEnemies.filter(e => e.hp > 0),
+                phase: GamePhase.GAME_OVER,
+                players: prev.players
+              };
+            }
+
+            // Use prev.players to include any changes from event card resolution
+            const { resetPlayers } = resetPlayersForNewTurn(prev.players);
             const { shouldApply, playerIndex } = shouldApplyMadnessEffects(resetPlayers);
             if (shouldApply) {
               resetPlayers[playerIndex] = applyMadnessTurnStartEffects(resetPlayers[playerIndex]);
