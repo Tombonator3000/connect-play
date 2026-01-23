@@ -17799,3 +17799,184 @@ const WATERMARK_PATTERNS: { patterns: string[]; config: WatermarkConfig }[] = [
 Spillet følger nå game_design_bible.md Section 1.3 for visuelt tile-system.
 
 ---
+
+## 2026-01-23: Prioritet 2 - Høyprioriterte Mangler Implementert
+
+### Oppgave
+Implementering av prioritet 2 mangler fra audit:
+1. Loot-system: Ingen loot-tabeller eller enemy drops
+2. Survivor-system: Type-definisjoner finnes, men ikke integrert i spillet
+3. Obstacle-interaksjon: Hindringer definert, men ingen interaksjonslogikk
+4. Våpenrestriksjoner: Håndheves ikke selv om de er definert
+
+### Implementerte Endringer
+
+#### 1. Enemy Loot System (NYTT)
+
+**Nye strukturer i `src/game/constants.ts`:**
+
+```typescript
+// Loot-konfigurasjon per fiendetype
+export interface EnemyLootConfig {
+  dropChance: number;  // 0-1
+  possibleDrops: { itemId: string; weight: number }[];
+  goldDrop?: { min: number; max: number };
+}
+
+export const ENEMY_LOOT_TABLES: Partial<Record<EnemyType, EnemyLootConfig>>
+```
+
+**Implementerte loot-tabeller for:**
+- **Minions:** cultist (60%), mi-go (30%), nightgaunt (10%), moon_beast (40%)
+- **Warriors:** ghoul (15%), deepone (55%), sniper (70%), byakhee (20%), formless_spawn (25%), hound (15%)
+- **Elites:** priest (80%), hunting_horror (30%), dark_young (50%)
+- **Bosses:** shoggoth (20%), star_spawn (40%), ancient_one (90%)
+
+**45+ nye loot-items:**
+- Cultist drops: ritual_candles, dark_amulet, cultist_robe
+- Mi-Go drops: strange_device, alien_crystal, brain_cylinder
+- Deep One drops: deep_one_gold, sea_artifact, coral_dagger
+- Elite drops: ritual_dagger, occult_tome, priest_key
+- Boss drops: elder_thing_artifact, cthulhu_idol, cosmic_truth
+- Og mange flere...
+
+**Ny funksjon:**
+```typescript
+export function getEnemyLoot(enemyType: EnemyType): { items: Item[], gold: number }
+```
+
+**Integrert i ShadowsGame.tsx:**
+- Loot-drops ved vanlig combat kill
+- Loot-drops ved spell kills
+- Loot-drops ved occultist spell kills
+- Automatisk inventory-håndtering med "drop på bakken" hvis fullt
+
+#### 2. Survivor System Integrasjon
+
+**System allerede eksisterte i `src/game/utils/survivorSystem.ts` med:**
+- 8 survivor-typer: civilian, wounded, researcher, cultist_defector, child, asylum_patient, reporter, occultist_ally
+- Komplett SURVIVOR_TEMPLATES med dialoger, rewards, abilities
+- Spawn-system, behavior AI, og interaction functions
+
+**Ny integrasjon i ShadowsGame.tsx:**
+
+```typescript
+// Import survivor functions
+import {
+  shouldSpawnSurvivor,
+  selectSurvivorType,
+  createSurvivor,
+  processSurvivorTurn,
+  startFollowing,
+  rescueSurvivor,
+  killSurvivor,
+  useSurvivorAbility,
+  SURVIVOR_TEMPLATES
+} from './utils/survivorSystem';
+```
+
+**Survivor spawning ved tile exploration:**
+- Spawner survivors når spilleren utforsker nye tiles
+- Respekterer spawn-chance basert på tile-kategori og doom-nivå
+- Maks 3 aktive survivors samtidig
+- Logger survivor-dialoger ved funn
+
+**Survivor turn processing i Mythos-fasen:**
+- Survivors følger spillere
+- Panic-events når fiender er nærme
+- State-oppdateringer for survivors
+
+**Nye context actions for survivors i `contextActions.ts`:**
+```typescript
+export function getSurvivorActions(player, survivor, tile): ContextAction[]
+```
+- `find_survivor` - Finn gjemte survivors (Int DC 3)
+- `recruit_survivor` - Rekrutter funne survivors
+- `use_survivor_ability` - Bruk spesial-evner (heal_party, reveal_map, ward, etc.)
+- `rescue_survivor` - Redd survivor på exit-tile
+- `dismiss_survivor` - Si farvel
+
+**Oppdatert ContextActionTarget type:**
+```typescript
+type: 'tile' | 'obstacle' | 'edge' | 'object' | 'survivor';
+survivor?: Survivor;
+```
+
+#### 3. Obstacle Interaksjon (Verifisert)
+
+**Allerede fullstendig implementert:**
+- `getObstacleActions()` i contextActions.ts
+- `processActionEffect()` i contextActionEffects.ts
+- Støtte for: fire, gas_poison, darkness, spirit_barrier, rubble, etc.
+- Skill checks, item requirements, og passthrough-movement
+
+#### 4. Våpenrestriksjoner UI
+
+**Allerede implementert i combatUtils.ts:**
+- `canCharacterClassUseWeapon(characterClass, weaponId)`
+- `canUseWeapon(player, weaponId)`
+- `getWeaponAttackDice()` respekterer restriksjoner
+- `canAttackEnemy()` returnerer `isRestricted` flag
+
+**Ny visuell feedback i CharacterPanel.tsx:**
+
+```typescript
+import { canCharacterClassUseWeapon } from '../utils/combatUtils';
+
+// I renderSlot():
+const isRestricted = item?.type === 'weapon' && player.id
+  ? !canCharacterClassUseWeapon(player.id as CharacterType, item.id)
+  : false;
+
+// Visuell indikator med Ban-ikon
+{isRestricted && (
+  <div className="absolute -top-1 -right-1 bg-red-600 rounded-full p-0.5">
+    <Ban size={10} className="text-white" />
+  </div>
+)}
+```
+
+**Oppdatert ItemTooltip.tsx:**
+```typescript
+interface ItemTooltipProps {
+  item: Item;
+  children: React.ReactNode;
+  isRestricted?: boolean;
+}
+
+// Viser advarsel i tooltip
+{isRestricted && (
+  <div className="flex items-center gap-2 bg-red-500/20 text-red-400...">
+    <Ban size={14} />
+    <span>RESTRICTED - Behandles som unarmed</span>
+  </div>
+)}
+```
+
+### Filer Modifisert
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/constants.ts` | +300 linjer - ENEMY_LOOT_TABLES, ENEMY_DROP_ITEMS, getEnemyLoot() |
+| `src/game/ShadowsGame.tsx` | +150 linjer - Loot integration, survivor spawning, survivor turn processing |
+| `src/game/types.ts` | +2 linjer - ContextActionTarget survivor support |
+| `src/game/utils/contextActions.ts` | +100 linjer - getSurvivorActions(), survivor case i switch |
+| `src/game/components/CharacterPanel.tsx` | +20 linjer - Weapon restriction visuals |
+| `src/game/components/ItemTooltip.tsx` | +15 linjer - isRestricted prop og warning |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,646.32 kB bundle)
+
+### Konklusjon
+
+Alle fire høyprioriterte mangler fra Prioritet 2 er nå implementert:
+
+1. ✅ **Loot-system:** Komplett enemy drop tables med 45+ items, gull-drops, og weighted random selection
+2. ✅ **Survivor-system:** Fullt integrert med spawning, AI, interaksjon, og rewards
+3. ✅ **Obstacle-interaksjon:** Verifisert allerede fullt implementert
+4. ✅ **Våpenrestriksjoner:** Visuell feedback i inventory med Ban-ikon og tooltip-advarsler
+
+Spillet følger nå game_design_bible.md Section 6.3 (Enemy Loot) og Section 4.5 (Survivor NPCs).
+
+---

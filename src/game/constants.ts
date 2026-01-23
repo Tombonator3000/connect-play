@@ -4624,6 +4624,297 @@ export const DARK_ROOM_LOOT_TABLES = {
   ]
 };
 
+// ============================================================================
+// ENEMY LOOT SYSTEM - DROP TABLES FOR DEFEATED ENEMIES
+// ============================================================================
+
+/**
+ * Loot drop configuration for each enemy type
+ * Based on game_design_bible.md Section 6.3
+ */
+export interface EnemyLootConfig {
+  dropChance: number;  // 0-1, chance to drop anything
+  possibleDrops: {
+    itemId: string;
+    weight: number;    // Relative weight for this drop
+  }[];
+  goldDrop?: { min: number; max: number };  // Optional gold drop range
+}
+
+export const ENEMY_LOOT_TABLES: Partial<Record<EnemyType, EnemyLootConfig>> = {
+  // MINIONS - Low drop rates
+  cultist: {
+    dropChance: 0.60,
+    possibleDrops: [
+      { itemId: 'ritual_candles', weight: 25 },
+      { itemId: 'common_key', weight: 20 },
+      { itemId: 'journal_page', weight: 30 },
+      { itemId: 'dark_amulet', weight: 15 },
+      { itemId: 'cultist_robe', weight: 10 }
+    ],
+    goldDrop: { min: 5, max: 20 }
+  },
+  'mi-go': {
+    dropChance: 0.30,
+    possibleDrops: [
+      { itemId: 'strange_device', weight: 40 },
+      { itemId: 'alien_crystal', weight: 35 },
+      { itemId: 'brain_cylinder', weight: 25 }
+    ]
+  },
+  nightgaunt: {
+    dropChance: 0.10, // Very low - they vanish
+    possibleDrops: [
+      { itemId: 'shadow_essence', weight: 100 }
+    ]
+  },
+  moon_beast: {
+    dropChance: 0.40,
+    possibleDrops: [
+      { itemId: 'moonstone', weight: 50 },
+      { itemId: 'dream_dust', weight: 50 }
+    ]
+  },
+
+  // WARRIORS - Moderate drop rates
+  ghoul: {
+    dropChance: 0.15, // "Nothing (gross)" per game_design_bible
+    possibleDrops: [
+      { itemId: 'grave_trinket', weight: 70 },
+      { itemId: 'gnawed_bone', weight: 30 }
+    ]
+  },
+  deepone: {
+    dropChance: 0.55,
+    possibleDrops: [
+      { itemId: 'deep_one_gold', weight: 40 },
+      { itemId: 'sea_artifact', weight: 35 },
+      { itemId: 'coral_dagger', weight: 25 }
+    ],
+    goldDrop: { min: 20, max: 50 }
+  },
+  sniper: {
+    dropChance: 0.70,
+    possibleDrops: [
+      { itemId: 'rifle_ammo', weight: 40 },
+      { itemId: 'rifle', weight: 20 },
+      { itemId: 'common_key', weight: 25 },
+      { itemId: 'journal_page', weight: 15 }
+    ],
+    goldDrop: { min: 10, max: 30 }
+  },
+  byakhee: {
+    dropChance: 0.20,
+    possibleDrops: [
+      { itemId: 'cosmic_dust', weight: 60 },
+      { itemId: 'star_fragment', weight: 40 }
+    ]
+  },
+  formless_spawn: {
+    dropChance: 0.25,
+    possibleDrops: [
+      { itemId: 'black_ichor', weight: 70 },
+      { itemId: 'tsathoggua_idol', weight: 30 }
+    ]
+  },
+  hound: {
+    dropChance: 0.15, // Recedes into angles
+    possibleDrops: [
+      { itemId: 'temporal_shard', weight: 100 }
+    ]
+  },
+
+  // ELITES - Higher drop rates, better loot
+  priest: {
+    dropChance: 0.80,
+    possibleDrops: [
+      { itemId: 'ritual_dagger', weight: 25 },
+      { itemId: 'occult_tome', weight: 25 },
+      { itemId: 'elder_sign', weight: 10 },
+      { itemId: 'priest_key', weight: 25 },
+      { itemId: 'dark_robe', weight: 15 }
+    ],
+    goldDrop: { min: 30, max: 75 }
+  },
+  hunting_horror: {
+    dropChance: 0.30,
+    possibleDrops: [
+      { itemId: 'void_scale', weight: 60 },
+      { itemId: 'nyarlathotep_sigil', weight: 40 }
+    ]
+  },
+  dark_young: {
+    dropChance: 0.50,
+    possibleDrops: [
+      { itemId: 'dark_sap', weight: 50 },
+      { itemId: 'fertility_charm', weight: 30 },
+      { itemId: 'shub_niggurath_idol', weight: 20 }
+    ],
+    goldDrop: { min: 25, max: 60 }
+  },
+
+  // BOSSES - Guaranteed drops, rare items (per game_design_bible: "Nothing - you're lucky to be alive")
+  shoggoth: {
+    dropChance: 0.20, // Low as per design doc
+    possibleDrops: [
+      { itemId: 'elder_thing_artifact', weight: 50 },
+      { itemId: 'shoggoth_sample', weight: 50 }
+    ]
+  },
+  star_spawn: {
+    dropChance: 0.40,
+    possibleDrops: [
+      { itemId: 'cthulhu_idol', weight: 40 },
+      { itemId: 'rlyeh_stone', weight: 35 },
+      { itemId: 'star_spawn_blood', weight: 25 }
+    ],
+    goldDrop: { min: 50, max: 150 }
+  },
+  ancient_one: {
+    dropChance: 0.90, // Rare victory deserves reward
+    possibleDrops: [
+      { itemId: 'elder_key', weight: 30 },
+      { itemId: 'reality_fragment', weight: 30 },
+      { itemId: 'cosmic_truth', weight: 40 }
+    ],
+    goldDrop: { min: 100, max: 300 }
+  }
+};
+
+/**
+ * Additional loot items specific to enemy drops
+ */
+export const ENEMY_DROP_ITEMS: Item[] = [
+  // Cultist drops
+  { id: 'ritual_candles', name: 'Ritual Candles', type: 'relic', effect: 'Required for rituals', goldCost: 25, slotType: 'bag' },
+  { id: 'dark_amulet', name: 'Dark Amulet', type: 'relic', effect: '+1 Occult checks', bonus: 1, goldCost: 50, slotType: 'bag' },
+  { id: 'cultist_robe', name: 'Cultist Robe', type: 'armor', effect: 'Disguise among cultists', defenseDice: 0, goldCost: 30, slotType: 'body' },
+
+  // Mi-Go drops
+  { id: 'strange_device', name: 'Strange Device', type: 'relic', effect: 'Alien technology, unknown purpose', goldCost: 100, slotType: 'bag' },
+  { id: 'alien_crystal', name: 'Alien Crystal', type: 'relic', effect: '+2 Insight when studied', bonus: 2, goldCost: 75, slotType: 'bag' },
+  { id: 'brain_cylinder', name: 'Brain Cylinder', type: 'relic', effect: 'Contains a preserved brain. Horrifying.', goldCost: 150, slotType: 'bag' },
+
+  // Nightgaunt drops
+  { id: 'shadow_essence', name: 'Shadow Essence', type: 'relic', effect: 'Darkness in physical form', goldCost: 200, slotType: 'bag' },
+
+  // Moon-Beast drops
+  { id: 'moonstone', name: 'Moonstone', type: 'relic', effect: 'Glows faintly in darkness', goldCost: 60, slotType: 'bag' },
+  { id: 'dream_dust', name: 'Dream Dust', type: 'consumable', effect: 'Induces vivid dreams. +1 Insight, -1 Sanity', bonus: 1, uses: 1, maxUses: 1, goldCost: 40, slotType: 'bag' },
+
+  // Ghoul drops
+  { id: 'grave_trinket', name: 'Grave Trinket', type: 'relic', effect: 'Looted from a corpse', goldCost: 15, slotType: 'bag' },
+  { id: 'gnawed_bone', name: 'Gnawed Bone', type: 'relic', effect: 'Disturbing evidence', goldCost: 5, slotType: 'bag' },
+
+  // Deep One drops
+  { id: 'deep_one_gold', name: 'Deep One Gold', type: 'relic', effect: 'Strange coins from Y\'ha-nthlei', goldCost: 75, slotType: 'bag' },
+  { id: 'sea_artifact', name: 'Sea Artifact', type: 'relic', effect: 'Ancient relic from beneath the waves', goldCost: 100, slotType: 'bag' },
+  { id: 'coral_dagger', name: 'Coral Dagger', type: 'weapon', effect: '2 attack dice, aquatic origin', attackDice: 2, weaponType: 'melee', ammo: -1, goldCost: 80, slotType: 'hand' },
+
+  // Sniper drops
+  { id: 'rifle_ammo', name: 'Rifle Ammunition', type: 'consumable', effect: 'Reloads rifle (5 shots)', uses: 1, maxUses: 1, goldCost: 30, slotType: 'bag' },
+
+  // Byakhee drops
+  { id: 'cosmic_dust', name: 'Cosmic Dust', type: 'relic', effect: 'Dust from between the stars', goldCost: 80, slotType: 'bag' },
+  { id: 'star_fragment', name: 'Star Fragment', type: 'relic', effect: 'A piece of a distant sun', goldCost: 120, slotType: 'bag' },
+
+  // Formless Spawn drops
+  { id: 'black_ichor', name: 'Black Ichor', type: 'relic', effect: 'Residue of Tsathoggua\'s spawn', goldCost: 50, slotType: 'bag' },
+  { id: 'tsathoggua_idol', name: 'Tsathoggua Idol', type: 'relic', effect: '+1 Occult, -1 Sanity on use', bonus: 1, goldCost: 150, slotType: 'bag' },
+
+  // Hound drops
+  { id: 'temporal_shard', name: 'Temporal Shard', type: 'relic', effect: 'Fragment of frozen time', goldCost: 200, slotType: 'bag' },
+
+  // Priest drops
+  { id: 'ritual_dagger', name: 'Ritual Dagger', type: 'weapon', effect: '2 attack dice, +1 for rituals', attackDice: 2, weaponType: 'melee', ammo: -1, goldCost: 100, slotType: 'hand' },
+  { id: 'occult_tome', name: 'Occult Tome', type: 'relic', effect: '+2 Insight, reveals occult secrets', bonus: 2, goldCost: 200, slotType: 'bag' },
+  { id: 'priest_key', name: 'Priest\'s Key', type: 'key', effect: 'Opens ritual chambers', keyId: 'priest', goldCost: 0, slotType: 'bag' },
+  { id: 'dark_robe', name: 'Dark Priest Robe', type: 'armor', effect: '+1 defense, +1 Willpower', defenseDice: 1, bonus: 1, goldCost: 150, slotType: 'body' },
+
+  // Hunting Horror drops
+  { id: 'void_scale', name: 'Void Scale', type: 'relic', effect: 'Scale from a void serpent', goldCost: 100, slotType: 'bag' },
+  { id: 'nyarlathotep_sigil', name: 'Nyarlathotep Sigil', type: 'relic', effect: 'Symbol of the Crawling Chaos', goldCost: 250, slotType: 'bag' },
+
+  // Dark Young drops
+  { id: 'dark_sap', name: 'Dark Sap', type: 'consumable', effect: 'Heals 3 HP but costs 1 Sanity', bonus: 3, uses: 1, maxUses: 1, goldCost: 75, slotType: 'bag' },
+  { id: 'fertility_charm', name: 'Fertility Charm', type: 'relic', effect: 'Blessing of the Black Goat', goldCost: 100, slotType: 'bag' },
+  { id: 'shub_niggurath_idol', name: 'Shub-Niggurath Idol', type: 'relic', effect: 'Idol of the Black Goat', goldCost: 200, slotType: 'bag' },
+
+  // Shoggoth drops
+  { id: 'elder_thing_artifact', name: 'Elder Thing Artifact', type: 'relic', effect: 'Technology from the Elder Things', goldCost: 300, slotType: 'bag' },
+  { id: 'shoggoth_sample', name: 'Shoggoth Sample', type: 'relic', effect: 'Contained protoplasm. Handle with care.', goldCost: 250, slotType: 'bag' },
+
+  // Star Spawn drops
+  { id: 'cthulhu_idol', name: 'Cthulhu Idol', type: 'relic', effect: 'Depicts the Great Dreamer', goldCost: 350, slotType: 'bag' },
+  { id: 'rlyeh_stone', name: 'R\'lyeh Stone', type: 'relic', effect: 'Stone from the sunken city', goldCost: 400, slotType: 'bag' },
+  { id: 'star_spawn_blood', name: 'Star Spawn Blood', type: 'relic', effect: 'Ichor of Cthulhu\'s kin', goldCost: 300, slotType: 'bag' },
+
+  // Ancient One drops
+  { id: 'elder_key', name: 'Elder Key', type: 'key', effect: 'Opens any seal', keyId: 'elder', goldCost: 0, slotType: 'bag' },
+  { id: 'reality_fragment', name: 'Reality Fragment', type: 'relic', effect: 'A piece of stable reality', goldCost: 500, slotType: 'bag' },
+  { id: 'cosmic_truth', name: 'Cosmic Truth', type: 'relic', effect: '+5 Insight, -2 Sanity permanently', bonus: 5, goldCost: 1000, slotType: 'bag' }
+];
+
+/**
+ * Generates loot from a defeated enemy
+ * Returns items and gold dropped
+ */
+export function getEnemyLoot(enemyType: EnemyType): { items: Item[], gold: number } {
+  const lootConfig = ENEMY_LOOT_TABLES[enemyType];
+
+  // No loot table for this enemy type
+  if (!lootConfig) {
+    return { items: [], gold: 0 };
+  }
+
+  const result: { items: Item[], gold: number } = { items: [], gold: 0 };
+
+  // Check if enemy drops anything
+  if (Math.random() > lootConfig.dropChance) {
+    return result;
+  }
+
+  // Calculate gold drop
+  if (lootConfig.goldDrop) {
+    const { min, max } = lootConfig.goldDrop;
+    result.gold = Math.floor(Math.random() * (max - min + 1)) + min;
+  }
+
+  // Select item from weighted drops
+  if (lootConfig.possibleDrops.length > 0) {
+    const totalWeight = lootConfig.possibleDrops.reduce((sum, drop) => sum + drop.weight, 0);
+    let roll = Math.random() * totalWeight;
+
+    for (const drop of lootConfig.possibleDrops) {
+      roll -= drop.weight;
+      if (roll <= 0) {
+        // Find item in ENEMY_DROP_ITEMS first, then fallback to other sources
+        let item = ENEMY_DROP_ITEMS.find(i => i.id === drop.itemId);
+        if (!item) {
+          // Check dark room loot tables
+          for (const items of Object.values(DARK_ROOM_LOOT_TABLES)) {
+            const found = items.find(i => i.id === drop.itemId);
+            if (found) {
+              item = found as Item;
+              break;
+            }
+          }
+        }
+        if (!item) {
+          // Check main ITEMS array
+          item = ITEMS.find(i => i.id === drop.itemId) || null;
+        }
+        if (item) {
+          result.items.push(item);
+        }
+        break;
+      }
+    }
+  }
+
+  return result;
+}
+
 /**
  * Enemy types that can be found in dark room ambushes
  */

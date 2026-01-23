@@ -15,7 +15,8 @@ import type {
   Obstacle,
   TileObject,
   ContextAction,
-  ContextActionTarget
+  ContextActionTarget,
+  Survivor
 } from '../types';
 import { hasKey } from '../types';
 
@@ -375,6 +376,12 @@ export function getContextActions(
       }
       break;
 
+    case 'survivor':
+      if (target.survivor) {
+        return getSurvivorActions(player, target.survivor, tile);
+      }
+      break;
+
     case 'tile':
       // General tile actions (search, pick up items, etc.)
       const actions: ContextAction[] = [];
@@ -413,6 +420,105 @@ export function getContextActions(
   }
 
   return [buildStaticAction(CANCEL_ACTION)];
+}
+
+/**
+ * Gets available actions for interacting with a survivor
+ */
+export function getSurvivorActions(
+  player: Player,
+  survivor: Survivor,
+  tile: Tile
+): ContextAction[] {
+  const actions: ContextAction[] = [];
+  const distance = Math.abs(player.position.q - survivor.position.q) + Math.abs(player.position.r - survivor.position.r);
+
+  // Only allow interaction if adjacent (within 1 tile)
+  if (distance > 1) {
+    return [{
+      id: 'too_far',
+      label: `${survivor.name} er for langt unna`,
+      icon: 'interact',
+      apCost: 0,
+      enabled: false
+    }, buildStaticAction(CANCEL_ACTION)];
+  }
+
+  // Hidden survivors need to be found first
+  if (survivor.state === 'hidden') {
+    actions.push({
+      id: 'find_survivor',
+      label: `Finn ${survivor.name}`,
+      icon: 'search',
+      skillCheck: { skill: 'intellect', dc: 3 },
+      apCost: 1,
+      enabled: true,
+      successMessage: `Du finner ${survivor.name} som gjemmer seg!`,
+      failureMessage: 'Du finner ingen.'
+    });
+  }
+
+  // Found survivors can be recruited
+  if (survivor.state === 'found') {
+    actions.push({
+      id: 'recruit_survivor',
+      label: `Rekrutter ${survivor.name}`,
+      icon: 'interact',
+      apCost: 1,
+      enabled: true,
+      successMessage: `${survivor.name} folger deg na!`
+    });
+  }
+
+  // Following survivors can use abilities or be escorted to exit
+  if (survivor.state === 'following') {
+    // Use special ability if available and not used
+    if (survivor.specialAbility && !survivor.abilityUsed) {
+      const abilityLabels: Record<string, string> = {
+        heal_party: 'Helbred gruppe (+2 HP alle)',
+        reveal_map: 'Avslor kart (viser tilstotende tiles)',
+        ward: 'Beskyttelsessirkel (+1 forsvar denne runden)',
+        distraction: 'Distraksjon (fiender mister en handling)',
+        knowledge: 'Del kunnskap (+2 Insight)',
+        calm_aura: 'Rolig aura (+1 Sanity alle)'
+      };
+
+      actions.push({
+        id: 'use_survivor_ability',
+        label: abilityLabels[survivor.specialAbility] || `Bruk evne: ${survivor.specialAbility}`,
+        icon: 'interact',
+        apCost: 1,
+        enabled: true,
+        successMessage: `${survivor.name} bruker sin evne!`
+      });
+    }
+
+    // Can dismiss follower
+    actions.push({
+      id: 'dismiss_survivor',
+      label: `Si farvel til ${survivor.name}`,
+      icon: 'interact',
+      apCost: 0,
+      enabled: true,
+      successMessage: `${survivor.name} forsvinner inn i skyggene.`
+    });
+  }
+
+  // Check if on exit tile for rescue
+  const isExitTile = tile.isExit || tile.name?.toLowerCase().includes('exit') ||
+                     tile.category === 'facade' || tile.name?.toLowerCase().includes('entrance');
+  if (survivor.state === 'following' && isExitTile) {
+    actions.push({
+      id: 'rescue_survivor',
+      label: `Redd ${survivor.name}`,
+      icon: 'interact',
+      apCost: 1,
+      enabled: true,
+      successMessage: `${survivor.name} er reddet! Belonning motatt.`
+    });
+  }
+
+  return withCancelAction(actions);
 }
 
 /**
