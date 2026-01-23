@@ -505,7 +505,7 @@ export function getSurvivorActions(
   }
 
   // Check if on exit tile for rescue
-  const isExitTile = tile.isExit || tile.name?.toLowerCase().includes('exit') ||
+  const isExitTile = (tile as any).isExit || tile.name?.toLowerCase().includes('exit') ||
                      tile.category === 'facade' || tile.name?.toLowerCase().includes('entrance');
   if (survivor.state === 'following' && isExitTile) {
     actions.push({

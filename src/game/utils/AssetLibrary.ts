@@ -52,7 +52,7 @@ export const CHARACTER_PORTRAITS: Record<CharacterType, string> = {
   doctor: doctorImg
 };
 
-export const MONSTER_PORTRAITS: Record<EnemyType, string> = {
+export const MONSTER_PORTRAITS: Partial<Record<EnemyType, string>> = {
   cultist: cultistImg,
   deepone: deeponeImg,
   ghoul: ghoulImg,
