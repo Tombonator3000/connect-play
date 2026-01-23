@@ -18652,3 +18652,324 @@ checkDefeatConditions(scenario, { ..., survivors })
 **Rescue missions (Scenario 5 og 13) er nå SPILLBARE.**
 
 ---
+
+## 2026-01-23: Character Sheet og Inventory System - Analyse og Forbedringsforslag
+
+### Bakgrunn
+
+Oppgave: Analysere character sheet og inventory-systemet, komme med forbedringsforslag, og spesielt fikse at quest items må fjernes fra character etter endt quest/scenario.
+
+### Nåværende System Analyse
+
+#### 1. CharacterPanel.tsx (Character Sheet)
+
+**Komponenter:**
+- Portrett, navn og klasse
+- HP og Sanity bars med current/max
+- Insight og Action Points
+- Ability/special beskrivelse
+- Achievement badges (EarnedBadge[])
+- Desperate Measures indicator
+
+**Inventory-seksjon:**
+- Equipment slots (7 slots totalt):
+  - 2x Hand slots (leftHand, rightHand)
+  - 1x Body slot
+  - 4x Bag slots
+- Quest Items seksjon (separat fra regular equipment)
+
+#### 2. Inventory Types (types.ts)
+
+```typescript
+interface InventorySlots {
+  leftHand: Item | null;
+  rightHand: Item | null;
+  body: Item | null;
+  bag: (Item | null)[];      // 4 slots
+  questItems: Item[];        // Ubegrenset kapasitet
+}
+```
+
+**Item Types:**
+- `weapon`, `tool`, `relic`, `armor`, `consumable`, `key`, `clue`, `quest_item`
+
+#### 3. Quest Items Flow
+
+**Spawning (objectiveSpawner.ts):**
+- Quest items initialiseres basert på scenario objectives
+- Spawnes probabilistisk på tiles under utforskning
+- "Pity timer" garanterer spawn hvis items ikke har dukket opp
+
+**Collection (contextActionEffects.ts):**
+1. Spiller søker tile med quest item
+2. `collectQuestItem()` fra objectiveSpawner kalles
+3. Item merkes "collected" i spawn state
+4. Item legges i spillerens `questItems[]` array
+5. Objective progress oppdateres
+
+**UI Display (CharacterPanel.tsx linje 265-282):**
+- Vises i egen seksjon med gul styling
+- Ubegrenset antall kan vises
+- Star-ikon for hvert item
+
+### 🚨 KRITISK PROBLEM IDENTIFISERT
+
+**Fil:** `legacyManager.ts` linje 725
+
+```typescript
+// Når scenario overleves:
+return {
+  ...hero,
+  equipment: { ...player.inventory, bag: [...player.inventory.bag] },
+  lastPlayed: new Date().toISOString()
+};
+```
+
+**Problemet:** Hele `inventory`-objektet lagres, inkludert `questItems[]`. Dette betyr:
+- Quest items fra Scenario A persisterer til Scenario B
+- Quest items blir aldri ryddet fra hero's inventory
+- Heroes kan akkumulere quest items fra flere scenarier
+- UI viser irrelevante quest items i nye scenarier
+
+### FORSLAG TIL FORBEDRINGER
+
+#### Fix #1: Rydde Quest Items ved Scenario Slutt (KRITISK)
+
+**I `updateLegacyHeroFromPlayer()` (legacyManager.ts):**
+
+```typescript
+return {
+  ...hero,
+  equipment: {
+    ...player.inventory,
+    bag: [...player.inventory.bag],
+    questItems: []  // ALLTID rydd quest items mellom scenarier
+  },
+  lastPlayed: new Date().toISOString()
+};
+```
+
+**Alternativ: I `createPlayerFromHero()` (legacyManager.ts):**
+```typescript
+inventory: {
+  ...hero.equipment,
+  questItems: []  // Start alltid med tom quest items liste
+}
+```
+
+#### Fix #2: Forbedret Character Sheet Layout
+
+**Forslag A: Kompakt Quest Items visning**
+- Vis quest items som badges/chips i stedet for full liste
+- Legg til collapse/expand funksjon for mange items
+- Fargekode basert på quest item type (key=gold, clue=blue, artifact=purple)
+
+**Forslag B: Progress-basert visning**
+- Vis kun quest items som er relevante for nåværende objectives
+- Legg til "Quest Progress" mini-panel i character sheet
+- Koble visuelt quest items til deres tilhørende objectives
+
+#### Fix #3: Inventory Management Forbedringer
+
+**A. Slot Context Menu:**
+- Gjør det enklere å flytte items mellom slots
+- "Quick equip" for våpen i bag
+- "Compare" funksjon for å sammenligne våpen
+
+**B. Item Sorting:**
+- Auto-sorter bag items etter type
+- "Organize" knapp for å rydde inventory
+
+**C. Equipment Stash Forbedring:**
+- Vis tydelig hvilke items som er quest items (kan ikke lagres)
+- Filter-funksjon for item types
+- "Quick transfer all" for items av samme type
+
+#### Fix #4: Quest Items Lifecycle Management
+
+**Foreslått ny struktur:**
+```typescript
+interface QuestItem extends Item {
+  scenarioId: string;      // Hvilket scenario dette tilhører
+  objectiveId: string;     // Hvilket objective det er knyttet til
+  isConsumed: boolean;     // Har det blitt brukt?
+  expiresOnScenarioEnd: boolean;  // Skal det fjernes?
+}
+```
+
+**Cleanup-funksjon (ny):**
+```typescript
+function cleanupQuestItems(
+  inventory: InventorySlots,
+  currentScenarioId: string
+): InventorySlots {
+  return {
+    ...inventory,
+    questItems: inventory.questItems.filter(
+      item => item.scenarioId === currentScenarioId && !item.isConsumed
+    )
+  };
+}
+```
+
+#### Fix #5: Visual Feedback Forbedringer
+
+**A. Quest Item Collection Animation:**
+- Partikkel-effekt når quest item plukkes opp
+- "Quest Updated" toast notification
+- Pulse-effekt på quest items seksjon i character panel
+
+**B. Objective Completion Feedback:**
+- Strikethrough på ferdigstilte objectives
+- Checkmark på quest items som er "brukt"
+- Progress bar for "collect X items" objectives
+
+### Implementasjonsplan (Prioritert)
+
+| Prioritet | Oppgave | Estimert kompleksitet |
+|-----------|---------|----------------------|
+| 🔴 P0 | Fix quest items cleanup mellom scenarier | Lav |
+| 🟡 P1 | Forbedret quest items UI styling | Medium |
+| 🟡 P1 | Quest item → Objective linking | Medium |
+| 🟢 P2 | Inventory sorting/organizing | Medium |
+| 🟢 P2 | Item comparison tooltip | Lav |
+| 🔵 P3 | Equipment stash filters | Medium |
+| 🔵 P3 | Collection animations | Høy |
+
+### Neste steg
+
+1. **Umiddelbart:** Implementer quest items cleanup i `updateLegacyHeroFromPlayer()`
+2. **Kort sikt:** Forbedre quest items UI med bedre visuelle indikatorer
+3. **Medium sikt:** Implementer objective-linking for quest items
+4. **Lang sikt:** Full inventory management overhaul med sorting og comparison
+
+### Filer som må endres
+
+| Fil | Endring |
+|-----|---------|
+| `legacyManager.ts` | Rydd questItems ved scenario save |
+| `CharacterPanel.tsx` | Forbedret quest items visning |
+| `types.ts` | Utvid QuestItem interface |
+| `objectiveSpawner.ts` | Legg til scenarioId på quest items |
+| `contextActionEffects.ts` | Oppdater quest item collection |
+
+---
+
+## 2026-01-23: Character Sheet og Inventory System - IMPLEMENTERT
+
+### P0: Quest Items Cleanup (KRITISK FIX) ✅
+
+**Filer endret:**
+- `src/game/utils/legacyManager.ts`
+
+**Endringer:**
+
+1. `updateLegacyHeroFromPlayer()` (linje 722-728):
+```typescript
+// Før: Quest items persisterte mellom scenarier
+equipment: { ...player.inventory, bag: [...player.inventory.bag] }
+
+// Etter: Quest items ryddes ALLTID
+equipment: {
+  ...player.inventory,
+  bag: [...player.inventory.bag],
+  questItems: []  // Always clear quest items between scenarios
+}
+```
+
+2. `legacyHeroToPlayer()` (linje 680):
+```typescript
+// Sikrer at quest items alltid starter tom
+inventory: { ...hero.equipment, bag: [...hero.equipment.bag], questItems: [] }
+```
+
+### P1: Forbedret Quest Items UI ✅
+
+**Filer endret:**
+- `src/game/components/CharacterPanel.tsx`
+
+**Nye features:**
+1. **Fargekoding basert på questItemType:**
+   - Key: Amber/gull (`bg-amber-900/40`, `text-amber-300`)
+   - Clue: Blå (`bg-blue-900/40`, `text-blue-300`)
+   - Artifact: Lilla (`bg-purple-900/40`, `text-purple-300`)
+   - Collectible: Gul (`bg-yellow-900/40`, `text-yellow-300`)
+   - Component: Cyan (`bg-cyan-900/40`, `text-cyan-300`)
+
+2. **Collapse/Expand funksjonalitet:**
+   - Quest items seksjonen kan kollapses
+   - Collapsed view viser count per type med ikoner
+
+3. **Type-spesifikke ikoner:**
+   - Key: `<Key />`
+   - Clue: `<FileText />`
+   - Artifact: `<Gem />`
+   - Collectible: `<Star />`
+   - Component: `<Package />`
+
+### P2: Inventory Management Forbedringer ✅
+
+**Filer endret:**
+- `src/game/components/ItemTooltip.tsx`
+
+**Nye features:**
+
+1. **Utvidet våpen-statistikk:**
+   - Attack dice med ikon
+   - Range med ikon
+   - Ammo count
+   - Weapon type (melee/ranged)
+
+2. **Item comparison:**
+   - Ny `compareWith` prop for ItemTooltip
+   - Viser +/- differanse i grønn/rød
+   - "Sammenlignet med: [item]" footer
+
+3. **Armor stats:**
+   - Defense dice med Shield-ikon
+   - Comparison support
+
+4. **Consumable info:**
+   - Uses remaining / max uses
+
+5. **Ekstra tags:**
+   - "Silent" for stille våpen
+   - "Light Source" for lyskilder
+
+### P3: Equipment Stash Filters ✅
+
+**Filer endret:**
+- `src/game/components/EquipmentStashPanel.tsx`
+
+**Nye features:**
+
+1. **Visual filter-knapper:**
+   - Ikoner per type (Sword, Search, Shield, etc.)
+   - Fargekodede knapper
+   - Count badges per type
+   - Skjuler tomme filter-typer
+
+2. **Forbedrede item-kort:**
+   - Kompakt stats-visning (attack, defense, range, uses)
+   - Quest item markering med "QUEST" badge
+   - Line-clamp for lange effect-tekster
+   - Hover-effekt med scale
+
+3. **Quest items warning:**
+   - Quest items i stash vises med redusert opacity
+   - Gul "QUEST" badge for identifikasjon
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,665.08 kB bundle)
+
+### Endrede filer oppsummering
+
+| Fil | Endring |
+|-----|---------|
+| `legacyManager.ts` | Quest items cleanup i 2 funksjoner |
+| `CharacterPanel.tsx` | Ny quest items UI med fargekoding, collapse, styling |
+| `ItemTooltip.tsx` | Utvidet våpen/armor stats, comparison support |
+| `EquipmentStashPanel.tsx` | Visual filter buttons, item counts, forbedrede kort |
+
+---
