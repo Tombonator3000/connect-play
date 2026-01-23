@@ -92,17 +92,26 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
   if (!player) return null;
 
+  // Defensive: ensure inventory exists with default values
+  const inventory = inventory || {
+    leftHand: null,
+    rightHand: null,
+    body: null,
+    bag: [null, null, null, null],
+    questItems: []
+  };
+
   const hpPercent = (player.hp / player.maxHp) * 100;
   const sanPercent = (player.sanity / player.maxSanity) * 100;
-  const inventoryCount = countInventoryItems(player.inventory);
+  const inventoryCount = countInventoryItems(inventory);
 
   // Get item from slot
   const getItemFromSlot = (slotName: InventorySlotName): Item | null => {
-    const bag = player.inventory.bag || [];
+    const bag = inventory.bag || [];
     switch (slotName) {
-      case 'leftHand': return player.inventory.leftHand;
-      case 'rightHand': return player.inventory.rightHand;
-      case 'body': return player.inventory.body;
+      case 'leftHand': return inventory.leftHand;
+      case 'rightHand': return inventory.rightHand;
+      case 'body': return inventory.body;
       case 'bag1': return bag[0] || null;
       case 'bag2': return bag[1] || null;
       case 'bag3': return bag[2] || null;
@@ -308,9 +317,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
           {/* Hand and Body Slots */}
           <div className="grid grid-cols-3 gap-2 mb-3">
-            {renderSlot(player.inventory.leftHand, 'L.Hand', <Hand size={16} className="opacity-40" />, 'leftHand')}
-            {renderSlot(player.inventory.body, 'Body', <Shirt size={16} className="opacity-40" />, 'body')}
-            {renderSlot(player.inventory.rightHand, 'R.Hand', <Hand size={16} className="opacity-40 scale-x-[-1]" />, 'rightHand')}
+            {renderSlot(inventory.leftHand, 'L.Hand', <Hand size={16} className="opacity-40" />, 'leftHand')}
+            {renderSlot(inventory.body, 'Body', <Shirt size={16} className="opacity-40" />, 'body')}
+            {renderSlot(inventory.rightHand, 'R.Hand', <Hand size={16} className="opacity-40 scale-x-[-1]" />, 'rightHand')}
           </div>
 
           {/* Bag Slots */}
@@ -319,7 +328,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
               <Backpack size={10} /> Bag
             </h4>
             <div className="grid grid-cols-4 gap-2">
-              {(player.inventory.bag || [null, null, null, null]).map((item, index) => (
+              {(inventory.bag || [null, null, null, null]).map((item, index) => (
                 <div key={index}>
                   {renderSlot(item, `${index + 1}`, <FileQuestion size={14} className="opacity-40" />, `bag${index + 1}` as InventorySlotName)}
                 </div>
@@ -328,21 +337,21 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
           </div>
 
           {/* Quest Items Section - Enhanced with color coding */}
-          {player.inventory.questItems && player.inventory.questItems.length > 0 && (
+          {inventory.questItems && inventory.questItems.length > 0 && (
             <div className="mt-4 pt-3 border-t border-yellow-600/30">
               <button
                 onClick={() => setQuestItemsExpanded(!questItemsExpanded)}
                 className="w-full flex items-center justify-between text-[9px] text-yellow-400 uppercase tracking-widest mb-2 hover:text-yellow-300 transition-colors"
               >
                 <span className="flex items-center gap-1">
-                  <Star size={10} className="text-yellow-400" /> Quest Items ({player.inventory.questItems.length})
+                  <Star size={10} className="text-yellow-400" /> Quest Items ({inventory.questItems.length})
                 </span>
                 {questItemsExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
               </button>
 
               {questItemsExpanded && (
                 <div className="flex flex-wrap gap-2 animate-fadeIn">
-                  {player.inventory.questItems.map((item, index) => {
+                  {inventory.questItems.map((item, index) => {
                     const style = getQuestItemStyle(item);
                     // Find the linked objective for this quest item
                     const linkedObjective = item.objectiveId
@@ -381,7 +390,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                 <div className="flex gap-2 items-center text-[10px] text-muted-foreground">
                   {(() => {
                     const counts: Record<string, number> = {};
-                    player.inventory.questItems.forEach(item => {
+                    inventory.questItems.forEach(item => {
                       const typeKey = item.questItemType || (item.type === 'key' ? 'key' : item.type === 'clue' ? 'clue' : 'default');
                       counts[typeKey] = (counts[typeKey] || 0) + 1;
                     });
@@ -460,7 +469,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                     {/* EQUIP TO HAND - for weapons/tools in bag */}
                     {isBagSlot && canEquipToHands(item) && onEquipFromBag && (
                       <>
-                        {!player.inventory.leftHand && (
+                        {!inventory.leftHand && (
                           <button
                             onClick={() => {
                               const bagIndex = parseInt(selectedSlot.replace('bag', '')) - 1;
@@ -473,7 +482,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                             Equip to Left Hand
                           </button>
                         )}
-                        {!player.inventory.rightHand && (
+                        {!inventory.rightHand && (
                           <button
                             onClick={() => {
                               const bagIndex = parseInt(selectedSlot.replace('bag', '')) - 1;
@@ -486,7 +495,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                             Equip to Right Hand
                           </button>
                         )}
-                        {player.inventory.leftHand && player.inventory.rightHand && (
+                        {inventory.leftHand && inventory.rightHand && (
                           <p className="text-xs text-muted-foreground italic text-center py-2">
                             Both hands are full. Unequip a weapon first.
                           </p>

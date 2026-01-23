@@ -1082,6 +1082,7 @@ const ShadowsGame: React.FC = () => {
     updatedLegacyData.totalGoldEarned += result.totalGoldEarned;
 
     setLegacyData(updatedLegacyData);
+    saveLegacyData(updatedLegacyData);  // CRITICAL: Persist permadeath and scenario results to localStorage
     setLastScenarioResult(result);
 
     // Queue up level-up modals
