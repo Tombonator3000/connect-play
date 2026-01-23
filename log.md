@@ -1,5 +1,45 @@
 # Development Log
 
+## 2026-01-23: Damage System Bug Fix - HP Not Being Deducted
+
+### Problem
+Når en fiende angrep spilleren i Mythos-fasen, ble "-2 HP" popup vist korrekt, men HP ble aldri faktisk trukket fra på karakterkortet. Spilleren forble på full HP selv etter flere angrep.
+
+### Rotårsak
+I `ShadowsGame.tsx` under Mythos-fasen ble skade beregnet og påført i en lokal variabel `updatedPlayers`, men denne variabelen ble aldri lagret til React state før `setTimeout` callback.
+
+**Kodeflyt før fix:**
+1. Linje 373: `let updatedPlayers = [...state.players];`
+2. Linje 386-396: Loop som oppdaterer `updatedPlayers` med skade via `applyDamageToPlayer()`
+3. Linje 376-378: `addFloatingText()` viser "-2 HP" popup
+4. Linje 457-487: `setTimeout` callback bruker `prev.players` som er GAMLE verdier
+
+**Problemet:** `updatedPlayers` med skade ble aldri lagret til state, så `prev.players` i setTimeout hadde fortsatt originale HP-verdier.
+
+### Løsning
+Lagt til en `setState` kall rett etter skadeløkken (linje 401) for å lagre `updatedPlayers` til state umiddelbart:
+
+**Fil:** `src/game/ShadowsGame.tsx`
+
+```typescript
+// CRITICAL: Save damaged players to state immediately
+// This ensures HP/Sanity changes persist before setTimeout callback
+if (combatResult.processedAttacks.length > 0) {
+  setState(prev => ({
+    ...prev,
+    players: updatedPlayers
+  }));
+}
+```
+
+Dette sikrer at når `setTimeout` callback kjører og aksesserer `prev.players`, vil den ha de oppdaterte HP-verdiene.
+
+### Verifisering
+- Build vellykket uten feil
+- Andre steder hvor HP modifiseres (event cards, tile damage, spells) bruker `setState` direkte og er ikke påvirket
+
+---
+
 ## 2026-01-23: Quest Item System - Objective Linking & Collection Animations
 
 ### Oppgave
