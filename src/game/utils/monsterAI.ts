@@ -152,11 +152,12 @@ export function calculateTargetPriority(
   const isolatedScore = preferences.preferIsolated ? (nearbyAllies === 0 ? 20 : 0) : 0;
 
   // Type preference bonus (0-15 points)
+  // NOTE: Uses characterClass (e.g., 'professor', 'veteran') not player.id (UUID)
   let typePreferenceScore = 0;
-  if (preferences.preferClass?.includes(player.id)) {
+  if (preferences.preferClass?.includes(player.characterClass)) {
     typePreferenceScore = 15;
   }
-  if (preferences.avoidClass?.includes(player.id)) {
+  if (preferences.avoidClass?.includes(player.characterClass)) {
     typePreferenceScore = -20; // Penalty for avoided classes
   }
 
