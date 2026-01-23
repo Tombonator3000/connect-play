@@ -17198,6 +17198,356 @@ Spillere skal nå ALLTID kunne gå tilbake den veien de kom fra. Hvis en nabo-ti
 
 ---
 
+
+## 2026-01-23: Deep Audit - Forslag til Forbedringer
+
+### Oppgave
+Gjennomført en omfattende deep audit av hele spillkodebasen for å identifisere:
+1. Manglende features sammenlignet med game_design_bible.md og REGELBOK.MD
+2. Arkitektur- og kodekvaliets-problemer
+3. Prioriterte forbedringsforslag
+
+---
+
+## KODEBASE-OVERSIKT
+
+**Samlet størrelse:** ~65,000 linjer kode fordelt på 60+ filer
+
+### Hovedfiler (etter størrelse):
+| Fil | Linjer | Beskrivelse |
+|-----|--------|-------------|
+| constants.ts | 5,736 | Konstanter, karakterer, items, scenarios |
+| ShadowsGame.tsx | 4,568 | Hovedspillkomponent |
+| tileConnectionSystem.ts | 4,171 | Tile-forbindelser og validering |
+| types.ts | 2,090 | TypeScript type-definisjoner |
+| GameBoard.tsx | 1,551 | Visningslag for hex-grid |
+| monsterAI.ts | 1,503 | Fiende-AI og pathfinding |
+| scenarioGenerator.ts | 1,196 | Prosedyrisk generering |
+| legacyManager.ts | 1,184 | Persistent progression |
+| PuzzleModal.tsx | 1,130 | Puslespill-system |
+| objectiveSpawner.ts | 1,107 | Quest-item spawning |
+| combatUtils.ts | 1,054 | Hero Quest-stil kampsystem |
+
+---
+
+## IMPLEMENTASJONSSTATUS
+
+### ✅ FULLSTENDIG IMPLEMENTERT (80-100%)
+- **Kampsystem (Hero Quest-stil)**: d6 skulls/shields, kritiske treff, desperate measures
+- **Tile-system**: Hex-grid, fog of war, prosedyrisk generering
+- **Karakter-system**: 6 klasser med attributter og spesialiteter
+- **Monster-system**: 25+ monstertyper, AI med pathfinding og spesialevner
+- **Scenario-system**: 10+ hardkodede scenarier, doom-tracking
+- **Quest/Objective-system**: Quest-item spawning med pity-timer
+- **Event Deck**: Mansions of Madness-stil event-kort
+
+### ⚠️ DELVIS IMPLEMENTERT (40-79%)
+- **Inventory-system**: Slots fungerer, mangler loot-tabeller
+- **Sanity/Madness**: Fungerer, mangler CSS-animasjoner og lyd
+- **Legacy-system**: Grunnstruktur ok, survivors og death perks mangler
+- **Puzzle-system**: 4/7 puzzle-typer implementert
+- **Skill Check**: Basis ok, mangler integrering i konteksthandlinger
+- **Door Mechanics**: De fleste fungerer, BARRICADED og SEALED ufullstendige
+
+### ❌ MANGLER IMPLEMENTERING (0-39%)
+- **Loot/Item-generering**: Ingen loot-tabeller eller enemy drops
+- **Visuell polering**: Floor-teksturer, vannmerke-ikoner, madness-CSS
+- **Obstacle-interaksjon**: Typer definert, ingen interaksjonslogikk
+- **Crafting-system**: Kun type-definisjoner
+- **Achievement Badges**: Kun type-definisjoner
+- **Desperate Measures**: Kun type-definisjoner
+- **Weather-effekter**: Visuelt ok, gameplay-effekter mangler
+
+---
+
+## KRITISKE MANGLER (Prioritet 1 - Bør fikses først)
+
+### 1. UFULLSTENDIG PUZZLE-SYSTEM
+**Hva mangler:**
+- ❌ PRESSURE_PLATE - Samarbeidspuslespill
+- ❌ MIRROR_LIGHT - Roter speil for å lede lys
+- ❌ ASTRONOMY - Still inn stjernekart
+
+**Design-referanse:** game_design_bible.md DEL 5
+
+**Foreslått implementering:**
+```typescript
+// PressurePlatePuzzle: Krever at én spiller står på platen
+// MirrorLightPuzzle: Grid med roterbare speil
+// AstronomyPuzzle: 3-4 roterende skiver som må matche
+```
+
+### 2. MANGLENDE VISUELL TILBAKEMELDING
+
+**Vannmerke-ikoner mangler:**
+Design spesifiserer at hvert rom skal ha et stort, delvis gjennomsiktig ikon i bakgrunnen:
+| Rom-type | Ikon |
+|----------|------|
+| Library/Study | `BookOpen` |
+| Bedroom | `Bed` |
+| Kitchen | `Utensils` |
+| Laboratory | `FlaskConical` |
+| Ritual Chamber | `Pentagram` |
+| Church | `Church` |
+| Forest | `TreePine` |
+| Harbor | `Anchor` |
+| Crypt | `Skull` |
+| Street | `Lamp` |
+| Cemetery | `Cross` |
+
+**Gulv-teksturer mangler:**
+- WOOD (planke-mønster)
+- COBBLESTONE (brostein)
+- TILE (fliser)
+- STONE (kald stein)
+- GRASS (gress)
+- DIRT (jord)
+- WATER (vann-animasjon)
+- RITUAL (okkulte symboler)
+
+### 3. MADNESS CSS-ANIMASJONER MANGLER
+
+Design spesifiserer detaljerte CSS-animasjoner for alle 8 madness-typer:
+```css
+/* HALLUCINATIONS - skal implementeres */
+.madness-hallucinations {
+  animation: hallucinate 4s ease-in-out infinite;
+}
+@keyframes hallucinate {
+  0%, 100% { filter: hue-rotate(0deg); }
+  50% { filter: hue-rotate(30deg) blur(1px); }
+}
+
+/* PARANOIA - skal implementeres */
+.madness-paranoia {
+  animation: paranoia 2s ease-in-out infinite;
+}
+@keyframes paranoia {
+  0%, 100% { filter: saturate(1) sepia(0); }
+  50% { filter: saturate(1.5) sepia(0.3); }
+}
+
+/* + 6 andre madness-animasjoner */
+```
+
+---
+
+## HØYPRIORITERTE MANGLER (Prioritet 2)
+
+### 4. LOOT OG ITEM-GENERERING
+
+**Mangler:**
+- Loot-tabeller for rom-søk (1d6 roll)
+- Enemy loot drops (item per monster-type)
+- Randomisert item-generering
+
+**Design-referanse:** game_design_bible.md DEL 6.3
+
+**Foreslått loot-tabell:**
+```typescript
+const SEARCH_LOOT_TABLE = {
+  1: null, // Nothing
+  2: 'common_item', // matches, bandage
+  3: 'common_item',
+  4: 'useful_item', // flashlight, key
+  5: 'useful_item',
+  6: 'rare_item' // weapon, occult
+};
+
+const ENEMY_LOOT: Record<EnemyType, string[]> = {
+  cultist: ['ritual_candle', 'common_key', 'clue'],
+  deep_one: ['strange_artifact', 'gold'],
+  ghoul: [], // Nothing (gross)
+  shoggoth: [] // Nothing (you're lucky to be alive)
+};
+```
+
+### 5. SURVIVOR-SYSTEM IKKE AKTIVT
+
+**Status:** Type-definisjoner eksisterer, men systemet er ikke integrert i spillet.
+
+**Mangler:**
+- Survivor spawning på tiles
+- Redningsmekanikk (finn → følg → evakuer)
+- Spesialevner aktivering (heal_party, reveal_map, etc.)
+- Belønningssystem for redning
+
+**Filer involvert:**
+- `src/game/utils/survivorSystem.ts` - Har logikk, ikke integrert
+- `src/game/types.ts` - Typer definert
+
+### 6. OBSTACLE-INTERAKSJON
+
+**Problem:** Hindringer er definert men har ingen interaksjonslogikk.
+
+**Mangler konteksthandlinger for:**
+| Hindring | Fjernes med |
+|----------|------------|
+| RUBBLE_LIGHT | 1 AP |
+| RUBBLE_HEAVY | Strength DC 4, 2 AP |
+| FIRE | Brannslukker |
+| GAS_POISON | Gassmaske |
+| SPIRIT_BARRIER | Banish ritual |
+| DARKNESS | Lyskilde + Occult DC 4 |
+
+### 7. VÅPENRESTRIKSJONER HÅNDHEVES IKKE
+
+**Problem:** Hver klasse har våpenrestriksjoner definert, men de håndheves ikke.
+
+**Mangler:**
+- Validering ved kjøp i butikk
+- Feilmelding ved forsøk på å utstyre ulovlig våpen
+- UI-indikasjon på hvilke våpen karakteren kan bruke
+
+---
+
+## MIDDELS PRIORITERTE MANGLER (Prioritet 3)
+
+### 8. SKILL CHECK UI-INTEGRERING
+
+**Nåværende:** Skill checks fungerer i bakgrunnen.
+**Mangler:** Visuell tilbakemelding i spilloggen for suksess/fiasko.
+
+### 9. LEGACY DEATH PERKS
+
+**Problem:** Death perks er definert men aktiveres ikke når hero dør.
+
+**Mangler:**
+- Modal for valg av death perk
+- Effekt-applikasjon på ny helt
+- Sporing av aktive perks
+
+### 10. WEATHER GAMEPLAY-EFFEKTER
+
+**Problem:** Weather-system har visuell rendering, men gameplay-effekter mangler.
+
+**Mangler:**
+- Synlighetsreduksjon ved tåke
+- Agility-straff ved regn
+- Sanity-drain ved cosmic_static
+- Bevegelseskostnad ved visse forhold
+
+### 11. EXPANDED CRITS
+
+**Problem:** Kritiske treff gir bare bonus-skade.
+
+**Design sier:**
+- Kritisk suksess: Velg bonus (extra attack, heal, gain insight, recover sanity)
+- Kritisk fiasko: Velg straff (counter attack, lose AP, drop item, attract enemy)
+
+### 12. DESPERATE MEASURES
+
+**Problem:** Bonuser ved lav HP/Sanity aktiveres ikke.
+
+**Design sier:**
+- Ved < 50% HP: Bonus AP eller attack
+- Ved < 50% Sanity: Bonus defense eller special ability
+
+---
+
+## ARKITEKTUR-FORBEDRINGER
+
+### Store filer bør deles opp:
+
+| Fil | Linjer | Anbefaling |
+|-----|--------|------------|
+| constants.ts | 5,736 | Split til characters.ts, items.ts, scenarios.ts, monsters.ts |
+| ShadowsGame.tsx | 4,568 | Extract game logic til custom hooks |
+| tileConnectionSystem.ts | 4,171 | Split til tileGeneration.ts, edgeValidation.ts |
+| types.ts | 2,090 | Split til domain-baserte filer |
+
+### Duplisert kode funnet:
+
+**Combat dice functions:**
+- `getAttackDice()` og `getWeaponAttackDice()` gjør samme ting
+- `getDefenseDice()` og `getPlayerDefenseDice()` overlapper
+
+**Anbefaling:** Konsolider til 2 funksjoner:
+```typescript
+getEquipmentAttackDice(player)  // Total attack with weapon
+getEquipmentDefenseDice(player) // Total defense with armor
+```
+
+### Manglende error handling:
+
+Kritiske funksjoner uten try/catch:
+- `processEnemyTurn()` (monsterAI.ts)
+- `resolveEventEffect()` (eventDeckManager.ts)
+- `executeSpecialAbility()` (monsterAI.ts)
+
+---
+
+## PRIORITERT IMPLEMENTERINGSREKKEFØLGE
+
+### Sprint 1: Visuell polering
+1. ✏️ Floor-type CSS-klasser
+2. ✏️ Vannmerke-ikoner for rom
+3. ✏️ Madness CSS-animasjoner
+
+### Sprint 2: Puzzle-system
+4. ✏️ PressurePlatePuzzle
+5. ✏️ MirrorLightPuzzle
+6. ✏️ AstronomyPuzzle
+
+### Sprint 3: Loot og items
+7. ✏️ Loot-tabeller for rom-søk
+8. ✏️ Enemy loot drops
+9. ✏️ Våpenrestriksjoner-validering
+
+### Sprint 4: Systemer
+10. ✏️ Survivor spawning og redning
+11. ✏️ Obstacle-interaksjon
+12. ✏️ Expanded crits og desperate measures
+
+### Sprint 5: Polering
+13. ✏️ Weather gameplay-effekter
+14. ✏️ Legacy death perks
+15. ✏️ Skill check UI-forbedring
+
+---
+
+## TEKNISK GJELD
+
+### Type Safety
+- 112 forekomster av `any` (de fleste i UI-callbacks)
+- Anbefaling: Erstatt med typer basert på action
+
+### Performance
+- Bundle size: ~1.6 MB (stort men akseptabelt for spillprosjekt)
+- Ingen memory leaks funnet
+- Mulig performance-issue ved 100+ tiles (vurder virtuell scrolling)
+
+### Testing
+- Ingen unit tests
+- Utility-funksjoner er godt strukturert for testing
+- Anbefaling: Start med combatUtils.ts og scenarioUtils.ts
+
+---
+
+## KONKLUSJON
+
+**Samlet vurdering: 8/10** - Godt håndverket spill med solid arkitektur.
+
+**Sterke sider:**
+- Gjennomtenkt type-system med full TypeScript coverage
+- Modulær arkitektur med separerte concerns
+- Rikt feature-sett med 8+ komplekse systemer
+- Autentisk Lovecraft-atmosfære i tekst og design
+- Godt dokumenterte type-definisjoner
+
+**Hovedområder for forbedring:**
+1. Fullføre manglende visuelle effekter (floor, vannmerker, madness)
+2. Implementere gjenstående puzzle-typer
+3. Aktivere loot og item-generering
+4. Integrere survivor-systemet
+5. Legge til error handling i kritiske funksjoner
+
+**Estimert arbeid for å nå 100% feature-paritet med design:**
+- Sprint 1-2: ~40 timer
+- Sprint 3-5: ~60 timer
+- Total: ~100 timer
+
+---
 ## 2026-01-22: Fix Player Not Taking Damage from Monsters
 
 ### Problem
