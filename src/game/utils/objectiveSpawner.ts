@@ -17,6 +17,7 @@ import { Scenario, ScenarioObjective, Tile, Item } from '../types';
 export interface QuestItem {
   id: string;
   objectiveId: string;
+  scenarioId: string;        // Which scenario this item belongs to
   type: 'key' | 'clue' | 'collectible' | 'artifact' | 'component';
   name: string;
   description: string;
@@ -299,14 +300,14 @@ export function initializeObjectiveSpawns(scenario: Scenario): ObjectiveSpawnSta
     switch (objective.type) {
       case 'find_item':
         // Single item to find (like a key)
-        questItems.push(createQuestItem(objective, 'key'));
+        questItems.push(createQuestItem(objective, 'key', scenario.id));
         break;
 
       case 'collect':
         // Multiple items to collect
         const amount = objective.targetAmount || 1;
         for (let i = 0; i < amount; i++) {
-          questItems.push(createQuestItem(objective, 'collectible', i));
+          questItems.push(createQuestItem(objective, 'collectible', scenario.id, i));
         }
         break;
 
@@ -360,6 +361,7 @@ export function initializeObjectiveSpawns(scenario: Scenario): ObjectiveSpawnSta
 function createQuestItem(
   objective: ScenarioObjective,
   type: QuestItem['type'],
+  scenarioId: string,
   index: number = 0
 ): QuestItem {
   const targetId = objective.targetId || 'quest_item';
@@ -371,6 +373,7 @@ function createQuestItem(
   return {
     id: `quest_item_${objective.id}_${index}`,
     objectiveId: objective.id,
+    scenarioId,
     type,
     name: itemDef.name,
     description: itemDef.description,

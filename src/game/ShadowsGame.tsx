@@ -637,7 +637,8 @@ const ShadowsGame: React.FC = () => {
       explosion: { duration: 500, count: 12, size: 'md', animation: 'burst', color: 'banish' },
       blood: { duration: 600, count: 8, size: 'sm', animation: 'burst', color: 'blood' },
       smoke: { duration: 1200, count: 10, size: 'lg', animation: 'float', color: 'smoke' },
-      sparkle: { duration: 800, count: 6, size: 'sm', animation: 'burst', color: 'sparkle' }
+      sparkle: { duration: 800, count: 6, size: 'sm', animation: 'burst', color: 'sparkle' },
+      item_collect: { duration: 1000, count: 8, size: 'md', animation: 'float', color: 'item-collect' }
     };
 
     const config = particleConfig[type] || particleConfig.sparkle;
@@ -2130,6 +2131,15 @@ const ShadowsGame: React.FC = () => {
         result.floatingText.r,
         result.floatingText.text,
         result.floatingText.colorClass
+      );
+    }
+
+    // Apply spell particle effect (e.g., item collection animation)
+    if (result.spellParticle) {
+      emitSpellEffect(
+        result.spellParticle.startQ,
+        result.spellParticle.startR,
+        result.spellParticle.type
       );
     }
 
@@ -4464,6 +4474,7 @@ const ShadowsGame: React.FC = () => {
                     onUnequipItem={handleUnequipItem}
                     onEquipFromBag={handleEquipFromBag}
                     onDropItem={handleDropItem}
+                    objectives={activeScenario?.objectives}
                   />
                 </div>
               </div>
@@ -4475,6 +4486,7 @@ const ShadowsGame: React.FC = () => {
                   onUnequipItem={handleUnequipItem}
                   onEquipFromBag={handleEquipFromBag}
                   onDropItem={handleDropItem}
+                  objectives={activeScenario?.objectives}
                 />
               </div>
             )

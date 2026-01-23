@@ -1,5 +1,129 @@
 # Development Log
 
+## 2026-01-23: Quest Item System - Objective Linking & Collection Animations
+
+### Oppgave
+Implementere forbedringer til quest item-systemet basert på forslagslisten:
+1. Quest item → Objective linking - Vise hvilken objective hvert quest item er knyttet til
+2. Collection animations - Partikkel-effekter når items plukkes opp
+3. Types.ts utvidelse - Legge til scenarioId og objectiveId på QuestItem interface
+
+### Implementerte endringer
+
+#### 1. Types.ts utvidelse ✅
+
+**Fil:** `src/game/types.ts`
+
+Lagt til `scenarioId` på Item interface:
+```typescript
+// Quest item fields
+isQuestItem?: boolean;
+questItemType?: 'key' | 'clue' | 'collectible' | 'artifact' | 'component';
+objectiveId?: string;     // Which objective this item belongs to
+scenarioId?: string;      // Which scenario this quest item belongs to (for cleanup)
+```
+
+Lagt til `item_collect` partikkeltype:
+```typescript
+export type SpellParticleType =
+  | ... existing types ...
+  | 'item_collect';    // Golden/amber particles for quest item collection
+```
+
+#### 2. ObjectiveSpawner utvidelse ✅
+
+**Fil:** `src/game/utils/objectiveSpawner.ts`
+
+QuestItem interface utvidet med scenarioId:
+```typescript
+export interface QuestItem {
+  id: string;
+  objectiveId: string;
+  scenarioId: string;        // Which scenario this item belongs to
+  type: 'key' | 'clue' | 'collectible' | 'artifact' | 'component';
+  name: string;
+  description: string;
+  spawned: boolean;
+  spawnedOnTileId?: string;
+  collected: boolean;
+}
+```
+
+`createQuestItem()` oppdatert til å sette scenarioId.
+
+#### 3. Objective-linking i CharacterPanel ✅
+
+**Fil:** `src/game/components/CharacterPanel.tsx`
+
+- Ny prop: `objectives?: ScenarioObjective[]`
+- Quest items viser nå hvilken objective de tilhører
+- Vises med Target-ikon og objective shortDescription
+- Fallback til type-label hvis ingen objective er linket
+
+Visningsformat:
+```
+[Key icon] Iron Key
+[Target icon] Find the Iron Key (1/1)
+```
+
+#### 4. Collection Animations ✅
+
+**Filer:**
+- `src/index.css` - Nye CSS-klasser
+- `src/game/components/GameBoard.tsx` - Partikkel-rendering
+- `src/game/utils/contextActionEffects.ts` - Partikkel-generering
+- `src/game/ShadowsGame.tsx` - Partikkel-konfigurasjon
+
+**CSS (index.css):**
+```css
+.spell-particle-item-collect {
+  background: radial-gradient(circle, rgba(255, 200, 50, 0.95) 0%, rgba(255, 150, 0, 0.7) 40%, rgba(200, 100, 0, 0.4) 70%, transparent 100%);
+  box-shadow: 0 0 15px rgba(255, 200, 50, 0.9), 0 0 30px rgba(255, 150, 0, 0.5), 0 0 45px rgba(200, 100, 0, 0.3);
+}
+
+@keyframes item-collect-rise {
+  0% { opacity: 0; transform: translateY(0) scale(0.5); }
+  20% { opacity: 1; transform: translateY(-10px) scale(1); }
+  100% { opacity: 0; transform: translateY(-60px) scale(0.3); }
+}
+```
+
+**ActionEffectResult (contextActionEffects.ts):**
+```typescript
+export interface ActionEffectResult {
+  // ... existing fields ...
+  spellParticle?: SpellParticle;
+}
+```
+
+Partikkel genereres ved:
+- `handleSearchEffect()` - når quest item finnes via søk
+- `handleQuestItemPickupEffect()` - når quest item plukkes opp direkte
+
+### Propagering av scenarioId
+
+scenarioId propageres gjennom hele flyten:
+1. `initializeObjectiveSpawns()` → `createQuestItem()` med scenario.id
+2. `createQuestItemForInventory()` → Item med scenarioId
+3. `handleQuestItemPickupEffect()` → scenarioId fra spawnedQuestItem
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+### Endrede filer oppsummering
+
+| Fil | Endring |
+|-----|---------|
+| `types.ts` | scenarioId på Item, item_collect SpellParticleType |
+| `objectiveSpawner.ts` | scenarioId på QuestItem, createQuestItem oppdatert |
+| `CharacterPanel.tsx` | objectives prop, objective-linking UI |
+| `contextActionEffects.ts` | spellParticle i ActionEffectResult, partikkel-generering |
+| `GameBoard.tsx` | item_collect partikkeltype og animasjon |
+| `ShadowsGame.tsx` | item_collect i particleConfig, spellParticle håndtering |
+| `index.css` | item-collect CSS-klasser og animasjon |
+
+---
+
 ## 2026-01-23: XP-system, Permadeath og Action Points - Analyse og Bugfix
 
 ### Oppgave

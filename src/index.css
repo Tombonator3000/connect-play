@@ -1692,6 +1692,33 @@
     box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
   }
 
+  .spell-particle-item-collect {
+    background: radial-gradient(circle, rgba(255, 200, 50, 0.95) 0%, rgba(255, 150, 0, 0.7) 40%, rgba(200, 100, 0, 0.4) 70%, transparent 100%);
+    box-shadow: 0 0 15px rgba(255, 200, 50, 0.9), 0 0 30px rgba(255, 150, 0, 0.5), 0 0 45px rgba(200, 100, 0, 0.3);
+  }
+
+  /* Item collect animation - rising sparkles with slight float */
+  @keyframes item-collect-rise {
+    0% {
+      opacity: 0;
+      transform: translateY(0) translateX(var(--offset-x, 0px)) scale(0.5);
+    }
+    20% {
+      opacity: 1;
+      transform: translateY(-10px) translateX(var(--offset-x, 0px)) scale(1);
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-60px) translateX(calc(var(--offset-x, 0px) + var(--drift, 10px))) scale(0.3);
+    }
+  }
+
+  .animate-item-collect-rise {
+    animation: item-collect-rise var(--duration, 800ms) ease-out forwards;
+    --offset-x: calc((var(--index, 0) - 3) * 12px);
+    --drift: calc((var(--index, 0) - 3) * 5px);
+  }
+
   /* Particle sizes */
   .spell-particle-sm {
     width: 8px;
