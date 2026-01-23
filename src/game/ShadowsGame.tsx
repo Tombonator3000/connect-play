@@ -3973,8 +3973,11 @@ const ShadowsGame: React.FC = () => {
     const victory = gameOverType === 'victory';
     const hasSurvivors = state.players.some(p => !p.isDead);
 
-    if (selectedLegacyHeroIds.length > 0 && (victory || hasSurvivors)) {
-      // Process legacy rewards
+    // CRITICAL: Always process scenario completion for legacy heroes
+    // This handles permadeath - dead heroes MUST be marked as isDead via killHero()
+    // Previous bug: (victory || hasSurvivors) condition prevented killHero from being
+    // called when all players died, so permadeath heroes were never marked dead
+    if (selectedLegacyHeroIds.length > 0) {
       handleScenarioComplete(victory);
     }
 

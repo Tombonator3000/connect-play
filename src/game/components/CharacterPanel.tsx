@@ -93,7 +93,9 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   if (!player) return null;
 
   // Defensive: ensure inventory exists with default values
-  const inventory = inventory || {
+  // CRITICAL FIX: Previous bug used "inventory = inventory ||" which was a circular reference
+  // causing the component to crash when opening character sheet
+  const inventory = player.inventory || {
     leftHand: null,
     rightHand: null,
     body: null,
