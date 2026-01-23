@@ -1,5 +1,249 @@
 # Development Log
 
+## 2026-01-23: Forslag - Forbedret Scenario-avslutning (Game Over Screen)
+
+### Oppgave
+Utvikle forslag til forbedringer for scenario-avslutning. Mer enn bare "Victoria/Finis + subtitle" - mer Lovecraftian tekst som forklarer hva som gikk bra/dårlig.
+
+### Nåværende implementasjon (GameOverOverlay.tsx)
+Viser kun:
+- **Victory**: "VICTORIA" + "The darkness recedes... for now."
+- **Defeat (death)**: "FINIS" + "Your light has been extinguished..."
+- **Defeat (doom)**: "FINIS" + "The stars have aligned. The Old Ones awaken."
+- Stats: Scenario title + "Completed/Survived in X rounds"
+- Et statisk sitat nederst
+
+### Forslag til forbedringer
+
+#### 1. **Scenario Performance Summary** (Statistikk-kort)
+Vis detaljerte statistikker for å gi spilleren tilbakemelding:
+
+| Statistikk | Beskrivelse |
+|------------|-------------|
+| **Enemies Vanquished** | Totalt antall fiender drept |
+| **Horrors Witnessed** | Antall horror checks utført |
+| **Sanity Lost** | Total sanity tapt gjennom scenariet |
+| **Wounds Suffered** | Total HP tapt |
+| **Clues Discovered** | Antall ledetråder/quest items funnet |
+| **Tiles Explored** | Antall tiles utforsket |
+| **Rounds Survived** | Antall runder fullført |
+
+**Implementasjon**: Krever en `GameStats` tracker i state som akkumulerer disse verdiene.
+
+```typescript
+interface GameStats {
+  enemiesKilled: number;
+  horrorChecksPerformed: number;
+  totalSanityLost: number;
+  totalDamageTaken: number;
+  cluesFound: number;
+  tilesExplored: number;
+  roundsSurvived: number;
+  bossesDefeated: string[];  // Boss names
+}
+```
+
+---
+
+#### 2. **Performance Rating System** (Vurdering)
+Gi spilleren en "rank" basert på prestasjon:
+
+| Rank | Kriterier | Lovecraftian Tittel |
+|------|-----------|---------------------|
+| **S** | Alle objectives, ingen døde, høy sanity | "Keeper of the Light" |
+| **A** | Fullført, minimal skade | "Seasoned Investigator" |
+| **B** | Fullført med moderate tap | "Survivor of the Dark" |
+| **C** | Så vidt fullført | "Touched by Madness" |
+| **F** | Tap/nederlag | "Lost to the Void" |
+
+**Victory ranks** kunne også ha tematiske beskrivelser:
+- **S-rank**: *"You emerge unscathed, a beacon against the encroaching night. The Old Ones stir in their slumber, but find no purchase here."*
+- **C-rank**: *"You survived, but at what cost? The whispers follow you still, and your dreams will never be quite the same."*
+
+---
+
+#### 3. **Dynamic Epilogue Text** (Lovecraftian Narrativ)
+Generer dynamisk epilog-tekst basert på:
+- Scenario-type (escape, investigation, assassination, etc.)
+- Utfall (victory/defeat)
+- Performance-variabler
+
+**Eksempel victory epilogues:**
+
+**Escape Mission - Clean Victory:**
+> *"The old manor recedes into the mist behind you. As the first rays of dawn pierce the horizon, you dare to believe it is over. But in the cold logic of your investigator's mind, you know: doors once opened cannot be truly closed. You have glimpsed behind the veil, and the veil has glimpsed you."*
+
+**Escape Mission - Pyrrhic Victory (lost teammate):**
+> *"You escaped, but [Character Name] did not. Their screams still echo in the chambers of your memory, a symphony that will play each night until madness or death grants you silence. The mission was a success—the files say so. Your soul knows otherwise."*
+
+**Investigation Mission - Victory:**
+> *"The truth lies bare before you, terrible in its clarity. The Whateley bloodline, the summoning circles, the half-formed creatures in the cellar—it all connects to something older, something patient. You have answered one question, but a thousand more now crowd your thoughts, each more disturbing than the last."*
+
+---
+
+**Eksempel defeat epilogues:**
+
+**All Dead:**
+> *"In the end, the darkness proved absolute. Your lanterns sputtered and died, your ammunition ran dry, and one by one, the screaming stopped. Perhaps in some distant archive, a yellowed newspaper clipping will mention the disappearance. Perhaps not. The cosmos does not mourn the insignificant."*
+
+**Doom Zero:**
+> *"The ritual completes. Reality tears. Through the wound in existence, something vast becomes aware of this small, blue world. In Arkham, the citizens look up at a sky that now contains too many stars. In R'lyeh, Great Cthulhu turns in his death-sleep, and for the first time in aeons, he smiles."*
+
+---
+
+#### 4. **Konsekvens-kort (What You Left Behind)**
+Vis konsekvenser av spillerens valg:
+
+**Positive konsekvenser:**
+- ✓ *"The cultist leader was destroyed. The ritual cannot be completed... for now."*
+- ✓ *"Dr. Hartwell's research was secured. Others may benefit from your sacrifice."*
+- ✓ *"The Elder Sign was placed. This gateway is sealed."*
+
+**Negative konsekvenser:**
+- ✗ *"The Necronomicon remains in cultist hands."*
+- ✗ *"Three survivors were left behind in the asylum."*
+- ✗ *"The shoggoth escaped into the sewers beneath Arkham."*
+
+---
+
+#### 5. **Character Fate Summary** (Ved multiplayer/legacy)
+For hver karakter, vis deres personlige utfall:
+
+```
+THE VETERAN - James Hartley
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HP: 2/6  |  Sanity: 1/3
+Status: Survived, but broken
+Madness: PARANOIA acquired
+
+"The war taught him to kill. Tonight taught him
+there are things that cannot be killed."
+```
+
+---
+
+#### 6. **Unlock/Reward Preview**
+Vis hva spilleren har låst opp:
+
+- 🏆 **Achievement Unlocked**: "First Blood" - Complete your first scenario
+- 💰 **Gold Earned**: 150g (Base) + 50g (Speed Bonus) + 25g (No Deaths)
+- 📜 **Lore Fragment**: "The Whateley Correspondence, Part I"
+- 🗡️ **New Item Available**: Shotgun (now in shop)
+
+---
+
+#### 7. **TypeScript Interface Forslag**
+
+```typescript
+interface ScenarioResult {
+  type: 'victory' | 'defeat_death' | 'defeat_doom';
+  scenario: Scenario;
+  round: number;
+
+  // Performance stats
+  stats: GameStats;
+
+  // Rating
+  rating: 'S' | 'A' | 'B' | 'C' | 'F';
+  ratingTitle: string;
+
+  // Narrative
+  epilogue: string;           // Dynamic generated text
+  consequences: {
+    positive: string[];
+    negative: string[];
+  };
+
+  // Character fates
+  characterFates: {
+    character: Player;
+    survived: boolean;
+    finalHp: number;
+    finalSanity: number;
+    madnessAcquired: string[];
+    personalEpilogue: string;
+  }[];
+
+  // Rewards (for legacy mode)
+  rewards?: {
+    goldEarned: number;
+    xpEarned: number;
+    itemsUnlocked: string[];
+    achievementsUnlocked: string[];
+    loreFragmentsUnlocked: string[];
+  };
+}
+```
+
+---
+
+#### 8. **Visuell Layout Forslag**
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                      ⚰ FINIS ⚰                          │
+│         "The stars have aligned at last."               │
+├─────────────────────────────────────────────────────────┤
+│                                                         │
+│  [EPILOGUE TEXT - 3-4 setninger Lovecraftian prosa]    │
+│                                                         │
+├─────────────────────────────────────────────────────────┤
+│  MISSION: The Whateley Investigation                    │
+│  RATING: C - "Touched by Madness"                      │
+│  ROUNDS: 12                                             │
+├─────────────────────────────────────────────────────────┤
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐             │
+│  │ ENEMIES  │  │ SANITY   │  │ TILES    │             │
+│  │    7     │  │  LOST    │  │ EXPLORED │             │
+│  │ vanquished│  │   -8    │  │    15    │             │
+│  └──────────┘  └──────────┘  └──────────┘             │
+├─────────────────────────────────────────────────────────┤
+│  CONSEQUENCES:                                          │
+│  ✓ The ritual was prevented                            │
+│  ✗ Sarah Whateley escaped                              │
+│  ✗ The Veteran acquired PARANOIA                       │
+├─────────────────────────────────────────────────────────┤
+│        [TRY AGAIN]          [MAIN MENU]                │
+└─────────────────────────────────────────────────────────┘
+```
+
+---
+
+### Prioritert Implementasjonsrekkefølge
+
+1. **Fase 1**: Legg til GameStats tracking i game state
+2. **Fase 2**: Implementer performance rating system
+3. **Fase 3**: Skriv epilogue-bibliotek (10-15 tekster per scenario-type)
+4. **Fase 4**: Oppdater GameOverOverlay med ny layout
+5. **Fase 5**: Koble til legacy-systemet for rewards
+
+### Filer som må endres
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/types.ts` | Legg til `GameStats` og `ScenarioResult` interfaces |
+| `src/game/ShadowsGame.tsx` | Tracker stats gjennom spillet |
+| `src/game/components/GameOverOverlay.tsx` | Ny forbedret layout |
+| `src/game/data/epilogues.ts` | (NY) Epilogue-tekster bibliotek |
+| `src/game/utils/performanceRating.ts` | (NY) Rating-beregning |
+
+### Lovecraftian Tekst-bibliotek (Eksempler)
+
+**Victory - General:**
+- *"You have peered into the abyss and emerged with your sanity—most of it—intact."*
+- *"The battle is won, but the war stretches back to the birth of stars and forward to their death."*
+- *"Dawn breaks over Arkham. Somewhere, a child laughs. Life continues, blissfully ignorant of how close it came to ending."*
+
+**Defeat - Doom Zero:**
+- *"In the final moment, you understood. The universe was never indifferent—it was patient."*
+- *"Ph'nglui mglw'nafh Cthulhu R'lyeh wgah'nagl fhtagn. The chant echoes across dimensions now."*
+
+**Defeat - All Dead:**
+- *"Your sacrifice will not be remembered. History is written by the living."*
+- *"The darkness swallows all. It always does. It always will."*
+
+---
+
 ## 2026-01-23: Refactor Quest Item Spawn System for Clarity
 
 ### Oppgave
