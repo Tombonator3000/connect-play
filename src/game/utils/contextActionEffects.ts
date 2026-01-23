@@ -15,10 +15,16 @@ import type {
   Item,
   Player,
   Scenario,
+  Survivor,
 } from '../types';
 import { equipItem } from '../types';
 import type { ObjectiveSpawnState, QuestItem } from './objectiveSpawner';
 import { collectQuestItem } from './objectiveSpawner';
+import {
+  startFollowing,
+  rescueSurvivor,
+  useSurvivorAbility,
+} from './survivorSystem';
 
 // Alias for backward compatibility
 type SpawnedQuestItem = QuestItem;
@@ -39,6 +45,8 @@ export interface ActionEffectContext {
   activeScenario: Scenario | null;
   objectiveSpawnState: ObjectiveSpawnState | null;
   questItemsCollected: string[];
+  survivors?: Survivor[];
+  targetSurvivorId?: string;
 }
 
 /**
@@ -54,6 +62,15 @@ export interface ActionEffectResult {
   floatingText?: { q: number; r: number; text: string; colorClass: string };
   /** If true, move player through edge to adjacent tile after effect */
   movePlayerThroughEdge?: boolean;
+  /** Updated survivors array */
+  survivors?: Survivor[];
+  /** Survivor rewards to apply */
+  survivorRewards?: {
+    insight?: number;
+    sanity?: number;
+    gold?: number;
+    doomBonus?: number;
+  };
 }
 
 /**
@@ -669,6 +686,263 @@ export function handleQuestItemPickupEffect(
 }
 
 // ============================================================================
+// SURVIVOR EFFECT HANDLERS
+// ============================================================================
+
+/**
+ * Survivor action IDs
+ */
+const SURVIVOR_ACTIONS = [
+  'find_survivor',
+  'recruit_survivor',
+  'use_survivor_ability',
+  'dismiss_survivor',
+  'rescue_survivor'
+];
+
+/**
+ * Handles finding a hidden survivor
+ */
+export function handleFindSurvivorEffect(
+  ctx: ActionEffectContext
+): ActionEffectResult {
+  if (!ctx.survivors || !ctx.targetSurvivorId) return {};
+
+  const survivor = ctx.survivors.find(s => s.id === ctx.targetSurvivorId);
+  if (!survivor || survivor.state !== 'hidden') return {};
+
+  const updatedSurvivors = ctx.survivors.map(s =>
+    s.id === ctx.targetSurvivorId
+      ? { ...s, state: 'found' as const }
+      : s
+  );
+
+  return {
+    survivors: updatedSurvivors,
+    logMessages: [
+      `Du finner ${survivor.name} som gjemmer seg!`,
+      `"${survivor.foundDialogue}"`
+    ],
+    floatingText: {
+      q: survivor.position.q,
+      r: survivor.position.r,
+      text: `Funnet: ${survivor.name}`,
+      colorClass: 'text-green-400'
+    }
+  };
+}
+
+/**
+ * Handles recruiting a survivor to follow the player
+ */
+export function handleRecruitSurvivorEffect(
+  ctx: ActionEffectContext
+): ActionEffectResult {
+  if (!ctx.survivors || !ctx.targetSurvivorId) return {};
+
+  const survivor = ctx.survivors.find(s => s.id === ctx.targetSurvivorId);
+  if (!survivor || survivor.state !== 'found') return {};
+
+  const activePlayer = ctx.players[ctx.activePlayerIndex];
+  if (!activePlayer) return {};
+
+  const updatedSurvivor = startFollowing(survivor, activePlayer);
+
+  const updatedSurvivors = ctx.survivors.map(s =>
+    s.id === ctx.targetSurvivorId ? updatedSurvivor : s
+  );
+
+  return {
+    survivors: updatedSurvivors,
+    logMessages: [
+      `${survivor.name} følger nå ${activePlayer.name}!`,
+      `"${survivor.followDialogue}"`
+    ],
+    floatingText: {
+      q: survivor.position.q,
+      r: survivor.position.r,
+      text: 'Rekruttert!',
+      colorClass: 'text-blue-400'
+    }
+  };
+}
+
+/**
+ * Handles using a survivor's special ability
+ */
+export function handleUseSurvivorAbilityEffect(
+  ctx: ActionEffectContext
+): ActionEffectResult {
+  if (!ctx.survivors || !ctx.targetSurvivorId) return {};
+
+  const survivor = ctx.survivors.find(s => s.id === ctx.targetSurvivorId);
+  if (!survivor || survivor.state !== 'following') return {};
+
+  const tile = ctx.board.find(t => t.id === ctx.tileId);
+  if (!tile) return {};
+
+  const abilityResult = useSurvivorAbility(survivor, ctx.players, ctx.board);
+  if (!abilityResult) {
+    return {
+      logMessages: [`${survivor.name} har ingen tilgjengelig evne.`]
+    };
+  }
+
+  const updatedSurvivors = ctx.survivors.map(s =>
+    s.id === ctx.targetSurvivorId ? abilityResult.survivor : s
+  );
+
+  // Apply ability effects to players
+  let updatedPlayers = ctx.players;
+  if (abilityResult.effects.healed) {
+    updatedPlayers = ctx.players.map(p => {
+      const heal = abilityResult.effects.healed?.find(h => h.playerId === p.id);
+      if (heal) {
+        return { ...p, hp: Math.min(p.maxHp, p.hp + heal.amount) };
+      }
+      return p;
+    });
+  }
+  if (abilityResult.effects.calmAura) {
+    updatedPlayers = updatedPlayers.map(p => ({
+      ...p,
+      sanity: Math.min(p.maxSanity, p.sanity + (abilityResult.effects.calmAura?.sanityBonus || 0))
+    }));
+  }
+
+  return {
+    survivors: updatedSurvivors,
+    players: updatedPlayers,
+    logMessages: [abilityResult.message],
+    floatingText: {
+      q: survivor.position.q,
+      r: survivor.position.r,
+      text: 'Evne brukt!',
+      colorClass: 'text-purple-400'
+    }
+  };
+}
+
+/**
+ * Handles dismissing a following survivor
+ */
+export function handleDismissSurvivorEffect(
+  ctx: ActionEffectContext
+): ActionEffectResult {
+  if (!ctx.survivors || !ctx.targetSurvivorId) return {};
+
+  const survivor = ctx.survivors.find(s => s.id === ctx.targetSurvivorId);
+  if (!survivor || survivor.state !== 'following') return {};
+
+  const updatedSurvivors = ctx.survivors.map(s =>
+    s.id === ctx.targetSurvivorId
+      ? { ...s, state: 'found' as const, followingPlayerId: undefined }
+      : s
+  );
+
+  return {
+    survivors: updatedSurvivors,
+    logMessages: [`${survivor.name} forsvinner inn i skyggene.`]
+  };
+}
+
+/**
+ * Handles rescuing a survivor at exit
+ */
+export function handleRescueSurvivorEffect(
+  ctx: ActionEffectContext
+): ActionEffectResult {
+  if (!ctx.survivors || !ctx.targetSurvivorId) return {};
+
+  const survivor = ctx.survivors.find(s => s.id === ctx.targetSurvivorId);
+  if (!survivor || survivor.state !== 'following') return {};
+
+  const scenarioDoomBonus = ctx.activeScenario?.doomOnSurvivorRescue ?? 1;
+  const rescueResult = rescueSurvivor(survivor, scenarioDoomBonus);
+
+  const updatedSurvivors = ctx.survivors.map(s =>
+    s.id === ctx.targetSurvivorId ? rescueResult.survivor : s
+  );
+
+  // Check if this completes an escort objective
+  let updatedScenario = ctx.activeScenario;
+  if (ctx.activeScenario) {
+    const escortObjective = ctx.activeScenario.objectives.find(
+      obj => obj.type === 'escort' && !obj.completed
+    );
+    if (escortObjective) {
+      const newAmount = (escortObjective.currentAmount || 0) + 1;
+      const targetAmount = escortObjective.targetAmount || 1;
+      const isComplete = newAmount >= targetAmount;
+
+      updatedScenario = {
+        ...ctx.activeScenario,
+        objectives: ctx.activeScenario.objectives.map(obj =>
+          obj.id === escortObjective.id
+            ? { ...obj, currentAmount: newAmount, completed: isComplete }
+            : obj
+        )
+      };
+    }
+  }
+
+  const logMessages = [
+    rescueResult.message,
+    `"${survivor.rescuedDialogue}"`
+  ];
+
+  if (rescueResult.rewards.insight > 0) {
+    logMessages.push(`+${rescueResult.rewards.insight} Insight`);
+  }
+  if (rescueResult.rewards.sanity !== 0) {
+    const sign = rescueResult.rewards.sanity > 0 ? '+' : '';
+    logMessages.push(`${sign}${rescueResult.rewards.sanity} Sanity`);
+  }
+  if (rescueResult.rewards.gold > 0) {
+    logMessages.push(`+${rescueResult.rewards.gold} Gold`);
+  }
+  if (rescueResult.rewards.doomBonus > 0) {
+    logMessages.push(`+${rescueResult.rewards.doomBonus} Doom (håp gjenopprettet!)`);
+  }
+
+  return {
+    survivors: updatedSurvivors,
+    activeScenario: updatedScenario,
+    survivorRewards: rescueResult.rewards,
+    logMessages,
+    floatingText: {
+      q: survivor.position.q,
+      r: survivor.position.r,
+      text: 'REDDET!',
+      colorClass: 'text-green-500'
+    }
+  };
+}
+
+/**
+ * Dispatches survivor action effects based on action ID
+ */
+export function handleSurvivorActionEffect(
+  ctx: ActionEffectContext,
+  actionId: string
+): ActionEffectResult {
+  switch (actionId) {
+    case 'find_survivor':
+      return handleFindSurvivorEffect(ctx);
+    case 'recruit_survivor':
+      return handleRecruitSurvivorEffect(ctx);
+    case 'use_survivor_ability':
+      return handleUseSurvivorAbilityEffect(ctx);
+    case 'dismiss_survivor':
+      return handleDismissSurvivorEffect(ctx);
+    case 'rescue_survivor':
+      return handleRescueSurvivorEffect(ctx);
+    default:
+      return {};
+  }
+}
+
+// ============================================================================
 // ACTION EFFECT DISPATCHER
 // ============================================================================
 
@@ -789,6 +1063,11 @@ export function processActionEffect(
       movePlayerThroughEdge: true,
       logMessages: []
     };
+  }
+
+  // Survivor actions
+  if (SURVIVOR_ACTIONS.includes(actionId)) {
+    return handleSurvivorActionEffect(ctx, actionId);
   }
 
   // Unknown action - no effect
