@@ -18116,3 +18116,125 @@ Alle tre kritiske bugs er nå fikset:
 3. ✅ **Blocked Exits:** Edge-synkronisering sikrer at spillere kan forlate rom de har entret
 
 ---
+
+## 2026-01-23: Arkitektur-Refaktorering
+
+### Oppgave
+Forbedre kodearkitekturen basert på observasjoner:
+1. Store filer bør deles opp (constants.ts: 6,027 linjer)
+2. Duplisert kode i combat dice functions
+3. Manglende error handling i kritiske funksjoner
+
+### Gjennomførte Endringer
+
+#### 1. Oppdeling av constants.ts
+
+Opprettet ny modulstruktur under `src/game/constants/`:
+
+| Ny Fil | Innhold | Linjer |
+|--------|---------|--------|
+| `bestiary.ts` | BESTIARY, getBestiaryEntry(), getEnemyAttackDice(), etc. | ~270 |
+| `weapons.ts` | HQ_WEAPONS, HQ_ARMOR, getWeaponById(), getArmorById() | ~120 |
+| `criticals.ts` | CRITICAL_BONUSES, CRITICAL_PENALTIES, getRandomCriticalBonuses() | ~100 |
+| `desperateMeasures.ts` | DESPERATE_MEASURES, calculateDesperateBonuses() | ~130 |
+| `diceUtils.ts` | rollDice(), countSuccesses(), formatDiceRolls(), COMBAT_DC | ~150 |
+| `index.ts` | Re-eksporter for enkel import | ~60 |
+
+**Resultat:** constants.ts redusert fra 6,027 til 5,583 linjer (-450 linjer)
+
+Alle konstanter er fortsatt tilgjengelig via `import { X } from './constants'` for bakoverkompatibilitet.
+
+#### 2. Refaktorering av Duplisert Kode
+
+**Problem:** `performSkillCheck` var definert i BÅDE:
+- `combatUtils.ts` (brukt)
+- `skillCheck.ts` (IKKE brukt)
+
+**Løsning:**
+- Fjernet duplisert `performSkillCheck` fra `skillCheck.ts`
+- Sentralisert terning-utilities i `diceUtils.ts`:
+  - `rollDice(count)` - Kast d6 terninger
+  - `countSuccesses(rolls, dc)` - Tell suksesser
+  - `formatDiceRolls(rolls, dc)` - Formater for visning
+  - `isCriticalHit/Miss()` - Sjekk kritiske treff
+  - `calculateNetDamage()` - Beregn netto skade
+
+**combatUtils.ts oppdatert:**
+```typescript
+// Før: Lokal definisjon
+const COMBAT_DC = 4;
+export function rollDice(count: number): number[] { ... }
+export function countSuccesses(rolls: number[], dc: number): number { ... }
+
+// Etter: Import fra sentralisert modul
+import { rollDice, countSuccesses, formatDiceRolls, COMBAT_DC } from '../constants/diceUtils';
+export { rollDice, countSuccesses, COMBAT_DC } from '../constants/diceUtils';
+```
+
+#### 3. Error Handling i Kritiske Funksjoner
+
+**Lagt til validering i:**
+
+**`performAttack()`:**
+```typescript
+if (!player) {
+  console.error('[Combat] performAttack called with null/undefined player');
+  return createErrorCombatResult('Invalid player');
+}
+if (!enemy) {
+  console.error('[Combat] performAttack called with null/undefined enemy');
+  return createErrorCombatResult('Invalid enemy');
+}
+```
+
+**`performDefense()`:**
+```typescript
+if (!player) {
+  console.error('[Combat] performDefense called with null/undefined player');
+  return { damageBlocked: 0, finalDamage: incomingDamage, ... };
+}
+```
+
+**`calculateEnemyDamage()`:**
+```typescript
+if (!enemy || !player) {
+  console.error('[Combat] calculateEnemyDamage called with invalid parameters');
+  return { hpDamage: 0, sanityDamage: 0, ... };
+}
+if (!bestiaryEntry) {
+  console.warn(`[Combat] Unknown enemy type: ${enemy.type}, using default stats`);
+}
+```
+
+**`diceUtils.ts` funksjoner:**
+- `rollDice()`: Validerer count > 0, max 100 terninger
+- `countSuccesses()`: Validerer array input
+- `formatDiceRolls()`: Håndterer tom array
+
+### Filstruktur Etter Refaktorering
+
+```
+src/game/
+├── constants.ts              # 5,583 linjer (ned fra 6,027)
+├── constants/
+│   ├── index.ts             # Re-eksport hub
+│   ├── bestiary.ts          # Enemy definitions
+│   ├── weapons.ts           # Weapons & armor
+│   ├── criticals.ts         # Critical hit/miss system
+│   ├── desperateMeasures.ts # Low HP/Sanity bonuses
+│   └── diceUtils.ts         # Shared dice utilities
+└── utils/
+    ├── combatUtils.ts       # Uses diceUtils, error handling added
+    └── skillCheck.ts        # Character-specific helpers only
+```
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,648.57 kB bundle)
+
+### Neste Steg (Fremtidige Forbedringer)
+- Fortsette oppdeling av constants.ts (scenarios, events, items, etc.)
+- Legge til unit tests for combat functions
+- Vurdere lazy loading av store konstanter
+
+---
