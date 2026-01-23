@@ -19382,3 +19382,194 @@ inventory: { ...hero.equipment, bag: [...hero.equipment.bag], questItems: [] }
 | `ItemTooltip.tsx` | Viser description for quest items |
 
 ---
+
+## 2026-01-23: Deep Audit av Enemy AI System
+
+### Oppgave
+Analysere og gjennomføre deep audit av enemy AI-systemet. Identifisere bugs, mangler, og forbedringsmuligheter.
+
+### AI System Arkitektur Oversikt
+
+Enemy AI-systemet er modulært organisert i følgende filer:
+
+| Fil | Ansvar |
+|-----|--------|
+| `monsterAI.ts` | Hovedlogikk: targeting, pathfinding, beslutninger, spesielle evner |
+| `monsterDecisionHelpers.ts` | Hjelpefunksjoner for beslutningsprosessen |
+| `monsterConstants.ts` | Spawn-tabeller, oppførsel, personligheter, mål-preferanser |
+| `monsterObstacles.ts` | Obstacle passability-logikk |
+| `monsterWeatherBehavior.ts` | Væreffekter på monster-oppførsel |
+| `monsterMessages.ts` | Lokaliserte meldinger |
+| `mythosPhaseUtils.ts` | Mythos-fase prosessering |
+| `hexUtils.ts` | Pathfinding og hex-beregninger |
+| `combatUtils.ts` | Kamp-mekanikk |
+| `constants/bestiary.ts` | Monster-definisjoner og stats |
+
+### Funn: Kritiske Bugs
+
+#### 🔴 BUG 1: preferClass sjekker feil felt (KRITISK)
+**Fil:** `monsterAI.ts` linje 156-159
+
+**Problem:** Target preference-systemet sjekker `player.id` istedenfor spillerens klasse.
+
+```typescript
+// FEIL - player.id er "player-1", ikke "professor"
+if (preferences.preferClass?.includes(player.id)) {
+  typePreferenceScore = 15;
+}
+if (preferences.avoidClass?.includes(player.id)) {
+  typePreferenceScore = -20;
+}
+```
+
+**Konsekvens:** Alle monster-preferanser for å angripe/unngå bestemte klasser fungerer IKKE:
+- Boss prefererer professor/occultist → Virker ikke
+- Sniper unngår veteran → Virker ikke
+- Priest prefererer occultist → Virker ikke
+- Mi-Go prefererer professor → Virker ikke
+
+**Fix:** Endre til å sjekke `player.characterClass` eller `player.id` (avhengig av hvordan klassen er lagret).
+
+#### 🔴 BUG 2: Manglende Special Ability Handlers
+**Fil:** `monsterAI.ts` linje 627-674
+
+Følgende special abilities er definert i `MONSTER_PERSONALITIES` men har INGEN handler i `executeSpecialAbility`:
+
+| Ability | Monster(s) | Status |
+|---------|------------|--------|
+| `burrow` | Cthonian | ❌ Ikke implementert |
+| `burn` | Fire Vampire | ❌ Ikke implementert |
+| `hypnosis` | Serpent Man | ❌ Ikke implementert |
+| `cold_aura` | Gnoph-Keh | ❌ Ikke implementert |
+| `wind_blast` | Flying Polyp | ❌ Ikke implementert |
+| `telekinesis` | Lloigor | ❌ Ikke implementert |
+| `drain` | Colour Out of Space | ❌ Ikke implementert |
+
+**Konsekvens:** Disse monstrene har aldri sine spesielle evner tilgjengelige i kamp.
+
+#### 🟡 BUG 3: Ufullstendig ETHEREAL_CREATURES liste
+**Fil:** `monsterObstacles.ts` linje 191
+
+```typescript
+const ETHEREAL_CREATURES = ['nightgaunt', 'hunting_horror'] as const;
+```
+
+Men `formless_spawn` har 'phase' movement i `monsterAI.ts:340`:
+```typescript
+case 'formless_spawn':
+  return 'phase'; // Can squeeze through gaps
+```
+
+**Konsekvens:** Formless Spawn får phase-bevegelse men ikke obstacle-passering.
+
+#### 🟡 BUG 4: Basic Pathfinding ignorerer edges
+**Fil:** `hexUtils.ts` linje 188-233
+
+`findPath()` sjekker kun `tile.object?.blocking` men IKKE:
+- Vegger mellom tiles
+- Lukkede/låste dører
+- Edge-typer
+
+**Konsekvens:** Monstre som bruker basic pathfinding kan finne sti gjennom vegger.
+
+### Funn: Moderate Issues
+
+#### 🟡 ISSUE 1: hit_and_run combat style ikke implementert
+**Fil:** `monsterConstants.ts` linje 577-582
+
+```typescript
+hit_and_run: {
+  retreatAfterAttack: true,  // Aldri sjekket i AI
+  // ...
+}
+```
+
+Monstre med dette stilet (Mi-Go, Byakhee, Hunting Horror) trekker seg IKKE tilbake etter angrep.
+
+#### 🟡 ISSUE 2: Flanking-preferanse ubrukt
+**Fil:** `monsterConstants.ts`
+
+`prefersFlanking: true` er definert for tactical og swarm combat styles men aldri brukt i posisjonering.
+
+#### 🟡 ISSUE 3: packMentality ikke koordinert
+Monstre med `packMentality: true` koordinerer ikke bevegelse. Kun `pack_tactics` special ability gir bonus.
+
+#### 🟡 ISSUE 4: territoralRange ikke fullt utnyttet
+Monstre patruljerer ikke innenfor sitt territorium og blir ikke mer aggressive når spillere entrer det.
+
+#### 🟡 ISSUE 5: alertLevel ubrukt
+`aiState.alertLevel` settes ved opprettelse men modifiseres/brukes aldri.
+
+### Funn: Minor Issues
+
+#### 🟢 ISSUE 6: Weather ikke sendt til post-move attack LOS
+**Fil:** `monsterAI.ts` linje 1404
+
+```typescript
+if (hasLineOfSight(movedEnemy.position, player.position, tiles, movedEnemy.visionRange)) {
+  // Mangler weather-parameter for konsistent oppførsel
+```
+
+#### 🟢 ISSUE 7: Speed beregning mangler traits
+`getMonsterSpeed()` håndterer ikke 'teleport' trait for spesiell bevegelse.
+
+#### 🟢 ISSUE 8: Bestiary traits vs AI traits inkonsistens
+Noen traits i BESTIARY er ikke håndtert i AI:
+- 'invisible' (Flying Polyp, Colour Out of Space)
+- 'burrow' (Cthonian)
+- 'telekinesis' (Lloigor)
+
+### Positive Funn ✅
+
+1. **Vel-strukturert kode**: Modulært design med klar separasjon av ansvar
+2. **Smart targeting**: Priority-basert målvalg med flere faktorer
+3. **Enhanced pathfinding**: A* med bevegelseskostnader
+4. **Weather integration**: Væreffekter påvirker synlighet og aggressivitet
+5. **Ranged attack system**: Cover penalty og optimal posisjonering
+6. **Personality system**: Hver monster-type har unik oppførsel
+7. **Combat style modifiers**: Berserker, cautious, tactical, etc.
+8. **Special movement**: Teleport (Hound), Phase (Nightgaunt), Flying, Aquatic
+9. **Move + Attack**: Monstre kan bevege seg OG angripe samme tur (Hero Quest-stil)
+10. **Line of sight**: Proper LOS-sjekk gjennom vegger og dører
+
+### Anbefalt Prioritering av Fixes
+
+| Prioritet | Issue | Innvirkning |
+|-----------|-------|-------------|
+| 1 | preferClass bug | Kritisk - target preferences virker ikke |
+| 2 | Missing ability handlers | Høy - 7 monstre mangler special abilities |
+| 3 | Ethereal creatures | Medium - Formless Spawn får inkonsistent phase |
+| 4 | Basic pathfinding | Medium - Kan path gjennom vegger |
+| 5 | hit_and_run style | Lav - Kosmetisk, påvirker ikke balanse mye |
+
+### Fix Implementert: preferClass Bug
+
+**Endring i `monsterAI.ts` linje 154-159:**
+
+```typescript
+// FØR (buggy):
+if (preferences.preferClass?.includes(player.id)) {
+
+// ETTER (fikset):
+if (preferences.preferClass?.includes(player.characterClass)) {
+```
+
+Denne fixen gjør at monster target preferences nå fungerer korrekt:
+- Boss vil nå faktisk preferere professor og occultist
+- Sniper vil nå faktisk unngå veteran
+- Priest vil nå faktisk preferere occultist
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `monsterAI.ts` | Fikset preferClass/avoidClass til å bruke characterClass |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+### Oppsummering
+
+Enemy AI-systemet er generelt veldig godt strukturert og fungerer bra. Den kritiske buggen med target preferences ble fikset. De manglende special ability handlers er notert for fremtidig implementering, men påvirker ikke spillbarheten kritisk siden monstrene fortsatt angriper normalt.
+
+---
