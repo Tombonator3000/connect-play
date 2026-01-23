@@ -7,7 +7,8 @@ import {
   Enemy,
   Tile,
   Item,
-  GameState
+  GameState,
+  Survivor
 } from '../types';
 
 // ============================================================================
@@ -143,6 +144,7 @@ export function checkVictoryConditions(
     round: number;
     doom: number;
     questItemsCollected: string[];
+    survivors?: Survivor[];
   }
 ): VictoryCheckResult {
   for (const condition of scenario.victoryConditions) {
@@ -171,6 +173,7 @@ function checkSingleVictoryCondition(
     round: number;
     doom: number;
     questItemsCollected: string[];
+    survivors?: Survivor[];
   }
 ): VictoryCheckResult {
   // Check required objectives
@@ -194,6 +197,9 @@ function checkSingleVictoryCondition(
   switch (condition.type) {
     case 'escape':
       typeCheckPassed = checkEscapeVictory(gameState, scenario);
+      break;
+    case 'escort':
+      typeCheckPassed = checkEscortVictory(gameState, scenario);
       break;
     case 'assassination':
       typeCheckPassed = checkAssassinationVictory(scenario, gameState);
@@ -226,12 +232,14 @@ function checkSingleVictoryCondition(
 /**
  * Check escape victory - player must be on exit tile with required items
  * UPDATED: Now properly checks that required quest items (keys, artifacts) are collected
+ * UPDATED 2: Now also checks escort objectives (NPCs that must be rescued)
  */
 function checkEscapeVictory(
   gameState: {
     players: Player[];
     board: Tile[];
     questItemsCollected: string[];
+    survivors?: Survivor[];
   },
   scenario?: Scenario
 ): boolean {
@@ -271,6 +279,19 @@ function checkEscapeVictory(
       return false;
     }
 
+    // Check escort objectives - NPCs that must be rescued before escape
+    const escortObjectives = scenario.objectives.filter(obj =>
+      obj.type === 'escort' && !obj.isOptional && !obj.isHidden
+    );
+
+    if (escortObjectives.length > 0) {
+      // All escort objectives must be completed (survivors rescued)
+      const allEscortComplete = escortObjectives.every(obj => obj.completed);
+      if (!allEscortComplete) {
+        return false;
+      }
+    }
+
     // Also check that the escape objective itself exists and is not hidden
     const escapeObjective = scenario.objectives.find(obj => obj.type === 'escape');
     if (escapeObjective?.isHidden) {
@@ -281,6 +302,63 @@ function checkEscapeVictory(
 
   // All checks passed - player can escape
   return true;
+}
+
+/**
+ * Check escort victory - required survivors must be rescued
+ * Used for rescue missions where specific NPCs must reach safety
+ */
+function checkEscortVictory(
+  gameState: {
+    players: Player[];
+    board: Tile[];
+    survivors?: Survivor[];
+  },
+  scenario?: Scenario
+): boolean {
+  if (!scenario) return false;
+
+  // Find escort objectives
+  const escortObjectives = scenario.objectives.filter(obj =>
+    obj.type === 'escort' && !obj.isOptional
+  );
+
+  if (escortObjectives.length === 0) {
+    // No escort objectives - check if all required objectives are complete
+    const requiredObjectives = scenario.objectives.filter(obj => !obj.isOptional);
+    return requiredObjectives.every(obj => obj.completed);
+  }
+
+  // Check if all escort objectives are completed
+  const allEscortComplete = escortObjectives.every(obj => obj.completed);
+
+  if (!allEscortComplete && gameState.survivors) {
+    // Check if required survivors are rescued
+    const requiredRescueCount = escortObjectives.reduce(
+      (sum, obj) => sum + (obj.targetAmount || 1), 0
+    );
+    const rescuedCount = gameState.survivors.filter(s => s.state === 'rescued').length;
+
+    if (rescuedCount < requiredRescueCount) {
+      return false;
+    }
+  }
+
+  // Check if player is on exit with all escort requirements met
+  const alivePlayers = gameState.players.filter(p => !p.isDead);
+  const exitTile = gameState.board.find(t =>
+    t.object?.type === 'exit_door' ||
+    t.name.toLowerCase().includes('exit') ||
+    t.isGate
+  );
+
+  if (!exitTile) return false;
+
+  const playerOnExit = alivePlayers.some(p =>
+    p.position.q === exitTile.q && p.position.r === exitTile.r
+  );
+
+  return playerOnExit && allEscortComplete;
 }
 
 /**
@@ -377,6 +455,7 @@ export function checkDefeatConditions(
     players: Player[];
     doom: number;
     round: number;
+    survivors?: Survivor[];
   }
 ): DefeatCheckResult {
   for (const condition of scenario.defeatConditions) {
@@ -402,6 +481,7 @@ function checkSingleDefeatCondition(
     players: Player[];
     doom: number;
     round: number;
+    survivors?: Survivor[];
   }
 ): DefeatCheckResult {
   switch (condition.type) {
@@ -433,6 +513,62 @@ function checkSingleDefeatCondition(
             message: condition.description
           };
         }
+
+        // Check for NPC death condition (escort missions)
+        if (obj?.failedCondition === 'npc_death' && gameState.survivors) {
+          // Check if any required escort NPC has died
+          const deadEscortNpc = gameState.survivors.find(s =>
+            s.state === 'dead' && obj.type === 'escort'
+          );
+          if (deadEscortNpc) {
+            return {
+              isDefeat: true,
+              condition,
+              message: condition.description || `${deadEscortNpc.name} has been killed. The mission has failed.`
+            };
+          }
+        }
+
+        // Check for escort objective with specific NPC ID
+        if (obj?.type === 'escort' && (condition as any).npcId && gameState.survivors) {
+          const escortNpc = gameState.survivors.find(s => s.id === (condition as any).npcId);
+          if (escortNpc?.state === 'dead') {
+            return {
+              isDefeat: true,
+              condition,
+              message: condition.description || `${escortNpc.name} has been killed.`
+            };
+          }
+        }
+      }
+      return { isDefeat: false, message: '' };
+
+    case 'npc_death':
+      // Direct NPC death defeat condition
+      if (gameState.survivors) {
+        const requiredNpcId = (condition as any).npcId;
+        if (requiredNpcId) {
+          const npc = gameState.survivors.find(s => s.id === requiredNpcId);
+          if (npc?.state === 'dead') {
+            return {
+              isDefeat: true,
+              condition,
+              message: condition.description || `${npc.name} has been killed. You have failed.`
+            };
+          }
+        } else {
+          // Check if ANY following NPC has died (for generic escort scenarios)
+          const deadFollower = gameState.survivors.find(s =>
+            s.state === 'dead' && s.followingPlayerId
+          );
+          if (deadFollower) {
+            return {
+              isDefeat: true,
+              condition,
+              message: condition.description || `${deadFollower.name} has been killed.`
+            };
+          }
+        }
       }
       return { isDefeat: false, message: '' };
 
@@ -456,6 +592,8 @@ function getVictoryMessage(victoryType: string): string {
   switch (victoryType) {
     case 'escape':
       return 'You have escaped! The nightmare is over... for now.';
+    case 'escort':
+      return 'All survivors have been rescued! Their stories will be told.';
     case 'assassination':
       return 'The threat has been eliminated. The ritual is stopped.';
     case 'survival':

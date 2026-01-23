@@ -764,7 +764,8 @@ const ShadowsGame: React.FC = () => {
         board: state.board,
         round: state.round,
         doom,
-        questItemsCollected: state.questItemsCollected
+        questItemsCollected: state.questItemsCollected,
+        survivors: state.survivors
       });
 
       if (victoryResult.isVictory) {
@@ -778,7 +779,8 @@ const ShadowsGame: React.FC = () => {
       const defeatResult = checkDefeatConditions(state.activeScenario, {
         players,
         doom,
-        round: state.round
+        round: state.round,
+        survivors: state.survivors
       });
 
       if (defeatResult.isDefeat) {
@@ -823,7 +825,8 @@ const ShadowsGame: React.FC = () => {
       board: state.board,
       round: state.round,
       doom: state.doom,
-      questItemsCollected: state.questItemsCollected
+      questItemsCollected: state.questItemsCollected,
+      survivors: state.survivors
     });
 
     if (victoryResult.isVictory) {
@@ -831,7 +834,7 @@ const ShadowsGame: React.FC = () => {
       setGameOverType('victory');
       setState(prev => ({ ...prev, phase: GamePhase.GAME_OVER }));
     }
-  }, [state.activeScenario, state.players, state.enemies, state.board, state.round, state.doom, state.questItemsCollected, state.phase]);
+  }, [state.activeScenario, state.players, state.enemies, state.board, state.round, state.doom, state.questItemsCollected, state.survivors, state.phase]);
 
   // ============================================================================
   // LEGACY SYSTEM HANDLERS
@@ -2099,7 +2102,9 @@ const ShadowsGame: React.FC = () => {
       activePlayerIndex: state.activePlayerIndex,
       activeScenario: state.activeScenario,
       objectiveSpawnState: state.objectiveSpawnState,
-      questItemsCollected: state.questItemsCollected
+      questItemsCollected: state.questItemsCollected,
+      survivors: state.survivors,
+      targetSurvivorId: activeContextTarget.survivor?.id
     };
 
     // Special handling for door opening - trigger fog reveal before state update
@@ -2130,15 +2135,59 @@ const ShadowsGame: React.FC = () => {
 
     // Apply state updates
     if (result.board || result.players || result.activeScenario !== undefined ||
-        result.objectiveSpawnState !== undefined || result.questItemsCollected) {
-      setState(prev => ({
-        ...prev,
-        ...(result.board && { board: result.board }),
-        ...(result.players && { players: result.players }),
-        ...(result.activeScenario !== undefined && { activeScenario: result.activeScenario }),
-        ...(result.objectiveSpawnState !== undefined && { objectiveSpawnState: result.objectiveSpawnState }),
-        ...(result.questItemsCollected && { questItemsCollected: result.questItemsCollected })
-      }));
+        result.objectiveSpawnState !== undefined || result.questItemsCollected ||
+        result.survivors) {
+      setState(prev => {
+        let updatedState = {
+          ...prev,
+          ...(result.board && { board: result.board }),
+          ...(result.players && { players: result.players }),
+          ...(result.activeScenario !== undefined && { activeScenario: result.activeScenario }),
+          ...(result.objectiveSpawnState !== undefined && { objectiveSpawnState: result.objectiveSpawnState }),
+          ...(result.questItemsCollected && { questItemsCollected: result.questItemsCollected }),
+          ...(result.survivors && { survivors: result.survivors })
+        };
+
+        // Apply survivor rewards (doom bonus, player sanity/etc)
+        if (result.survivorRewards) {
+          const rewards = result.survivorRewards;
+          const activePlayer = updatedState.players[updatedState.activePlayerIndex];
+
+          // Apply doom bonus
+          if (rewards.doomBonus && rewards.doomBonus > 0) {
+            const maxDoom = prev.activeScenario?.startDoom || 15;
+            updatedState = {
+              ...updatedState,
+              doom: Math.min(maxDoom, updatedState.doom + rewards.doomBonus)
+            };
+          }
+
+          // Apply sanity reward/penalty to active player
+          if (rewards.sanity && activePlayer) {
+            const newSanity = Math.max(0, Math.min(activePlayer.maxSanity, activePlayer.sanity + rewards.sanity));
+            updatedState = {
+              ...updatedState,
+              players: updatedState.players.map((p, i) =>
+                i === updatedState.activePlayerIndex ? { ...p, sanity: newSanity } : p
+              )
+            };
+          }
+
+          // Apply insight reward (stored on player or global)
+          if (rewards.insight && rewards.insight > 0 && activePlayer) {
+            updatedState = {
+              ...updatedState,
+              players: updatedState.players.map((p, i) =>
+                i === updatedState.activePlayerIndex
+                  ? { ...p, insight: (p.insight || 0) + rewards.insight! }
+                  : p
+              )
+            };
+          }
+        }
+
+        return updatedState;
+      });
     }
 
     // Handle pass-through movement (climbing windows, wading through water, etc.)
@@ -2166,7 +2215,7 @@ const ShadowsGame: React.FC = () => {
         addToLog(`${activePlayer?.name || 'Investigator'} passerer gjennom til ${targetName}.`);
       }
     }
-  }, [activeContextTarget, state.board, state.activeScenario, state.objectiveSpawnState, state.questItemsCollected, state.players, state.activePlayerIndex, spawnRoom]);
+  }, [activeContextTarget, state.board, state.activeScenario, state.objectiveSpawnState, state.questItemsCollected, state.players, state.activePlayerIndex, state.survivors, spawnRoom]);
 
   // NOTE: The following cases were part of the old 470-line switch statement
   // They have been refactored into contextActionEffects.ts - DO NOT REINTRODUCE
@@ -3742,7 +3791,8 @@ const ShadowsGame: React.FC = () => {
         board: state.board,
         round: newRound,
         doom: newDoom,
-        questItemsCollected: state.questItemsCollected
+        questItemsCollected: state.questItemsCollected,
+        survivors: state.survivors
       });
 
       if (victoryResult.isVictory) {
@@ -3764,7 +3814,8 @@ const ShadowsGame: React.FC = () => {
       const defeatResult = checkDefeatConditions(updatedScenario, {
         players: state.players,
         doom: newDoom,
-        round: newRound
+        round: newRound,
+        survivors: state.survivors
       });
 
       if (defeatResult.isDefeat) {

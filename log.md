@@ -18442,3 +18442,143 @@ case 'objective_failed':
 **Konklusjon:** NPC/Survivor-systemet har solid arkitektur og data-lag, men ACTION EXECUTION og VICTORY/DEFEAT CONDITIONS mangler helt. Rescue missions er **ikke spillbare** i nåværende tilstand.
 
 ---
+
+## 2026-01-23: FIX - Rescue Missions Now Playable (Scenario 5 & 13)
+
+### Oppgave
+Fikse rescue missions (Scenario 5: "The Missing Professor" og Scenario 13: "Arkham Asylum Breakout") som ikke var spillbare.
+
+### Problem
+Basert på deep audit var følgende bugs identifisert:
+1. **Survivor Action Handlers mangler** - Context action menyen vises, men handlingene gjør ingenting
+2. **checkEscortVictory finnes ikke** - Victory conditions ignorerer escort NPCs
+3. **handleContextActionEffect ignorerer survivors** - State oppdateres aldri
+4. **Defeat condition for NPC-død mangler** - Ingen game over når escort NPC dør
+
+### Løsning
+
+#### Fix #1: Survivor Action Handlers i contextActionEffects.ts
+
+Lagt til komplette handlers for alle survivor-relaterte handlinger:
+
+```typescript
+// Nye konstanter
+const SURVIVOR_ACTIONS = [
+  'find_survivor', 'recruit_survivor', 'use_survivor_ability',
+  'dismiss_survivor', 'rescue_survivor'
+];
+
+// Nye handler-funksjoner:
+handleFindSurvivorEffect()      // Endrer state fra 'hidden' til 'found'
+handleRecruitSurvivorEffect()   // Kaller startFollowing(), setter followingPlayerId
+handleUseSurvivorAbilityEffect() // Kaller useSurvivorAbility(), applier effekter
+handleDismissSurvivorEffect()   // Fjerner followingPlayerId
+handleRescueSurvivorEffect()    // Kaller rescueSurvivor(), gir rewards, oppdaterer objectives
+```
+
+Utvidet interfaces:
+- `ActionEffectContext` med `survivors?: Survivor[]` og `targetSurvivorId?: string`
+- `ActionEffectResult` med `survivors?: Survivor[]` og `survivorRewards?: {...}`
+
+#### Fix #2: checkEscortVictory i scenarioUtils.ts
+
+Ny funksjon for escort-type victory conditions:
+```typescript
+function checkEscortVictory(
+  gameState: { players, board, survivors? },
+  scenario?: Scenario
+): boolean
+```
+
+Oppdatert `checkEscapeVictory()` for å:
+- Sjekke at escort objectives er komplett før escape tillates
+- Verifisere at required survivors er rescued
+
+#### Fix #3: handleContextActionEffect i ShadowsGame.tsx
+
+Utvidet kontekst-bygning for å inkludere:
+```typescript
+const ctx = {
+  // ... eksisterende felter
+  survivors: state.survivors,
+  targetSurvivorId: activeContextTarget.survivor?.id
+};
+```
+
+Lagt til håndtering av survivor-spesifikke resultater:
+- `result.survivors` → Oppdaterer survivors state
+- `result.survivorRewards` → Applier doom bonus, sanity, insight til aktiv spiller
+
+Oppdatert alle kall til `checkVictoryConditions()` og `checkDefeatConditions()` for å inkludere survivors.
+
+#### Fix #4: NPC-død defeat condition i scenarioUtils.ts
+
+Utvidet `checkSingleDefeatCondition()` med:
+- `npc_death` type for direkte NPC-død defeat
+- `failedCondition === 'npc_death'` sjekk for objective_failed
+- Støtte for spesifikk `npcId` eller generisk following NPC død-sjekk
+
+```typescript
+case 'npc_death':
+  if (gameState.survivors) {
+    const npc = gameState.survivors.find(s => s.id === condition.npcId);
+    if (npc?.state === 'dead') {
+      return { isDefeat: true, message: `${npc.name} has been killed.` };
+    }
+  }
+```
+
+### Endrede filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/utils/contextActionEffects.ts` | +200 linjer: Survivor handlers |
+| `src/game/utils/scenarioUtils.ts` | +80 linjer: Escort victory/defeat |
+| `src/game/ShadowsGame.tsx` | Oppdatert ctx building, state handling, dependency arrays |
+
+### Tekniske detaljer
+
+**Survivor Action Flow:**
+```
+User clicks survivor → getSurvivorActions() generates menu
+User selects action → handleContextAction() validates
+On success → handleContextActionEffect() → processActionEffect()
+→ handleSurvivorActionEffect() → specific handler
+→ Returns ActionEffectResult with survivors[], survivorRewards
+→ setState() updates survivors, applies rewards
+```
+
+**Victory Check Flow:**
+```
+checkVictoryConditions(scenario, { ..., survivors })
+→ checkSingleVictoryCondition()
+→ case 'escape': checkEscapeVictory() now checks escort objectives
+→ case 'escort': NEW checkEscortVictory() checks rescued count
+```
+
+**Defeat Check Flow:**
+```
+checkDefeatConditions(scenario, { ..., survivors })
+→ checkSingleDefeatCondition()
+→ case 'npc_death': NEW - checks if required NPC died
+→ case 'objective_failed': Extended for npc_death failedCondition
+```
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,656.47 kB bundle)
+
+### Resultat
+
+| Komponent | Før | Etter |
+|-----------|-----|-------|
+| Find Survivor | ❌ Ingen effekt | ✅ State → 'found', dialogue vises |
+| Recruit Survivor | ❌ Ingen effekt | ✅ State → 'following', followingPlayerId satt |
+| Use Ability | ❌ Ingen effekt | ✅ Ability aktivert, effekter appliert |
+| Rescue Survivor | ❌ Ingen effekt | ✅ State → 'rescued', rewards gitt, doom+1 |
+| Escort Victory | ❌ Ikke sjekket | ✅ Sjekker rescued count før escape |
+| NPC Death Defeat | ❌ Ikke trigget | ✅ Game over når escort NPC dør |
+
+**Rescue missions (Scenario 5 og 13) er nå SPILLBARE.**
+
+---
