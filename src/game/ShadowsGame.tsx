@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package, X, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent, OccultistSpell, SpellParticleType, LogEntry, detectLogCategory, getLogCategoryClasses, LevelUpBonus, SurvivorTrait } from './types';
+import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent, OccultistSpell, SpellParticleType, LogEntry, detectLogCategory, getLogCategoryClasses, LevelUpBonus, SurvivorTrait, GameStats, createInitialGameStats } from './types';
 import ContextActionBar from './components/ContextActionBar';
 import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
 import { performSkillCheck } from './utils/combatUtils';
@@ -3677,7 +3677,15 @@ const ShadowsGame: React.FC = () => {
             players: prev.players.map((p, i) => i === prev.activePlayerIndex ? { ...p, actions: p.actions - 1 } : p),
             lastDiceRoll: null,
             activeCombat: null,
-            selectedEnemyId: isKilled ? null : prev.selectedEnemyId
+            selectedEnemyId: isKilled ? null : prev.selectedEnemyId,
+            // Update game stats for attack
+            gameStats: prev.gameStats ? {
+              ...prev.gameStats,
+              totalDamageDealt: prev.gameStats.totalDamageDealt + damage,
+              enemiesKilled: isKilled ? prev.gameStats.enemiesKilled + 1 : prev.gameStats.enemiesKilled,
+              bossesDefeated: isKilled && isEliteOrBoss ? [...prev.gameStats.bossesDefeated, enemy.name] : prev.gameStats.bossesDefeated,
+              criticalHits: criticalHit ? prev.gameStats.criticalHits + 1 : prev.gameStats.criticalHits
+            } : undefined
           }));
         } else {
           addToLog(`BOMMERT! ${activePlayer.name} treffer ikke ${enemy.name}.`);
@@ -3685,7 +3693,12 @@ const ShadowsGame: React.FC = () => {
             ...prev,
             players: prev.players.map((p, i) => i === prev.activePlayerIndex ? { ...p, actions: p.actions - 1 } : p),
             lastDiceRoll: null,
-            activeCombat: null
+            activeCombat: null,
+            // Track misses in stats
+            gameStats: prev.gameStats ? {
+              ...prev.gameStats,
+              criticalMisses: criticalMiss ? prev.gameStats.criticalMisses + 1 : prev.gameStats.criticalMisses
+            } : undefined
           }));
         }
       }
@@ -4438,11 +4451,16 @@ const ShadowsGame: React.FC = () => {
             playSound('success');
             // Initialize objective spawn state for quest items and tiles
             const objectiveSpawnState = initializeObjectiveSpawns(state.activeScenario!);
+            // Initialize game stats for tracking performance
+            const startDoom = state.activeScenario?.startDoom || 12;
+            const initialGameStats = createInitialGameStats(state.players, startDoom);
+            initialGameStats.totalObjectives = state.activeScenario?.objectives.length || 0;
             setState(prev => ({
               ...prev,
               phase: GamePhase.INVESTIGATOR,
-              doom: prev.activeScenario?.startDoom || 12,
-              objectiveSpawnState  // Track quest items and tiles
+              doom: startDoom,
+              objectiveSpawnState,  // Track quest items and tiles
+              gameStats: initialGameStats  // Track performance statistics
             }));
             addToLog("The investigation begins.");
             addToLog(`SCENARIO: ${state.activeScenario?.title}`);
@@ -4877,6 +4895,10 @@ const ShadowsGame: React.FC = () => {
           round={state.round}
           onRestart={handleGameOverRestart}
           onMainMenu={handleGameOverMainMenu}
+          stats={state.gameStats}
+          players={state.players}
+          scenario={state.activeScenario}
+          isLegacyMode={isLegacyMode}
         />
       )}
     </div>

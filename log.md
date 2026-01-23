@@ -20940,3 +20940,137 @@ case 'bag1': return bag[0] || null;
 - Alltid legg til defensive sjekker for arrays som kan være undefined
 
 ---
+
+## 2026-01-23: 5-Fase Implementasjonsveikart - GameOverOverlay Forbedringer
+
+### Oversikt
+Implementert komplett 5-fase forbedringssystem for GameOverOverlay med statistikk-tracking, performance rating, epilog-system og legacy-integrasjon.
+
+### Phase 1: GameStats Tracking Infrastructure ✅
+
+**Nye interfaces i `src/game/types.ts`:**
+- `GameStats` - Omfattende statistikk for scenario
+  - Combat: enemiesKilled, bossesDefeated, totalDamageDealt, totalDamageTaken, criticalHits, criticalMisses
+  - Exploration: tilesExplored, secretsFound, trapsTriggered, darkRoomsIlluminated
+  - Sanity: horrorChecksPerformed, horrorChecksPassed, totalSanityLost, totalSanityRecovered, madnessesAcquired
+  - Items: cluesFound, questItemsCollected, itemsUsed, goldFound
+  - Objectives: objectivesCompleted, optionalObjectivesCompleted, totalObjectives
+  - Progress: roundsSurvived, doomAtEnd, doomAtStart
+  - Players: playersAlive, playersStarted, playerDeaths
+  - Survivors: survivorsRescued, survivorsLost
+
+- `createInitialGameStats()` - Helper funksjon for å opprette tom statistikk
+- `PerformanceRating` - Type for S/A/B/C/F rating
+- `EnhancedScenarioResult` - Komplett resultat med alle data
+- `CharacterFate` - Individuell karakterskjebne ved scenario-slutt
+
+**Oppdatert GameState med:**
+- `gameStats?: GameStats` - Valgfritt felt for å tracke statistikk
+
+### Phase 2: Performance Rating System ✅
+
+**Ny fil `src/game/utils/performanceRating.ts`:**
+- `calculatePerformanceRating()` - Beregner rating (S-F) basert på:
+  - Survival Score (0-30): spillere i live, doom igjen, runder
+  - Combat Score (0-25): fiender drept, bosser, crits, damage efficiency
+  - Exploration Score (0-20): tiles utforsket, hemmeligheter, dark rooms
+  - Objective Score (0-15): mål fullført, valgfrie mål
+  - Sanity Score (0-10): horror checks bestått, galskap
+
+- `getRatingInfo()` - Lovecraftian titler og beskrivelser per rating
+  - Victory: "Keeper of the Light" (S) til "Pyrrhic Victor" (F)
+  - Defeat: "Valiant Fallen" (S) til "Forgotten by History" (F)
+
+- `generateCharacterFates()` - Individuelle epiloger per karakter
+- `generateConsequences()` - Positive og negative konsekvenser
+- `calculateLegacyRewards()` - Gull og XP beregning med difficulty multiplier
+
+### Phase 3: Epilogue System ✅
+
+**Ny fil `src/game/data/epilogues.ts`:**
+- `EPILOGUES_BY_VICTORY_TYPE` - Epilog-templates per scenario-type:
+  - Escape: 4 victory, 3 defeat_death, 3 defeat_doom, 2 pyrrhic
+  - Investigation: 4 victory, 3 defeat_death, 3 defeat_doom, 2 pyrrhic
+  - Assassination: 4 victory, 3 defeat_death, 3 defeat_doom, 2 pyrrhic
+  - Survival: 4 victory, 3 defeat_death, 3 defeat_doom, 2 pyrrhic
+  - Ritual: 4 victory, 3 defeat_death, 3 defeat_doom, 2 pyrrhic
+  - Collection: 4 victory, 3 defeat_death, 3 defeat_doom, 2 pyrrhic
+
+- `THEME_FLAVOR` - Tematisk atmosfære per scenario-tema (manor, church, asylum, etc.)
+- `generateEpilogue()` - Dynamisk epilog-generering med placeholders
+- `getRatingSuffix()` - Rating-spesifikk avslutningstekst
+- `LOVECRAFTIAN_QUOTES` - 10 atmosfæriske sitater
+- `MADNESS_MESSAGES` - Beskrivelser for hver galskapstype
+
+### Phase 4: Enhanced UI Layout ✅
+
+**Oppgradert `src/game/components/GameOverOverlay.tsx`:**
+- **Bakoverkompatibel**: Viser enkel visning hvis ingen stats tilgjengelig
+- **Forbedret layout med stats**:
+  - Header med ikon og tittel
+  - Epilog-seksjon med formatert tekst
+  - Mission info med rating-visning (S/A/B/C/F med farger)
+  - Statistikk-grid (6 kort): Enemies, Explored, Sanity Lost, Clues, Damage, Secrets
+  - Consequences-liste (positive grønne, negative røde)
+  - Character fates med expandable kort for hver karakter
+  - Legacy rewards (gull og XP med breakdown)
+  - Action buttons og dekorativt sitat
+
+- **Subkomponenter**:
+  - `StatCard` - Gjenbrukbart statistikk-kort
+  - `CharacterFateCard` - Expandable karakterkort med epilog, madness, kills
+
+- **Nye props**:
+  - `stats?: GameStats`
+  - `players?: Player[]`
+  - `scenario?: Scenario | null`
+  - `isLegacyMode?: boolean`
+
+### Phase 5: Legacy System Integration ✅
+
+**Oppdatert `src/game/ShadowsGame.tsx`:**
+- Importert `GameStats, createInitialGameStats` fra types
+- Initialiserer `gameStats` ved scenario-start (i `ScenarioBriefingPopup.onBegin`)
+- Oppdaterer `gameStats` under kamp:
+  - `totalDamageDealt` ved hit
+  - `enemiesKilled` ved kill
+  - `bossesDefeated` ved elite/boss kill
+  - `criticalHits` ved critical hit
+  - `criticalMisses` ved critical miss
+- Sender `stats`, `players`, `scenario`, `isLegacyMode` til GameOverOverlay
+
+### Filer Endret/Opprettet
+
+| Fil | Type | Endringer |
+|-----|------|-----------|
+| `src/game/types.ts` | Endret | Lagt til GameStats, createInitialGameStats, PerformanceRating, EnhancedScenarioResult, CharacterFate interfaces. Oppdatert GameState med gameStats |
+| `src/game/utils/performanceRating.ts` | **NY** | Performance rating beregning, karakter-epiloger, konsekvenser, legacy rewards |
+| `src/game/data/epilogues.ts` | **NY** | Epilog-bibliotek med 60+ tekster, tema-flavor, sitater |
+| `src/game/components/GameOverOverlay.tsx` | Endret | Komplett redesign med statistikk, rating, epilog, consequences, character fates, legacy rewards |
+| `src/game/ShadowsGame.tsx` | Endret | Initialiserer og oppdaterer gameStats, sender nye props til GameOverOverlay |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+### Arkitektur
+
+```
+GameOverOverlay
+├── Header (Title, Icon)
+├── Epilogue Section (generated from epilogues.ts)
+├── Mission Info + Rating (from performanceRating.ts)
+├── Statistics Grid (from gameStats)
+├── Consequences List (from generateConsequences)
+├── Character Fates (expandable cards)
+├── Legacy Rewards (if isLegacyMode)
+└── Action Buttons + Quote
+```
+
+### Fremtidige Forbedringer
+- Legge til stats-tracking for flere hendelser (sanity, exploration, items)
+- Animasjoner for rating reveal
+- Sound effects for rating
+- Badge/achievement unlocks på game over
+- Share/screenshot funksjonalitet
+
+---

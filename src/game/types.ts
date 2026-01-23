@@ -1604,6 +1604,9 @@ export interface GameState {
     itemsCollected: number;
     tilesSinceLastSpawn: number;  // Pity timer - tracks tiles explored without finding items
   };
+
+  // Game statistics tracking for scenario end summary
+  gameStats?: GameStats;
 }
 
 // ============================================================================
@@ -2100,4 +2103,173 @@ export interface ExtendedLegacyData extends LegacyData {
   totalNarrowEscapes: number;  // Escaping with <3 Doom
   totalPerfectScenarios: number;  // No hero deaths
   totalMadnessSurvived: number;  // Scenarios survived while having madness
+}
+
+// ============================================================================
+// GAME STATS TRACKING SYSTEM - Performance metrics for scenario completion
+// ============================================================================
+
+/**
+ * Comprehensive statistics tracked throughout a scenario
+ * Used for performance rating, epilogue generation, and legacy rewards
+ */
+export interface GameStats {
+  // Combat statistics
+  enemiesKilled: number;
+  bossesDefeated: string[];           // Boss names for display
+  totalDamageDealt: number;           // Total damage dealt to enemies
+  totalDamageTaken: number;           // Total damage taken by players
+  criticalHits: number;               // Number of critical hits landed
+  criticalMisses: number;             // Number of critical misses
+
+  // Exploration statistics
+  tilesExplored: number;
+  secretsFound: number;               // Hidden doors, secret rooms
+  trapsTriggered: number;
+  darkRoomsIlluminated: number;
+
+  // Sanity and horror
+  horrorChecksPerformed: number;
+  horrorChecksPassed: number;
+  totalSanityLost: number;
+  totalSanityRecovered: number;
+  madnessesAcquired: string[];        // Madness types acquired during scenario
+
+  // Items and clues
+  cluesFound: number;
+  questItemsCollected: number;
+  itemsUsed: number;
+  goldFound: number;
+
+  // Objectives
+  objectivesCompleted: number;
+  optionalObjectivesCompleted: number;
+  totalObjectives: number;
+
+  // Time/Progress
+  roundsSurvived: number;
+  doomAtEnd: number;
+  doomAtStart: number;
+
+  // Player status
+  playersAlive: number;
+  playersStarted: number;
+  playerDeaths: string[];             // Names of players who died
+
+  // Survivor system
+  survivorsRescued: number;
+  survivorsLost: number;
+}
+
+/**
+ * Creates initial game stats with zeroed values
+ */
+export function createInitialGameStats(players: Player[], startDoom: number): GameStats {
+  return {
+    // Combat
+    enemiesKilled: 0,
+    bossesDefeated: [],
+    totalDamageDealt: 0,
+    totalDamageTaken: 0,
+    criticalHits: 0,
+    criticalMisses: 0,
+
+    // Exploration
+    tilesExplored: 1,  // Start tile counts
+    secretsFound: 0,
+    trapsTriggered: 0,
+    darkRoomsIlluminated: 0,
+
+    // Sanity
+    horrorChecksPerformed: 0,
+    horrorChecksPassed: 0,
+    totalSanityLost: 0,
+    totalSanityRecovered: 0,
+    madnessesAcquired: [],
+
+    // Items
+    cluesFound: 0,
+    questItemsCollected: 0,
+    itemsUsed: 0,
+    goldFound: 0,
+
+    // Objectives
+    objectivesCompleted: 0,
+    optionalObjectivesCompleted: 0,
+    totalObjectives: 0,
+
+    // Progress
+    roundsSurvived: 1,
+    doomAtEnd: startDoom,
+    doomAtStart: startDoom,
+
+    // Players
+    playersAlive: players.length,
+    playersStarted: players.length,
+    playerDeaths: [],
+
+    // Survivors
+    survivorsRescued: 0,
+    survivorsLost: 0,
+  };
+}
+
+/**
+ * Performance rating based on scenario completion
+ */
+export type PerformanceRating = 'S' | 'A' | 'B' | 'C' | 'F';
+
+/**
+ * Complete scenario result for game over screen
+ */
+export interface EnhancedScenarioResult {
+  // Basic info
+  type: 'victory' | 'defeat_death' | 'defeat_doom';
+  scenarioId: string;
+  scenarioTitle: string;
+  round: number;
+
+  // Statistics
+  stats: GameStats;
+
+  // Performance rating
+  rating: PerformanceRating;
+  ratingTitle: string;
+  ratingDescription: string;
+
+  // Narrative
+  epilogue: string;
+  consequences: {
+    positive: string[];
+    negative: string[];
+  };
+
+  // Character fates
+  characterFates: CharacterFate[];
+
+  // Legacy rewards (if in legacy mode)
+  rewards?: {
+    goldEarned: number;
+    xpEarned: number;
+    bonusGold: number;
+    bonusXP: number;
+    itemsFound: Item[];
+  };
+}
+
+/**
+ * Individual character fate at scenario end
+ */
+export interface CharacterFate {
+  playerId: string;
+  name: string;
+  characterClass: CharacterType;
+  survived: boolean;
+  finalHp: number;
+  maxHp: number;
+  finalSanity: number;
+  maxSanity: number;
+  madnessAcquired: string[];
+  personalEpilogue: string;
+  killCount: number;
 }
