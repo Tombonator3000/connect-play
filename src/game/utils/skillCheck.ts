@@ -1,62 +1,19 @@
-import { Player, SkillType, SkillCheckResult, CharacterType } from '../types';
-import { CHARACTERS } from '../constants';
-
 /**
- * Performs a skill check according to the Game Design Bible rules:
- * - Roll 2d6 base + attribute bonus dice
- * - For each result >= DC, count 1 success
- * - Need at least 1 success to pass
+ * SKILL CHECK UTILITIES
+ *
+ * Character-specific skill check helpers and utilities.
+ *
+ * NOTE: The main performSkillCheck function is in combatUtils.ts
+ * This file contains helper functions for character-specific behaviors.
  */
-export function performSkillCheck(
-  player: Player,
-  skill: SkillType,
-  dc: number
-): SkillCheckResult {
-  const character = CHARACTERS[player.id as CharacterType];
-  const attributeValue = character.attributes[skill];
-  
-  // Base 2 dice + attribute value bonus dice
-  const baseDice = 2;
-  const bonusDice = attributeValue;
-  
-  // Character-specific bonuses
-  let specialBonus = 0;
-  if (skill === 'strength' && player.id === 'veteran') specialBonus = 1;
-  if (skill === 'intellect' && player.id === 'detective') specialBonus = 1;
-  
-  const totalDice = baseDice + bonusDice + specialBonus;
-  
-  // Roll dice
-  const dice = Array.from({ length: totalDice }, () => Math.floor(Math.random() * 6) + 1);
-  
-  // Count successes (dice >= DC)
-  const successes = dice.filter(d => d >= dc).length;
-  const passed = successes > 0;
-  
-  return {
-    dice,
-    successes,
-    dc,
-    passed,
-    skill
-  };
-}
+
+import { Player, SkillType } from '../types';
+
+// Re-export getDCDescription from diceUtils for convenience
+export { getDCDescription } from '../constants/diceUtils';
 
 /**
- * Get the DC description
- */
-export function getDCDescription(dc: number): string {
-  switch (dc) {
-    case 3: return 'Easy';
-    case 4: return 'Medium';
-    case 5: return 'Hard';
-    case 6: return 'Extreme';
-    default: return dc < 3 ? 'Trivial' : 'Impossible';
-  }
-}
-
-/**
- * Get skill name for display
+ * Get human-readable skill name for display
  */
 export function getSkillName(skill: SkillType): string {
   const names: Record<SkillType, string> = {
@@ -65,33 +22,73 @@ export function getSkillName(skill: SkillType): string {
     intellect: 'Intellect',
     willpower: 'Willpower'
   };
-  return names[skill];
+  return names[skill] ?? skill;
 }
 
 /**
  * Check if player has immunity to sanity loss from occult texts
+ * Professor special ability
  */
 export function hasOccultImmunity(player: Player): boolean {
+  if (!player || !player.id) {
+    console.warn('[SkillCheck] Invalid player in hasOccultImmunity');
+    return false;
+  }
   return player.id === 'professor';
 }
 
 /**
  * Check if player has ritual mastery
+ * Occultist special ability
  */
 export function hasRitualMastery(player: Player): boolean {
+  if (!player || !player.id) {
+    console.warn('[SkillCheck] Invalid player in hasRitualMastery');
+    return false;
+  }
   return player.id === 'occultist';
 }
 
 /**
- * Get heal amount for player (doctors heal 2 instead of 1)
+ * Get heal amount for player
+ * Doctors heal 2 instead of 1 (special ability)
  */
 export function getHealAmount(player: Player): number {
+  if (!player || !player.id) {
+    console.warn('[SkillCheck] Invalid player in getHealAmount');
+    return 1;
+  }
   return player.id === 'doctor' ? 2 : 1;
 }
 
 /**
  * Get movement bonus for player
+ * Journalist gets +1 movement (special ability)
  */
 export function getMovementBonus(player: Player): number {
+  if (!player || !player.id) {
+    console.warn('[SkillCheck] Invalid player in getMovementBonus');
+    return 0;
+  }
   return player.id === 'journalist' ? 1 : 0;
+}
+
+/**
+ * Get character-specific skill bonus
+ * - Veteran: +1 to Strength checks
+ * - Detective: +1 to Intellect checks
+ */
+export function getCharacterSkillBonus(player: Player, skill: SkillType): number {
+  if (!player || !player.id) {
+    return 0;
+  }
+
+  if (skill === 'strength' && player.id === 'veteran') {
+    return 1;
+  }
+  if (skill === 'intellect' && player.id === 'detective') {
+    return 1;
+  }
+
+  return 0;
 }

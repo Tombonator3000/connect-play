@@ -17,6 +17,7 @@
 import { Player, Enemy, Item, SkillType, SkillCheckResult, getAllItems, OccultistSpell, Tile, CharacterType, ExpandedCritResult, CriticalBonusType, CriticalPenaltyType } from '../types';
 import { BESTIARY, CHARACTERS, calculateDesperateBonuses, getRandomCriticalBonuses, getRandomCriticalPenalty, CRITICAL_BONUSES, CRITICAL_PENALTIES } from '../constants';
 import { hexDistance, hasLineOfSight } from '../hexUtils';
+import { rollDice, countSuccesses, formatDiceRolls, COMBAT_DC } from '../constants/diceUtils';
 
 // Combat result interface
 export interface CombatResult {
@@ -63,17 +64,30 @@ export interface SpellCastResult {
   message: string;
 }
 
-// DC for combat - roll this or higher to score a hit/block
-const COMBAT_DC = 4; // 4, 5, 6 on d6 = success (50% chance per die)
+// NOTE: rollDice, countSuccesses, and COMBAT_DC are imported from '../constants/diceUtils'
+// Re-export for backward compatibility with existing code
+export { rollDice, countSuccesses, COMBAT_DC } from '../constants/diceUtils';
 
-// Dice rolling utility
-export function rollDice(count: number): number[] {
-  return Array.from({ length: count }, () => Math.floor(Math.random() * 6) + 1);
-}
-
-// Count successes against DC (skulls/shields)
-export function countSuccesses(rolls: number[], dc: number = COMBAT_DC): number {
-  return rolls.filter(roll => roll >= dc).length;
+/**
+ * Create an error combat result for when validation fails
+ */
+function createErrorCombatResult(errorMessage: string): CombatResult {
+  console.error(`[Combat] ${errorMessage}`);
+  return {
+    hit: false,
+    damage: 0,
+    rolls: [],
+    attackRolls: [],
+    attackSuccesses: 0,
+    defenseRolls: [],
+    defenseSuccesses: 0,
+    criticalHit: false,
+    criticalMiss: false,
+    horrorTriggered: false,
+    sanityLoss: 0,
+    message: `Error: ${errorMessage}`,
+    successes: 0
+  };
 }
 
 /**
@@ -278,13 +292,7 @@ export function getDefenseDice(player: Player): { defenseDice: number; armorName
 // ============================================================================
 // ATTACK HELPER FUNCTIONS - Extracted for clarity
 // ============================================================================
-
-/**
- * Format dice rolls for display with successes highlighted
- */
-function formatDiceRolls(rolls: number[], dc: number): string {
-  return rolls.map(r => r >= dc ? `[${r}]` : `${r}`).join(' ');
-}
+// NOTE: formatDiceRolls is imported from '../constants/diceUtils'
 
 /**
  * Calculate veteran class bonus for melee weapons
@@ -397,6 +405,19 @@ export function performAttack(
   enemy: Enemy,
   isRanged: boolean = false
 ): CombatResult {
+  // Validate inputs
+  if (!player) {
+    console.error('[Combat] performAttack called with null/undefined player');
+    return createErrorCombatResult('Invalid player');
+  }
+  if (!enemy) {
+    console.error('[Combat] performAttack called with null/undefined enemy');
+    return createErrorCombatResult('Invalid enemy');
+  }
+  if (typeof player.hp !== 'number' || typeof player.sanity !== 'number') {
+    console.warn('[Combat] Player has invalid HP/Sanity values');
+  }
+
   const dc = 4; // Standard Hero Quest DC (skulls)
 
   // Step 1: Get weapon info
@@ -492,6 +513,22 @@ export function performDefense(player: Player, incomingDamage: number): {
   message: string;
   desperateBonusApplied?: number;
 } {
+  // Validate inputs
+  if (!player) {
+    console.error('[Combat] performDefense called with null/undefined player');
+    return {
+      damageBlocked: 0,
+      finalDamage: Math.max(0, incomingDamage),
+      defenseRolls: [],
+      defenseSuccesses: 0,
+      message: 'Error: Invalid player'
+    };
+  }
+  if (typeof incomingDamage !== 'number' || incomingDamage < 0) {
+    console.warn('[Combat] performDefense called with invalid damage:', incomingDamage);
+    incomingDamage = Math.max(0, incomingDamage || 0);
+  }
+
   const defenseInfo = getDefenseDice(player);
 
   // DESPERATE MEASURES: Check for defense bonus from low HP
@@ -625,10 +662,39 @@ export function calculateEnemyDamage(enemy: Enemy, player: Player, globalEnemyAt
   defenseSuccesses: number;
   message: string;
 } {
+  // Validate inputs
+  if (!enemy) {
+    console.error('[Combat] calculateEnemyDamage called with null/undefined enemy');
+    return {
+      hpDamage: 0,
+      sanityDamage: 0,
+      attackRolls: [],
+      defenseRolls: [],
+      attackSuccesses: 0,
+      defenseSuccesses: 0,
+      message: 'Error: Invalid enemy'
+    };
+  }
+  if (!player) {
+    console.error('[Combat] calculateEnemyDamage called with null/undefined player');
+    return {
+      hpDamage: 1, // Default to some damage if player invalid
+      sanityDamage: 0,
+      attackRolls: [],
+      defenseRolls: [],
+      attackSuccesses: 1,
+      defenseSuccesses: 0,
+      message: 'Error: Invalid player'
+    };
+  }
+
   const dc = 4; // Standard Hero Quest DC (skulls)
 
   // Get attack dice from bestiary + global bonus from events
   const bestiaryEntry = BESTIARY[enemy.type];
+  if (!bestiaryEntry) {
+    console.warn(`[Combat] Unknown enemy type: ${enemy.type}, using default stats`);
+  }
   const baseAttackDice = bestiaryEntry?.attackDice || 1;
   const attackDice = baseAttackDice + globalEnemyAttackBonus;
 
