@@ -17198,3 +17198,82 @@ Spillere skal nå ALLTID kunne gå tilbake den veien de kom fra. Hvis en nabo-ti
 
 ---
 
+## 2026-01-22: Fix Player Not Taking Damage from Monsters
+
+### Problem
+Spillere tok ikke skade fra monstre under mythos-fasen, selv når monstre var i angrepsposisjon.
+
+### Rotårsak-analyse
+
+I den originale koden kunne monstre bare gjøre **én handling per tur**: enten bevege seg ELLER angripe. Dette skapte et problem:
+
+1. Monster er 2 tiles unna spilleren
+2. Monster bestemmer seg for å jage (chase) → beveger seg 1 tile nærmere
+3. Monster er nå 1 tile unna (i angrepsposisjon)
+4. Men turen er over - monster angriper IKKE denne runden
+5. Neste runde: Spilleren beveger seg vekk
+6. Syklusen fortsetter - monster når aldri frem
+
+**Hero Quest-stil krever at monstre kan bevege seg OG angripe på samme tur.**
+
+### Løsning
+
+Lagt til angrepssjekk etter bevegelse i `processEnemyTurn()` (monsterAI.ts):
+
+```typescript
+case 'move':
+  if (decision.targetPosition) {
+    updatedEnemies[i] = { ...enemy, position: decision.targetPosition };
+
+    // CRITICAL FIX: After moving, check if monster can now attack a player
+    // This allows monsters to move AND attack in the same turn (Hero Quest style)
+    const movedEnemy = updatedEnemies[i];
+    const alivePlayers = players.filter(p => !p.isDead);
+    for (const player of alivePlayers) {
+      const distanceAfterMove = hexDistance(movedEnemy.position, player.position);
+      if (distanceAfterMove <= movedEnemy.attackRange) {
+        if (hasLineOfSight(movedEnemy.position, player.position, tiles, movedEnemy.visionRange)) {
+          attacks.push({
+            enemy: movedEnemy,
+            targetPlayer: player,
+            weatherHorrorBonus: weatherMods.horrorBonus
+          });
+          messages.push(`${movedEnemy.name} angriper ${player.name}!`);
+          break; // Only attack one player
+        }
+      }
+    }
+  }
+  break;
+```
+
+### Samme fix for special movement
+
+Også lagt til angrepssjekk etter spesiell bevegelse (teleport, phase, etc.):
+
+```typescript
+case 'special':
+  // ... eksisterende kode for posisjonoppdatering ...
+
+  // CRITICAL FIX: After special movement, check if monster can attack
+  const specialMovedEnemy = updatedEnemies[i];
+  // ... samme angrepslogikk som for 'move' ...
+```
+
+### Fil Modifisert
+- `src/game/utils/monsterAI.ts` - `processEnemyTurn()` funksjonen
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket
+
+### Resultat
+Monstre kan nå:
+1. Bevege seg mot spilleren
+2. Sjekke om de er i angrepsposisjon etter bevegelse
+3. Angripe hvis de er i range og har line-of-sight
+
+Dette matcher Hero Quest-stilen hvor monstre beveger seg OG angriper på samme tur.
+
+---
+
