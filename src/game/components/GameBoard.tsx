@@ -1536,7 +1536,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
             explosion: 'spell-particle-banish',
             blood: 'spell-particle-blood',
             smoke: 'spell-particle-smoke',
-            sparkle: 'spell-particle-sparkle'
+            sparkle: 'spell-particle-sparkle',
+            item_collect: 'spell-particle-item-collect'
           }[particle.type] || 'spell-particle-sparkle';
 
           const sizeClass = `spell-particle-${particle.size}`;
@@ -1555,6 +1556,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
               case 'blood': return 'animate-blood-splatter';
               case 'smoke': return 'animate-smoke-rise';
               case 'sparkle': return 'animate-sparkle-twinkle';
+              case 'item_collect': return 'animate-item-collect-rise';
               default: return 'animate-sparkle-twinkle';
             }
           };

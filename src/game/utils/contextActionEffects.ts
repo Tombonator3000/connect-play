@@ -16,6 +16,7 @@ import type {
   Player,
   Scenario,
   Survivor,
+  SpellParticle,
 } from '../types';
 import { equipItem } from '../types';
 import type { ObjectiveSpawnState, QuestItem } from './objectiveSpawner';
@@ -71,6 +72,8 @@ export interface ActionEffectResult {
     gold?: number;
     doomBonus?: number;
   };
+  /** Spell/visual particle effect to spawn */
+  spellParticle?: SpellParticle;
 }
 
 /**
@@ -351,6 +354,7 @@ export function handleSearchEffect(
   let updatedScenario = ctx.activeScenario;
   let updatedQuestItemsCollected = ctx.questItemsCollected;
   let floatingText: ActionEffectResult['floatingText'] | undefined;
+  let spellParticle: SpellParticle | undefined;
 
   // Check for quest items on this tile
   const questItem = ctx.objectiveSpawnState?.questItems.find(
@@ -402,6 +406,19 @@ export function handleSearchEffect(
           text: questItem.name,
           colorClass: 'text-yellow-400'
         };
+        // Create item collection particle effect
+        spellParticle = {
+          id: `item_collect_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          type: 'item_collect',
+          startQ: tile.q,
+          startR: tile.r,
+          startTime: Date.now(),
+          duration: 1000,
+          color: 'amber',
+          size: 'md',
+          count: 8,
+          animation: 'float'
+        };
       } else {
         logMessages.push(`Warning: Inventory full! Quest item ${questItem.name} is tracked but not stored.`);
       }
@@ -439,7 +456,8 @@ export function handleSearchEffect(
     activeScenario: updatedScenario,
     questItemsCollected: updatedQuestItemsCollected,
     logMessages,
-    floatingText
+    floatingText,
+    spellParticle
   };
 }
 
@@ -455,6 +473,7 @@ function createQuestItemForInventory(questItem: SpawnedQuestItem): Item {
     isQuestItem: true,
     questItemType: questItem.type as 'key' | 'clue' | 'collectible' | 'artifact' | 'component',
     objectiveId: questItem.objectiveId,
+    scenarioId: questItem.scenarioId,
     slotType: 'bag',
     category: 'special'
   };
@@ -588,6 +607,7 @@ export function handleQuestItemPickupEffect(
 
   const logMessages: string[] = [];
   let floatingText: ActionEffectResult['floatingText'] | undefined;
+  let spellParticle: SpellParticle | undefined;
   let updatedBoard = ctx.board;
   let updatedPlayers = ctx.players;
   let updatedObjectiveSpawnState = ctx.objectiveSpawnState;
@@ -635,6 +655,7 @@ export function handleQuestItemPickupEffect(
     isQuestItem: true,
     questItemType: questItemToPickup.questItemType as 'key' | 'clue' | 'collectible' | 'artifact' | 'component',
     objectiveId: questItemToPickup.objectiveId,
+    scenarioId: questItemToPickup.scenarioId || spawnedQuestItem?.scenarioId,
     slotType: 'bag',
     category: 'special'
   };
@@ -655,6 +676,19 @@ export function handleQuestItemPickupEffect(
         r: activePlayer.position.r,
         text: questItemToPickup.name,
         colorClass: 'text-yellow-400'
+      };
+      // Create item collection particle effect
+      spellParticle = {
+        id: `item_collect_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        type: 'item_collect',
+        startQ: tile.q,
+        startR: tile.r,
+        startTime: Date.now(),
+        duration: 1000,
+        color: 'amber',
+        size: 'md',
+        count: 8,
+        animation: 'float'
       };
     } else {
       logMessages.push(`Warning: Inventory full! Quest item ${questItemToPickup.name} is tracked but not stored.`);
@@ -681,7 +715,8 @@ export function handleQuestItemPickupEffect(
     activeScenario: updatedScenario,
     questItemsCollected: updatedQuestItemsCollected,
     logMessages,
-    floatingText
+    floatingText,
+    spellParticle
   };
 }
 

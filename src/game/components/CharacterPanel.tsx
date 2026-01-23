@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Player, Item, countInventoryItems, InventorySlotName, CharacterType, EarnedBadge } from '../types';
-import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User, Hand, Shirt, Key, X, ArrowRight, Trash2, Pill, Award, Ban, FileText, Gem, Sparkles, Package, ChevronDown, ChevronUp } from 'lucide-react';
+import { Player, Item, countInventoryItems, InventorySlotName, CharacterType, EarnedBadge, ScenarioObjective } from '../types';
+import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User, Hand, Shirt, Key, X, ArrowRight, Trash2, Pill, Award, Ban, FileText, Gem, Sparkles, Package, ChevronDown, ChevronUp, Target } from 'lucide-react';
 import { ItemTooltip } from './ItemTooltip';
 import { getCharacterPortrait, getCharacterDisplayName } from '../utils/characterAssets';
 import { getItemIcon as getSpecificItemIcon } from './ItemIcons';
@@ -15,6 +15,7 @@ interface CharacterPanelProps {
   onEquipFromBag?: (bagIndex: number, targetSlot: 'leftHand' | 'rightHand') => void;
   onDropItem?: (slotName: InventorySlotName) => void;
   earnedBadges?: EarnedBadge[];  // Earned badges to display
+  objectives?: ScenarioObjective[];  // Current scenario objectives for linking quest items
 }
 
 // Quest item type colors and icons
@@ -75,7 +76,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   onUnequipItem,
   onEquipFromBag,
   onDropItem,
-  earnedBadges = []
+  earnedBadges = [],
+  objectives = []
 }) => {
   const [selectedSlot, setSelectedSlot] = useState<InventorySlotName | null>(null);
   const [showSlotMenu, setShowSlotMenu] = useState(false);
@@ -332,6 +334,10 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                 <div className="flex flex-wrap gap-2 animate-fadeIn">
                   {player.inventory.questItems.map((item, index) => {
                     const style = getQuestItemStyle(item);
+                    // Find the linked objective for this quest item
+                    const linkedObjective = item.objectiveId
+                      ? objectives.find(obj => obj.id === item.objectiveId)
+                      : null;
                     return (
                       <ItemTooltip key={item.id || index} item={item}>
                         <div className={`flex items-center gap-1.5 px-2 py-1.5 ${style.bg} border ${style.border} rounded-lg cursor-help hover:brightness-125 transition-all group`}>
@@ -340,7 +346,14 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                           </div>
                           <div className="flex flex-col min-w-0">
                             <span className={`text-xs ${style.text} font-medium truncate max-w-[100px]`}>{item.name}</span>
-                            <span className="text-[8px] text-muted-foreground opacity-70">{style.label}</span>
+                            {linkedObjective ? (
+                              <span className="text-[8px] text-cyan-400/80 flex items-center gap-0.5 truncate max-w-[100px]" title={linkedObjective.shortDescription}>
+                                <Target size={8} className="flex-shrink-0" />
+                                <span className="truncate">{linkedObjective.shortDescription}</span>
+                              </span>
+                            ) : (
+                              <span className="text-[8px] text-muted-foreground opacity-70">{style.label}</span>
+                            )}
                           </div>
                         </div>
                       </ItemTooltip>

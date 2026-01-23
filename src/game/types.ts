@@ -184,6 +184,7 @@ export interface Item {
   isQuestItem?: boolean;    // True if this is a quest-critical item
   questItemType?: 'key' | 'clue' | 'collectible' | 'artifact' | 'component';
   objectiveId?: string;     // Which objective this item belongs to
+  scenarioId?: string;      // Which scenario this quest item belongs to (for cleanup)
   category?: 'weapon' | 'tool' | 'armor' | 'consumable' | 'special';
 }
 
@@ -1155,7 +1156,8 @@ export type SpellParticleType =
   | 'explosion'        // General impact explosion
   | 'blood'            // Blood splatter for damage
   | 'smoke'            // Dissipation/death smoke
-  | 'sparkle';         // Generic magical sparkle
+  | 'sparkle'          // Generic magical sparkle
+  | 'item_collect';    // Golden/amber particles for quest item collection
 
 /**
  * A single spell particle for visual effects
