@@ -5,7 +5,8 @@ import { BESTIARY } from '../constants';
 import {
   Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, Eye, Skull, Brain, Swords, BookOpen,
   Flame, Lock, Hammer, AlertTriangle, Fence, Cloud, Sparkles, Package, Moon, Radio, ToggleLeft,
-  DoorOpen, DoorClosed, KeyRound, Ban, ArrowUpRight, ArrowDownRight, Square, Minus, Info
+  DoorOpen, DoorClosed, KeyRound, Ban, ArrowUpRight, ArrowDownRight, Square, Minus, Info,
+  Target, Crosshair, Shield, Box
 } from 'lucide-react';
 import { getItemIcon as getSpecificItemIcon } from './ItemIcons';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -14,9 +15,10 @@ interface ItemTooltipProps {
   item: Item;
   children: React.ReactNode;
   isRestricted?: boolean;  // Whether this weapon is restricted for the current character
+  compareWith?: Item | null;  // Item to compare against (e.g., currently equipped weapon)
 }
 
-export const ItemTooltip: React.FC<ItemTooltipProps> = ({ item, children, isRestricted = false }) => {
+export const ItemTooltip: React.FC<ItemTooltipProps> = ({ item, children, isRestricted = false, compareWith }) => {
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'weapon': return 'text-red-400';
@@ -77,6 +79,74 @@ export const ItemTooltip: React.FC<ItemTooltipProps> = ({ item, children, isRest
             {item.effect && (
               <p className="text-xs text-muted-foreground italic">{item.effect}</p>
             )}
+
+            {/* Weapon stats - enhanced display */}
+            {item.type === 'weapon' && (
+              <div className="grid grid-cols-2 gap-2 text-[10px] pt-1">
+                {item.attackDice !== undefined && (
+                  <div className="flex items-center gap-1.5 bg-red-500/20 text-red-400 px-2 py-1 rounded border border-red-500/30">
+                    <Swords size={12} />
+                    <span className="font-bold">{item.attackDice}</span>
+                    <span className="opacity-70">dice</span>
+                    {compareWith?.attackDice !== undefined && item.attackDice !== compareWith.attackDice && (
+                      <span className={item.attackDice > compareWith.attackDice ? 'text-green-400 font-bold' : 'text-red-300 font-bold'}>
+                        ({item.attackDice > compareWith.attackDice ? '+' : ''}{item.attackDice - compareWith.attackDice})
+                      </span>
+                    )}
+                  </div>
+                )}
+                {item.range !== undefined && (
+                  <div className="flex items-center gap-1.5 bg-cyan-500/20 text-cyan-400 px-2 py-1 rounded border border-cyan-500/30">
+                    <Target size={12} />
+                    <span className="font-bold">{item.range}</span>
+                    <span className="opacity-70">range</span>
+                    {compareWith?.range !== undefined && item.range !== compareWith.range && (
+                      <span className={item.range > compareWith.range ? 'text-green-400 font-bold' : 'text-red-300 font-bold'}>
+                        ({item.range > compareWith.range ? '+' : ''}{item.range - compareWith.range})
+                      </span>
+                    )}
+                  </div>
+                )}
+                {item.ammo !== undefined && (
+                  <div className="flex items-center gap-1.5 bg-amber-500/20 text-amber-400 px-2 py-1 rounded border border-amber-500/30">
+                    <Crosshair size={12} />
+                    <span className="font-bold">{item.ammo}</span>
+                    <span className="opacity-70">ammo</span>
+                  </div>
+                )}
+                {item.weaponType && (
+                  <div className="flex items-center gap-1.5 bg-gray-500/20 text-gray-400 px-2 py-1 rounded border border-gray-500/30">
+                    {item.weaponType === 'melee' ? <Sword size={12} /> : <Crosshair size={12} />}
+                    <span className="capitalize">{item.weaponType}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Armor stats */}
+            {item.type === 'armor' && item.defenseDice !== undefined && (
+              <div className="flex items-center gap-1.5 bg-blue-500/20 text-blue-400 px-2 py-1 rounded border border-blue-500/30 text-[10px]">
+                <Shield size={12} />
+                <span className="font-bold">+{item.defenseDice}</span>
+                <span className="opacity-70">defense dice</span>
+                {compareWith?.defenseDice !== undefined && item.defenseDice !== compareWith.defenseDice && (
+                  <span className={item.defenseDice > compareWith.defenseDice ? 'text-green-400 font-bold' : 'text-red-300 font-bold'}>
+                    ({item.defenseDice > compareWith.defenseDice ? '+' : ''}{item.defenseDice - compareWith.defenseDice})
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Consumable uses */}
+            {item.type === 'consumable' && item.uses !== undefined && (
+              <div className="flex items-center gap-1.5 bg-green-500/20 text-green-400 px-2 py-1 rounded border border-green-500/30 text-[10px]">
+                <Box size={12} />
+                <span className="font-bold">{item.uses}</span>
+                <span className="opacity-70">/ {item.maxUses || item.uses} uses</span>
+              </div>
+            )}
+
+            {/* Other stats */}
             <div className="flex flex-wrap gap-2 text-[10px]">
               {item.bonus !== undefined && item.bonus !== 0 && (
                 <span className="bg-green-500/20 text-green-400 px-2 py-0.5 rounded border border-green-500/30">
@@ -93,7 +163,24 @@ export const ItemTooltip: React.FC<ItemTooltipProps> = ({ item, children, isRest
                   +{item.statModifier}
                 </span>
               )}
+              {item.silent && (
+                <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded border border-purple-500/30">
+                  Silent
+                </span>
+              )}
+              {item.isLightSource && (
+                <span className="bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded border border-yellow-500/30">
+                  Light Source
+                </span>
+              )}
             </div>
+
+            {/* Comparison indicator */}
+            {compareWith && (
+              <div className="mt-2 pt-2 border-t border-white/10 text-[9px] text-muted-foreground">
+                Sammenlignet med: {compareWith.name}
+              </div>
+            )}
           </div>
         </TooltipContent>
       </Tooltip>

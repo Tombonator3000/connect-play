@@ -25,6 +25,10 @@ import {
   getAllEquippedItems,
   isStashFull
 } from '../utils/legacyManager';
+import {
+  Sword, Search, Shield, Cross, Zap, Key, FileText, Package,
+  SortAsc, Filter, X, ArrowRight, ArrowLeft, Sparkles
+} from 'lucide-react';
 
 interface EquipmentStashPanelProps {
   stash: EquipmentStash;
@@ -36,6 +40,18 @@ interface EquipmentStashPanelProps {
 
 type SortOption = 'name' | 'type' | 'recent';
 type FilterOption = 'all' | 'weapon' | 'tool' | 'armor' | 'consumable' | 'relic' | 'key' | 'clue';
+
+// Filter button configuration
+const FILTER_BUTTONS: { value: FilterOption; label: string; icon: React.ReactNode; color: string }[] = [
+  { value: 'all', label: 'All', icon: <Package size={14} />, color: 'bg-stone-600 hover:bg-stone-500 text-stone-200' },
+  { value: 'weapon', label: 'Weapons', icon: <Sword size={14} />, color: 'bg-red-900/50 hover:bg-red-800/50 text-red-300' },
+  { value: 'tool', label: 'Tools', icon: <Search size={14} />, color: 'bg-blue-900/50 hover:bg-blue-800/50 text-blue-300' },
+  { value: 'armor', label: 'Armor', icon: <Shield size={14} />, color: 'bg-amber-900/50 hover:bg-amber-800/50 text-amber-300' },
+  { value: 'consumable', label: 'Consumables', icon: <Cross size={14} />, color: 'bg-green-900/50 hover:bg-green-800/50 text-green-300' },
+  { value: 'relic', label: 'Relics', icon: <Zap size={14} />, color: 'bg-purple-900/50 hover:bg-purple-800/50 text-purple-300' },
+  { value: 'key', label: 'Keys', icon: <Key size={14} />, color: 'bg-yellow-900/50 hover:bg-yellow-800/50 text-yellow-300' },
+  { value: 'clue', label: 'Clues', icon: <FileText size={14} />, color: 'bg-cyan-900/50 hover:bg-cyan-800/50 text-cyan-300' },
+];
 
 export const EquipmentStashPanel: React.FC<EquipmentStashPanelProps> = ({
   stash,
@@ -54,6 +70,15 @@ export const EquipmentStashPanel: React.FC<EquipmentStashPanelProps> = ({
     () => heroes.find(h => h.id === selectedHeroId),
     [heroes, selectedHeroId]
   );
+
+  // Count items by type for filter badges
+  const itemCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: stash.items.length };
+    stash.items.forEach(item => {
+      counts[item.type] = (counts[item.type] || 0) + 1;
+    });
+    return counts;
+  }, [stash.items]);
 
   const filteredStashItems = useMemo(() => {
     let items = stash.items.map((item, index) => ({ item, originalIndex: index }));
@@ -161,27 +186,59 @@ export const EquipmentStashPanel: React.FC<EquipmentStashPanelProps> = ({
     setSelectedHeroItemIndex(null);
   };
 
-  const renderItemCard = (item: Item, isSelected: boolean, onClick: () => void) => (
-    <div
-      className={`
-        p-3 rounded-lg border-2 cursor-pointer transition-all
-        ${isSelected ? 'border-amber-500 ring-2 ring-amber-500/50' : 'border-stone-600 hover:border-stone-500'}
-        ${getItemTypeColor(item.type)}
-      `}
-      onClick={onClick}
-    >
-      <div className="flex justify-between items-start mb-1">
-        <span className="font-medium text-sm">{item.name}</span>
-        <span className="text-xs uppercase opacity-70">{item.type}</span>
-      </div>
-      <p className="text-xs opacity-80">{item.effect}</p>
-      {item.uses !== undefined && (
-        <div className="text-xs mt-1 opacity-60">
-          Uses: {item.uses}/{item.maxUses || item.uses}
+  const renderItemCard = (item: Item, isSelected: boolean, onClick: () => void) => {
+    // Check if this is a quest item (shouldn't be in stash normally)
+    const isQuestItem = item.type === 'quest_item' || item.questItemType;
+
+    return (
+      <div
+        className={`
+          p-3 rounded-lg border-2 cursor-pointer transition-all relative
+          ${isSelected ? 'border-amber-500 ring-2 ring-amber-500/50 scale-[1.02]' : 'border-stone-600 hover:border-stone-500 hover:scale-[1.01]'}
+          ${getItemTypeColor(item.type)}
+          ${isQuestItem ? 'opacity-60' : ''}
+        `}
+        onClick={onClick}
+      >
+        {/* Quest item warning */}
+        {isQuestItem && (
+          <div className="absolute -top-2 -right-2 bg-yellow-600 text-yellow-100 text-[9px] px-1.5 py-0.5 rounded-full font-bold">
+            QUEST
+          </div>
+        )}
+
+        <div className="flex justify-between items-start mb-1">
+          <span className="font-medium text-sm">{item.name}</span>
+          <span className="text-xs uppercase opacity-70">{item.type}</span>
         </div>
-      )}
-    </div>
-  );
+        <p className="text-xs opacity-80 line-clamp-2">{item.effect}</p>
+
+        {/* Stats row */}
+        <div className="flex flex-wrap gap-1.5 mt-2">
+          {item.attackDice !== undefined && (
+            <span className="flex items-center gap-1 text-[10px] bg-red-500/30 text-red-300 px-1.5 py-0.5 rounded">
+              <Sword size={10} /> {item.attackDice}
+            </span>
+          )}
+          {item.defenseDice !== undefined && (
+            <span className="flex items-center gap-1 text-[10px] bg-blue-500/30 text-blue-300 px-1.5 py-0.5 rounded">
+              <Shield size={10} /> +{item.defenseDice}
+            </span>
+          )}
+          {item.range !== undefined && (
+            <span className="text-[10px] bg-cyan-500/30 text-cyan-300 px-1.5 py-0.5 rounded">
+              R:{item.range}
+            </span>
+          )}
+          {item.uses !== undefined && (
+            <span className="text-[10px] bg-green-500/30 text-green-300 px-1.5 py-0.5 rounded">
+              {item.uses}/{item.maxUses || item.uses}
+            </span>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const renderHeroEquipment = (hero: LegacyHero) => {
     const items = getAllEquippedItems(hero.equipment);
@@ -282,32 +339,58 @@ export const EquipmentStashPanel: React.FC<EquipmentStashPanelProps> = ({
         <div className="flex-1 overflow-hidden flex">
           {/* Stash section */}
           <div className="flex-1 p-4 border-r border-stone-700 overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-stone-300">Stored Items</h3>
-              <div className="flex gap-2">
-                <select
-                  value={filterBy}
-                  onChange={(e) => setFilterBy(e.target.value as FilterOption)}
-                  className="px-2 py-1 bg-stone-700 border border-stone-600 rounded text-sm"
-                >
-                  <option value="all">All Types</option>
-                  <option value="weapon">Weapons</option>
-                  <option value="tool">Tools</option>
-                  <option value="armor">Armor</option>
-                  <option value="consumable">Consumables</option>
-                  <option value="relic">Relics</option>
-                  <option value="key">Keys</option>
-                </select>
+            {/* Header with sort */}
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-bold text-stone-300 flex items-center gap-2">
+                <Package size={18} />
+                Stored Items
+              </h3>
+              <div className="flex items-center gap-2">
+                <SortAsc size={14} className="text-stone-400" />
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="px-2 py-1 bg-stone-700 border border-stone-600 rounded text-sm"
+                  className="px-2 py-1 bg-stone-700 border border-stone-600 rounded text-sm cursor-pointer hover:bg-stone-600 transition-colors"
                 >
                   <option value="recent">Recent</option>
                   <option value="name">Name</option>
                   <option value="type">Type</option>
                 </select>
               </div>
+            </div>
+
+            {/* Filter buttons */}
+            <div className="flex flex-wrap gap-1.5 mb-4 pb-3 border-b border-stone-700">
+              {FILTER_BUTTONS.map(({ value, label, icon, color }) => {
+                const count = itemCounts[value] || 0;
+                const isActive = filterBy === value;
+                // Hide filter buttons that have 0 items (except 'all')
+                if (count === 0 && value !== 'all') return null;
+
+                return (
+                  <button
+                    key={value}
+                    onClick={() => setFilterBy(value)}
+                    className={`
+                      flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all
+                      ${isActive
+                        ? `${color} ring-2 ring-amber-500/50`
+                        : 'bg-stone-700/50 hover:bg-stone-600/50 text-stone-400'
+                      }
+                    `}
+                  >
+                    {icon}
+                    <span>{label}</span>
+                    {count > 0 && (
+                      <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                        isActive ? 'bg-white/20' : 'bg-stone-600'
+                      }`}>
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {filteredStashItems.length > 0 ? (

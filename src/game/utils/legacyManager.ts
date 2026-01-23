@@ -677,7 +677,8 @@ export function legacyHeroToPlayer(hero: LegacyHero): Player {
     baseAttackDice: (character?.baseAttackDice || 1) + bonusAttackDice,
     baseDefenseDice: (character?.baseDefenseDice || 1) + bonusDefenseDice,
     position: { q: 0, r: 0 },
-    inventory: { ...hero.equipment, bag: [...hero.equipment.bag] },
+    // Start each scenario with fresh quest items (never inherit from previous scenarios)
+    inventory: { ...hero.equipment, bag: [...hero.equipment.bag], questItems: [] },
     spells: characterSpells,
     actions: totalActions,
     maxActions: totalActions,  // Store max actions for turn reset
@@ -719,10 +720,15 @@ export function updateLegacyHeroFromPlayer(
     }
   }
 
+  // Keep equipment that survived the scenario, but ALWAYS clear quest items
+  // Quest items are scenario-specific and should never persist between scenarios
   return {
     ...hero,
-    // Keep equipment that survived the scenario
-    equipment: { ...player.inventory, bag: [...player.inventory.bag] },
+    equipment: {
+      ...player.inventory,
+      bag: [...player.inventory.bag],
+      questItems: []  // Always clear quest items between scenarios
+    },
     lastPlayed: new Date().toISOString()
   };
 }

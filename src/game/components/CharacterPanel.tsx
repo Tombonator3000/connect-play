@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Player, Item, countInventoryItems, InventorySlotName, CharacterType, EarnedBadge } from '../types';
-import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User, Hand, Shirt, Key, X, ArrowRight, Trash2, Pill, Award, Ban } from 'lucide-react';
+import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User, Hand, Shirt, Key, X, ArrowRight, Trash2, Pill, Award, Ban, FileText, Gem, Sparkles, Package, ChevronDown, ChevronUp } from 'lucide-react';
 import { ItemTooltip } from './ItemTooltip';
 import { getCharacterPortrait, getCharacterDisplayName } from '../utils/characterAssets';
 import { getItemIcon as getSpecificItemIcon } from './ItemIcons';
@@ -17,6 +17,58 @@ interface CharacterPanelProps {
   earnedBadges?: EarnedBadge[];  // Earned badges to display
 }
 
+// Quest item type colors and icons
+const QUEST_ITEM_STYLES: Record<string, { bg: string; border: string; text: string; icon: React.ReactNode; label: string }> = {
+  key: {
+    bg: 'bg-amber-900/40',
+    border: 'border-amber-500/60',
+    text: 'text-amber-300',
+    icon: <Key size={12} className="text-amber-400" />,
+    label: 'Key'
+  },
+  clue: {
+    bg: 'bg-blue-900/40',
+    border: 'border-blue-500/60',
+    text: 'text-blue-300',
+    icon: <FileText size={12} className="text-blue-400" />,
+    label: 'Clue'
+  },
+  artifact: {
+    bg: 'bg-purple-900/40',
+    border: 'border-purple-500/60',
+    text: 'text-purple-300',
+    icon: <Gem size={12} className="text-purple-400" />,
+    label: 'Artifact'
+  },
+  collectible: {
+    bg: 'bg-yellow-900/40',
+    border: 'border-yellow-500/60',
+    text: 'text-yellow-300',
+    icon: <Star size={12} className="text-yellow-400" />,
+    label: 'Collectible'
+  },
+  component: {
+    bg: 'bg-cyan-900/40',
+    border: 'border-cyan-500/60',
+    text: 'text-cyan-300',
+    icon: <Package size={12} className="text-cyan-400" />,
+    label: 'Component'
+  },
+  default: {
+    bg: 'bg-yellow-900/30',
+    border: 'border-yellow-600/50',
+    text: 'text-yellow-200',
+    icon: <Sparkles size={12} className="text-yellow-400" />,
+    label: 'Quest Item'
+  }
+};
+
+const getQuestItemStyle = (item: Item) => {
+  // First check questItemType, then fall back to item.type for keys/clues
+  const typeKey = item.questItemType || (item.type === 'key' ? 'key' : item.type === 'clue' ? 'clue' : item.type === 'relic' ? 'artifact' : 'default');
+  return QUEST_ITEM_STYLES[typeKey] || QUEST_ITEM_STYLES.default;
+};
+
 const CharacterPanel: React.FC<CharacterPanelProps> = ({
   player,
   onUseItem,
@@ -27,6 +79,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 }) => {
   const [selectedSlot, setSelectedSlot] = useState<InventorySlotName | null>(null);
   const [showSlotMenu, setShowSlotMenu] = useState(false);
+  const [questItemsExpanded, setQuestItemsExpanded] = useState(true);
 
   if (!player) return null;
 
@@ -262,22 +315,60 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
             </div>
           </div>
 
-          {/* Quest Items Section */}
+          {/* Quest Items Section - Enhanced with color coding */}
           {player.inventory.questItems && player.inventory.questItems.length > 0 && (
             <div className="mt-4 pt-3 border-t border-yellow-600/30">
-              <h4 className="text-[9px] text-yellow-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                <Star size={10} className="text-yellow-400" /> Quest Items ({player.inventory.questItems.length})
-              </h4>
-              <div className="flex flex-wrap gap-2">
-                {player.inventory.questItems.map((item, index) => (
-                  <ItemTooltip key={item.id || index} item={item}>
-                    <div className="flex items-center gap-1.5 px-2 py-1 bg-yellow-900/30 border border-yellow-600/50 rounded-lg cursor-help hover:bg-yellow-900/50 transition-colors">
-                      <Star size={12} className="text-yellow-400" />
-                      <span className="text-xs text-yellow-200 font-medium">{item.name}</span>
-                    </div>
-                  </ItemTooltip>
-                ))}
-              </div>
+              <button
+                onClick={() => setQuestItemsExpanded(!questItemsExpanded)}
+                className="w-full flex items-center justify-between text-[9px] text-yellow-400 uppercase tracking-widest mb-2 hover:text-yellow-300 transition-colors"
+              >
+                <span className="flex items-center gap-1">
+                  <Star size={10} className="text-yellow-400" /> Quest Items ({player.inventory.questItems.length})
+                </span>
+                {questItemsExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+              </button>
+
+              {questItemsExpanded && (
+                <div className="flex flex-wrap gap-2 animate-fadeIn">
+                  {player.inventory.questItems.map((item, index) => {
+                    const style = getQuestItemStyle(item);
+                    return (
+                      <ItemTooltip key={item.id || index} item={item}>
+                        <div className={`flex items-center gap-1.5 px-2 py-1.5 ${style.bg} border ${style.border} rounded-lg cursor-help hover:brightness-125 transition-all group`}>
+                          <div className="flex-shrink-0">
+                            {style.icon}
+                          </div>
+                          <div className="flex flex-col min-w-0">
+                            <span className={`text-xs ${style.text} font-medium truncate max-w-[100px]`}>{item.name}</span>
+                            <span className="text-[8px] text-muted-foreground opacity-70">{style.label}</span>
+                          </div>
+                        </div>
+                      </ItemTooltip>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Collapsed view - show count by type */}
+              {!questItemsExpanded && (
+                <div className="flex gap-2 items-center text-[10px] text-muted-foreground">
+                  {(() => {
+                    const counts: Record<string, number> = {};
+                    player.inventory.questItems.forEach(item => {
+                      const typeKey = item.questItemType || (item.type === 'key' ? 'key' : item.type === 'clue' ? 'clue' : 'default');
+                      counts[typeKey] = (counts[typeKey] || 0) + 1;
+                    });
+                    return Object.entries(counts).map(([type, count]) => {
+                      const style = QUEST_ITEM_STYLES[type] || QUEST_ITEM_STYLES.default;
+                      return (
+                        <span key={type} className={`flex items-center gap-1 ${style.text}`}>
+                          {style.icon} {count}
+                        </span>
+                      );
+                    });
+                  })()}
+                </div>
+              )}
             </div>
           )}
         </div>

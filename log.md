@@ -18854,3 +18854,122 @@ function cleanupQuestItems(
 | `contextActionEffects.ts` | Oppdater quest item collection |
 
 ---
+
+## 2026-01-23: Character Sheet og Inventory System - IMPLEMENTERT
+
+### P0: Quest Items Cleanup (KRITISK FIX) ✅
+
+**Filer endret:**
+- `src/game/utils/legacyManager.ts`
+
+**Endringer:**
+
+1. `updateLegacyHeroFromPlayer()` (linje 722-728):
+```typescript
+// Før: Quest items persisterte mellom scenarier
+equipment: { ...player.inventory, bag: [...player.inventory.bag] }
+
+// Etter: Quest items ryddes ALLTID
+equipment: {
+  ...player.inventory,
+  bag: [...player.inventory.bag],
+  questItems: []  // Always clear quest items between scenarios
+}
+```
+
+2. `legacyHeroToPlayer()` (linje 680):
+```typescript
+// Sikrer at quest items alltid starter tom
+inventory: { ...hero.equipment, bag: [...hero.equipment.bag], questItems: [] }
+```
+
+### P1: Forbedret Quest Items UI ✅
+
+**Filer endret:**
+- `src/game/components/CharacterPanel.tsx`
+
+**Nye features:**
+1. **Fargekoding basert på questItemType:**
+   - Key: Amber/gull (`bg-amber-900/40`, `text-amber-300`)
+   - Clue: Blå (`bg-blue-900/40`, `text-blue-300`)
+   - Artifact: Lilla (`bg-purple-900/40`, `text-purple-300`)
+   - Collectible: Gul (`bg-yellow-900/40`, `text-yellow-300`)
+   - Component: Cyan (`bg-cyan-900/40`, `text-cyan-300`)
+
+2. **Collapse/Expand funksjonalitet:**
+   - Quest items seksjonen kan kollapses
+   - Collapsed view viser count per type med ikoner
+
+3. **Type-spesifikke ikoner:**
+   - Key: `<Key />`
+   - Clue: `<FileText />`
+   - Artifact: `<Gem />`
+   - Collectible: `<Star />`
+   - Component: `<Package />`
+
+### P2: Inventory Management Forbedringer ✅
+
+**Filer endret:**
+- `src/game/components/ItemTooltip.tsx`
+
+**Nye features:**
+
+1. **Utvidet våpen-statistikk:**
+   - Attack dice med ikon
+   - Range med ikon
+   - Ammo count
+   - Weapon type (melee/ranged)
+
+2. **Item comparison:**
+   - Ny `compareWith` prop for ItemTooltip
+   - Viser +/- differanse i grønn/rød
+   - "Sammenlignet med: [item]" footer
+
+3. **Armor stats:**
+   - Defense dice med Shield-ikon
+   - Comparison support
+
+4. **Consumable info:**
+   - Uses remaining / max uses
+
+5. **Ekstra tags:**
+   - "Silent" for stille våpen
+   - "Light Source" for lyskilder
+
+### P3: Equipment Stash Filters ✅
+
+**Filer endret:**
+- `src/game/components/EquipmentStashPanel.tsx`
+
+**Nye features:**
+
+1. **Visual filter-knapper:**
+   - Ikoner per type (Sword, Search, Shield, etc.)
+   - Fargekodede knapper
+   - Count badges per type
+   - Skjuler tomme filter-typer
+
+2. **Forbedrede item-kort:**
+   - Kompakt stats-visning (attack, defense, range, uses)
+   - Quest item markering med "QUEST" badge
+   - Line-clamp for lange effect-tekster
+   - Hover-effekt med scale
+
+3. **Quest items warning:**
+   - Quest items i stash vises med redusert opacity
+   - Gul "QUEST" badge for identifikasjon
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,665.08 kB bundle)
+
+### Endrede filer oppsummering
+
+| Fil | Endring |
+|-----|---------|
+| `legacyManager.ts` | Quest items cleanup i 2 funksjoner |
+| `CharacterPanel.tsx` | Ny quest items UI med fargekoding, collapse, styling |
+| `ItemTooltip.tsx` | Utvidet våpen/armor stats, comparison support |
+| `EquipmentStashPanel.tsx` | Visual filter buttons, item counts, forbedrede kort |
+
+---
