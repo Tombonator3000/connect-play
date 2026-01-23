@@ -76,7 +76,10 @@ export const ItemTooltip: React.FC<ItemTooltipProps> = ({ item, children, isRest
                 <span className="text-xs font-bold">RESTRICTED - Behandles som unarmed</span>
               </div>
             )}
-            {item.effect && (
+            {/* Show description for quest items, effect for others */}
+            {item.isQuestItem && item.description ? (
+              <p className="text-xs text-muted-foreground italic leading-relaxed">"{item.description}"</p>
+            ) : item.effect && (
               <p className="text-xs text-muted-foreground italic">{item.effect}</p>
             )}
 

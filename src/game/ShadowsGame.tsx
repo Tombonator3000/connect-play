@@ -1852,9 +1852,53 @@ const ShadowsGame: React.FC = () => {
     const validMatches = findValidTemplates(constraints, sourceCategory as TileCategory, neighborTiles);
 
     // Filter by tile set preference using helper
-    const filteredMatches = validMatches.filter(match =>
+    const filteredByTileSet = validMatches.filter(match =>
       categoryMatchesTileSet(match.template.category as TileCategory, tileSet)
     );
+
+    // Apply theme-based tile preferences from scenario
+    // This ensures tiles match the quest context (e.g. manor quests get indoor tiles, not sewers)
+    const scenarioTheme = state.activeScenario?.theme;
+    const themePreferences = scenarioTheme ? getThemedTilePreferences(scenarioTheme) : null;
+
+    let filteredMatches = filteredByTileSet;
+    if (themePreferences) {
+      // Score and filter tiles based on theme preferences
+      filteredMatches = filteredByTileSet.map(match => {
+        const tileName = match.template.name.toLowerCase();
+        const tileId = match.template.id.toLowerCase();
+
+        // Check if tile matches preferred names (bonus)
+        const isPreferred = themePreferences.preferredNames.some(
+          pref => tileName.includes(pref) || tileId.includes(pref)
+        );
+
+        // Check if tile should be avoided (penalty)
+        const isAvoided = themePreferences.avoidNames.some(
+          avoid => tileName.includes(avoid) || tileId.includes(avoid)
+        );
+
+        // Adjust match score based on theme
+        let adjustedScore = match.matchScore;
+        if (isPreferred) {
+          adjustedScore *= 2.5;  // Strong bonus for preferred tiles
+        }
+        if (isAvoided) {
+          adjustedScore *= 0.1;  // Heavy penalty for avoided tiles
+        }
+
+        return { ...match, matchScore: Math.round(adjustedScore) };
+      }).filter(match => {
+        // Filter out heavily penalized tiles if we have alternatives
+        const tileName = match.template.name.toLowerCase();
+        const tileId = match.template.id.toLowerCase();
+        const isAvoided = themePreferences.avoidNames.some(
+          avoid => tileName.includes(avoid) || tileId.includes(avoid)
+        );
+        // Only filter out avoided tiles if we have non-avoided alternatives
+        return !isAvoided || filteredByTileSet.length <= 3;
+      });
+    }
 
     // Use filtered if available, otherwise fall back to all valid
     const matchesToUse = filteredMatches.length > 0 ? filteredMatches : validMatches;
