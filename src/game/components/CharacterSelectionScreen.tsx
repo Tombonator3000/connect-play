@@ -126,6 +126,7 @@ const CharacterSelectionScreen: React.FC<CharacterSelectionScreenProps> = ({
       spells: characterSpells,
       selectedSpells: undefined,
       actions: 2,
+      maxActions: 2,  // Base actions for non-legacy players
       isDead: false,
       madness: [],
       activeMadness: null,
