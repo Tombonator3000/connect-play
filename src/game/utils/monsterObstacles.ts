@@ -188,7 +188,7 @@ export const OBSTACLE_PASSABILITY: Record<TileObjectType, ObstaclePassability> =
 // ============================================================================
 
 /** Creature types that can phase through certain obstacles */
-const ETHEREAL_CREATURES = ['nightgaunt', 'hunting_horror'] as const;
+const ETHEREAL_CREATURES = ['nightgaunt', 'hunting_horror', 'formless_spawn'] as const;
 
 function isEtherealCreature(type: string): boolean {
   return (ETHEREAL_CREATURES as readonly string[]).includes(type);
