@@ -19097,3 +19097,73 @@ inventory: { ...hero.equipment, bag: [...hero.equipment.bag], questItems: [] }
 | `EquipmentStashPanel.tsx` | Visual filter buttons, item counts, forbedrede kort |
 
 ---
+
+## 2026-01-23: Forbedret Tile-Quest Logikk og Quest Item Inspection
+
+### Oppgave 1: Tile-tema Matching for Quests ✅
+
+**Problem:** Når en quest hadde tema (f.eks. "manor" quest), ble ikke tilhørende tiles filtrert basert på tema. Sewer-tiles kunne spawne i en mansion, forest-tiles i en asylum, etc.
+
+**Løsning:** Integrerte `getThemedTilePreferences()` fra scenarioGenerator i tile-genereringen i ShadowsGame.tsx.
+
+**Filer endret:**
+- `src/game/ShadowsGame.tsx` (linje ~1855-1900)
+
+**Implementasjon:**
+1. Henter tema fra `state.activeScenario?.theme`
+2. Bruker `getThemedTilePreferences(theme)` for å få prefererte/unngåtte tile-navn
+3. Tiles som matcher tema-preferanser får 2.5x bonus weight
+4. Tiles som bør unngås får 0.1x penalty (90% reduksjon)
+5. Sterkt straffede tiles filtreres ut hvis det finnes alternativer
+
+**Resultat:** Quest med tema "manor" vil nå generere passende innendørs tiles (library, study, bedroom, cellar) og unngå upassende tiles (sewer, harbor, forest).
+
+### Oppgave 2: Quest Item Inspection i Inventory ✅
+
+**Problem:** Quest items i inventory kunne ikke undersøkes/leses. Spilleren kunne ikke se beskrivelsen av brev, journaler, ledetråder, etc.
+
+**Løsning:** La til klikkbar inspect-funksjon for quest items i CharacterPanel.
+
+**Filer endret:**
+- `src/game/components/CharacterPanel.tsx`
+- `src/game/components/ItemTooltip.tsx`
+
+**Nye features:**
+
+1. **Quest Item Inspection Modal:**
+   - Klikk på et quest item i inventory åpner inspect-panel
+   - Viser full beskrivelse med Lovecraft-atmosfærisk tekst
+   - Viser relatert objective (om det finnes)
+   - Viser item type info (key, clue, collectible, artifact, component)
+   - Lukk-knapp og elegant styling
+
+2. **Forbedret ItemTooltip:**
+   - Quest items viser nå `description` i stedet for `effect`
+   - Atmosfæriske beskrivelser i hermetegn for immersion
+
+3. **Visual feedback:**
+   - Scroll-ikon vises ved hover på quest items (indikerer "les mer")
+   - Hover-effekt med scale for å indikere klikkbarhet
+
+**Quest Item Types som vises:**
+| Type | Ikon | Info |
+|------|------|------|
+| key | Key | "Kan åpne låste dører" |
+| clue | Search | "Ledetråd" |
+| collectible | Star | "Samleobjekt" |
+| artifact | Gem | "Artefakt" |
+| component | Package | "Ritual-komponent" |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,672.17 kB bundle)
+
+### Endrede filer oppsummering
+
+| Fil | Endring |
+|-----|---------|
+| `ShadowsGame.tsx` | Tema-basert tile filtrering i spawnRoom() |
+| `CharacterPanel.tsx` | Quest item inspect modal, klikkbare items |
+| `ItemTooltip.tsx` | Viser description for quest items |
+
+---

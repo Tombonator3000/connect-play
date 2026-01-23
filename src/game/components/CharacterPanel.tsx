@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Player, Item, countInventoryItems, InventorySlotName, CharacterType, EarnedBadge, ScenarioObjective } from '../types';
-import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User, Hand, Shirt, Key, X, ArrowRight, Trash2, Pill, Award, Ban, FileText, Gem, Sparkles, Package, ChevronDown, ChevronUp, Target } from 'lucide-react';
+import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User, Hand, Shirt, Key, X, ArrowRight, Trash2, Pill, Award, Ban, FileText, Gem, Sparkles, Package, ChevronDown, ChevronUp, Target, BookOpen, ScrollText } from 'lucide-react';
 import { ItemTooltip } from './ItemTooltip';
 import { getCharacterPortrait, getCharacterDisplayName } from '../utils/characterAssets';
 import { getItemIcon as getSpecificItemIcon } from './ItemIcons';
@@ -82,6 +82,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   const [selectedSlot, setSelectedSlot] = useState<InventorySlotName | null>(null);
   const [showSlotMenu, setShowSlotMenu] = useState(false);
   const [questItemsExpanded, setQuestItemsExpanded] = useState(true);
+  const [inspectedQuestItem, setInspectedQuestItem] = useState<Item | null>(null);
 
   if (!player) return null;
 
@@ -339,24 +340,28 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                       ? objectives.find(obj => obj.id === item.objectiveId)
                       : null;
                     return (
-                      <ItemTooltip key={item.id || index} item={item}>
-                        <div className={`flex items-center gap-1.5 px-2 py-1.5 ${style.bg} border ${style.border} rounded-lg cursor-help hover:brightness-125 transition-all group`}>
-                          <div className="flex-shrink-0">
-                            {style.icon}
-                          </div>
-                          <div className="flex flex-col min-w-0">
-                            <span className={`text-xs ${style.text} font-medium truncate max-w-[100px]`}>{item.name}</span>
-                            {linkedObjective ? (
-                              <span className="text-[8px] text-cyan-400/80 flex items-center gap-0.5 truncate max-w-[100px]" title={linkedObjective.shortDescription}>
-                                <Target size={8} className="flex-shrink-0" />
-                                <span className="truncate">{linkedObjective.shortDescription}</span>
-                              </span>
-                            ) : (
-                              <span className="text-[8px] text-muted-foreground opacity-70">{style.label}</span>
-                            )}
-                          </div>
+                      <div
+                        key={item.id || index}
+                        onClick={() => setInspectedQuestItem(item)}
+                        className={`flex items-center gap-1.5 px-2 py-1.5 ${style.bg} border ${style.border} rounded-lg cursor-pointer hover:brightness-125 hover:scale-105 transition-all group`}
+                        title="Klikk for å undersøke"
+                      >
+                        <div className="flex-shrink-0">
+                          {style.icon}
                         </div>
-                      </ItemTooltip>
+                        <div className="flex flex-col min-w-0">
+                          <span className={`text-xs ${style.text} font-medium truncate max-w-[100px]`}>{item.name}</span>
+                          {linkedObjective ? (
+                            <span className="text-[8px] text-cyan-400/80 flex items-center gap-0.5 truncate max-w-[100px]" title={linkedObjective.shortDescription}>
+                              <Target size={8} className="flex-shrink-0" />
+                              <span className="truncate">{linkedObjective.shortDescription}</span>
+                            </span>
+                          ) : (
+                            <span className="text-[8px] text-muted-foreground opacity-70">{style.label}</span>
+                          )}
+                        </div>
+                        <ScrollText size={10} className="text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </div>
                     );
                   })}
                 </div>
@@ -492,6 +497,104 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
                         <Trash2 size={14} />
                         Drop Item
                       </button>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        )}
+
+        {/* Quest Item Inspect Modal */}
+        {inspectedQuestItem && (
+          <div className="mt-4 p-4 bg-background/95 border-2 border-yellow-600/60 rounded-lg animate-fadeIn shadow-[0_0_20px_rgba(202,138,4,0.3)]">
+            {(() => {
+              const style = getQuestItemStyle(inspectedQuestItem);
+              const linkedObjective = inspectedQuestItem.objectiveId
+                ? objectives.find(obj => obj.id === inspectedQuestItem.objectiveId)
+                : null;
+
+              return (
+                <>
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-3 pb-2 border-b border-yellow-600/30">
+                    <div className="flex items-center gap-2">
+                      <div className={`p-2 ${style.bg} border ${style.border} rounded-lg`}>
+                        {style.icon}
+                      </div>
+                      <div>
+                        <h4 className={`text-sm font-bold ${style.text}`}>{inspectedQuestItem.name}</h4>
+                        <span className="text-[9px] uppercase tracking-wider text-muted-foreground">{style.label}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setInspectedQuestItem(null)}
+                      className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  {/* Description */}
+                  {inspectedQuestItem.description && (
+                    <div className="mb-3">
+                      <div className="flex items-center gap-1.5 text-[9px] text-amber-400 uppercase tracking-wider mb-1">
+                        <BookOpen size={10} />
+                        <span>Beskrivelse</span>
+                      </div>
+                      <p className="text-xs text-sepia italic leading-relaxed bg-leather/30 p-2 rounded border border-primary/20">
+                        "{inspectedQuestItem.description}"
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Linked Objective */}
+                  {linkedObjective && (
+                    <div className="mb-3">
+                      <div className="flex items-center gap-1.5 text-[9px] text-cyan-400 uppercase tracking-wider mb-1">
+                        <Target size={10} />
+                        <span>Relatert mål</span>
+                      </div>
+                      <div className="bg-cyan-950/30 border border-cyan-500/30 rounded p-2">
+                        <p className="text-xs text-cyan-300 font-medium">{linkedObjective.shortDescription}</p>
+                        {linkedObjective.description && (
+                          <p className="text-[10px] text-cyan-400/70 mt-1">{linkedObjective.description}</p>
+                        )}
+                        {linkedObjective.completed && (
+                          <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 bg-green-500/20 text-green-400 text-[9px] uppercase tracking-wider rounded border border-green-500/30">
+                            <Star size={8} /> Fullført
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Item Type Info */}
+                  <div className="flex flex-wrap gap-2 text-[10px]">
+                    {inspectedQuestItem.questItemType === 'key' && (
+                      <span className="bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded border border-amber-500/30 flex items-center gap-1">
+                        <Key size={10} /> Kan åpne låste dører
+                      </span>
+                    )}
+                    {inspectedQuestItem.questItemType === 'clue' && (
+                      <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded border border-blue-500/30 flex items-center gap-1">
+                        <Search size={10} /> Ledetråd
+                      </span>
+                    )}
+                    {inspectedQuestItem.questItemType === 'collectible' && (
+                      <span className="bg-yellow-500/20 text-yellow-400 px-2 py-0.5 rounded border border-yellow-500/30 flex items-center gap-1">
+                        <Star size={10} /> Samleobjekt
+                      </span>
+                    )}
+                    {inspectedQuestItem.questItemType === 'artifact' && (
+                      <span className="bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded border border-purple-500/30 flex items-center gap-1">
+                        <Gem size={10} /> Artefakt
+                      </span>
+                    )}
+                    {inspectedQuestItem.questItemType === 'component' && (
+                      <span className="bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/30 flex items-center gap-1">
+                        <Package size={10} /> Ritual-komponent
+                      </span>
                     )}
                   </div>
                 </>
