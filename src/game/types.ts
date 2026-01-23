@@ -905,12 +905,13 @@ export interface ContextActionEffect {
 }
 
 export interface ContextActionTarget {
-  type: 'tile' | 'obstacle' | 'edge' | 'object';
+  type: 'tile' | 'obstacle' | 'edge' | 'object' | 'survivor';
   tileId: string;
   edgeIndex?: number;          // For edge targets (0-5)
   obstacle?: Obstacle;
   object?: TileObject;
   edge?: EdgeData;
+  survivor?: Survivor;         // For survivor interaction targets
 }
 
 export interface FloatingText {

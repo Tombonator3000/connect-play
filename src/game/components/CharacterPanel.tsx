@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Player, Item, countInventoryItems, InventorySlotName, CharacterType, EarnedBadge } from '../types';
-import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User, Hand, Shirt, Key, X, ArrowRight, Trash2, Pill, Award } from 'lucide-react';
+import { Heart, Brain, Eye, Star, Backpack, Sword, Search, Zap, ShieldCheck, Cross, FileQuestion, User, Hand, Shirt, Key, X, ArrowRight, Trash2, Pill, Award, Ban } from 'lucide-react';
 import { ItemTooltip } from './ItemTooltip';
 import { getCharacterPortrait, getCharacterDisplayName } from '../utils/characterAssets';
 import { getItemIcon as getSpecificItemIcon } from './ItemIcons';
 import BadgeDisplay from './BadgeDisplay';
 import DesperateIndicator from './DesperateIndicator';
+import { canCharacterClassUseWeapon } from '../utils/combatUtils';
 
 interface CharacterPanelProps {
   player: Player | null;
@@ -106,17 +107,29 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
   const renderSlot = (item: Item | null, label: string, slotIcon: React.ReactNode, slotName: InventorySlotName) => {
     const isSelected = selectedSlot === slotName && showSlotMenu;
+
+    // Check if weapon is restricted for this character class
+    const isRestricted = item?.type === 'weapon' && player.id
+      ? !canCharacterClassUseWeapon(player.id as CharacterType, item.id)
+      : false;
+
     const slotContent = (
       <div
         onClick={() => item && handleSlotClick(slotName, item)}
         className={`aspect-square border-2 rounded-lg flex flex-col items-center justify-center transition-all relative ${
           item
-            ? `bg-leather border-parchment text-parchment hover:border-accent hover:shadow-[var(--shadow-glow)] cursor-pointer ${isSelected ? 'border-accent ring-2 ring-accent/50' : ''}`
+            ? `bg-leather border-parchment text-parchment hover:border-accent hover:shadow-[var(--shadow-glow)] cursor-pointer ${isSelected ? 'border-accent ring-2 ring-accent/50' : ''} ${isRestricted ? 'opacity-60 border-red-500/50' : ''}`
             : 'bg-background/40 border-border opacity-50 cursor-default'
         }`}
       >
         {item ? getItemIcon(item.type, item.id, item.questItemType) : slotIcon}
         <span className="text-[8px] uppercase tracking-wider mt-1 opacity-60">{label}</span>
+        {/* Weapon restriction indicator */}
+        {isRestricted && (
+          <div className="absolute -top-1 -right-1 bg-red-600 rounded-full p-0.5" title={`${player.id} kan ikke bruke dette vapenet`}>
+            <Ban size={10} className="text-white" />
+          </div>
+        )}
         {/* Usage indicator for consumables */}
         {item && item.type === 'consumable' && item.uses !== undefined && (
           <span className="absolute top-0.5 right-0.5 text-[7px] bg-accent text-background px-1 rounded-full font-bold">
@@ -126,7 +139,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
       </div>
     );
     return item ? (
-      <ItemTooltip item={item}>
+      <ItemTooltip item={item} isRestricted={isRestricted}>
         {slotContent}
       </ItemTooltip>
     ) : slotContent;

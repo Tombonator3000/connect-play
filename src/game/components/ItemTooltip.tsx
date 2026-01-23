@@ -13,9 +13,10 @@ import { useIsMobile } from '@/hooks/use-mobile';
 interface ItemTooltipProps {
   item: Item;
   children: React.ReactNode;
+  isRestricted?: boolean;  // Whether this weapon is restricted for the current character
 }
 
-export const ItemTooltip: React.FC<ItemTooltipProps> = ({ item, children }) => {
+export const ItemTooltip: React.FC<ItemTooltipProps> = ({ item, children, isRestricted = false }) => {
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'weapon': return 'text-red-400';
@@ -66,6 +67,13 @@ export const ItemTooltip: React.FC<ItemTooltipProps> = ({ item, children }) => {
             </div>
           </div>
           <div className="p-3 space-y-2">
+            {/* Weapon restriction warning */}
+            {isRestricted && (
+              <div className="flex items-center gap-2 bg-red-500/20 text-red-400 px-2 py-1 rounded border border-red-500/30 mb-2">
+                <Ban size={14} />
+                <span className="text-xs font-bold">RESTRICTED - Behandles som unarmed</span>
+              </div>
+            )}
             {item.effect && (
               <p className="text-xs text-muted-foreground italic">{item.effect}</p>
             )}

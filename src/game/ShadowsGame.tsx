@@ -6,7 +6,7 @@ import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Sc
 import ContextActionBar from './components/ContextActionBar';
 import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
 import { performSkillCheck } from './utils/combatUtils';
-import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, OCCULTIST_SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES, validateTileConnection, selectRandomConnectableCategory, isDoorRequired, CATEGORY_ZONE_LEVELS, LOCATION_DESCRIPTIONS, getWeatherForDoom, getWeatherEffect, calculateWeatherAgilityPenalty, rollWeatherHorror, WEATHER_EFFECTS, getDarkRoomItem, DARK_ROOM_LOOT_TABLES, getAvailableSurvivorTraits } from './constants';
+import { CHARACTERS, ITEMS, START_TILE, SCENARIOS, MADNESS_CONDITIONS, SPELLS, OCCULTIST_SPELLS, BESTIARY, INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, INDOOR_CONNECTORS, OUTDOOR_CONNECTORS, getCombatModifier, SPAWN_CHANCES, validateTileConnection, selectRandomConnectableCategory, isDoorRequired, CATEGORY_ZONE_LEVELS, LOCATION_DESCRIPTIONS, getWeatherForDoom, getWeatherEffect, calculateWeatherAgilityPenalty, rollWeatherHorror, WEATHER_EFFECTS, getDarkRoomItem, DARK_ROOM_LOOT_TABLES, getAvailableSurvivorTraits, getEnemyLoot } from './constants';
 import { hexDistance, findPath, getEdgeDirection, getOppositeEdgeDirection } from './hexUtils';
 import { validateMovementEdges } from './utils/movementUtils';
 import GameBoard from './components/GameBoard';
@@ -132,6 +132,17 @@ import {
   calculateEnemySpawnPosition,
   createFallbackSpawnResult
 } from './utils/roomSpawnHelpers';
+import {
+  shouldSpawnSurvivor,
+  selectSurvivorType,
+  createSurvivor,
+  processSurvivorTurn,
+  startFollowing,
+  rescueSurvivor,
+  killSurvivor,
+  useSurvivorAbility,
+  SURVIVOR_TEMPLATES
+} from './utils/survivorSystem';
 
 const STORAGE_KEY = 'shadows_1920s_save';
 const SETTINGS_KEY = 'shadows_1920s_settings';
@@ -387,6 +398,36 @@ const ShadowsGame: React.FC = () => {
           if (newlyDeadPlayerId) {
             updatedPlayers = applyAllyDeathSanityLoss(newlyDeadPlayerId, updatedPlayers);
           }
+        }
+
+        // === STEP 3.5: SURVIVOR TURN PROCESSING ===
+        if (state.survivors && state.survivors.length > 0) {
+          const survivorResult = processSurvivorTurn(
+            state.survivors,
+            updatedPlayers,
+            combatResult.updatedEnemies,
+            state.board
+          );
+
+          // Log survivor messages
+          survivorResult.messages.forEach(msg => addToLog(msg));
+
+          // Handle panic events
+          for (const panicEvent of survivorResult.panicEvents) {
+            addToLog(`⚠️ ${panicEvent.message}`);
+            addFloatingText(
+              panicEvent.survivor.position.q,
+              panicEvent.survivor.position.r,
+              "PANIC!",
+              "text-yellow-400"
+            );
+          }
+
+          // Update survivors state
+          setState(prev => ({
+            ...prev,
+            survivors: survivorResult.updatedSurvivors
+          }));
         }
 
         // === STEP 4: DOOM EVENTS ===
@@ -2699,6 +2740,24 @@ const ShadowsGame: React.FC = () => {
           }
         }
 
+        // SURVIVOR SPAWN SYSTEM - Check if a survivor should spawn on first visit
+        if (isFirstVisit && enteredTile && !darkRoomEffects.enemySpawn) {
+          if (shouldSpawnSurvivor(enteredTile, state.doom, state.survivors || [], true)) {
+            const survivorType = selectSurvivorType(enteredTile.category, state.doom);
+            if (survivorType) {
+              const newSurvivor = createSurvivor(survivorType, { q, r });
+              const template = SURVIVOR_TEMPLATES[survivorType];
+              addToLog(`SURVIVOR FOUND: ${newSurvivor.name} (${template.type}) is hiding here!`);
+              addToLog(`"${newSurvivor.foundDialogue}"`);
+              addFloatingText(q, r, "SURVIVOR!", "text-green-400");
+              setState(prev => ({
+                ...prev,
+                survivors: [...(prev.survivors || []), newSurvivor]
+              }));
+            }
+          }
+        }
+
         // Calculate total damage from hazards and dark room traps
         const totalDamage = hazardDamage + darkRoomEffects.trapDamage;
 
@@ -2883,6 +2942,51 @@ const ShadowsGame: React.FC = () => {
               // Track kill for legacy
               const heroId = activePlayer.heroId || activePlayer.id;
               incrementHeroKills(heroId);
+
+              // ENEMY LOOT DROP SYSTEM (Spell kills)
+              const spellLoot = getEnemyLoot(spellTarget.type);
+              if (spellLoot.gold > 0 || spellLoot.items.length > 0) {
+                if (spellLoot.gold > 0) {
+                  addToLog(`LOOT: +${spellLoot.gold} gull fra ${spellTarget.name}!`);
+                  addFloatingText(spellTarget.position.q, spellTarget.position.r, `+${spellLoot.gold} GOLD`, "text-yellow-400");
+                  if (activePlayer.heroId) {
+                    addGoldToHero(activePlayer.heroId, spellLoot.gold);
+                  }
+                  setState(prev => ({
+                    ...prev,
+                    players: prev.players.map((p, i) =>
+                      i === prev.activePlayerIndex
+                        ? { ...p, gold: (p.gold || 0) + spellLoot.gold }
+                        : p
+                    )
+                  }));
+                }
+                for (const item of spellLoot.items) {
+                  if (!isInventoryFull(activePlayer.inventory)) {
+                    const equipResult = equipItem(activePlayer.inventory, item);
+                    addToLog(`LOOT: Fant ${item.name} fra ${spellTarget.name}!`);
+                    addFloatingText(spellTarget.position.q, spellTarget.position.r, item.name.toUpperCase(), "text-accent");
+                    setState(prev => ({
+                      ...prev,
+                      players: prev.players.map((p, i) =>
+                        i === prev.activePlayerIndex
+                          ? { ...p, inventory: equipResult.inventory }
+                          : p
+                      )
+                    }));
+                  } else {
+                    addToLog(`LOOT: ${item.name} droppet pa bakken (inventar fullt)!`);
+                    setState(prev => ({
+                      ...prev,
+                      board: prev.board.map(t =>
+                        t.q === spellTarget.position.q && t.r === spellTarget.position.r
+                          ? { ...t, items: [...(t.items || []), item] }
+                          : t
+                      )
+                    }));
+                  }
+                }
+              }
 
               // Update kill objectives
               if (state.activeScenario) {
@@ -3129,6 +3233,51 @@ const ShadowsGame: React.FC = () => {
 
               const heroId = activePlayer.heroId || activePlayer.id;
               incrementHeroKills(heroId);
+
+              // ENEMY LOOT DROP SYSTEM (Occultist spell kills)
+              const occLoot = getEnemyLoot(occTarget.type);
+              if (occLoot.gold > 0 || occLoot.items.length > 0) {
+                if (occLoot.gold > 0) {
+                  addToLog(`LOOT: +${occLoot.gold} gull fra ${occTarget.name}!`);
+                  addFloatingText(occTarget.position.q, occTarget.position.r, `+${occLoot.gold} GOLD`, "text-yellow-400");
+                  if (activePlayer.heroId) {
+                    addGoldToHero(activePlayer.heroId, occLoot.gold);
+                  }
+                  setState(prev => ({
+                    ...prev,
+                    players: prev.players.map((p, i) =>
+                      i === prev.activePlayerIndex
+                        ? { ...p, gold: (p.gold || 0) + occLoot.gold }
+                        : p
+                    )
+                  }));
+                }
+                for (const item of occLoot.items) {
+                  if (!isInventoryFull(activePlayer.inventory)) {
+                    const equipResult = equipItem(activePlayer.inventory, item);
+                    addToLog(`LOOT: Fant ${item.name} fra ${occTarget.name}!`);
+                    addFloatingText(occTarget.position.q, occTarget.position.r, item.name.toUpperCase(), "text-accent");
+                    setState(prev => ({
+                      ...prev,
+                      players: prev.players.map((p, i) =>
+                        i === prev.activePlayerIndex
+                          ? { ...p, inventory: equipResult.inventory }
+                          : p
+                      )
+                    }));
+                  } else {
+                    addToLog(`LOOT: ${item.name} droppet pa bakken (inventar fullt)!`);
+                    setState(prev => ({
+                      ...prev,
+                      board: prev.board.map(t =>
+                        t.q === occTarget.position.q && t.r === occTarget.position.r
+                          ? { ...t, items: [...(t.items || []), item] }
+                          : t
+                      )
+                    }));
+                  }
+                }
+              }
             }
 
             // Update spell uses and player state
@@ -3318,6 +3467,57 @@ const ShadowsGame: React.FC = () => {
             // Track kill for legacy hero XP rewards
             const heroId = activePlayer.heroId || activePlayer.id;
             incrementHeroKills(heroId);
+
+            // ENEMY LOOT DROP SYSTEM
+            const loot = getEnemyLoot(enemy.type);
+            if (loot.gold > 0 || loot.items.length > 0) {
+              // Add gold to player
+              if (loot.gold > 0) {
+                addToLog(`LOOT: +${loot.gold} gull fra ${enemy.name}!`);
+                addFloatingText(enemy.position.q, enemy.position.r, `+${loot.gold} GOLD`, "text-yellow-400");
+                // Update legacy hero gold if applicable
+                if (activePlayer.heroId) {
+                  addGoldToHero(activePlayer.heroId, loot.gold);
+                }
+                setState(prev => ({
+                  ...prev,
+                  players: prev.players.map((p, i) =>
+                    i === prev.activePlayerIndex
+                      ? { ...p, gold: (p.gold || 0) + loot.gold }
+                      : p
+                  )
+                }));
+              }
+
+              // Add items to inventory or drop on ground
+              for (const item of loot.items) {
+                if (!isInventoryFull(activePlayer.inventory)) {
+                  const equipResult = equipItem(activePlayer.inventory, item);
+                  addToLog(`LOOT: Fant ${item.name} fra ${enemy.name}!`);
+                  addFloatingText(enemy.position.q, enemy.position.r, item.name.toUpperCase(), "text-accent");
+                  setState(prev => ({
+                    ...prev,
+                    players: prev.players.map((p, i) =>
+                      i === prev.activePlayerIndex
+                        ? { ...p, inventory: equipResult.inventory }
+                        : p
+                    )
+                  }));
+                } else {
+                  // Drop item on the tile
+                  addToLog(`LOOT: ${item.name} droppet pa bakken (inventar fullt)!`);
+                  addFloatingText(enemy.position.q, enemy.position.r, "DROPPED: " + item.name, "text-muted-foreground");
+                  setState(prev => ({
+                    ...prev,
+                    board: prev.board.map(t =>
+                      t.q === enemy.position.q && t.r === enemy.position.r
+                        ? { ...t, items: [...(t.items || []), item] }
+                        : t
+                    )
+                  }));
+                }
+              }
+            }
 
             // DOOM BONUS: Check if elite/boss kill grants doom (pressure-based doom system)
             const isEliteOrBoss = enemy.traits?.includes('elite') ||
