@@ -400,6 +400,15 @@ const ShadowsGame: React.FC = () => {
           }
         }
 
+        // CRITICAL: Save damaged players to state immediately
+        // This ensures HP/Sanity changes persist before setTimeout callback
+        if (combatResult.processedAttacks.length > 0) {
+          setState(prev => ({
+            ...prev,
+            players: updatedPlayers
+          }));
+        }
+
         // === STEP 3.5: SURVIVOR TURN PROCESSING ===
         if (state.survivors && state.survivors.length > 0) {
           const survivorResult = processSurvivorTurn(
