@@ -29,12 +29,14 @@ export interface QuestItem {
 export interface QuestTile {
   id: string;
   objectiveId: string;
-  type: 'exit' | 'altar' | 'ritual_point' | 'npc_location' | 'boss_room';
+  type: 'exit' | 'altar' | 'ritual_point' | 'npc_location' | 'boss_room' | 'final_confrontation';
   name: string;
   spawned: boolean;
   revealed: boolean;
   revealCondition?: 'objective_complete' | 'item_found' | 'doom_threshold';
   revealObjectiveId?: string;
+  /** For final_confrontation: the boss type to spawn */
+  bossType?: string;
 }
 
 export interface ObjectiveSpawnState {
@@ -71,7 +73,7 @@ export const ROOM_SPAWN_BONUSES: RoomSpawnBonus[] = [
  */
 interface QuestTileTypeLookup {
   patterns: string[];
-  type: 'exit' | 'altar' | 'ritual_point' | 'boss_room' | 'npc_location';
+  type: 'exit' | 'altar' | 'ritual_point' | 'boss_room' | 'npc_location' | 'final_confrontation';
   name: string;
 }
 
@@ -80,6 +82,7 @@ export const QUEST_TILE_TYPE_LOOKUP: QuestTileTypeLookup[] = [
   { patterns: ['altar', 'ritual'], type: 'altar', name: 'Ritual Altar' },
   { patterns: ['point'], type: 'ritual_point', name: 'Ritual Point' },
   { patterns: ['boss', 'sanctum'], type: 'boss_room', name: 'Dark Sanctum' },
+  { patterns: ['final_confrontation', 'confront'], type: 'final_confrontation', name: 'The Final Confrontation' },
 ];
 
 /**
@@ -332,8 +335,21 @@ export function initializeObjectiveSpawns(scenario: Scenario): ObjectiveSpawnSta
 
       case 'ritual':
       case 'interact':
-        // Altar or interaction point
-        if (objective.targetId?.includes('ritual') || objective.targetId?.includes('altar')) {
+        // Altar, interaction point, or final confrontation
+        if (objective.targetId?.includes('final_confrontation')) {
+          // Final confrontation spawns a boss when revealed
+          questTiles.push({
+            id: `quest_tile_${objective.id}`,
+            objectiveId: objective.id,
+            type: 'final_confrontation',
+            name: 'The Final Confrontation',
+            spawned: false,
+            revealed: !objective.isHidden,
+            revealCondition: objective.revealedBy ? 'objective_complete' : undefined,
+            revealObjectiveId: objective.revealedBy,
+            bossType: 'shoggoth', // Default boss for final confrontation
+          });
+        } else if (objective.targetId?.includes('ritual') || objective.targetId?.includes('altar')) {
           questTiles.push({
             id: `quest_tile_${objective.id}`,
             objectiveId: objective.id,

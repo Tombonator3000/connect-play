@@ -2196,6 +2196,29 @@ const ShadowsGame: React.FC = () => {
       );
     }
 
+    // Spawn boss for final confrontation
+    if (result.spawnBoss) {
+      const bossInfo = result.spawnBoss;
+      addToLog(bossInfo.message);
+      addFloatingText(player.position.q, player.position.r, 'BOSS!', 'text-red-500');
+
+      // Find a suitable spawn location near the player
+      const spawnPos = calculateEnemySpawnPosition(
+        state.board,
+        state.players,
+        state.enemies,
+        player.position
+      );
+
+      if (spawnPos) {
+        const bossEnemy = createEnemy(bossInfo.type as EnemyType, spawnPos.q, spawnPos.r);
+        setState(prev => ({
+          ...prev,
+          enemies: [...prev.enemies, bossEnemy]
+        }));
+      }
+    }
+
     // Apply state updates
     if (result.board || result.players || result.activeScenario !== undefined ||
         result.objectiveSpawnState !== undefined || result.questItemsCollected ||

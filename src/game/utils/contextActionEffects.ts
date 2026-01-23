@@ -74,6 +74,11 @@ export interface ActionEffectResult {
   };
   /** Spell/visual particle effect to spawn */
   spellParticle?: SpellParticle;
+  /** Spawn a boss enemy - for final confrontation reveal */
+  spawnBoss?: {
+    type: string;
+    message: string;
+  };
 }
 
 /**
@@ -355,6 +360,7 @@ export function handleSearchEffect(
   let updatedQuestItemsCollected = ctx.questItemsCollected;
   let floatingText: ActionEffectResult['floatingText'] | undefined;
   let spellParticle: SpellParticle | undefined;
+  let bossToSpawn: { type: string; message: string } | undefined;
 
   // Check for quest items on this tile
   const questItem = ctx.objectiveSpawnState?.questItems.find(
@@ -367,21 +373,60 @@ export function handleSearchEffect(
     updatedObjectiveSpawnState = result.updatedState;
 
     if (result.updatedObjective) {
-      updatedScenario = {
-        ...ctx.activeScenario,
-        objectives: ctx.activeScenario.objectives.map(o =>
-          o.id === result.updatedObjective!.id ? result.updatedObjective! : o
-        )
-      };
+      // First, update the objective that received progress
+      let updatedObjectives = ctx.activeScenario.objectives.map(o =>
+        o.id === result.updatedObjective!.id ? result.updatedObjective! : o
+      );
 
       logMessages.push(`QUEST ITEM FOUND: ${questItem.name}`);
       logMessages.push(questItem.description);
 
       if (result.objectiveCompleted) {
         logMessages.push(`OBJECTIVE COMPLETE: ${result.updatedObjective.shortDescription}`);
+
+        // CRITICAL: Reveal any hidden objectives that depend on this completed objective
+        const completedObjectiveId = result.updatedObjective.id;
+        updatedObjectives = updatedObjectives.map(obj => {
+          if (obj.isHidden && obj.revealedBy === completedObjectiveId) {
+            logMessages.push(`NEW OBJECTIVE REVEALED: ${obj.shortDescription}`);
+
+            // Also reveal the corresponding quest tile
+            if (updatedObjectiveSpawnState) {
+              const questTile = updatedObjectiveSpawnState.questTiles.find(
+                qt => qt.objectiveId === obj.id && !qt.revealed
+              );
+              if (questTile) {
+                updatedObjectiveSpawnState = {
+                  ...updatedObjectiveSpawnState,
+                  questTiles: updatedObjectiveSpawnState.questTiles.map(qt =>
+                    qt.id === questTile.id ? { ...qt, revealed: true } : qt
+                  )
+                };
+
+                // If this is a final_confrontation tile, spawn the boss!
+                if (questTile.type === 'final_confrontation') {
+                  const bossType = questTile.bossType || 'shoggoth';
+                  bossToSpawn = {
+                    type: bossType,
+                    message: `THE FINAL CONFRONTATION: A ${bossType.toUpperCase()} emerges from the shadows!`
+                  };
+                  logMessages.push(`The truth reveals itself! A ${bossType} appears!`);
+                }
+              }
+            }
+
+            return { ...obj, isHidden: false };
+          }
+          return obj;
+        });
       } else {
         logMessages.push(`Progress: ${result.updatedObjective.shortDescription}`);
       }
+
+      updatedScenario = {
+        ...ctx.activeScenario,
+        objectives: updatedObjectives
+      };
     }
 
     updatedQuestItemsCollected = [...ctx.questItemsCollected, questItem.id];
@@ -457,7 +502,8 @@ export function handleSearchEffect(
     questItemsCollected: updatedQuestItemsCollected,
     logMessages,
     floatingText,
-    spellParticle
+    spellParticle,
+    spawnBoss: bossToSpawn
   };
 }
 

@@ -1,5 +1,66 @@
 # Development Log
 
+## 2026-01-23: Quest System - Final Confrontation Implementation
+
+### Problem
+Når spilleren samlet alle 5 quest items (Evidence) i investigation missions, skjedde ingenting. "Special conditions" sa "Clues reveal the final confrontation" men ingen final confrontation ble avslørt eller spawnet.
+
+### Rotårsak
+Flere problemer i quest-systemet:
+
+1. **Manglende objective reveal**: Når quest items ble samlet inn via `handleSearchEffect`, ble bare den ene objective-en oppdatert. Skjulte objectives med `revealedBy` ble aldri avslørt.
+
+2. **Manglende final_confrontation støtte**: Quest tile-systemet støttet ikke `final_confrontation` som en egen type, så interact objectives med `targetId: 'final_confrontation'` fikk ingen quest tile opprettet.
+
+3. **Feil victory check**: `checkInvestigationVictory` sjekket bare `find_item` og `find_tile` objectives, men investigation missions bruker `collect` og `interact` objectives.
+
+4. **Ingen boss spawn**: Selv om confront_truth objective ble avslørt, fantes det ingen mekanisme for å spawne en boss.
+
+### Løsning
+
+#### 1. Utvidet QuestTile type (`objectiveSpawner.ts`)
+```typescript
+export interface QuestTile {
+  type: 'exit' | 'altar' | 'ritual_point' | 'npc_location' | 'boss_room' | 'final_confrontation';
+  bossType?: string;  // For final_confrontation: the boss to spawn
+}
+```
+
+#### 2. Lagt til final_confrontation i initializeObjectiveSpawns
+Når en interact objective har `targetId: 'final_confrontation'`, opprettes en quest tile med type `final_confrontation` og en default boss (shoggoth).
+
+#### 3. Fikset handleSearchEffect for å avsløre skjulte objectives (`contextActionEffects.ts`)
+Når en objective fullføres, sjekker vi nå alle objectives med `revealedBy` som matcher den fullførte objective-en og setter `isHidden: false`. Vi avslører også tilhørende quest tiles.
+
+#### 4. Lagt til boss spawn mekanisme
+- Ny `spawnBoss` field i `ActionEffectResult` interface
+- Når en `final_confrontation` quest tile avsløres, trigges boss spawn
+- Boss spawner nær spillerens posisjon med en dramatisk melding
+
+#### 5. Oppdatert checkInvestigationVictory (`scenarioUtils.ts`)
+Sjekker nå alle relevante objective-typer: `collect`, `find_item`, `find_tile`, og `interact`.
+
+#### 6. Lagt til final confrontation kill handling
+`checkKillObjectives` sjekker nå også for `interact` objectives med `final_confrontation` som targetId når en boss drepes.
+
+### Endrede filer
+- `src/game/utils/objectiveSpawner.ts` - Lagt til final_confrontation quest tile type
+- `src/game/utils/contextActionEffects.ts` - Objective reveal og boss spawn
+- `src/game/utils/scenarioUtils.ts` - Victory check og kill objective fix
+- `src/game/ShadowsGame.tsx` - Boss spawn handling
+
+### Flyt
+1. Spiller samler alle Evidence items
+2. "gather_clues" objective fullføres
+3. "confront_truth" objective avsløres (isHidden: false)
+4. Final confrontation quest tile avsløres
+5. Boss (Shoggoth) spawner nær spilleren
+6. Spiller dreper bossen
+7. "confront_truth" objective fullføres
+8. Victory triggers via checkInvestigationVictory
+
+---
+
 ## 2026-01-23: Damage System Bug Fix - HP Not Being Deducted
 
 ### Problem
