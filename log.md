@@ -19961,3 +19961,78 @@ Alle 5 dokumenterte issues er nå fikset:
 Enemy AI-systemet er nå betydelig mer sofistikert med taktisk posisjonering og koordinert oppførsel.
 
 ---
+
+## 2026-01-23: Character Sheet Krasj-Fix
+
+### Problem
+Når spilleren trykket på Character Sheet-ikonet gikk spillet til svart og krasjet.
+
+### Årsak
+Problemet skyldtes to ting i `CharacterPanel.tsx`:
+
+1. **Direkte DOM-manipulasjon i onError-handler**: Bilde-elementet hadde en `onError`-handler som manipulerte DOM direkte med `innerHTML`, noe som forårsaker konflikt med React's virtuelle DOM:
+```typescript
+// PROBLEM - direkte DOM-manipulasjon
+onError={(e) => {
+  const target = e.target as HTMLImageElement;
+  target.style.display = 'none';
+  target.parentElement!.innerHTML = '...'; // React mister kontrollen
+}}
+```
+
+2. **Manglende null-sjekker**: `player.inventory.bag` kunne potensielt være `undefined` i edge cases, noe som ville få `.map()` til å feile.
+
+### Løsning
+
+**1. Erstattet DOM-manipulasjon med React state:**
+```typescript
+const [portraitError, setPortraitError] = useState(false);
+
+// Reset error when player changes
+useEffect(() => {
+  setPortraitError(false);
+}, [player?.id]);
+
+// Conditional rendering i stedet for DOM-manipulasjon
+{!portraitError ? (
+  <img
+    src={player.customPortraitUrl || getCharacterPortrait(player.id as CharacterType)}
+    alt={player.name}
+    className="w-full h-full object-cover"
+    onError={() => setPortraitError(true)}
+  />
+) : (
+  <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+    <User size={40} />
+  </div>
+)}
+```
+
+**2. La til defensive null-sjekker for inventory.bag:**
+```typescript
+// getItemFromSlot
+const bag = player.inventory.bag || [];
+case 'bag1': return bag[0] || null;
+// ...
+
+// Rendering
+{(player.inventory.bag || [null, null, null, null]).map((item, index) => (
+  // ...
+))}
+```
+
+### Filer Endret
+
+| Fil | Endringer |
+|-----|-----------|
+| `CharacterPanel.tsx` | Fikset portrait error handling med React state, la til null-sjekker for inventory.bag |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+### Teknisk Lærdom
+- Aldri manipuler DOM direkte (innerHTML, style, etc.) i React-komponenter
+- Bruk React state for å håndtere feil-tilstander i stedet for DOM-manipulasjon
+- Alltid legg til defensive sjekker for arrays som kan være undefined
+
+---
