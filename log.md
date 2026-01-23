@@ -18238,3 +18238,207 @@ src/game/
 - Vurdere lazy loading av store konstanter
 
 ---
+
+## 2026-01-23: Deep Audit - NPC/Survivor System og Rescue Missions
+
+### Oppgave
+Deep audit av NPC-systemet i scenarios, spesielt rescue missions der man skal finne en NPC og eskortere dem til utgangen.
+
+### Oversikt over NPC/Survivor-systemet
+
+**Relevante filer:**
+- `src/game/types.ts` - Survivor interfaces (linjer 1474-1527)
+- `src/game/utils/survivorSystem.ts` - Kjernefunksjonalitet (763 linjer)
+- `src/game/utils/contextActions.ts` - getSurvivorActions() (linjer 428-522)
+- `src/game/utils/contextActionEffects.ts` - Action effect handlers
+- `src/game/utils/scenarioUtils.ts` - Victory/defeat conditions
+- `src/game/constants.ts` - Scenario definisjoner (s5, s13)
+
+**Rescue Mission Scenarios:**
+1. **Scenario 5: "The Missing Professor"** (Normal) - Finn Professor Warren og eskorter til utgangen
+2. **Scenario 13: "Arkham Asylum Breakout"** (Hard) - Redd 2 vitner fra asylet
+
+### 🔴 KRITISKE BUGS FUNNET
+
+#### Bug #1: Survivor Action Handlers Mangler
+**Severity: KRITISK**
+**Fil:** `contextActionEffects.ts`
+
+`getSurvivorActions()` i `contextActions.ts` genererer riktige context actions for survivors:
+- `find_survivor` - Finne skjulte survivors
+- `recruit_survivor` - Rekruttere til å følge
+- `use_survivor_ability` - Bruke spesielle evner
+- `dismiss_survivor` - La survivor gå
+- `rescue_survivor` - Redde survivor på exit
+
+**MEN** `processActionEffect()` i `contextActionEffects.ts` håndterer INGEN av disse action IDs!
+
+```typescript
+// Disse action IDs er IKKE håndtert i processActionEffect():
+// - 'find_survivor'
+// - 'recruit_survivor'
+// - 'use_survivor_ability'
+// - 'dismiss_survivor'
+// - 'rescue_survivor'
+```
+
+**Konsekvens:** Spilleren kan klikke på survivors og se context-menyen, men ingenting skjer når de velger en handling.
+
+---
+
+#### Bug #2: checkEscortVictory Funksjonen Eksisterer Ikke
+**Severity: KRITISK**
+**Fil:** `constants.ts` linje 1210, `scenarioUtils.ts`
+
+Scenario 5 refererer til en victory check funksjon som ikke eksisterer:
+```typescript
+// constants.ts linje 1210:
+victoryConditions: [{
+  type: 'escape',
+  checkFunction: 'checkEscortVictory', // <-- FINNES IKKE!
+  requiredObjectives: ['obj_find_entrance', 'obj_find_professor', 'obj_escort']
+}]
+```
+
+`scenarioUtils.ts` har kun `checkEscapeVictory()` som IKKE sjekker om NPC/professor er med spilleren eller på exit.
+
+**Konsekvens:** Escape-type victory conditions ignorerer escort-NPCs helt.
+
+---
+
+#### Bug #3: Survivor State Oppdateres Aldri i ShadowsGame.tsx
+**Severity: HØY**
+**Fil:** `ShadowsGame.tsx`
+
+Selv om `startFollowing()`, `rescueSurvivor()`, og `killSurvivor()` er importert fra survivorSystem.ts, blir de ALDRI kalt i `handleContextAction()` eller `handleContextActionEffect()`.
+
+```typescript
+// Importert men aldri brukt for context actions:
+import {
+  startFollowing,      // ❌ Ikke kalt på recruit_survivor
+  rescueSurvivor,      // ❌ Ikke kalt på rescue_survivor
+  killSurvivor,        // ✅ Kan være brukt i combat (ikke sjekket)
+  useSurvivorAbility,  // ❌ Ikke kalt på use_survivor_ability
+} from './utils/survivorSystem';
+```
+
+---
+
+#### Bug #4: Escort Defeat Condition Sjekkes Ikke
+**Severity: MEDIUM**
+**Fil:** `scenarioUtils.ts`
+
+Scenario 5 har defeat condition:
+```typescript
+{ type: 'objective_failed', description: 'Professor Warren has been killed', objectiveId: 'obj_escort' }
+```
+
+Men `checkSingleDefeatCondition()` håndterer kun `failedCondition: 'all_dead'`, ikke NPC-død:
+```typescript
+case 'objective_failed':
+  if (condition.objectiveId) {
+    const obj = scenario.objectives.find(o => o.id === condition.objectiveId);
+    if (obj?.failedCondition === 'all_dead' && gameState.players.every(p => p.isDead)) {
+      return { isDefeat: true, ... };
+    }
+  }
+  return { isDefeat: false, message: '' };
+```
+
+**Konsekvens:** Hvis professor/escort NPC dør, utløses ingen defeat condition.
+
+---
+
+### ✅ HVA SOM FUNGERER
+
+1. **Survivor Spawning** - `shouldSpawnSurvivor()` og `createSurvivor()` fungerer korrekt
+2. **Survivor AI** - `processSurvivorTurn()` kalles i Mythos-fasen og survivors følger spillere
+3. **Survivor Templates** - Alle 8 survivor-typer er definert med dialoger og belønninger
+4. **Context Action Menu** - `getSurvivorActions()` genererer riktige actions med skill checks
+
+---
+
+### 📋 NØDVENDIGE FIKSER
+
+#### Fix #1: Legg til Survivor Action Handlers i contextActionEffects.ts
+
+```typescript
+// Nye konstanter
+const SURVIVOR_ACTIONS = [
+  'find_survivor', 'recruit_survivor', 'use_survivor_ability',
+  'dismiss_survivor', 'rescue_survivor'
+];
+
+// I processActionEffect():
+if (SURVIVOR_ACTIONS.includes(actionId)) {
+  return handleSurvivorActionEffect(ctx, actionId);
+}
+
+// Ny funksjon:
+export function handleSurvivorActionEffect(
+  ctx: ActionEffectContext,
+  actionId: string
+): ActionEffectResult {
+  // Må implementeres - kaller survivorSystem funksjoner
+  // og returnerer state updates
+}
+```
+
+#### Fix #2: Implementer checkEscortVictory i scenarioUtils.ts
+
+```typescript
+export function checkEscortVictory(
+  scenario: Scenario,
+  gameState: {
+    players: Player[];
+    board: Tile[];
+    survivors?: Survivor[];
+  }
+): boolean {
+  // 1. Finn exit tile
+  // 2. Sjekk om spiller er på exit
+  // 3. Sjekk om escort NPC (followingPlayerId) er med spilleren
+  // 4. Sjekk at alle required objectives er complete
+  return playerOnExit && escortNpcSafe && allObjectivesComplete;
+}
+```
+
+#### Fix #3: Oppdater handleContextActionEffect i ShadowsGame.tsx
+
+Legg til survivor-spesifikk håndtering som kaller:
+- `startFollowing(survivor, player)` for recruit_survivor
+- `rescueSurvivor(survivor)` for rescue_survivor
+- `useSurvivorAbility(survivor, players, tiles)` for use_survivor_ability
+
+#### Fix #4: Utvid defeat condition sjekk for NPC-død
+
+```typescript
+case 'objective_failed':
+  // Eksisterende all_dead sjekk
+  // LEGG TIL:
+  if (obj?.failedCondition === 'npc_death' && gameState.survivors) {
+    const escortNpc = gameState.survivors.find(s => s.id === condition.npcId);
+    if (escortNpc?.state === 'dead') {
+      return { isDefeat: true, ... };
+    }
+  }
+```
+
+---
+
+### 📊 OPPSUMMERING
+
+| Komponent | Status | Problem |
+|-----------|--------|---------|
+| Survivor Types/Templates | ✅ OK | Ingen |
+| Survivor Spawning | ✅ OK | Ingen |
+| Survivor AI (følge spiller) | ✅ OK | Ingen |
+| Context Actions (meny) | ✅ OK | Vises korrekt |
+| Context Action HANDLERS | ❌ MANGLER | Ingen effekt når valgt |
+| Escort Victory Check | ❌ MANGLER | Funksjon finnes ikke |
+| Escort Defeat Check | ❌ UFULLSTENDIG | Sjekker kun player death |
+| Rescue Scenario (s5, s13) | ❌ UFUNGERENDE | Kan ikke fullføres |
+
+**Konklusjon:** NPC/Survivor-systemet har solid arkitektur og data-lag, men ACTION EXECUTION og VICTORY/DEFEAT CONDITIONS mangler helt. Rescue missions er **ikke spillbare** i nåværende tilstand.
+
+---
