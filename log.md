@@ -1,5 +1,119 @@
 # Development Log
 
+## 2026-01-23: Refactor Quest Item Spawn System for Clarity
+
+### Oppgave
+Finne en kompleks funksjon og refaktorere den for bedre lesbarhet mens samme oppførsel beholdes.
+
+### Valgt funksjon
+`shouldSpawnQuestItem()` og `shouldSpawnQuestTile()` i `src/game/utils/objectiveSpawner.ts`
+
+### Problemer med original kode
+
+**shouldSpawnQuestItem() (68 linjer):**
+- 4+ nivåer av nested if/else for å beregne spawn chance
+- Magic numbers blandet i logikken (0.7, 0.15)
+- Multiple ansvarsområder i én funksjon (validering, pity timer, probability calc)
+- Vanskelig å forstå flyten
+
+**shouldSpawnQuestTile() (45 linjer):**
+- Hardkodet spawn-logikk for hver tile-type
+- Repetitiv kode for å sjekke tile-kategorier
+- Magic numbers for spawn chances (0.4, 0.2, 0.3)
+
+### Refaktorering
+
+#### 1. Nye konstanter i SPAWN_PROBABILITY_CONFIG
+```typescript
+PITY_BONUS_PER_TILE: 0.15,         // Var hardkodet som 0.15
+TARGET_EXPLORATION_PERCENT: 0.70,  // Var hardkodet som 0.7
+```
+
+#### 2. Nye helper-funksjoner for shouldSpawnQuestItem()
+
+| Funksjon | Ansvar |
+|----------|--------|
+| `isValidSpawnTile(tile)` | Validerer om tile kan ha quest items |
+| `checkForcedSpawn(state, tiles, config)` | Sjekker pity timer og first-item guarantee |
+| `calculateExplorationStatus(...)` | Beregner progress og "behind schedule" status |
+| `calculateBaseSpawnChance(...)` | Returnerer base spawn chance basert på progress |
+| `calculateSpawnBonuses(tile, tilesSince, config)` | Beregner room og pity bonuser |
+
+#### 3. Data-drevet konfigurasjon for shouldSpawnQuestTile()
+
+Ny `QUEST_TILE_SPAWN_CONFIG` som mapper tile-typer til deres spawn-betingelser:
+
+```typescript
+const QUEST_TILE_SPAWN_CONFIG: Record<QuestTile['type'], {
+  validCategories: string[];
+  perfectMatchPatterns?: string[];
+  baseChance: number;
+  explorationBonus: number;
+  zoneRequirement?: { max?: number; min?: number };
+}> = {
+  exit: { validCategories: ['foyer', 'facade'], baseChance: 0.4, ... },
+  altar: { validCategories: ['crypt', 'basement'], perfectMatchPatterns: ['ritual'], ... },
+  // etc.
+};
+```
+
+Ny helper `doesTileMatchQuestTileRequirements()` som bruker konfigurasjonen.
+
+### Forbedringer
+
+| Aspekt | Før | Etter |
+|--------|-----|-------|
+| **Lesbarhet** | 4+ nivåer nesting | Flat struktur med tidlig retur |
+| **Testbarhet** | Vanskelig å teste deler | Hver helper kan testes separat |
+| **Vedlikehold** | Magic numbers overalt | Alle konstanter i config |
+| **Dokumentasjon** | Inline comments | Tydelige funksjons-docstrings |
+| **Flyt** | Vanskelig å følge | Klare steg 1-5 i hovedfunksjon |
+
+### Refaktorert hovedfunksjon
+
+```typescript
+export function shouldSpawnQuestItem(...): QuestItem | null {
+  // Step 1: Validate tile
+  if (!isValidSpawnTile(tile)) return null;
+
+  // Step 2: Check for unspawned items
+  const unspawnedItems = state.questItems.filter(item => !item.spawned);
+  if (unspawnedItems.length === 0) return null;
+
+  // Step 3: Check for forced spawns
+  const forcedSpawnCheck = checkForcedSpawn(state, totalTilesExplored, config);
+  if (forcedSpawnCheck.forced) return selectItemToSpawn(...);
+
+  // Step 4: Calculate spawn probability
+  const { explorationProgress, isBehindSchedule } = calculateExplorationStatus(...);
+  const baseSpawnChance = calculateBaseSpawnChance(...);
+  const bonuses = calculateSpawnBonuses(...);
+  const finalChance = Math.min(config.MAX_SPAWN_CHANCE, baseSpawnChance + bonuses.total);
+
+  // Step 5: Roll for spawn
+  if (Math.random() < finalChance) return selectItemToSpawn(...);
+  return null;
+}
+```
+
+### Endrede filer
+
+| Fil | Endring |
+|-----|---------|
+| `objectiveSpawner.ts` | Refaktorert shouldSpawnQuestItem() og shouldSpawnQuestTile() |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,675.27 kB bundle)
+
+### Bevart oppførsel
+- Samme spawn-sannsynligheter
+- Samme pity timer logikk
+- Samme room bonuser
+- Samme tile-type matching
+
+---
+
 ## 2026-01-23: Quest System - Final Confrontation Implementation
 
 ### Problem

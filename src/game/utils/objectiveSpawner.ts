@@ -441,18 +441,129 @@ export const SPAWN_PROBABILITY_CONFIG = {
   // Maximum spawn chance cap
   MAX_SPAWN_CHANCE: 0.90,             // Cap at 90% (was 80%)
 
+  // Pity bonus per tile without spawn
+  PITY_BONUS_PER_TILE: 0.15,          // +15% per tile without spawn
+
+  // Target exploration percentage for all items to spawn
+  TARGET_EXPLORATION_PERCENT: 0.70,   // Items should spawn by 70% exploration
+
   // Room bonuses are added on top (ritual +25%, study +20%, etc.)
 };
+
+// ============================================================================
+// SPAWN VALIDATION & CALCULATION HELPERS
+// ============================================================================
+
+/**
+ * Checks if a tile is valid for spawning quest items.
+ * Rejects non-searchable tiles and common/boring tiles like corridors.
+ */
+function isValidSpawnTile(tile: Tile): boolean {
+  if (!tile.searchable) return false;
+  if (tile.category === 'corridor' || tile.category === 'street') return false;
+  return true;
+}
+
+/**
+ * Checks if a spawn should be forced due to pity timer or first-item guarantee.
+ * Returns the reason if forced, or null if not forced.
+ */
+function checkForcedSpawn(
+  state: ObjectiveSpawnState,
+  totalTilesExplored: number,
+  config: typeof SPAWN_PROBABILITY_CONFIG
+): { forced: true; reason: string } | { forced: false } {
+  // Pity timer: Force spawn after too many tiles without finding anything
+  if (state.tilesSinceLastSpawn >= config.PITY_TIMER_TILES) {
+    return {
+      forced: true,
+      reason: `Pity timer triggered! ${state.tilesSinceLastSpawn} tiles without spawn.`
+    };
+  }
+
+  // First item guarantee: Ensure something spawns early
+  const noItemsSpawnedYet = state.questItems.every(item => !item.spawned);
+  if (noItemsSpawnedYet && totalTilesExplored >= config.FIRST_ITEM_GUARANTEE_TILES) {
+    return {
+      forced: true,
+      reason: `First item guarantee triggered at tile ${totalTilesExplored}.`
+    };
+  }
+
+  return { forced: false };
+}
+
+/**
+ * Calculates the exploration progress and determines if we're behind schedule.
+ */
+function calculateExplorationStatus(
+  state: ObjectiveSpawnState,
+  totalTilesExplored: number,
+  scenario: Scenario,
+  config: typeof SPAWN_PROBABILITY_CONFIG
+): { explorationProgress: number; isBehindSchedule: boolean } {
+  const totalItemsNeeded = state.questItems.length;
+  const estimatedTilesToExplore = scenario.startDoom * 1.5;
+  const explorationProgress = totalTilesExplored / estimatedTilesToExplore;
+
+  // Check if we're behind on spawning items
+  const progressInRange = Math.min(1, explorationProgress / config.TARGET_EXPLORATION_PERCENT);
+  const targetSpawnedItems = Math.ceil(progressInRange * totalItemsNeeded);
+  const currentSpawnedItems = state.questItems.filter(item => item.spawned).length;
+  const isBehindSchedule = currentSpawnedItems < targetSpawnedItems;
+
+  return { explorationProgress, isBehindSchedule };
+}
+
+/**
+ * Calculates the base spawn chance based on exploration progress.
+ */
+function calculateBaseSpawnChance(
+  explorationProgress: number,
+  isBehindSchedule: boolean,
+  config: typeof SPAWN_PROBABILITY_CONFIG
+): number {
+  // Early game gets a moderate chance
+  if (explorationProgress < config.EARLY_GAME_THRESHOLD) {
+    return config.EARLY_SPAWN_CHANCE;
+  }
+
+  // Behind schedule gets boosted chance
+  if (isBehindSchedule) {
+    return config.BEHIND_SCHEDULE_CHANCE;
+  }
+
+  // Normal spawn chance
+  return config.NORMAL_SPAWN_CHANCE;
+}
+
+/**
+ * Calculates total spawn bonuses from room type and pity timer.
+ */
+function calculateSpawnBonuses(
+  tile: Tile,
+  tilesSinceLastSpawn: number,
+  config: typeof SPAWN_PROBABILITY_CONFIG
+): { roomBonus: number; pityBonus: number; total: number } {
+  const roomBonus = getRoomSpawnBonus(tile.name);
+  const pityBonus = tilesSinceLastSpawn * config.PITY_BONUS_PER_TILE;
+  return {
+    roomBonus,
+    pityBonus,
+    total: roomBonus + pityBonus
+  };
+}
 
 /**
  * Determines if a quest item should spawn on the given tile.
  * Uses a "pity timer" system to ensure items spawn at a reasonable rate.
  *
- * Key improvements:
- * - Higher base spawn chances (35-70% vs old 10-50%)
- * - Pity timer: guaranteed spawn after 4 tiles without finding anything
- * - First item guarantee: ensure something spawns within first 3 tiles
- * - Room bonuses for thematic locations
+ * Spawn Logic Flow:
+ * 1. Validate tile (searchable, not corridor/street)
+ * 2. Check for forced spawns (pity timer, first-item guarantee)
+ * 3. Calculate probability based on exploration progress
+ * 4. Apply bonuses (room type, pity timer)
+ * 5. Roll for spawn
  */
 export function shouldSpawnQuestItem(
   state: ObjectiveSpawnState,
@@ -460,63 +571,48 @@ export function shouldSpawnQuestItem(
   totalTilesExplored: number,
   scenario: Scenario
 ): QuestItem | null {
-  // Don't spawn on non-searchable tiles
-  if (!tile.searchable) return null;
-
-  // Don't spawn on corridors or streets (too common/boring)
-  if (tile.category === 'corridor' || tile.category === 'street') return null;
-
-  // Find unspawned items
-  const unspawnedItems = state.questItems.filter(item => !item.spawned);
-  if (unspawnedItems.length === 0) return null;
-
   const config = SPAWN_PROBABILITY_CONFIG;
-  const tilesSinceLastSpawn = state.tilesSinceLastSpawn;
 
-  // === PITY TIMER: Guaranteed spawn after X tiles without finding anything ===
-  if (tilesSinceLastSpawn >= config.PITY_TIMER_TILES) {
-    console.log(`[QuestSpawn] Pity timer triggered! ${tilesSinceLastSpawn} tiles without spawn.`);
+  // Step 1: Validate tile
+  if (!isValidSpawnTile(tile)) {
+    return null;
+  }
+
+  // Step 2: Check for unspawned items
+  const unspawnedItems = state.questItems.filter(item => !item.spawned);
+  if (unspawnedItems.length === 0) {
+    return null;
+  }
+
+  // Step 3: Check for forced spawns (pity timer or first-item guarantee)
+  const forcedSpawnCheck = checkForcedSpawn(state, totalTilesExplored, config);
+  if (forcedSpawnCheck.forced) {
+    console.log(`[QuestSpawn] ${forcedSpawnCheck.reason}`);
     return selectItemToSpawn(unspawnedItems, scenario);
   }
 
-  // === FIRST ITEM GUARANTEE: Ensure something spawns early ===
-  const noItemsYet = state.questItems.filter(i => i.spawned).length === 0;
-  if (noItemsYet && totalTilesExplored >= config.FIRST_ITEM_GUARANTEE_TILES) {
-    console.log(`[QuestSpawn] First item guarantee triggered at tile ${totalTilesExplored}.`);
-    return selectItemToSpawn(unspawnedItems, scenario);
-  }
+  // Step 4: Calculate spawn probability
+  const { explorationProgress, isBehindSchedule } = calculateExplorationStatus(
+    state, totalTilesExplored, scenario, config
+  );
 
-  // Calculate spawn probability based on exploration progress
-  const totalItemsNeeded = state.questItems.length;
-  const estimatedTilesToExplore = scenario.startDoom * 1.5;
-  const explorationProgress = totalTilesExplored / estimatedTilesToExplore;
+  const baseSpawnChance = calculateBaseSpawnChance(
+    explorationProgress, isBehindSchedule, config
+  );
 
-  // === CALCULATE BASE SPAWN CHANCE ===
-  let baseSpawnChance: number;
+  const bonuses = calculateSpawnBonuses(tile, state.tilesSinceLastSpawn, config);
+  const finalChance = Math.min(config.MAX_SPAWN_CHANCE, baseSpawnChance + bonuses.total);
 
-  // Early game - still generous
-  if (explorationProgress < config.EARLY_GAME_THRESHOLD) {
-    baseSpawnChance = config.EARLY_SPAWN_CHANCE;
-  } else {
-    // Check if we're behind schedule
-    const progressInRange = Math.min(1, explorationProgress / 0.7); // Items should spawn by 70%
-    const targetSpawnedItems = Math.ceil(progressInRange * totalItemsNeeded);
-    const currentSpawnedItems = state.questItems.filter(i => i.spawned).length;
-    const behindSchedule = currentSpawnedItems < targetSpawnedItems;
+  // Log spawn probability breakdown
+  console.log(
+    `[QuestSpawn] Tile "${tile.name}": ` +
+    `chance=${(finalChance * 100).toFixed(0)}% ` +
+    `(base=${(baseSpawnChance * 100).toFixed(0)}%, ` +
+    `room=+${(bonuses.roomBonus * 100).toFixed(0)}%, ` +
+    `pity=+${(bonuses.pityBonus * 100).toFixed(0)}%)`
+  );
 
-    baseSpawnChance = behindSchedule ? config.BEHIND_SCHEDULE_CHANCE : config.NORMAL_SPAWN_CHANCE;
-  }
-
-  // === ROOM TYPE BONUSES ===
-  const roomBonus = getRoomSpawnBonus(tile.name);
-
-  // === PITY TIMER BONUS: Increase chance as we go longer without spawning ===
-  const pityBonus = tilesSinceLastSpawn * 0.15; // +15% per tile without spawn
-
-  const finalChance = Math.min(config.MAX_SPAWN_CHANCE, baseSpawnChance + roomBonus + pityBonus);
-
-  console.log(`[QuestSpawn] Tile "${tile.name}": chance=${(finalChance*100).toFixed(0)}% (base=${(baseSpawnChance*100).toFixed(0)}%, room=+${(roomBonus*100).toFixed(0)}%, pity=+${(pityBonus*100).toFixed(0)}%)`);
-
+  // Step 5: Roll for spawn
   if (Math.random() < finalChance) {
     return selectItemToSpawn(unspawnedItems, scenario);
   }
@@ -559,7 +655,104 @@ export function shouldRevealQuestTile(
 }
 
 /**
+ * Quest tile spawn configuration.
+ * Maps quest tile types to their spawn conditions.
+ */
+const QUEST_TILE_SPAWN_CONFIG: Record<QuestTile['type'], {
+  validCategories: string[];
+  perfectMatchPatterns?: string[];
+  baseChance: number;
+  explorationBonus: number;
+  zoneRequirement?: { max?: number; min?: number };
+}> = {
+  exit: {
+    validCategories: ['foyer', 'facade'],
+    baseChance: 0.4,
+    explorationBonus: 0.05,  // +5% per tile explored
+  },
+  altar: {
+    validCategories: ['crypt', 'basement', 'room'],
+    perfectMatchPatterns: ['ritual', 'altar', 'chamber'],
+    baseChance: 0.2,
+    explorationBonus: 0,
+  },
+  ritual_point: {
+    validCategories: ['crypt', 'basement', 'room'],
+    perfectMatchPatterns: ['ritual', 'altar', 'chamber'],
+    baseChance: 0.2,
+    explorationBonus: 0,
+  },
+  boss_room: {
+    validCategories: ['crypt'],
+    baseChance: 0.3,
+    explorationBonus: 0,
+    zoneRequirement: { max: -1 },
+  },
+  npc_location: {
+    validCategories: ['room', 'corridor'],
+    baseChance: 0.25,
+    explorationBonus: 0,
+  },
+  final_confrontation: {
+    validCategories: ['crypt', 'room'],
+    perfectMatchPatterns: ['ritual', 'altar', 'sanctum'],
+    baseChance: 0.3,
+    explorationBonus: 0,
+    zoneRequirement: { max: -1 },
+  },
+};
+
+/**
+ * Checks if a tile matches the spawn requirements for a quest tile type.
+ */
+function doesTileMatchQuestTileRequirements(
+  tile: Tile,
+  questTileType: QuestTile['type'],
+  totalTilesExplored: number
+): { matches: boolean; isPerfectMatch: boolean; spawnChance: number } {
+  const config = QUEST_TILE_SPAWN_CONFIG[questTileType];
+  if (!config) {
+    return { matches: false, isPerfectMatch: false, spawnChance: 0 };
+  }
+
+  // Check category requirement
+  if (!config.validCategories.includes(tile.category || '')) {
+    // Special case: boss_room and final_confrontation can spawn based on zone level
+    if (config.zoneRequirement) {
+      const meetsZone = (
+        (config.zoneRequirement.max === undefined || (tile.zoneLevel ?? 0) <= config.zoneRequirement.max) &&
+        (config.zoneRequirement.min === undefined || (tile.zoneLevel ?? 0) >= config.zoneRequirement.min)
+      );
+      if (!meetsZone) {
+        return { matches: false, isPerfectMatch: false, spawnChance: 0 };
+      }
+    } else {
+      return { matches: false, isPerfectMatch: false, spawnChance: 0 };
+    }
+  }
+
+  // Check for perfect match (thematic rooms)
+  const roomName = tile.name.toLowerCase();
+  const isPerfectMatch = config.perfectMatchPatterns?.some(
+    pattern => roomName.includes(pattern)
+  ) ?? false;
+
+  // Calculate spawn chance
+  const spawnChance = isPerfectMatch
+    ? 1.0  // Perfect match = guaranteed
+    : config.baseChance + (totalTilesExplored * config.explorationBonus);
+
+  return { matches: true, isPerfectMatch, spawnChance };
+}
+
+/**
  * Checks if the current tile should become a quest tile (exit, altar, etc).
+ *
+ * Flow:
+ * 1. Find unspawned quest tiles
+ * 2. For each, check if it should be revealed
+ * 3. Check if current tile matches spawn requirements
+ * 4. Roll for spawn based on calculated chance
  */
 export function shouldSpawnQuestTile(
   state: ObjectiveSpawnState,
@@ -567,8 +760,11 @@ export function shouldSpawnQuestTile(
   totalTilesExplored: number,
   completedObjectiveIds: string[]
 ): QuestTile | null {
+  // Find quest tiles that haven't spawned yet
   const unspawnedTiles = state.questTiles.filter(qt => !qt.spawned);
-  if (unspawnedTiles.length === 0) return null;
+  if (unspawnedTiles.length === 0) {
+    return null;
+  }
 
   for (const questTile of unspawnedTiles) {
     // Check if this quest tile should be revealed first
@@ -576,32 +772,23 @@ export function shouldSpawnQuestTile(
       continue;
     }
 
-    // Check tile compatibility
-    if (questTile.type === 'exit') {
-      // Exit should spawn in foyer or facade area
-      if (tile.category === 'foyer' || tile.category === 'facade') {
-        if (Math.random() < 0.4 + (totalTilesExplored * 0.05)) {
-          return questTile;
-        }
-      }
-    } else if (questTile.type === 'altar' || questTile.type === 'ritual_point') {
-      // Altars spawn in crypts, basements, or rooms
-      if (tile.category === 'crypt' || tile.category === 'basement' || tile.category === 'room') {
-        const roomName = tile.name.toLowerCase();
-        if (roomName.includes('ritual') || roomName.includes('altar') || roomName.includes('chamber')) {
-          return questTile; // Perfect match
-        }
-        if (Math.random() < 0.2) {
-          return questTile;
-        }
-      }
-    } else if (questTile.type === 'boss_room') {
-      // Boss rooms spawn deep
-      if (tile.category === 'crypt' || tile.zoneLevel <= -1) {
-        if (Math.random() < 0.3) {
-          return questTile;
-        }
-      }
+    // Check if current tile matches requirements
+    const matchResult = doesTileMatchQuestTileRequirements(
+      tile, questTile.type, totalTilesExplored
+    );
+
+    if (!matchResult.matches) {
+      continue;
+    }
+
+    // Perfect matches always spawn
+    if (matchResult.isPerfectMatch) {
+      return questTile;
+    }
+
+    // Roll for spawn
+    if (Math.random() < matchResult.spawnChance) {
+      return questTile;
     }
   }
 
