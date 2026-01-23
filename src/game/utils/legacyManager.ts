@@ -680,6 +680,7 @@ export function legacyHeroToPlayer(hero: LegacyHero): Player {
     inventory: { ...hero.equipment, bag: [...hero.equipment.bag] },
     spells: characterSpells,
     actions: totalActions,
+    maxActions: totalActions,  // Store max actions for turn reset
     isDead: false,
     madness: [],
     activeMadness: null,

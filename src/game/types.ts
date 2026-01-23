@@ -143,6 +143,7 @@ export interface Player extends Character {
   // Hero Quest style Occultist spells
   selectedSpells?: OccultistSpell[];  // Spells chosen for this scenario (Occultist only)
   actions: number;
+  maxActions: number;  // Maximum actions per turn (base 2, increases with level)
   isDead: boolean;
   madness: string[];
   activeMadness: Madness | null;

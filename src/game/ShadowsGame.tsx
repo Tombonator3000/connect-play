@@ -4293,6 +4293,7 @@ const ShadowsGame: React.FC = () => {
                               spells: characterSpells,
                               selectedSpells: undefined,
                               actions: 2,
+                              maxActions: 2,  // Base actions for non-legacy players
                               isDead: false,
                               madness: [],
                               activeMadness: null,
@@ -4636,6 +4637,7 @@ const ShadowsGame: React.FC = () => {
                 spells: [], // Legacy spells empty for Occultist with new system
                 selectedSpells: selectedSpells, // New OccultistSpell system
                 actions: 2,
+                maxActions: 2,  // Base actions for non-legacy players
                 isDead: false,
                 madness: [],
                 activeMadness: null,

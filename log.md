@@ -1,5 +1,75 @@
 # Development Log
 
+## 2026-01-23: XP-system, Permadeath og Action Points - Analyse og Bugfix
+
+### Oppgave
+Verifisere at XP-systemet, permadeath og action points ved høyere level fungerer korrekt.
+
+### Funn
+
+#### 1. XP-systemet - FUNGERER ✅
+XP-systemet er korrekt implementert:
+- `XP_THRESHOLDS`: Level 1=0, 2=50, 3=150, 4=300, 5=500 XP
+- `addXPToHero()` i legacyManager.ts legger til XP og oppdaterer level
+- `calculateScenarioXPReward()` beregner XP basert på seier, vanskelighetsgrad og kills
+- XP tildeles ved scenario-avslutning via `processScenarioCompletion()`
+- Level-up modal (`LevelUpModal.tsx`) viser tilgjengelige bonuser
+
+#### 2. Permadeath-systemet - FUNGERER ✅
+Permadeath er korrekt implementert:
+- `LegacyHero.hasPermadeath: boolean` - flagg for permanent død
+- `killHero()` i legacyManager.ts håndterer død:
+  - Med permadeath: `isDead: true`, helt går til memorial og kan ikke spilles mer
+  - Uten permadeath: Helt mister utstyr men kan fortsette å spille
+- `updateLegacyHeroFromPlayer()` respekterer permadeath-flagget
+
+#### 3. Action Points ved høyere level - BUG FUNNET OG FIKSET 🐛→✅
+
+**Problem:**
+`legacyHeroToPlayer()` beregnet korrekt antall actions ved spillstart:
+```typescript
+const automaticAPBonus = hero.level >= 5 ? 2 : hero.level >= 3 ? 1 : 0;
+const totalActions = 2 + automaticAPBonus + manualAPBonus;
+```
+Men `resetPlayersForNewTurn()` i mythosPhaseUtils.ts **hardkodet** alltid 2 AP:
+```typescript
+const baseActions = p.isDead ? 0 : 2;  // BUG: Ignorerer level-bonus!
+```
+
+**Løsning:**
+1. La til `maxActions: number` felt på `Player` interface i types.ts
+2. Setter `maxActions` i `legacyHeroToPlayer()` for legacy-helter
+3. Setter `maxActions: 2` for ikke-legacy spillere i ShadowsGame.tsx og CharacterSelectionScreen.tsx
+4. Endret `resetPlayersForNewTurn()` til å bruke `p.maxActions || 2`
+
+**Forventet AP per level (etter fix):**
+| Level | Base AP | Automatisk Bonus | Total |
+|-------|---------|------------------|-------|
+| 1-2   | 2       | 0                | 2 AP  |
+| 3-4   | 2       | +1               | 3 AP  |
+| 5     | 2       | +2               | 4 AP  |
+
+### Endrede filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/types.ts` | La til `maxActions: number` på Player interface |
+| `src/game/utils/legacyManager.ts` | Setter `maxActions: totalActions` i legacyHeroToPlayer() |
+| `src/game/utils/mythosPhaseUtils.ts` | Fikset resetPlayersForNewTurn() til å bruke maxActions |
+| `src/game/ShadowsGame.tsx` | La til maxActions: 2 for non-legacy spillere (2 steder) |
+| `src/game/components/CharacterSelectionScreen.tsx` | La til maxActions: 2 for non-legacy spillere |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Build vellykket (1,656.53 kB bundle)
+
+### Resultat
+- XP-systemet fungerer som designet
+- Permadeath fungerer som designet
+- Action points ved høyere level fungerer nå korrekt etter bugfix
+
+---
+
 ## 2026-01-22: Refactor performAttack Function - Extract Helper Functions
 
 ### Oppgave

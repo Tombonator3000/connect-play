@@ -508,7 +508,8 @@ export function tryDrawEventCard(
  */
 export function resetPlayersForNewTurn(players: Player[]): PlayerResetResult {
   const resetPlayers = players.map(p => {
-    const baseActions = p.isDead ? 0 : 2;
+    // Use maxActions if available (from level bonuses), otherwise default to 2
+    const baseActions = p.isDead ? 0 : (p.maxActions || 2);
     const penalty = p.apPenaltyNextTurn || 0;
     const finalActions = Math.max(0, baseActions - penalty);
 
