@@ -516,8 +516,11 @@ export function resetPlayersForNewTurn(players: Player[]): PlayerResetResult {
     const desperateBonuses = calculateDesperateBonuses(p.hp, p.sanity);
     const finalActions = Math.max(0, baseActions - penalty + desperateBonuses.bonusAP);
 
+    // JOURNALIST BONUS: +1 free movement per turn (escape_bonus specialAbility)
+    const freeMovesRemaining = p.specialAbility === 'escape_bonus' && !p.isDead ? 1 : 0;
+
     // Clear the penalty after applying it
-    return { ...p, actions: finalActions, apPenaltyNextTurn: undefined };
+    return { ...p, actions: finalActions, apPenaltyNextTurn: undefined, freeMovesRemaining };
   });
 
   return { resetPlayers };
