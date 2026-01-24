@@ -367,6 +367,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
 
   // Mouse handlers
   const handleMouseDown = (e: React.MouseEvent) => {
+    console.log('[DEBUG GameBoard] mouseDown', { button: e.button, clientX: e.clientX, clientY: e.clientY });
     if (e.button !== 0) return;
     setIsDragging(true);
     setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
@@ -614,8 +615,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
       className="game-board-container w-full h-full overflow-hidden relative cursor-move bg-background touch-manipulation select-none"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
-      onMouseUp={() => { setIsDragging(false); hasDragged.current = false; }}
-      onMouseLeave={() => { setIsDragging(false); hasDragged.current = false; }}
+      onMouseUp={() => { console.log('[DEBUG GameBoard] mouseUp, resetting hasDragged'); setIsDragging(false); hasDragged.current = false; }}
+      onMouseLeave={() => { console.log('[DEBUG GameBoard] mouseLeave, resetting hasDragged'); setIsDragging(false); hasDragged.current = false; }}
       onWheel={(e) => setScale(prev => Math.min(Math.max(prev + (e.deltaY > 0 ? -0.1 : 0.1), 0.3), 2.5))}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
@@ -673,8 +674,17 @@ const GameBoard: React.FC<GameBoardProps> = ({
               className="absolute flex items-center justify-center transition-all duration-500 cursor-pointer"
               style={{ width: `${HEX_SIZE * 2}px`, height: `${HEX_SIZE * 1.732}px`, left: `${x - HEX_SIZE}px`, top: `${y - HEX_SIZE * 0.866}px` }}
               onClick={(e) => {
+                e.stopPropagation(); // Prevent bubbling to container
                 // Desktop click handling - trigger movement if not dragging
-                if (!hasDragged.current) onTileClick(tile.q, tile.r);
+                console.log('[DEBUG GameBoard] Tile clicked', { q: tile.q, r: tile.r, hasDragged: hasDragged.current });
+                if (!hasDragged.current) {
+                  console.log('[DEBUG GameBoard] Calling onTileClick');
+                  onTileClick(tile.q, tile.r);
+                } else {
+                  console.log('[DEBUG GameBoard] Click ignored - hasDragged is true, resetting for next click');
+                  // Reset for next click attempt
+                  hasDragged.current = false;
+                }
               }}
               onMouseEnter={() => {
                 if (isVisible) {
@@ -1320,8 +1330,16 @@ const GameBoard: React.FC<GameBoardProps> = ({
               className={`absolute flex items-center justify-center cursor-pointer transition-all z-20 group ${isTouchedMove ? 'scale-105' : ''}`}
               style={{ width: `${HEX_SIZE * 2}px`, height: `${HEX_SIZE * 1.732}px`, left: `${x - HEX_SIZE}px`, top: `${y - HEX_SIZE * 0.866}px` }}
               onClick={(e) => {
+                e.stopPropagation(); // Prevent bubbling
                 // Desktop click handling
-                if (!hasDragged.current) onTileClick(move.q, move.r);
+                console.log('[DEBUG GameBoard] possibleMove clicked', { q: move.q, r: move.r, hasDragged: hasDragged.current });
+                if (!hasDragged.current) {
+                  console.log('[DEBUG GameBoard] Calling onTileClick for possibleMove');
+                  onTileClick(move.q, move.r);
+                } else {
+                  console.log('[DEBUG GameBoard] possibleMove click ignored - hasDragged is true, resetting');
+                  hasDragged.current = false;
+                }
               }}
               onTouchStart={(e) => {
                 setTouchedTileKey(moveKey);
@@ -1496,7 +1514,17 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   opacity: weatherOpacity,
                   filter: isHiddenByWeather ? 'blur(2px)' : 'none'
                 }}
-                onClick={(e) => { e.stopPropagation(); if (!hasDragged.current && onEnemyClick) onEnemyClick(enemy.id); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log('[DEBUG GameBoard] Enemy clicked', { enemyId: enemy.id, hasDragged: hasDragged.current });
+                  if (!hasDragged.current && onEnemyClick) {
+                    console.log('[DEBUG GameBoard] Calling onEnemyClick');
+                    onEnemyClick(enemy.id);
+                  } else if (hasDragged.current) {
+                    console.log('[DEBUG GameBoard] Enemy click ignored - hasDragged is true, resetting');
+                    hasDragged.current = false;
+                  }
+                }}
                 onMouseEnter={() => setHoverData({ type: 'enemy', enemy })}
                 onMouseLeave={() => setHoverData(null)}
               >

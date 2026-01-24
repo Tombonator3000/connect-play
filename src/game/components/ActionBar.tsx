@@ -61,7 +61,15 @@ const ActionBar: React.FC<ActionBarProps> = ({
   return (
     <div className={`flex items-center gap-1 ${isMobile ? 'gap-1' : 'gap-2 md:gap-4'} overflow-x-auto max-w-[95vw] md:max-w-none pb-1 md:pb-0 hide-scrollbar relative`}>
       <button
-        onClick={onToggleCharacter}
+        onClick={(e) => {
+          e.stopPropagation();
+          console.log('[DEBUG ActionBar] CHAR button clicked, calling onToggleCharacter');
+          // Temporary visual feedback - flash border
+          const target = e.currentTarget as HTMLButtonElement;
+          target.style.outline = '3px solid lime';
+          setTimeout(() => { target.style.outline = ''; }, 200);
+          onToggleCharacter();
+        }}
         className={`group flex flex-col items-center justify-center ${buttonSize} rounded border transition-all duration-200 shrink-0 active:scale-95 ${showCharacter ? 'bg-accent/20 border-accent text-accent' : 'bg-card border-border text-muted-foreground hover:border-accent hover:text-accent'}`}
       >
         <User size={iconSize} className={isMobile ? '' : 'mb-1'} />

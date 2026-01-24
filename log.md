@@ -1,5 +1,68 @@
 # Development Log
 
+## 2026-01-24: UI Responsiveness Debug Session
+
+### Problem
+Bruker rapporterte at UI fortsatt ikke responderer - klikk registreres ikke på noen elementer (tiles, knapper, ActionBar). Bruker presiserte at det IKKE er relatert til touch/drag/pan.
+
+### Gjennomført Analyse
+1. **CSS pointer-events**: Sjekket alle komponenter for `pointer-events: none` uten tilsvarende `auto` på children. Ingen blokkerende elementer funnet.
+
+2. **Z-index hierarki**: Verifiserte stacking context:
+   - GameBoard wrapper: z-10
+   - Header bar: z-50
+   - Footer ActionBar: z-50
+   - ShaderEffects: z-[99] med pointer-events-none
+   - Modaler: z-[100]
+   Hierarkiet ser korrekt ut.
+
+3. **Overlays**: Sjekket alle `fixed inset-0` elementer:
+   - MythosPhaseOverlay: har pointer-events-none
+   - DoomOverlay: har pointer-events-none
+   - SanityOverlay: har pointer-events-none
+   - ShaderEffects: har pointer-events-none
+   Ingen blokkerende overlays funnet.
+
+4. **handleAction-funksjonen**: Sjekket early return conditions:
+   - `!activePlayer` - spilleren må eksistere
+   - `activePlayer.actions <= 0` - må ha actions igjen
+   - `activePlayer.isDead` - spilleren må være i live
+   - `state.phase !== GamePhase.INVESTIGATOR` - må være i riktig fase
+
+5. **hasDragged-logikk**: Verifiserte at forrige fix er på plass - hasDragged blir reset i mouseUp og mouseLeave.
+
+### Implementerte Løsninger
+
+**Debug logging tillagt:**
+- Root-div onClick for å detektere om NOEN klikk registreres
+- GameBoard tile onClick med hasDragged-status
+- GameBoard possibleMove onClick med hasDragged-status
+- GameBoard enemy onClick med hasDragged-status
+- ActionBar CHAR-knapp onClick
+- handleAction-funksjonen med full state-info
+
+**Self-healing mekanisme:**
+- Hvis hasDragged er true når onClick fyrer, resettes den nå automatisk
+- Dette sikrer at neste klikk vil fungere selv om noe gikk galt
+
+**Event propagation:**
+- Tillagt `e.stopPropagation()` på tile clicks for å forhindre interferens fra container
+
+**Visuell feedback:**
+- CHAR-knappen blinker grønn ramme ved klikk for å vise at klikk registreres
+
+### Neste Steg
+Bruker må teste og sjekke console-output for å identifisere:
+1. Om klikk når frem til handlers i det hele tatt
+2. Hvilken condition i handleAction som eventuelt blokkerer
+3. Om hasDragged er stuck på true
+
+### Tekniske Detaljer
+- Branch: `claude/fix-ui-responsiveness-axZ3o`
+- Commit: `6a876d9` - "Add debug logging and self-healing for UI click issues"
+
+---
+
 ## 2026-01-24: Komplett SFX-Liste og Mappestruktur
 
 ### Oppgave: Lage liste over hvilke SFX spillet trenger og hvilke mapper de skal ligge i
