@@ -485,15 +485,25 @@ const ShadowsGame: React.FC = () => {
 
             // Use prev.players to include any changes from event card resolution
             const { resetPlayers } = resetPlayersForNewTurn(prev.players);
+
+            // Find the first alive player for new round
+            let firstAliveIndex = 0;
+            for (let i = 0; i < resetPlayers.length; i++) {
+              if (!resetPlayers[i].isDead) {
+                firstAliveIndex = i;
+                break;
+              }
+            }
+
             const { shouldApply, playerIndex } = shouldApplyMadnessEffects(resetPlayers);
-            if (shouldApply) {
-              resetPlayers[playerIndex] = applyMadnessTurnStartEffects(resetPlayers[playerIndex]);
+            if (shouldApply && playerIndex === firstAliveIndex) {
+              resetPlayers[firstAliveIndex] = applyMadnessTurnStartEffects(resetPlayers[firstAliveIndex]);
             }
             return {
               ...prev,
               enemies: combatResult.updatedEnemies.filter(e => e.hp > 0),
               phase: GamePhase.INVESTIGATOR,
-              activePlayerIndex: 0,
+              activePlayerIndex: firstAliveIndex,
               players: resetPlayers
             };
           });
@@ -3883,9 +3893,24 @@ const ShadowsGame: React.FC = () => {
     }
   };
 
+  // Helper function to find the next alive player index
+  const findNextAlivePlayerIndex = (players: Player[], startIndex: number): number => {
+    // First, check if there are any alive players at all
+    const hasAlivePlayers = players.some(p => !p.isDead);
+    if (!hasAlivePlayers) return -1; // No alive players
+
+    // Search from startIndex to end
+    for (let i = startIndex; i < players.length; i++) {
+      if (!players[i].isDead) return i;
+    }
+    // If not found, return -1 (means end of round)
+    return -1;
+  };
+
   const handleNextTurn = () => {
-    const nextIndex = state.activePlayerIndex + 1;
-    const isEndOfRound = nextIndex >= state.players.length;
+    // Find next alive player starting from the player after current
+    const nextAliveIndex = findNextAlivePlayerIndex(state.players, state.activePlayerIndex + 1);
+    const isEndOfRound = nextAliveIndex === -1;
 
     if (isEndOfRound) {
       // Check if game should end before transitioning
@@ -3900,15 +3925,15 @@ const ShadowsGame: React.FC = () => {
       // Show Mythos phase overlay
       setShowMythosOverlay(true);
     } else {
-      // Apply madness turn start effects to next player
+      // Apply madness turn start effects to next alive player
       setState(prev => {
-        const nextPlayer = prev.players[nextIndex];
-        if (nextPlayer && !nextPlayer.isDead && nextPlayer.activeMadness) {
+        const nextPlayer = prev.players[nextAliveIndex];
+        if (nextPlayer && nextPlayer.activeMadness) {
           const updatedPlayers = [...prev.players];
-          updatedPlayers[nextIndex] = applyMadnessTurnStartEffects(nextPlayer);
-          return { ...prev, activePlayerIndex: nextIndex, activeSpell: null, activeOccultistSpell: null, players: updatedPlayers };
+          updatedPlayers[nextAliveIndex] = applyMadnessTurnStartEffects(nextPlayer);
+          return { ...prev, activePlayerIndex: nextAliveIndex, activeSpell: null, activeOccultistSpell: null, players: updatedPlayers };
         }
-        return { ...prev, activePlayerIndex: nextIndex, activeSpell: null, activeOccultistSpell: null };
+        return { ...prev, activePlayerIndex: nextAliveIndex, activeSpell: null, activeOccultistSpell: null };
       });
     }
   };
@@ -4025,11 +4050,19 @@ const ShadowsGame: React.FC = () => {
       }
     }
 
-    // 7. Transition to next round
+    // 7. Transition to next round - find first alive player
+    let firstAliveIndex = 0;
+    for (let i = 0; i < state.players.length; i++) {
+      if (!state.players[i].isDead) {
+        firstAliveIndex = i;
+        break;
+      }
+    }
+
     setState(prev => ({
       ...prev,
       phase: GamePhase.MYTHOS,
-      activePlayerIndex: 0,
+      activePlayerIndex: firstAliveIndex,
       doom: newDoom,
       round: newRound,
       activeSpell: null,
@@ -4661,7 +4694,8 @@ const ShadowsGame: React.FC = () => {
           </div>
 
           {/* Character Panel - Fullscreen modal on mobile, slide-in on desktop */}
-          {activePlayer && showLeftPanel && (
+          {/* Only show if player exists and is NOT dead */}
+          {activePlayer && !activePlayer.isDead && showLeftPanel && (
             isMobile ? (
               <div className="fixed inset-0 z-50 bg-background/95 backdrop-blur-md overflow-y-auto">
                 <div className="sticky top-0 z-10 flex items-center justify-between p-3 bg-leather/95 border-b border-border">
@@ -4696,7 +4730,7 @@ const ShadowsGame: React.FC = () => {
           )}
 
           {/* Desktop-only hidden state for character panel */}
-          {activePlayer && !showLeftPanel && !isMobile && (
+          {activePlayer && !activePlayer.isDead && !showLeftPanel && !isMobile && (
             <div className="fixed top-1/2 -translate-y-1/2 left-6 h-[80vh] w-80 z-40 transition-all -translate-x-[calc(100%+40px)] opacity-0 pointer-events-none" />
           )}
 
@@ -4773,10 +4807,14 @@ const ShadowsGame: React.FC = () => {
               onToggleFieldGuide={() => setShowFieldGuide(!showFieldGuide)}
               contextAction={null}
             />
-            <button onClick={handleNextTurn} className={`${isMobile ? 'px-4 py-3 text-xs' : 'px-8 py-4'} bg-primary text-primary-foreground font-bold rounded-xl uppercase tracking-widest hover:scale-110 active:scale-95 transition-all shadow-[var(--shadow-doom)]`}>
+            <button
+              onClick={handleNextTurn}
+              disabled={activePlayer?.isDead}
+              className={`${isMobile ? 'px-4 py-3 text-xs' : 'px-8 py-4'} bg-primary text-primary-foreground font-bold rounded-xl uppercase tracking-widest hover:scale-110 active:scale-95 transition-all shadow-[var(--shadow-doom)] disabled:opacity-50 disabled:cursor-not-allowed`}
+            >
               {isMobile
-                ? (state.activePlayerIndex === state.players.length - 1 ? "End" : "Next")
-                : (state.activePlayerIndex === state.players.length - 1 ? "End Round" : "Next Turn")
+                ? (findNextAlivePlayerIndex(state.players, state.activePlayerIndex + 1) === -1 ? "End" : "Next")
+                : (findNextAlivePlayerIndex(state.players, state.activePlayerIndex + 1) === -1 ? "End Round" : "Next Turn")
               }
             </button>
           </footer>

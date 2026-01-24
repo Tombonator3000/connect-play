@@ -1,5 +1,96 @@
 # Development Log
 
+## 2026-01-24: Kritiske Bug-fikser - Char, Death & Finish Crashes
+
+### Dagens Oppgave
+Fikse tre kritiske bugs som forårsaket krasj:
+1. "Char" knapp gir svart skjerm / krasj
+2. Når spiller dør krasjer spillet
+3. "Finish" virker ikke lenger - krasjer spill
+
+---
+
+### DEEP AUDIT FUNN
+
+Gjennomførte en grundig audit av kodebasen og fant følgende kritiske feil:
+
+#### BUG #1: "Char" Button Black Screen
+**Lokasjon:** `src/game/ShadowsGame.tsx` (linje ~4697)
+
+**Årsak:** Race condition der karakterpanelet kunne vises for døde spillere, noe som ga en tom/svart overlay.
+
+**Fiks:** La til sjekk `!activePlayer.isDead` før karakterpanelet rendres:
+```typescript
+{activePlayer && !activePlayer.isDead && showLeftPanel && (
+  // ... CharacterPanel rendering
+)}
+```
+
+#### BUG #2: Player Death Causes Crash
+**Lokasjon:** `src/game/ShadowsGame.tsx` - `handleNextTurn` (linje ~3897)
+
+**Årsak:** `handleNextTurn` hoppet IKKE over døde spillere. Den blindt økte `activePlayerIndex` uavhengig av om neste spiller var i live eller død.
+
+**Fiks:** La til hjelpefunksjon `findNextAlivePlayerIndex`:
+```typescript
+const findNextAlivePlayerIndex = (players: Player[], startIndex: number): number => {
+  const hasAlivePlayers = players.some(p => !p.isDead);
+  if (!hasAlivePlayers) return -1;
+  for (let i = startIndex; i < players.length; i++) {
+    if (!players[i].isDead) return i;
+  }
+  return -1;
+};
+```
+
+#### BUG #3: Round Transitions with Dead First Player
+**Lokasjon:** `src/game/ShadowsGame.tsx` - to steder:
+- Mythos phase completion (~linje 496)
+- `handleMythosOverlayComplete` (~linje 4057)
+
+**Årsak:** Begge steder hardkodet `activePlayerIndex: 0` uten å sjekke om spiller 0 var i live.
+
+**Fiks:** La til logikk for å finne første levende spiller før runden starter:
+```typescript
+let firstAliveIndex = 0;
+for (let i = 0; i < players.length; i++) {
+  if (!players[i].isDead) {
+    firstAliveIndex = i;
+    break;
+  }
+}
+// Bruk firstAliveIndex i stedet for hardkodet 0
+```
+
+#### BUG #4: Finish Button Validation
+**Lokasjon:** `src/game/ShadowsGame.tsx` (~linje 4810)
+
+**Fiks:**
+- La til `disabled={activePlayer?.isDead}` på knappen
+- Oppdaterte knapptekst til å bruke `findNextAlivePlayerIndex` for riktig "End Round" vs "Next Turn" visning
+
+---
+
+### ENDREDE FILER
+
+| Fil | Endringer |
+|-----|-----------|
+| `src/game/ShadowsGame.tsx` | 4 bug-fikser, ny hjelpefunksjon |
+
+---
+
+### RESULTAT
+
+Alle tre kritiske bugs er nå fikset:
+- Char-knappen viser ikke lenger panel for døde spillere
+- handleNextTurn hopper over døde spillere automatisk
+- Runde-overganger starter med første levende spiller
+- Finish-knappen er deaktivert for døde spillere
+
+**Build status:** VELLYKKET
+
+---
+
 ## 2026-01-24: Teknologi-analyse & Anbefalinger for Kulere Effekter
 
 ### Dagens Oppgave
