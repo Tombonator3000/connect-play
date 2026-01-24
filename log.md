@@ -23082,3 +23082,80 @@ const MOBILE_TAP_MOVEMENT_THRESHOLD = 40; // px - bedre finger-toleranse
    - 500ms tap-threshold er mer forgiving for langsomme brukere
 
 ---
+
+## 2026-01-24: KRITISK Bug Fix - Canvas Blokkerer Alle Klikk
+
+### Problem
+UI-knapper og spillbrettet responderte FREMDELES ikke på klikk etter forrige fix. Debug-logging viste at alle klikk traff `CANVAS`-elementet med tom className.
+
+### Rotårsak
+**To GPU-akselererte effekt-komponenter hadde canvas-elementer som blokkerte alle klikk:**
+
+1. **AdvancedParticles.tsx (PixiJS):**
+   - Div-containeren hadde `pointer-events-none`
+   - MEN: PixiJS canvas som ble lagt til dynamisk via `appendChild()` arvet IKKE denne stylingen
+   - Canvas-elementer får default `pointer-events: auto`
+   - Resultatet: Full-screen canvas på z-index 100 fanget alle klikk
+
+2. **ShaderEffects.tsx (React Three Fiber):**
+   - Samme problem - div hadde `pointer-events-none`, men Canvas-komponenten fikk ikke denne stylingen
+
+### Løsning
+
+**1. AdvancedParticles.tsx:**
+```typescript
+// GAMMEL KODE (BUG):
+containerRef.current?.appendChild(app.canvas as HTMLCanvasElement);
+appRef.current = app;
+
+// NY KODE (FIKSET):
+const canvas = app.canvas as HTMLCanvasElement;
+// CRITICAL: Set pointer-events to none on canvas to allow clicks through
+canvas.style.pointerEvents = 'none';
+containerRef.current?.appendChild(canvas);
+appRef.current = app;
+```
+
+**2. ShaderEffects.tsx:**
+```typescript
+// GAMMEL KODE (BUG):
+<Canvas
+  gl={{ alpha: true, antialias: quality !== 'low', powerPreference: 'high-performance' }}
+  style={{ background: 'transparent' }}
+>
+
+// NY KODE (FIKSET):
+<Canvas
+  gl={{ alpha: true, antialias: quality !== 'low', powerPreference: 'high-performance' }}
+  style={{ background: 'transparent', pointerEvents: 'none' }}
+>
+```
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/components/AdvancedParticles.tsx` | Eksplisitt `pointer-events: none` på PixiJS canvas |
+| `src/game/components/ShaderEffects.tsx` | Eksplisitt `pointerEvents: 'none'` på R3F Canvas style |
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+### Teknisk Lærdom
+
+1. **CSS pointer-events arv:**
+   - `pointer-events: none` på parent-element arves IKKE automatisk til dynamisk opprettede barn
+   - Canvas-elementer (PixiJS, WebGL, Three.js) må ha eksplisitt `pointer-events: none` satt
+   - Alltid sett pointer-events direkte på canvas-elementet, ikke bare containeren
+
+2. **Debugging canvas-baserte effekter:**
+   - Bruk debug-logging med `e.target.tagName` for å identifisere hvilket element som fanger klikk
+   - Canvas-elementer vises som "CANVAS" med tom className i debug output
+   - Høy z-index kombinert med manglende pointer-events er en vanlig felle
+
+3. **GPU-effekt biblioteker:**
+   - PixiJS, Three.js, og lignende biblioteker oppretter canvas dynamisk
+   - Effekt-overlays må alltid ha pointer-events disabled for å ikke blokkere UI
+   - Test alltid UI-interaksjon etter å ha lagt til visuelle effekter
+
+---

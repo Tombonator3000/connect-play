@@ -189,7 +189,10 @@ const AdvancedParticles: React.FC<AdvancedParticlesProps> = ({
         autoDensity: true,
       });
 
-      containerRef.current?.appendChild(app.canvas as HTMLCanvasElement);
+      const canvas = app.canvas as HTMLCanvasElement;
+      // CRITICAL: Set pointer-events to none on canvas to allow clicks through
+      canvas.style.pointerEvents = 'none';
+      containerRef.current?.appendChild(canvas);
       appRef.current = app;
 
       // Start animation loop
