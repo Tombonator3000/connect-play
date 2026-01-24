@@ -753,8 +753,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
                   />
                 ) : null}
                 
-                {/* Chiaroscuro lighting overlay - very subtle for visibility */}
-                <div className="absolute inset-0 z-[2] chiaroscuro-overlay pointer-events-none opacity-20" />
+                {/* Chiaroscuro lighting overlay - reduced for tile visibility */}
+                <div className="absolute inset-0 z-[2] chiaroscuro-overlay pointer-events-none opacity-10" />
 
                 {/* Oil painting texture - minimal for visibility */}
                 <div className="absolute inset-0 z-[3] oil-texture pointer-events-none opacity-15" />

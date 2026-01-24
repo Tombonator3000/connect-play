@@ -155,15 +155,16 @@
      BOARD GAME AESTHETIC - Oil Painting Tile System
      ========================================================================== */
 
-  /* Chiaroscuro lighting overlay - dramatic shadow effect */
+  /* Chiaroscuro lighting overlay - subtle shadow effect for depth */
+  /* FIXED: Reduced opacity to prevent tiles from appearing black */
   .chiaroscuro-overlay {
     background: radial-gradient(
       ellipse at 30% 30%,
       transparent 0%,
-      rgba(0, 0, 0, 0.2) 50%,
-      rgba(0, 0, 0, 0.5) 100%
+      rgba(0, 0, 0, 0.1) 60%,
+      rgba(0, 0, 0, 0.25) 100%
     );
-    mix-blend-mode: multiply;
+    mix-blend-mode: soft-light;
   }
 
   /* Oil painting texture - subtle canvas effect */
@@ -177,132 +178,142 @@
      ========================================================================== */
 
   /* Dark wood flooring - manor, library, study */
+  /* FIXED: Increased lightness for better visibility */
   .tile-darkwood {
     background: linear-gradient(
       135deg,
-      hsl(25 30% 12%) 0%,
-      hsl(25 25% 8%) 50%,
-      hsl(25 35% 10%) 100%
+      hsl(25 30% 22%) 0%,
+      hsl(25 25% 18%) 50%,
+      hsl(25 35% 20%) 100%
     );
   }
 
   /* Cobblestone - streets, squares, markets */
+  /* FIXED: Increased lightness for better visibility */
   .tile-cobblestone {
-    background: 
-      radial-gradient(ellipse at 20% 30%, hsl(230 15% 18%) 0%, transparent 40%),
-      radial-gradient(ellipse at 80% 70%, hsl(230 15% 15%) 0%, transparent 40%),
-      linear-gradient(180deg, hsl(230 20% 12%) 0%, hsl(230 15% 8%) 100%);
+    background:
+      radial-gradient(ellipse at 20% 30%, hsl(230 15% 28%) 0%, transparent 40%),
+      radial-gradient(ellipse at 80% 70%, hsl(230 15% 25%) 0%, transparent 40%),
+      linear-gradient(180deg, hsl(230 20% 22%) 0%, hsl(230 15% 18%) 100%);
   }
 
   /* Stone flooring - church, crypt, basement */
+  /* FIXED: Increased lightness for better visibility */
   .tile-stone {
     background: linear-gradient(
       145deg,
-      hsl(230 15% 15%) 0%,
-      hsl(230 10% 10%) 50%,
-      hsl(230 20% 12%) 100%
+      hsl(230 15% 25%) 0%,
+      hsl(230 10% 20%) 50%,
+      hsl(230 20% 22%) 100%
     );
   }
 
   /* Carpet/rug - library, manor rooms */
+  /* FIXED: Increased lightness for better visibility */
   .tile-carpet {
     background: linear-gradient(
       135deg,
-      hsl(348 40% 15%) 0%,
-      hsl(348 35% 12%) 50%,
-      hsl(348 30% 10%) 100%
+      hsl(348 40% 25%) 0%,
+      hsl(348 35% 22%) 50%,
+      hsl(348 30% 20%) 100%
     );
   }
 
   /* Marble flooring - museum, grand halls */
+  /* FIXED: Increased lightness for better visibility */
   .tile-marble {
     background: linear-gradient(
       160deg,
-      hsl(210 10% 20%) 0%,
-      hsl(210 5% 15%) 50%,
-      hsl(210 10% 18%) 100%
+      hsl(210 10% 30%) 0%,
+      hsl(210 5% 25%) 50%,
+      hsl(210 10% 28%) 100%
     );
   }
 
   /* Water/dock areas */
+  /* FIXED: Increased lightness for better visibility */
   .tile-water {
     background: linear-gradient(
       180deg,
-      hsl(200 40% 12%) 0%,
-      hsl(200 50% 8%) 50%,
-      hsl(200 35% 15%) 100%
+      hsl(200 40% 22%) 0%,
+      hsl(200 50% 18%) 50%,
+      hsl(200 35% 25%) 100%
     );
   }
 
   /* Clean tile flooring - Hospital, Asylum, Morgue, Lab */
+  /* FIXED: Increased lightness for better visibility */
   .tile-tile {
     background:
       repeating-linear-gradient(
         90deg,
-        hsl(210 8% 18%) 0px,
-        hsl(210 8% 18%) 20px,
-        hsl(210 8% 16%) 20px,
-        hsl(210 8% 16%) 21px
+        hsl(210 8% 28%) 0px,
+        hsl(210 8% 28%) 20px,
+        hsl(210 8% 26%) 20px,
+        hsl(210 8% 26%) 21px
       ),
       repeating-linear-gradient(
         0deg,
-        hsl(210 8% 18%) 0px,
-        hsl(210 8% 18%) 20px,
-        hsl(210 8% 16%) 20px,
-        hsl(210 8% 16%) 21px
+        hsl(210 8% 28%) 0px,
+        hsl(210 8% 28%) 20px,
+        hsl(210 8% 26%) 20px,
+        hsl(210 8% 26%) 21px
       ),
       linear-gradient(
         135deg,
-        hsl(210 10% 16%) 0%,
-        hsl(210 6% 12%) 100%
+        hsl(210 10% 26%) 0%,
+        hsl(210 6% 22%) 100%
       );
   }
 
   /* Grass texture - Park, Cemetery, Forest edge */
+  /* FIXED: Increased lightness for better visibility */
   .tile-grass {
     background:
-      radial-gradient(ellipse at 20% 40%, hsl(130 35% 12%) 0%, transparent 40%),
-      radial-gradient(ellipse at 70% 30%, hsl(120 30% 10%) 0%, transparent 35%),
-      radial-gradient(ellipse at 50% 80%, hsl(140 35% 14%) 0%, transparent 45%),
+      radial-gradient(ellipse at 20% 40%, hsl(130 35% 22%) 0%, transparent 40%),
+      radial-gradient(ellipse at 70% 30%, hsl(120 30% 20%) 0%, transparent 35%),
+      radial-gradient(ellipse at 50% 80%, hsl(140 35% 24%) 0%, transparent 45%),
       linear-gradient(
         180deg,
-        hsl(125 30% 10%) 0%,
-        hsl(130 25% 8%) 50%,
-        hsl(120 35% 12%) 100%
+        hsl(125 30% 20%) 0%,
+        hsl(130 25% 18%) 50%,
+        hsl(120 35% 22%) 100%
       );
   }
 
   /* Dirt texture - Forest, Path, Cave */
+  /* FIXED: Increased lightness for better visibility */
   .tile-dirt {
     background:
-      radial-gradient(ellipse at 30% 25%, hsl(30 35% 10%) 0%, transparent 30%),
-      radial-gradient(ellipse at 75% 60%, hsl(25 30% 8%) 0%, transparent 35%),
-      radial-gradient(ellipse at 45% 85%, hsl(35 40% 12%) 0%, transparent 40%),
+      radial-gradient(ellipse at 30% 25%, hsl(30 35% 20%) 0%, transparent 30%),
+      radial-gradient(ellipse at 75% 60%, hsl(25 30% 18%) 0%, transparent 35%),
+      radial-gradient(ellipse at 45% 85%, hsl(35 40% 22%) 0%, transparent 40%),
       linear-gradient(
         145deg,
-        hsl(30 30% 10%) 0%,
-        hsl(25 25% 7%) 50%,
-        hsl(35 35% 9%) 100%
+        hsl(30 30% 20%) 0%,
+        hsl(25 25% 17%) 50%,
+        hsl(35 35% 19%) 100%
       );
   }
 
   /* Ritual flooring - Occult symbols, Ritual Chamber, Altar, Portal */
+  /* FIXED: Increased lightness for better visibility */
   .tile-ritual {
     background:
-      radial-gradient(circle at 50% 50%, hsla(280 60% 25% / 0.4) 0%, transparent 60%),
+      radial-gradient(circle at 50% 50%, hsla(280 60% 35% / 0.4) 0%, transparent 60%),
       conic-gradient(
         from 0deg at 50% 50%,
-        hsla(280 50% 15% / 0.3) 0deg,
-        hsla(348 60% 20% / 0.3) 90deg,
-        hsla(280 50% 15% / 0.3) 180deg,
-        hsla(348 60% 20% / 0.3) 270deg,
-        hsla(280 50% 15% / 0.3) 360deg
+        hsla(280 50% 25% / 0.3) 0deg,
+        hsla(348 60% 30% / 0.3) 90deg,
+        hsla(280 50% 25% / 0.3) 180deg,
+        hsla(348 60% 30% / 0.3) 270deg,
+        hsla(280 50% 25% / 0.3) 360deg
       ),
       linear-gradient(
         135deg,
-        hsl(280 40% 10%) 0%,
-        hsl(300 35% 8%) 50%,
-        hsl(280 45% 12%) 100%
+        hsl(280 40% 20%) 0%,
+        hsl(300 35% 18%) 50%,
+        hsl(280 45% 22%) 100%
       );
     animation: ritual-pulse 4s ease-in-out infinite;
   }
