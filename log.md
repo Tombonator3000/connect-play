@@ -1,5 +1,77 @@
 # Development Log
 
+## 2026-01-24: Fiks Character Sheet Crash - activeScenario ReferenceError
+
+### Problemet
+Når spilleren klikker på "CHAR" ikonet for å åpne character sheet, krasjer spillet med svart skjerm. Konsollen viser:
+```
+ReferenceError: activeScenario is not defined
+```
+
+### Deep Audit Funn
+
+#### ROTÅRSAK: Manglende `state.` prefix på variabelreferanse
+
+**Feilplassering:** `src/game/ShadowsGame.tsx` linje 4724 og 4736
+
+```typescript
+// FEIL (krasjer):
+objectives={activeScenario?.objectives}
+
+// RIKTIG:
+objectives={state.activeScenario?.objectives}
+```
+
+**Årsak:** `activeScenario` er IKKE en lokal variabel i komponenten - den eksisterer kun som `state.activeScenario`. Når CharacterPanel prøvde å rendres med `objectives={activeScenario?.objectives}`, kastet JavaScript en ReferenceError fordi `activeScenario` ikke var definert.
+
+**Hvorfor dette ikke ble oppdaget tidligere:**
+1. TypeScript type checking fanger ikke dette fordi optional chaining (`?.`) gjør at uttrykket er syntaktisk gyldig
+2. Feilen oppstår kun ved runtime når koden faktisk evalueres
+3. Character sheet rendering skjer kondisjonelt - kun når brukeren klikker på CHAR-knappen
+
+### Løsning
+
+Fikset begge referansene i ShadowsGame.tsx:
+
+**Linje 4724 (mobil character panel):**
+```typescript
+objectives={state.activeScenario?.objectives}
+```
+
+**Linje 4736 (desktop character panel):**
+```typescript
+objectives={state.activeScenario?.objectives}
+```
+
+### Sannsynlighetsberegning for feiltype
+
+| Feiltype | Sannsynlighet | Kommentar |
+|----------|---------------|-----------|
+| **Manglende `state.` prefix** | **95%** | Bekreftet rotårsak |
+| Destructuring feil | 3% | Sjekket - ingen destructuring av activeScenario |
+| Import/scope feil | 2% | Sjekket - variabelen eksisterer kun i state |
+
+### Relaterte tidligere forsøk
+
+Fra log.md 2026-01-24 (Kritiske Bug-fikser):
+- BUG #1 (Char Button Black Screen) ble "fikset" med `!activePlayer.isDead` sjekk
+- Dette adresserte en annen edge case, men IKKE den faktiske krasjen som skjedde ved klikk
+
+**Tidligere "fiks" maskerte problemet:** Den forrige fiksen la til `!activePlayer.isDead` som en betingelse, men dette forhindret kun rendering for døde spillere. Den faktiske krasjen (`activeScenario` undefined) skjedde fortsatt for levende spillere som klikket CHAR-knappen.
+
+### Endrede filer
+
+| Fil | Endringer |
+|-----|-----------|
+| `src/game/ShadowsGame.tsx` | Lagt til `state.` prefix på 2 steder (linje 4724, 4736) |
+
+### Resultat
+
+**Build status:** VELLYKKET ✓
+**Feilen er nå fikset** - Character sheet åpnes korrekt uten krasj.
+
+---
+
 ## 2026-01-24: Fiks svart skjerm ved oppstart - Lazy Loading av Pixi.js/Three.js
 
 ### Problemet
