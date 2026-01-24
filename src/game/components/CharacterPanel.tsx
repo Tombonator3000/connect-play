@@ -242,7 +242,14 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
           </div>
           <div className="flex-1 min-w-0 pt-1">
             <h2 className="text-2xl font-display italic text-parchment tracking-wide leading-none truncate">{player.name}</h2>
-            <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mt-2">{getCharacterDisplayName(player.id as CharacterType)}</div>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">{getCharacterDisplayName(player.id as CharacterType)}</span>
+              {player.level && (
+                <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400 bg-amber-900/40 px-2 py-0.5 rounded border border-amber-500/40">
+                  Level {player.level}
+                </span>
+              )}
+            </div>
             {/* Achievement Badges */}
             {earnedBadges.length > 0 && (
               <div className="mt-2 flex items-center gap-1">

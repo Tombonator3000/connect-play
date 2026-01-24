@@ -150,6 +150,8 @@ export interface Player extends Character {
   traits: Trait[];
   // Legacy system - unique hero ID for persistent heroes
   heroId?: string;  // The unique LegacyHero.id for tracking between scenarios
+  // Character level (1-5) from legacy hero progression
+  level?: number;  // Hero level for display on character sheet
   // Custom portrait from legacy hero
   customPortraitUrl?: string;  // Custom uploaded portrait URL for board and character sheet
   // Temporary combat bonuses (reset at end of round)

@@ -664,6 +664,7 @@ export function legacyHeroToPlayer(hero: LegacyHero): Player {
   return {
     id: hero.characterClass,  // Use character class as the id (CharacterType)
     heroId: hero.id,  // Store unique hero ID for tracking
+    level: hero.level,  // Character level (1-5) for display
     name: hero.name,
     hp: hero.maxHp,
     maxHp: hero.maxHp,
