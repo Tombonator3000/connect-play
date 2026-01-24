@@ -407,8 +407,9 @@ export function updateAudioSettings(settings: Partial<AudioSettings>): void {
  * Apply current volume settings to all audio sources
  */
 function applyVolumeSettings(): void {
-  const { masterVolume, sfxVolume, muted } = audioState.settings;
+  const { masterVolume, sfxVolume, musicVolume, muted } = audioState.settings;
   const effectiveVolume = muted ? 0 : masterVolume * sfxVolume;
+  const effectiveMusicVolume = muted ? 0 : masterVolume * musicVolume;
 
   if (mainSynth) {
     mainSynth.volume.value = Tone.gainToDb(effectiveVolume);
@@ -424,6 +425,18 @@ function applyVolumeSettings(): void {
   }
   if (fmSynth) {
     fmSynth.volume.value = Tone.gainToDb(effectiveVolume * 0.4);
+  }
+
+  // Update background music volume
+  if (backgroundMusicPlayer) {
+    backgroundMusicPlayer.volume.value = Tone.gainToDb(effectiveMusicVolume);
+
+    // Handle mute/unmute for background music
+    if (muted && backgroundMusicPlayer.state === 'started') {
+      backgroundMusicPlayer.stop();
+    } else if (!muted && backgroundMusicLoaded && backgroundMusicPlayer.state !== 'started' && audioState.currentAmbience) {
+      backgroundMusicPlayer.start();
+    }
   }
 }
 
@@ -800,6 +813,159 @@ export function playCosmicStatic(): void {
 }
 
 // ============================================================================
+// BACKGROUND MUSIC
+// ============================================================================
+
+// Background music player instance
+let backgroundMusicPlayer: Tone.Player | null = null;
+let backgroundMusicLoaded = false;
+
+/**
+ * Path to the background music file (without extension)
+ * The system will try to load the available format
+ */
+const BACKGROUND_MUSIC_PATH = '/audio/music/horror-ambient';
+
+/**
+ * Start playing background music
+ * Loops continuously until stopped
+ */
+export async function startBackgroundMusic(): Promise<boolean> {
+  if (!audioState.initialized) {
+    console.warn('Audio not initialized, cannot start background music');
+    return false;
+  }
+
+  // If already playing, just ensure volume is correct
+  if (backgroundMusicPlayer && backgroundMusicLoaded) {
+    updateBackgroundMusicVolume();
+    if (backgroundMusicPlayer.state !== 'started') {
+      backgroundMusicPlayer.start();
+    }
+    return true;
+  }
+
+  // Build the base URL with Vite base path
+  const baseUrl = import.meta.env.BASE_URL || '/';
+
+  // Try MP3 first (since we have horror-ambient.mp3), then OGG
+  const formats: ('mp3' | 'ogg')[] = ['mp3', 'ogg'];
+
+  for (const format of formats) {
+    const fullPath = `${baseUrl}audio/music/horror-ambient.${format}`;
+
+    try {
+      console.log(`Trying to load background music: ${fullPath}`);
+
+      // Create player with loop enabled
+      backgroundMusicPlayer = new Tone.Player({
+        url: fullPath,
+        loop: true,
+        autostart: false,
+        fadeIn: 2, // 2 second fade in
+        fadeOut: 2, // 2 second fade out
+      }).toDestination();
+
+      // Wait for the file to load
+      await backgroundMusicPlayer.load(fullPath);
+      backgroundMusicLoaded = true;
+
+      // Apply volume settings
+      updateBackgroundMusicVolume();
+
+      // Start playback if not muted
+      if (!audioState.settings.muted) {
+        backgroundMusicPlayer.start();
+      }
+
+      console.log(`Background music loaded and started: ${fullPath}`);
+      audioState.currentAmbience = 'horror-ambient';
+      return true;
+    } catch (e) {
+      console.debug(`Background music not found: ${fullPath}, trying next format...`);
+      if (backgroundMusicPlayer) {
+        backgroundMusicPlayer.dispose();
+        backgroundMusicPlayer = null;
+      }
+    }
+  }
+
+  console.warn('Failed to load background music (tried both MP3 and OGG)');
+  return false;
+}
+
+/**
+ * Stop background music
+ */
+export function stopBackgroundMusic(): void {
+  if (backgroundMusicPlayer) {
+    try {
+      backgroundMusicPlayer.stop();
+    } catch (e) {
+      console.warn('Error stopping background music:', e);
+    }
+  }
+  audioState.currentAmbience = null;
+}
+
+/**
+ * Pause background music (can be resumed)
+ */
+export function pauseBackgroundMusic(): void {
+  if (backgroundMusicPlayer && backgroundMusicPlayer.state === 'started') {
+    try {
+      backgroundMusicPlayer.stop();
+    } catch (e) {
+      console.warn('Error pausing background music:', e);
+    }
+  }
+}
+
+/**
+ * Resume background music
+ */
+export function resumeBackgroundMusic(): void {
+  if (backgroundMusicPlayer && backgroundMusicLoaded && !audioState.settings.muted) {
+    try {
+      if (backgroundMusicPlayer.state !== 'started') {
+        backgroundMusicPlayer.start();
+      }
+    } catch (e) {
+      console.warn('Error resuming background music:', e);
+    }
+  }
+}
+
+/**
+ * Update background music volume based on current settings
+ */
+function updateBackgroundMusicVolume(): void {
+  if (!backgroundMusicPlayer) return;
+
+  const { masterVolume, musicVolume, muted } = audioState.settings;
+  const effectiveVolume = muted ? 0 : masterVolume * musicVolume;
+
+  // Convert to dB (Tone.js uses dB for volume)
+  backgroundMusicPlayer.volume.value = Tone.gainToDb(effectiveVolume);
+}
+
+/**
+ * Set the music volume (0-1)
+ */
+export function setMusicVolume(volume: number): void {
+  const clampedVolume = Math.max(0, Math.min(1, volume));
+  updateAudioSettings({ musicVolume: clampedVolume });
+  updateBackgroundMusicVolume();
+}
+
+/**
+ * Check if background music is currently playing
+ */
+export function isBackgroundMusicPlaying(): boolean {
+  return backgroundMusicPlayer?.state === 'started';
+}
+
+// ============================================================================
 // CLEANUP
 // ============================================================================
 
@@ -818,6 +984,18 @@ export function disposeAudio(): void {
     delay?.dispose();
     filter?.dispose();
     audioState.ambienceLoop?.dispose();
+
+    // Dispose background music player
+    if (backgroundMusicPlayer) {
+      try {
+        backgroundMusicPlayer.stop();
+        backgroundMusicPlayer.dispose();
+      } catch (e) {
+        // Ignore disposal errors
+      }
+      backgroundMusicPlayer = null;
+      backgroundMusicLoaded = false;
+    }
 
     // Dispose file-based SFX players
     sfxPlayerCache.forEach(player => {

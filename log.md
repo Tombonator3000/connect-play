@@ -1,5 +1,47 @@
 # Development Log
 
+## 2026-01-24: Horror Ambient Background Music
+
+### Oppgave
+Implementere `horror-ambient.mp3` som generell bakgrunnsmusikk for spillet.
+
+### Gjennomført
+
+**1. Lagt til bakgrunnsmusikk-funksjonalitet i audioManager.ts:**
+- `startBackgroundMusic()` - Laster og spiller horror-ambient i loop
+- `stopBackgroundMusic()` - Stopper bakgrunnsmusikken
+- `pauseBackgroundMusic()` / `resumeBackgroundMusic()` - Pause/resume
+- `setMusicVolume()` - Setter musikkvolum
+- `isBackgroundMusicPlaying()` - Sjekker avspillingsstatus
+
+**2. Format-støtte:**
+- Prøver MP3 først (siden vi har horror-ambient.mp3)
+- Fallback til OGG hvis MP3 ikke funker
+- 2 sekunders fade-in/out for smooth overganger
+
+**3. Integrert med ShadowsGame.tsx:**
+- Bakgrunnsmusikk starter automatisk når spillet begynner (etter briefing)
+- Audio-innstillinger synkroniseres fra OptionsMenu (master/music/sfx volume)
+- Musikkvolum oppdateres i sanntid når bruker endrer i Options
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/utils/audioManager.ts` | Lagt til background music system med start/stop/pause/resume |
+| `src/game/ShadowsGame.tsx` | Importert og kalt `startBackgroundMusic()`, lagt til settings sync |
+
+### Tekniske detaljer
+- Bruker Tone.js Player med `loop: true`
+- Volume konverteres fra 0-100 (UI) til 0-1 (audio manager)
+- Respekterer mute-status
+- Musikk-fil: `/audio/music/horror-ambient.mp3`
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
+
 ## 2026-01-24: Fix Hex Tile Visibility (Tiles Appearing Black After Player Moves)
 
 ### Problem

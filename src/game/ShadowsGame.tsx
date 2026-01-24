@@ -103,6 +103,8 @@ import {
 import {
   initializeAudio,
   playSound,
+  startBackgroundMusic,
+  updateAudioSettings,
 } from './utils/audioManager';
 import {
   calculateDoomWithDarkInsightPenalty,
@@ -286,6 +288,15 @@ const ShadowsGame: React.FC = () => {
       console.error('Failed to save settings:', e);
     }
   }, [settings]);
+
+  // Sync audio settings when they change
+  useEffect(() => {
+    updateAudioSettings({
+      masterVolume: settings.masterVolume / 100, // Convert from 0-100 to 0-1
+      musicVolume: settings.musicVolume / 100,
+      sfxVolume: settings.sfxVolume / 100,
+    });
+  }, [settings.masterVolume, settings.musicVolume, settings.sfxVolume]);
 
   const [state, setState] = useState<GameState>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
@@ -4683,6 +4694,8 @@ const ShadowsGame: React.FC = () => {
             setShowBriefing(false);
             // Initialize audio system on game start (requires user interaction)
             await initializeAudio();
+            // Start background music (horror ambient)
+            startBackgroundMusic();
             playSound('success');
             // Initialize objective spawn state for quest items and tiles
             const objectiveSpawnState = initializeObjectiveSpawns(state.activeScenario!);
