@@ -59,15 +59,10 @@ const ActionBar: React.FC<ActionBarProps> = ({
   };
 
   return (
-    <div className={`flex items-center gap-1 ${isMobile ? 'gap-1' : 'gap-2 md:gap-4'} overflow-x-auto max-w-[95vw] md:max-w-none pb-1 md:pb-0 hide-scrollbar relative`}>
+    <div className={`flex items-center gap-1 ${isMobile ? 'gap-1' : 'gap-2 md:gap-4'} overflow-x-auto overflow-y-visible max-w-[95vw] md:max-w-none pb-1 md:pb-0 hide-scrollbar relative`}>
       <button
         onClick={(e) => {
           e.stopPropagation();
-          console.log('[DEBUG ActionBar] CHAR button clicked, calling onToggleCharacter');
-          // Temporary visual feedback - flash border
-          const target = e.currentTarget as HTMLButtonElement;
-          target.style.outline = '3px solid lime';
-          setTimeout(() => { target.style.outline = ''; }, 200);
           onToggleCharacter();
         }}
         className={`group flex flex-col items-center justify-center ${buttonSize} rounded border transition-all duration-200 shrink-0 active:scale-95 ${showCharacter ? 'bg-accent/20 border-accent text-accent' : 'bg-card border-border text-muted-foreground hover:border-accent hover:text-accent'}`}
@@ -112,9 +107,9 @@ const ActionBar: React.FC<ActionBarProps> = ({
             </button>
           ))}
 
-          <div className="relative">
+          <div className="relative" style={{ overflow: 'visible' }}>
             {showSpellMenu && !disabled && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-secondary border-2 border-sanity rounded-lg shadow-[0_0_30px_hsla(280,60%,55%,0.5)] w-64 overflow-hidden z-[60] animate-in slide-in-from-bottom-4 duration-200">
+              <div className="fixed bottom-28 md:bottom-32 left-1/2 -translate-x-1/2 bg-secondary border-2 border-sanity rounded-lg shadow-[0_0_30px_hsla(280,60%,55%,0.5)] w-64 overflow-hidden z-[100] animate-in slide-in-from-bottom-4 duration-200">
                 <div className="bg-secondary/40 p-2 text-center text-xs font-bold text-sanity border-b border-sanity/30 uppercase tracking-widest">
                   Grimoire
                 </div>

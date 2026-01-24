@@ -23491,3 +23491,67 @@ export function handleEscapeEffect(ctx, tile) {
    - Trygt å fullføre alle escape-relaterte objectives
 
 ---
+
+## 2026-01-24: Fix Magic Casting UI (Spell Menu Visibility)
+
+### Problem
+Når spillere (Professor eller Occultist) trykket på "Cast" knappen i ActionBar, skjedde ingenting - spell-menyen viste seg ikke. Problemet var at magi-systemet eksisterte i koden, men menyen var usynlig for brukeren.
+
+### Rot-årsak
+To problemer ble identifisert:
+
+1. **CSS Overflow-problem**: ActionBar-containeren hadde `overflow-x-auto` som klippet absolutt posisjonerte elementer (spell-menyen) som skulle vises OVER containeren.
+
+2. **Feil posisjonering**: Spell-menyen brukte `position: absolute; bottom: full` som posisjonerte den relativt til parent-elementet, men på grunn av overflow-problemet ble den klippet bort.
+
+### Løsning
+
+**1. Lagt til `overflow-y-visible` på ActionBar-containeren (ActionBar.tsx:65):**
+```tsx
+<div className="flex items-center gap-1 ... overflow-x-auto overflow-y-visible ...">
+```
+
+**2. Endret spell-meny posisjonering til `position: fixed` (ActionBar.tsx:120):**
+```tsx
+<div className="fixed bottom-28 md:bottom-32 left-1/2 -translate-x-1/2 ... z-[100] ...">
+```
+
+**3. Økt z-index til 100** for å sikre at spell-menyen alltid vises over ActionBar (som har z-50).
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/components/ActionBar.tsx` | Fikset overflow og spell-meny posisjonering |
+
+### Spell System Oversikt
+
+Spillet har to separate spell-systemer:
+
+1. **Legacy Spells (Professor)**
+   - Bruker `player.spells` array
+   - Koster Insight for å caste
+   - Settes automatisk via `legacyHeroToPlayer()` eller karaktervelger
+   - Includes: True Sight (reveal), Mend Flesh (heal)
+
+2. **Occultist Spells (Occultist)**
+   - Bruker `player.selectedSpells` array
+   - Har begrensede bruk per scenario
+   - Velges via SpellSelectionModal før scenario starter
+   - Includes: Eldritch Bolt, Mind Blast, Banish, Dark Shield, Glimpse Beyond
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+### Teknisk Lærdom
+
+1. **CSS overflow interaksjon:**
+   - `overflow-x: auto` kan påvirke `overflow-y` i noen tilfeller
+   - Absolutt posisjonerte elementer kan klippes av overflow på ancestor-elementer
+   - `position: fixed` er immune mot overflow-clipping
+
+2. **Z-index stacking:**
+   - ActionBar footer har `z-50`
+   - Spell-meny trenger høyere z-index (`z-100`) for å vises over
+
+---
