@@ -1,5 +1,60 @@
 # Development Log
 
+## 2026-01-24: Fiks UI Scale og Tekstlesbarhet
+
+### Oppgave: UI Scale Slider Fungerer Ikke + Tekst Vanskelig å Lese (FIKSET ✓)
+
+#### Problemet
+1. Tekst var vanskelig å lese - for liten skriftstørrelse
+2. UI Scale slider i Options → Display hadde ingen effekt
+
+#### Root Cause Analysis
+
+**Problemet:** UI Scale-innstillingen ble lagret i `settings.uiScale` (50-150%), men denne verdien ble aldri brukt til å faktisk skalere UI-en.
+
+Tailwind CSS bruker `rem`-enheter som er relative til `<html>` elementets font-size (standard 16px). Selv om slider fungerte og verdien ble lagret, ble ikke denne verdien anvendt på noen CSS-egenskaper.
+
+#### Løsning
+
+**Implementert i `ShadowsGame.tsx`:**
+
+```typescript
+// Apply UI Scale to root element so all rem-based sizes scale properly
+useEffect(() => {
+  // Base font-size is 16px. Scale it based on uiScale (100% = 16px, 150% = 24px, etc.)
+  const scaledFontSize = 16 * (settings.uiScale / 100);
+  document.documentElement.style.fontSize = `${scaledFontSize}px`;
+
+  // Cleanup: reset to default when component unmounts
+  return () => {
+    document.documentElement.style.fontSize = '16px';
+  };
+}, [settings.uiScale]);
+```
+
+**Hvordan det fungerer:**
+- Når `uiScale` endres (via slider), beregnes ny base font-size
+- `document.documentElement.style.fontSize` setter `<html>` elementets font-size
+- Alle Tailwind-klasser som bruker `rem` (f.eks. `text-sm`, `text-lg`, `p-4`, etc.) skaleres automatisk
+- Ved 150% blir all tekst og UI 50% større enn standard
+- Ved 50% blir alt halvparten av standard størrelse
+
+#### Skalering Eksempler
+
+| UI Scale | Base Font | `text-sm` (0.875rem) | `text-lg` (1.125rem) |
+|----------|-----------|----------------------|----------------------|
+| 50%      | 8px       | 7px                  | 9px                  |
+| 100%     | 16px      | 14px                 | 18px                 |
+| 150%     | 24px      | 21px                 | 27px                 |
+
+#### Endrede Filer
+
+| Fil | Endringer |
+|-----|-----------|
+| `src/game/ShadowsGame.tsx` | Lagt til useEffect som anvender `settings.uiScale` på root font-size |
+
+---
+
 ## 2026-01-24: Fiks Inventory Purchase, Loot Pickup, og Game Over Crash
 
 ### Oppgave 1: Game Over Crash ved Scenario Fullføring (FIKSET ✓)
