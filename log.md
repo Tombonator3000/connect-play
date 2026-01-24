@@ -1,5 +1,85 @@
 # Development Log
 
+## 2026-01-24: Fiks svart skjerm ved oppstart - Lazy Loading av Pixi.js/Three.js
+
+### Problemet
+Spillet startet ikke - bare svart skjerm ble vist. Ingen feilmeldinger i build, men spillet krasjet ved lasting.
+
+### Deep Audit Funn
+
+Etter grundig undersøkelse av kodebasen ble følgende identifisert:
+
+#### ROTÅRSAK: Blokkerende biblioteklasting
+
+**Problem:** `AdvancedParticles` (Pixi.js) og `ShaderEffects` (Three.js) ble importert synkront i `ShadowsGame.tsx`, noe som betydde at:
+
+1. **Pixi.js (~223 KB)** og **Three.js (~932 KB)** ble lastet ved appstart
+2. WebGL-initialisering kunne blokkere eller feile på noen enheter/nettlesere
+3. Selv om effektene var deaktivert (default: false), ble bibliotekene likevel lastet
+4. Totalstørrelse på hovedbundle: **~2.9 MB** (for stor for rask oppstart)
+
+**Lokasjon:** `src/game/ShadowsGame.tsx` linje 38-39
+
+```typescript
+// GAMMELT (blokkerende import):
+import AdvancedParticles from './components/AdvancedParticles';
+import ShaderEffects from './components/ShaderEffects';
+```
+
+### Løsning: React Lazy Loading
+
+Implementerte lazy loading med `React.lazy()` og `Suspense`:
+
+**Endring 1: Lazy imports (linje 38-40)**
+```typescript
+// NYTT (lazy loading):
+const AdvancedParticles = lazy(() => import('./components/AdvancedParticles'));
+const ShaderEffects = lazy(() => import('./components/ShaderEffects'));
+```
+
+**Endring 2: Betinget rendering med Suspense (linje ~4127-4150)**
+```typescript
+{/* Kun last biblioteker når faktisk aktivert */}
+{settings.advancedParticles && settings.particles && (
+  <Suspense fallback={null}>
+    <AdvancedParticles enabled={true} quality={settings.effectsQuality} />
+  </Suspense>
+)}
+
+{settings.shaderEffects && (
+  <Suspense fallback={null}>
+    <ShaderEffects enabled={true} quality={settings.effectsQuality} ... />
+  </Suspense>
+)}
+```
+
+### Resultater
+
+| Metrikk | Før | Etter | Forbedring |
+|---------|-----|-------|------------|
+| Hovedbundle (index.js) | 2,878 KB | 1,717 KB | **-40%** |
+| Pixi.js chunk | (inkludert) | 223 KB (separat) | Lastes kun ved behov |
+| Three.js chunk | (inkludert) | 932 KB (separat) | Lastes kun ved behov |
+| Initial loading | Blokkert | Umiddelbar | Spillet starter nå |
+
+### Endrede filer
+
+| Fil | Endringer |
+|-----|-----------|
+| `src/game/ShadowsGame.tsx` | Lazy loading imports, Suspense wrapping, betinget rendering |
+
+### Tekniske detaljer
+
+- **Code splitting**: Vite/Rollup deler nå automatisk ut Pixi.js og Three.js i separate chunks
+- **On-demand loading**: Bibliotekene lastes først når brukeren aktiverer "Advanced Particles" eller "Shader Effects" i Options
+- **Graceful degradation**: Hvis effekter er deaktivert (default), lastes aldri de tunge bibliotekene
+- **Fallback**: Suspense bruker `null` som fallback slik at spillet ikke viser loading-indikator
+
+### Build Status
+**VELLYKKET** - Spillet starter nå uten svart skjerm.
+
+---
+
 ## 2026-01-24: Kritiske Bug-fikser - Char, Death & Finish Crashes
 
 ### Dagens Oppgave
