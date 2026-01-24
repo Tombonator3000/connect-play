@@ -221,7 +221,7 @@ const ShaderEffects: React.FC<ShaderEffectsProps> = ({
           antialias: quality !== 'low',
           powerPreference: 'high-performance',
         }}
-        style={{ background: 'transparent' }}
+        style={{ background: 'transparent', pointerEvents: 'none' }}
       >
         <ScreenCapture />
         <Effects
