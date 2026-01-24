@@ -1589,6 +1589,7 @@ export interface GameState {
     questItems: {
       id: string;
       objectiveId: string;
+      scenarioId: string;  // Which scenario this item belongs to (for cleanup)
       type: 'key' | 'clue' | 'collectible' | 'artifact' | 'component';
       name: string;
       description: string;
@@ -1599,12 +1600,13 @@ export interface GameState {
     questTiles: {
       id: string;
       objectiveId: string;
-      type: 'exit' | 'altar' | 'ritual_point' | 'npc_location' | 'boss_room';
+      type: 'exit' | 'altar' | 'ritual_point' | 'npc_location' | 'boss_room' | 'final_confrontation';
       name: string;
       spawned: boolean;
       revealed: boolean;
       revealCondition?: 'objective_complete' | 'item_found' | 'doom_threshold';
       revealObjectiveId?: string;
+      bossType?: string;  // For final_confrontation: the boss type to spawn
     }[];
     tilesExplored: number;
     itemsCollected: number;
