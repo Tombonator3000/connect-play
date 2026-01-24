@@ -63,7 +63,7 @@ const ScenarioBriefingPopup: React.FC<ScenarioBriefingPopupProps> = ({
   const VictoryIcon = getVictoryTypeIcon(scenario.victoryType);
 
   return (
-    <div className={`fixed inset-0 z-[80] flex items-center justify-center bg-gradient-to-b from-stone-900/98 via-background/99 to-stone-900/98 transition-opacity duration-1000 ${isRevealed ? 'opacity-100' : 'opacity-0'}`}>
+    <div className={`fixed inset-0 z-[110] flex items-center justify-center bg-gradient-to-b from-stone-900/98 via-background/99 to-stone-900/98 transition-opacity duration-1000 ${isRevealed ? 'opacity-100' : 'opacity-0'}`}>
       {/* Background atmospheric effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         {/* Floating dust particles */}

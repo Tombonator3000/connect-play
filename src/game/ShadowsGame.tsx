@@ -4355,7 +4355,7 @@ const ShadowsGame: React.FC = () => {
         />
       )}
 
-      {state.phase === GamePhase.SETUP && !isMainMenuOpen && (
+      {state.phase === GamePhase.SETUP && !isMainMenuOpen && !showBriefing && (
         <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-8 bg-background overflow-y-auto">
           {!state.activeScenario ? (
             <div className="bg-card p-12 rounded-2xl border-2 border-primary shadow-[var(--shadow-doom)] max-w-4xl w-full text-center">
