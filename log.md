@@ -1,5 +1,335 @@
 # Development Log
 
+## 2026-01-24: Komplett SFX-Liste og Mappestruktur
+
+### Oppgave: Lage liste over hvilke SFX spillet trenger og hvilke mapper de skal ligge i
+
+#### Analyse
+Gjennomgått følgende dokumenter for å identifisere alle lydeffekter spillet trenger:
+- `game_design_bible.md` - Tile-system, hindringer, puzzles, inventory, galskap
+- `REGELBOK.MD` - Kampsystem, karakterer, våpen, monstre, sanity
+- `src/game/utils/audioManager.ts` - Eksisterende Tone.js-baserte lyder
+
+#### Eksisterende Struktur
+```
+public/audio/
+├── music/          # Bakgrunnsmusikk
+│   └── README.md
+└── sfx/            # Lydeffekter
+    ├── README.md
+    └── rain-loop.ogg  # Eneste eksisterende SFX-fil
+```
+
+#### Anbefalt Ny Mappestruktur
+```
+public/audio/sfx/
+├── ui/              # Brukergrensesnitt
+├── combat/          # Kamp og våpen
+├── movement/        # Bevegelse og interaksjon
+├── doors/           # Dører og låser
+├── monsters/        # Monster-lyder
+├── atmosphere/      # Atmosfære og horror
+├── magic/           # Magi og ritualer
+├── items/           # Gjenstander
+├── events/          # Spillhendelser
+└── ambient/         # Omgivelseslyder og vær
+```
+
+---
+
+### KOMPLETT SFX-LISTE
+
+#### 1. UI (`public/audio/sfx/ui/`)
+
+| Filnavn | Beskrivelse | Brukes i |
+|---------|-------------|----------|
+| `click.ogg` | Knapp/meny-klikk | Alle UI-knapper |
+| `hover.ogg` | Mouse-over på knapper | Hover-effekter |
+| `confirm.ogg` | Bekreftelse/valg | Scenario-valg, karakter-valg |
+| `cancel.ogg` | Avbryt/tilbake | Meny-navigasjon |
+| `success.ogg` | Positiv tilbakemelding | Fullført handling |
+| `error.ogg` | Negativ tilbakemelding | Feil, blokkert handling |
+| `menu-open.ogg` | Åpne meny/popup | Journal, Options, Merchant |
+| `menu-close.ogg` | Lukke meny/popup | Lukke vinduer |
+| `notification.ogg` | Varsel/info | Nye ledetråder, events |
+| `phase-change.ogg` | Faseovergang | Investigator → Mythos → Combat |
+| `turn-start.ogg` | Tur begynner | Spillerens tur |
+| `turn-end.ogg` | Tur slutter | Avslutt tur |
+
+#### 2. COMBAT (`public/audio/sfx/combat/`)
+
+##### Våpenlyder (basert på REGELBOK.MD)
+
+| Filnavn | Beskrivelse | Våpentype |
+|---------|-------------|-----------|
+| `unarmed-swing.ogg` | Slag uten våpen | Unarmed (1 terning) |
+| `knife-slash.ogg` | Knivhugg/slashing | Knife (2 terninger) |
+| `club-swing.ogg` | Kølle/rør-slag | Club/Pipe (2 terninger) |
+| `machete-swing.ogg` | Machete-hugg | Machete (3 terninger) |
+| `derringer-shot.ogg` | Liten pistol | Derringer (2 terninger) |
+| `revolver-shot.ogg` | Revolver-skudd | Revolver (3 terninger) |
+| `shotgun-blast.ogg` | Hagle-smell | Shotgun (4 terninger) |
+| `rifle-shot.ogg` | Rifle-skudd | Rifle (3 terninger) |
+| `tommy-gun-burst.ogg` | Automatild | Tommy Gun (5 terninger) |
+
+##### Kamplyder
+
+| Filnavn | Beskrivelse | Brukes i |
+|---------|-------------|----------|
+| `hit-flesh.ogg` | Treff på mål | Skull-suksess på fiende |
+| `hit-blocked.ogg` | Blokkert treff | Shield blokkerer skull |
+| `miss.ogg` | Bom | Ingen skulls |
+| `critical-hit.ogg` | Kritisk treff | Alle terninger traff |
+| `critical-miss.ogg` | Kritisk bom | Alle terninger feilet |
+| `reload.ogg` | Lading av våpen | Reload-handling |
+| `empty-click.ogg` | Tom magazin | Ut av ammo |
+| `player-hurt.ogg` | Spiller tar skade | Vitality redusert |
+| `player-death.ogg` | Spiller dør | HP = 0 |
+
+##### Terningkast
+
+| Filnavn | Beskrivelse | Brukes i |
+|---------|-------------|----------|
+| `dice-roll.ogg` | Terninger kastes | Angrep, forsvar, skill checks |
+| `dice-land.ogg` | Terninger lander | Resultat-visning |
+| `dice-skull.ogg` | Skull-resultat (4-6) | Suksess på terning |
+| `dice-blank.ogg` | Blank resultat (1-3) | Feil på terning |
+
+#### 3. MOVEMENT (`public/audio/sfx/movement/`)
+
+##### Fottrinn per gulvtype (fra game_design_bible.md)
+
+| Filnavn | Beskrivelse | FloorType |
+|---------|-------------|-----------|
+| `step-wood.ogg` | Tre-gulv | WOOD (Manor, Library, Study) |
+| `step-cobblestone.ogg` | Brostein | COBBLESTONE (Street, Square) |
+| `step-tile.ogg` | Fliser | TILE (Hospital, Asylum, Lab) |
+| `step-stone.ogg` | Stein | STONE (Crypt, Cellar, Church) |
+| `step-grass.ogg` | Gress | GRASS (Park, Cemetery) |
+| `step-dirt.ogg` | Jord | DIRT (Forest, Path, Cave) |
+| `step-water.ogg` | Vading i vann | WATER (Harbor, Sewer) |
+| `step-ritual.ogg` | Okkult gulv | RITUAL (Ritual Chamber) |
+
+##### Trapper
+
+| Filnavn | Beskrivelse | EdgeType |
+|---------|-------------|----------|
+| `stairs-up.ogg` | Gå opp trapp | STAIRS_UP (+1 zone level) |
+| `stairs-down.ogg` | Gå ned trapp | STAIRS_DOWN (-1 zone level) |
+| `ladder-climb.ogg` | Klatre på stige | Ladder-tiles |
+
+#### 4. DOORS (`public/audio/sfx/doors/`)
+
+Basert på DoorState og EdgeType fra game_design_bible.md:
+
+| Filnavn | Beskrivelse | DoorState/Handling |
+|---------|-------------|-------------------|
+| `door-open.ogg` | Åpne vanlig dør | CLOSED → OPEN |
+| `door-close.ogg` | Lukke dør | OPEN → CLOSED |
+| `door-locked.ogg` | Prøve låst dør | LOCKED (feilet forsøk) |
+| `door-unlock-key.ogg` | Låse opp med nøkkel | LOCKED → OPEN |
+| `door-unlock-pick.ogg` | Dirke opp lås | Lockpick suksess |
+| `door-break.ogg` | Bryte ned dør | BARRICADED → BROKEN |
+| `door-creak.ogg` | Knirkende dør | Gammel dør-åpning |
+| `door-secret.ogg` | Finne hemmelig dør | SECRET → avslørt |
+| `door-sealed.ogg` | Forseglet dør lyd | SEALED (okkult) |
+| `door-puzzle.ogg` | Puzzle-dør aktivert | PUZZLE-dør |
+| `window-open.ogg` | Åpne vindu | WINDOW passering |
+| `window-break.ogg` | Knuse vindu | Tvangs-passering |
+
+#### 5. MONSTERS (`public/audio/sfx/monsters/`)
+
+Basert på Bestiary fra REGELBOK.MD:
+
+##### Minions
+
+| Filnavn | Beskrivelse | Monster |
+|---------|-------------|---------|
+| `cultist-spawn.ogg` | Kultist dukker opp | Cultist (HP 2) |
+| `cultist-attack.ogg` | Kultist angrep | 1 angrepsterning |
+| `cultist-death.ogg` | Kultist dør | Defeated |
+| `mi-go-spawn.ogg` | Mi-Go ankomst | Mi-Go (HP 3, Flying) |
+| `mi-go-buzz.ogg` | Mi-Go vinge-lyd | Idle/bevegelse |
+| `nightgaunt-spawn.ogg` | Nightgaunt | Nightgaunt (HP 3, Flying) |
+
+##### Warriors
+
+| Filnavn | Beskrivelse | Monster |
+|---------|-------------|---------|
+| `ghoul-spawn.ogg` | Ghoul dukker opp | Ghoul (HP 3) |
+| `ghoul-growl.ogg` | Ghoul knurring | Idle |
+| `ghoul-attack.ogg` | Ghoul biter/klør | 2 angrepsterninger |
+| `ghoul-death.ogg` | Ghoul kollapser til jord | "Collapses into grave dirt" |
+| `deep-one-spawn.ogg` | Deep One stiger opp | Deep One (HP 3) |
+| `deep-one-gurgle.ogg` | Deep One lyder | Aquatic lyder |
+| `deep-one-attack.ogg` | Deep One angrep | 2 angrepsterninger |
+| `deep-one-death.ogg` | Deep One oppløses | "Dissolves into brine" |
+| `hound-howl.ogg` | Hound of Tindalos | Hound (HP 4, Fast, Ambusher) |
+| `formless-spawn.ogg` | Formless Spawn | Formless Spawn (HP 5) |
+
+##### Elites
+
+| Filnavn | Beskrivelse | Monster |
+|---------|-------------|---------|
+| `dark-priest-chant.ogg` | Dark Priest | Dark Priest (HP 5) |
+| `hunting-horror-screech.ogg` | Hunting Horror | Hunting Horror (HP 4, Flying) |
+| `dark-young-roar.ogg` | Dark Young | Dark Young (HP 6, Massive) |
+
+##### Bosses
+
+| Filnavn | Beskrivelse | Monster |
+|---------|-------------|---------|
+| `shoggoth-mass.ogg` | Shoggoth bevegelse | Shoggoth (HP 6, Massive) |
+| `shoggoth-attack.ogg` | Shoggoth angrep | 3 angrepsterninger |
+| `star-spawn-awaken.ogg` | Star Spawn våkner | Star Spawn (HP 8) |
+| `ancient-one-presence.ogg` | Ancient One manifesterer | Ancient One (HP 10) |
+
+#### 6. ATMOSPHERE (`public/audio/sfx/atmosphere/`)
+
+Basert på Madness Conditions fra game_design_bible.md:
+
+| Filnavn | Beskrivelse | Trigger |
+|---------|-------------|---------|
+| `sanity-loss.ogg` | Sanity-tap lyd | Sanity reduseres |
+| `sanity-critical.ogg` | Sanity når 0 | Trekk Madness Card |
+| `horror-sting.ogg` | Horror-sjekk moment | Se fiende første gang |
+| `horror-fail.ogg` | Feilet horror-sjekk | Mister Sanity |
+| `horror-pass.ogg` | Bestått horror-sjekk | Motstår frykten |
+| `whispers.ogg` | Hviskende stemmer | HALLUCINATIONS madness |
+| `heartbeat.ogg` | Bankende hjerte | PARANOIA madness |
+| `hysteria-laugh.ogg` | Hysterisk latter | HYSTERIA madness |
+| `static-cosmic.ogg` | Kosmisk statisk | DARK INSIGHT madness |
+| `tinnitus.ogg` | Øresus | Sanity-relatert |
+| `breath-heavy.ogg` | Tung pust | Lav HP/Sanity |
+| `madness-trigger.ogg` | Galskap aktiveres | Ny Madness Condition |
+
+#### 7. MAGIC (`public/audio/sfx/magic/`)
+
+Basert på Occultist Spells fra REGELBOK.MD:
+
+| Filnavn | Beskrivelse | Spell/Ritual |
+|---------|-------------|--------------|
+| `spell-cast.ogg` | Generisk spell-cast | Alle spells |
+| `eldritch-bolt.ogg` | Eldritch Bolt | 3 attack dice, Range 3 |
+| `mind-blast.ogg` | Mind Blast | 2 attack + Horror |
+| `banish.ogg` | Banish | Fjerner svak fiende |
+| `dark-shield.ogg` | Dark Shield | +2 Defense |
+| `glimpse-beyond.ogg` | Glimpse Beyond | Se alle tiles i range 3 |
+| `true-sight.ogg` | True Sight (Professor) | Avslører ledetråder |
+| `mend-flesh.ogg` | Mend Flesh (Professor) | Healer 2 HP |
+| `ritual-start.ogg` | Ritual begynner | Ritual-interaksjon |
+| `ritual-chant.ogg` | Ritual-messing | Under ritual |
+| `ritual-complete.ogg` | Ritual fullført | Suksess |
+| `ritual-fail.ogg` | Ritual feilet | Fiasko |
+| `elder-sign.ogg` | Elder Sign brukt | Åpne SEALED dører |
+| `ward-break.ogg` | Bryte ward/seal | Occult DC 5 |
+
+#### 8. ITEMS (`public/audio/sfx/items/`)
+
+Basert på Inventory fra REGELBOK.MD og game_design_bible.md:
+
+| Filnavn | Beskrivelse | Handling |
+|---------|-------------|----------|
+| `pickup-generic.ogg` | Plukke opp gjenstand | Standard pickup |
+| `pickup-weapon.ogg` | Plukke opp våpen | Våpen til inventory |
+| `pickup-key.ogg` | Plukke opp nøkkel | Nøkkel funnet |
+| `pickup-clue.ogg` | Finne ledetråd | Clue til journal |
+| `pickup-gold.ogg` | Finne gull/penger | Valuta |
+| `drop-item.ogg` | Legge fra seg gjenstand | Drop handling |
+| `equip.ogg` | Ta på utstyr | Våpen/rustning til slot |
+| `unequip.ogg` | Ta av utstyr | Fjerne fra slot |
+| `use-heal.ogg` | Bruke First Aid/Bandage | HP restored |
+| `use-whiskey.ogg` | Drikke Old Whiskey | +1 Sanity |
+| `use-flashlight.ogg` | Skru på lommelykt | Lyskilde aktivert |
+| `use-lantern.ogg` | Tenne lanterne | Oil Lantern |
+| `read-book.ogg` | Lese bok/dokument | Necronomicon, clues |
+| `search-start.ogg` | Begynne søk | Investigate handling |
+| `search-found.ogg` | Fant noe | Søk-suksess |
+| `search-nothing.ogg` | Fant ingenting | Søk-fiasko |
+
+#### 9. EVENTS (`public/audio/sfx/events/`)
+
+Basert på Scenario-regler fra REGELBOK.MD:
+
+| Filnavn | Beskrivelse | Event |
+|---------|-------------|-------|
+| `doom-tick.ogg` | Doom trekker ned | -1 Doom per runde |
+| `doom-event.ogg` | Doom-terskel nådd | Doom Event trigger |
+| `doom-critical.ogg` | Doom nesten 0 | Doom = 1-2 |
+| `doom-zero.ogg` | Game Over fra Doom | Doom = 0 |
+| `event-card-draw.ogg` | Trekke Event Card | Mythos Phase |
+| `event-positive.ogg` | Positiv event | Gunstig hendelse |
+| `event-negative.ogg` | Negativ event | Ugunstig hendelse |
+| `objective-complete.ogg` | Mål fullført | Objective cleared |
+| `objective-fail.ogg` | Mål feilet | Objective failed |
+| `scenario-victory.ogg` | Seier-fanfare | Scenario won |
+| `scenario-defeat.ogg` | Nederlag | Alle døde / Doom = 0 |
+| `level-up.ogg` | Level opp | Legacy mode XP |
+| `new-clue.ogg` | Ny ledetråd | Journal oppdatert |
+| `secret-found.ogg` | Hemmelighet avslørt | Hidden door/passage |
+
+#### 10. AMBIENT (`public/audio/sfx/ambient/`)
+
+Basert på Weather og tile-atmosfære:
+
+##### Vær
+
+| Filnavn | Beskrivelse | Weather Type |
+|---------|-------------|--------------|
+| `rain-light.ogg` | Lett regn (loop) | Rainy |
+| `rain-heavy.ogg` | Kraftig regn (loop) | Storm |
+| `thunder-distant.ogg` | Fjern torden | Stormy |
+| `thunder-close.ogg` | Nær torden | Storm event |
+| `wind-light.ogg` | Lett vind (loop) | Windy |
+| `wind-howling.ogg` | Ulende vind (loop) | Harsh weather |
+| `fog-ambience.ogg` | Tåke-atmosfære (loop) | Foggy |
+
+##### Tiles/Lokasjon
+
+| Filnavn | Beskrivelse | Tile Category |
+|---------|-------------|---------------|
+| `ambient-forest.ogg` | Skog-lyder (loop) | NATURE - forest |
+| `ambient-marsh.ogg` | Myr-lyder (loop) | NATURE - marsh |
+| `ambient-coast.ogg` | Kyst-bølger (loop) | NATURE - coast |
+| `ambient-urban.ogg` | By-lyder (loop) | URBAN tiles |
+| `ambient-church.ogg` | Kirke-atmosfære (loop) | Church tiles |
+| `ambient-crypt.ogg` | Krypt-atmosfære (loop) | CRYPT tiles |
+| `ambient-sewer.ogg` | Kloakk-lyder (loop) | BASEMENT - sewer |
+| `ambient-asylum.ogg` | Asyl-lyder (loop) | Asylum tiles |
+
+---
+
+### Oppsummering
+
+| Kategori | Antall filer | Prioritet |
+|----------|--------------|-----------|
+| UI | 12 | HØY |
+| Combat | 22 | HØY |
+| Movement | 11 | MEDIUM |
+| Doors | 12 | MEDIUM |
+| Monsters | 24 | HØY |
+| Atmosphere | 12 | HØY |
+| Magic | 15 | MEDIUM |
+| Items | 17 | MEDIUM |
+| Events | 13 | HØY |
+| Ambient | 15 | LAV (loop) |
+| **TOTALT** | **153 filer** | - |
+
+### Anbefalte kilder (CC0/Royalty-Free)
+
+1. **OpenGameArt.org** - CC0 lisensiert spillaudio
+2. **Freesound.org** - CC0-taggede lyder
+3. **Sonniss GDC Audio Bundles** - Gratis profesjonelle lydpakker
+
+### Neste steg
+
+1. Opprett mappestrukturen: `mkdir -p public/audio/sfx/{ui,combat,movement,doors,monsters,atmosphere,magic,items,events,ambient}`
+2. Last ned CC0-lyder fra anbefalte kilder
+3. Konverter til .ogg format (lavere filstørrelse)
+4. Oppdater `audioManager.ts` til å laste fil-baserte SFX i tillegg til Tone.js
+
+---
+
 ## 2026-01-24: Fiks "Assemble Team" Knapp - Spill Starter Ikke
 
 ### Oppgave: Assemble Team Knapp Fungerer Ikke (FIKSET ✓)
