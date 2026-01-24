@@ -23159,3 +23159,90 @@ appRef.current = app;
    - Test alltid UI-interaksjon etter å ha lagt til visuelle effekter
 
 ---
+
+## 2026-01-24: Sanity/Desperate Measures Bonus Audit
+
+### Oppgave
+Verifisere at alle desperate measures bonuser faktisk fungerer i spillet.
+
+### Desperate Measures Oversikt
+Fra `src/game/constants/desperateMeasures.ts`:
+- **Adrenalin**: +1 AP når HP = 1
+- **Galskaps Styrke**: +1 attack die når Sanity = 1 (med auto-fail Willpower)
+- **Overlevelsesinstinkt**: +1 defense die når HP <= 2
+- **Desperat Fokus**: +2 attack dice når HP = 1 OG Sanity = 1
+- **Siste Kamp**: +1 damage på alle angrep når HP = 1
+
+### Analyse
+
+| Bonus | Status | Hvor |
+|-------|--------|------|
+| `bonusAttackDice` | ✅ FUNGERER | `combatUtils.ts:430` - Legges til i `totalAttackDice` |
+| `bonusDefenseDice` | ✅ FUNGERER | `combatUtils.ts:536` - Legges til i `totalDefenseDice` |
+| `bonusDamage` | ✅ FUNGERER | `combatUtils.ts:442-444` - Legges til hvis damage > 0 |
+| `bonusAP` | ❌ **FUNGERTE IKKE** | `mythosPhaseUtils.ts:512-514` - Var IKKE inkludert |
+
+### Bug Funnet
+`bonusAP` (Adrenalin-bonusen) ble ALDRI lagt til i `resetPlayersForNewTurn()`:
+
+**GAMMEL KODE (BUG):**
+```typescript
+export function resetPlayersForNewTurn(players: Player[]): PlayerResetResult {
+  const resetPlayers = players.map(p => {
+    const baseActions = p.isDead ? 0 : (p.maxActions || 2);
+    const penalty = p.apPenaltyNextTurn || 0;
+    const finalActions = Math.max(0, baseActions - penalty);
+    return { ...p, actions: finalActions, apPenaltyNextTurn: undefined };
+  });
+  return { resetPlayers };
+}
+```
+
+### Løsning
+Lagt til `calculateDesperateBonuses` import og beregning:
+
+**NY KODE (FIKSET):**
+```typescript
+import { getCombatModifier, calculateDesperateBonuses } from '../constants';
+
+export function resetPlayersForNewTurn(players: Player[]): PlayerResetResult {
+  const resetPlayers = players.map(p => {
+    const baseActions = p.isDead ? 0 : (p.maxActions || 2);
+    const penalty = p.apPenaltyNextTurn || 0;
+    
+    // DESPERATE MEASURES: Add bonus AP from Adrenaline (HP = 1)
+    const desperateBonuses = calculateDesperateBonuses(p.hp, p.sanity);
+    const finalActions = Math.max(0, baseActions - penalty + desperateBonuses.bonusAP);
+    
+    return { ...p, actions: finalActions, apPenaltyNextTurn: undefined };
+  });
+  return { resetPlayers };
+}
+```
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/utils/mythosPhaseUtils.ts` | Import `calculateDesperateBonuses`, legg til bonusAP i resetPlayersForNewTurn |
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+### Teknisk Lærdom
+
+1. **Desperate Measures må sjekkes i alle relevante kontekster:**
+   - Angrep: `bonusAttackDice` og `bonusDamage`
+   - Forsvar: `bonusDefenseDice`
+   - Turstart: `bonusAP` (var glemt!)
+   - Auto-fail skills: `autoFailSkills`
+
+2. **Testing av bonuser:**
+   - UI (DesperateIndicator) viser bonuser korrekt
+   - Men visning != funksjonalitet - må verifisere at bonusene faktisk brukes
+
+3. **Funksjonell separasjon:**
+   - `calculateDesperateBonuses()` er sentralisert og gir alle bonuser
+   - Må importeres og brukes i alle relevante funksjoner
+
+---

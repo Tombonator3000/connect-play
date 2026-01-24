@@ -17,7 +17,7 @@ import { Tile, Enemy, EnemyType, Player, Item, Scenario, LogEntry, GamePhase } f
 import { ObjectiveSpawnState, checkGuaranteedSpawns, executeGuaranteedSpawns } from './objectiveSpawner';
 import { processEnemyTurn } from './monsterAI';
 import { calculateEnemyDamage } from './combatUtils';
-import { getCombatModifier } from '../constants';
+import { getCombatModifier, calculateDesperateBonuses } from '../constants';
 import { drawEventCard } from './eventDeckManager';
 
 // ============================================================================
@@ -511,7 +511,10 @@ export function resetPlayersForNewTurn(players: Player[]): PlayerResetResult {
     // Use maxActions if available (from level bonuses), otherwise default to 2
     const baseActions = p.isDead ? 0 : (p.maxActions || 2);
     const penalty = p.apPenaltyNextTurn || 0;
-    const finalActions = Math.max(0, baseActions - penalty);
+
+    // DESPERATE MEASURES: Add bonus AP from Adrenaline (HP = 1)
+    const desperateBonuses = calculateDesperateBonuses(p.hp, p.sanity);
+    const finalActions = Math.max(0, baseActions - penalty + desperateBonuses.bonusAP);
 
     // Clear the penalty after applying it
     return { ...p, actions: finalActions, apPenaltyNextTurn: undefined };
