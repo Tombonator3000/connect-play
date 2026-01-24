@@ -602,6 +602,7 @@ export interface EdgeData {
   puzzleId?: string;
   puzzleType?: PuzzleType;      // Type of puzzle for puzzle doors
   isDiscovered?: boolean;       // For secret doors - true if player has found it
+  isRevealed?: boolean;         // Alias for isDiscovered (used in movement checks)
   // Blocked edge properties
   blockingType?: EdgeBlockingType;
   blockingRemovable?: boolean;
@@ -769,7 +770,7 @@ export interface Tile {
   hasQuestItem?: boolean;         // Quick flag to indicate quest item presence
 }
 
-export type VictoryType = 'escape' | 'assassination' | 'collection' | 'survival' | 'ritual' | 'investigation';
+export type VictoryType = 'escape' | 'assassination' | 'collection' | 'survival' | 'ritual' | 'investigation' | 'escort';
 
 export type ObjectiveType =
   | 'find_item'      // Find a specific item
@@ -782,7 +783,8 @@ export type ObjectiveType =
   | 'collect'        // Collect X of something
   | 'explore'        // Explore X tiles
   | 'protect'        // Keep someone/something alive
-  | 'ritual';        // Perform a ritual action
+  | 'ritual'         // Perform a ritual action
+  | 'escort';        // Escort/rescue NPCs to safety
 
 export interface ScenarioObjective {
   id: string;
@@ -828,9 +830,10 @@ export interface VictoryCondition {
 }
 
 export interface DefeatCondition {
-  type: 'all_dead' | 'doom_zero' | 'objective_failed' | 'time_expired';
+  type: 'all_dead' | 'doom_zero' | 'objective_failed' | 'time_expired' | 'npc_death';
   description: string;
   objectiveId?: string;  // For objective_failed type
+  npcId?: string;        // For npc_death type
 }
 
 export type ScenarioTheme = 'manor' | 'church' | 'asylum' | 'warehouse' | 'forest' | 'urban' | 'coastal' | 'underground' | 'academic';

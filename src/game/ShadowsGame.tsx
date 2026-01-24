@@ -14,6 +14,7 @@ import CharacterPanel from './components/CharacterPanel';
 import EnemyPanel from './components/EnemyPanel';
 import ActionBar from './components/ActionBar';
 import DiceRoller from './components/DiceRoller';
+import CombatOverlay from './components/CombatOverlay';
 import MainMenu from './components/MainMenu';
 import OptionsMenu, { GameSettings, DEFAULT_SETTINGS } from './components/OptionsMenu';
 import GameOverOverlay, { GameOverType } from './components/GameOverOverlay';
@@ -4894,7 +4895,37 @@ const ShadowsGame: React.FC = () => {
         </>
       )}
 
-      {state.lastDiceRoll && <DiceRoller values={state.lastDiceRoll} onComplete={resolveDiceResult} />}
+      {/* Combat Overlay - Shows during combat instead of DiceRoller */}
+      {state.activeCombat && state.lastDiceRoll && (() => {
+        const combatPlayer = state.players.find(p => p.id === state.activeCombat?.playerId);
+        const combatEnemy = state.enemies.find(e => e.id === state.activeCombat?.enemyId);
+        if (combatPlayer && combatEnemy) {
+          const attackSuccesses = state.lastDiceRoll.filter(v => v >= 4).length;
+          const bestiaryEntry = BESTIARY[combatEnemy.type];
+          const defenseRolls = Array.from({ length: bestiaryEntry?.defenseDice || 1 }, () => Math.floor(Math.random() * 6) + 1);
+          const defenseSuccesses = defenseRolls.filter(v => v >= 4).length;
+          const netDamage = Math.max(0, attackSuccesses - defenseSuccesses);
+          const isCritical = attackSuccesses === state.lastDiceRoll.length && state.lastDiceRoll.length > 0;
+          
+          return (
+            <CombatOverlay
+              player={combatPlayer}
+              enemy={combatEnemy}
+              attackRolls={state.lastDiceRoll}
+              defenseRolls={defenseRolls}
+              attackSuccesses={attackSuccesses}
+              defenseSuccesses={defenseSuccesses}
+              netDamage={netDamage}
+              isCritical={isCritical}
+              onComplete={resolveDiceResult}
+            />
+          );
+        }
+        return null;
+      })()}
+
+      {/* DiceRoller - Used for non-combat rolls (investigation, horror checks, etc.) */}
+      {state.lastDiceRoll && !state.activeCombat && <DiceRoller values={state.lastDiceRoll} onComplete={resolveDiceResult} />}
 
       {/* Context Action Bar */}
       {activeContextTarget && contextActions.length > 0 && activePlayer && (

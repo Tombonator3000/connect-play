@@ -153,6 +153,29 @@ const EPILOGUES_BY_VICTORY_TYPE: Record<VictoryType, EpilogueTemplate> = {
       'The artifacts are secured, but {deadPlayer} paid the price. You wonder if the relics were worth a human life. You suspect you will wonder for a very long time.',
       'Every piece is accounted for—at the cost of everything you held dear. Were they worth it? The question will haunt you.',
     ]
+  },
+
+  escort: {
+    victory: [
+      'The survivors cling to you as dawn breaks. Their gratitude is genuine, but their eyes hold shadows now—shadows that will never fully lift. You saved their bodies. Their minds may yet be lost.',
+      'Against all odds, you brought them through. Each step of the retreat was a small victory. Now you carry not just your own nightmares, but theirs as well.',
+      'They are safe. The word feels hollow. No one who witnessed what you witnessed is ever truly "safe" again.',
+      'The last survivor crosses the threshold to safety. Behind you, the darkness seethes, denied its prey—for now.',
+    ],
+    defeat_death: [
+      'You failed them. Their trust, their hope, their lives—all gone. The mission was to save them, and you delivered them into the hands of something worse than death.',
+      'One by one, they fell. You could not protect them all. You could not protect any of them. Their screams will follow you into whatever afterlife awaits.',
+      'The survivors became victims. Your protection proved as substantial as morning mist. Some burdens cannot be set down.',
+    ],
+    defeat_doom: [
+      'The ritual completes. The survivors scream as reality unmakes itself around them. They looked to you for salvation—and found only the end of all things.',
+      'Time runs out for everyone. The doom you sought to prevent claims all—the saved and the saviors alike.',
+      'In the end, there was nothing to escort them to. Safety was an illusion, and the illusion has shattered.',
+    ],
+    pyrrhic: [
+      'Some survived. Not all. {deadPlayer} gave everything so that others might live. Their sacrifice will not be forgotten—though it may not be fully understood.',
+      'The survivors weep for those left behind. You tell yourself it was enough. It will never feel like enough.',
+    ]
   }
 };
 
