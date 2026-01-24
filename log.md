@@ -1,5 +1,81 @@
 # Development Log
 
+## 2026-01-24: Fiks Knapper som Ikke Fungerer - Hero Selection og Game Start
+
+### Oppgave: Knapper Ikke Fungerende (FIKSET ✓)
+
+#### Problemet
+Brukeren rapporterte at knapper ikke fungerte:
+1. "Select for Mission" knappene i Hero Archive fungerte ikke
+2. Vanskelighetsgradknappene (Normal/Hard/Nightmare) i "New Case" fungerte ikke
+3. Spillet kunne ikke startes
+
+#### Root Cause Analysis
+
+**Problemet:** Mangelfull posisjonering og z-index på overlay-komponenter.
+
+**HeroArchivePanel** (`src/game/components/HeroArchivePanel.tsx` linje 1028):
+```typescript
+// FØR (problematisk):
+<div className="min-h-screen bg-gradient-to-br ... relative overflow-hidden">
+```
+- `min-h-screen` er ikke en fullskjerm-overlay
+- Mangler `fixed inset-0` for å dekke hele skjermen
+- Mangler `z-index` for å sikre at panelet er over andre elementer
+
+**Setup Phase div** (`src/game/ShadowsGame.tsx` linje 4310):
+```typescript
+// FØR (problematisk):
+<div className="fixed inset-0 z-[60] ...">
+```
+- z-[60] var lavere enn andre elementer som AdvancedParticles (z-[100]) og ShaderEffects (z-[99])
+- Selv med `pointer-events-none` på disse elementene, kunne det oppstå konflikter
+
+#### Løsning
+
+**Fikset HeroArchivePanel:**
+```typescript
+// ETTER (fikset):
+<div className="fixed inset-0 z-[100] bg-gradient-to-br ... overflow-y-auto">
+```
+- `fixed inset-0` gjør panelet til en fullskjerm-overlay
+- `z-[100]` matcher MainMenu og andre viktige overlays
+- `overflow-y-auto` erstatter `overflow-hidden` for å tillate scrolling
+
+**Fikset Setup Phase:**
+```typescript
+// ETTER (fikset):
+<div className="fixed inset-0 z-[100] ...">
+```
+- z-[60] → z-[100] for å være på samme nivå som andre overlays
+
+#### Z-Index Hierarki (Oppdatert)
+
+| Komponent | Z-Index | Pointer Events |
+|-----------|---------|----------------|
+| MerchantShop | z-[150] | normal |
+| JournalModal | z-[120] | normal |
+| OptionsMenu | z-[110] | normal |
+| MainMenu | z-[100] | normal |
+| HeroArchivePanel | z-[100] | normal |
+| Setup Phase | z-[100] | normal |
+| GameOverOverlay | z-[100] | normal |
+| AdvancedParticles | z-[100] | pointer-events-none |
+| ShaderEffects | z-[99] | pointer-events-none |
+| MythosPhaseOverlay | z-[90] | pointer-events-none |
+
+#### Endrede Filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/components/HeroArchivePanel.tsx` | Endret root div fra `min-h-screen relative` til `fixed inset-0 z-[100]` |
+| `src/game/ShadowsGame.tsx` | Endret Setup Phase div fra `z-[60]` til `z-[100]` |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+---
+
 ## 2026-01-24: Fiks UI Scale og Tekstlesbarhet
 
 ### Oppgave: UI Scale Slider Fungerer Ikke + Tekst Vanskelig å Lese (FIKSET ✓)
