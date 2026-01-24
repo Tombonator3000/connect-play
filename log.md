@@ -22103,3 +22103,84 @@ setState(prev => ({
    - Se alltid etter scope-problemer når en variabel er "not defined"
 
 ---
+
+
+## 2026-01-24: Fix Game Startup - QuotaExceededError
+
+### Problem
+
+Spillet viste svart skjerm når man trykket "Assemble Team" for å starte spillet. Konsollen viste feilmelding:
+```
+QuotaExceededError: Failed to execute 'setItem' on 'Storage':
+Setting the value of 'shadows_1920s_save' exceeded the quota.
+```
+
+### Feilanalyse
+
+1. **localStorage har begrenset kapasitet** (~5MB for de fleste nettlesere)
+2. **Game state ble lagret på hver endring** via useEffect (linje 296-298)
+3. **Ingen error handling** for localStorage.setItem feil
+4. **Transient data ble lagret unødvendig** (floatingTexts, spellParticles, hele log-historikken)
+5. **Når quota ble overskredet:** setItem kastet exception → ubehandlet feil → svart skjerm
+
+### Løsning
+
+#### 1. Error Handling for Game State Save
+**Fil:** `src/game/ShadowsGame.tsx:300-340`
+
+- Wrapped localStorage.setItem i try-catch
+- Spesifik håndtering for QuotaExceededError
+- Automatisk cleanup av auto-save og gamle save slots
+- Retry etter cleanup
+
+#### 2. Optimalisert Save Data Størrelse
+**Fil:** `src/game/ShadowsGame.tsx:300-340`
+
+Fjerner transient/visuell data fra save:
+- `floatingTexts: []` - Transient visual data
+- `spellParticles: []` - Transient visual data
+- `screenShake: false` - Transient visual state
+- `activeSpell: null` - Transient UI state
+- `activeOccultistSpell: null` - Transient UI state
+- `log: state.log.slice(-50)` - Begrenser logg til siste 50 entries
+
+#### 3. Error Handling for Settings Save
+**Fil:** `src/game/ShadowsGame.tsx:284-290`
+
+- Wrapped settings save i try-catch
+
+#### 4. Error Handling for Legacy Data Save
+**Fil:** `src/game/utils/legacyManager.ts:74-95`
+
+- Spesifik håndtering for QuotaExceededError
+- Cleanup av ikke-essensielle data før retry
+- Console warning for kritiske feil
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/ShadowsGame.tsx` | Error handling for state og settings save, optimalisert save størrelse |
+| `src/game/utils/legacyManager.ts` | Error handling for legacy data save med QuotaExceededError håndtering |
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+### Teknisk Lærdom
+
+1. **localStorage har hard limit:**
+   - ~5MB for de fleste nettlesere
+   - Ingen warning før quota exceeded
+   - Må alltid ha error handling
+
+2. **Game state kan vokse uventet:**
+   - Log entries akkumulerer over tid
+   - Visuelle partikler/effekter kan fylle state
+   - Løsning: Fjern transient data før save, begrens log størrelse
+
+3. **Graceful degradation:**
+   - Spillet skal fortsatt fungere selv om save feiler
+   - Brukeren bør få varsel om å eksportere data
+   - Automatisk cleanup kan frigjøre plass
+
+---
