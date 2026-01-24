@@ -23246,3 +23246,35 @@ export function resetPlayersForNewTurn(players: Player[]): PlayerResetResult {
    - Må importeres og brukes i alle relevante funksjoner
 
 ---
+
+## 2026-01-24: Fix Carrying Capacity Level Check
+
+### Problem
+Bag slot-kjøp i "The Fence" Services-panelet viste "LEVEL UP TO UNLOCK MORE (NEED LEVEL 1)" selv for Level 4 heroes som burde kunne kjøpe flere slots.
+
+### Årsak
+`canBuyBagSlot()` funksjonen i `types.ts` sammenlignet `hero.extraBagSlots < hero.level` direkte. For heroes som aldri har kjøpt extra slots er `extraBagSlots` undefined, og i JavaScript blir `undefined < 4` til `NaN < 4` som alltid returnerer `false`.
+
+### Løsning
+Lagt til fallback-håndtering for undefined i `canBuyBagSlot()`:
+
+```typescript
+export function canBuyBagSlot(hero: LegacyHero): boolean {
+  // Max extra slots = hero level
+  // Handle undefined extraBagSlots (new heroes who haven't bought any yet)
+  const extraSlots = hero.extraBagSlots || 0;
+  return extraSlots < hero.level;
+}
+```
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/types.ts` | Fix canBuyBagSlot() til å håndtere undefined extraBagSlots |
+
+### Teknisk Lærdom
+- JavaScript sammenligning med `undefined` gir uventet oppførsel: `undefined < number` blir `NaN < number` som er alltid `false`
+- Alltid bruk fallback-verdier (`|| 0`) når man sammenligner potensielt undefined tall
+
+---
