@@ -160,8 +160,91 @@ Spillet har allerede 30+ animasjoner:
 ---
 
 ### Neste steg
-- Velg hvilket nivå av effekter som ønskes
-- Implementer forbedringer steg for steg
+- ~~Velg hvilket nivå av effekter som ønskes~~ ✅
+- ~~Implementer forbedringer steg for steg~~ ✅
+
+---
+
+## 2026-01-24: Implementert Pixi.js og Three.js Avanserte Effekter
+
+### Hva ble gjort
+
+**1. Installert nye pakker:**
+```bash
+npm install pixi.js three @react-three/fiber @react-three/postprocessing
+```
+
+**2. Nye innstillinger i Options → Display:**
+- **Advanced Particles (PIXI.JS)** - GPU-akselererte partikler
+- **Shader Effects (WEBGL)** - Post-processing effekter
+- **Effects Quality** - Low / Medium / High / Ultra
+
+**3. Nye komponenter opprettet:**
+
+| Fil | Beskrivelse |
+|-----|-------------|
+| `src/game/components/AdvancedParticles.tsx` | Pixi.js GPU-partikkelsystem |
+| `src/game/components/ShaderEffects.tsx` | Three.js WebGL post-processing |
+| `src/game/hooks/useVisualEffects.ts` | Hook for å bruke effekter fra andre komponenter |
+
+**4. Tilgjengelige partikkel-effekter (Pixi.js):**
+- `blood-splatter` - Blod ved skade
+- `magic-burst` - Magiske utbrudd
+- `fire-embers` - Ild-gnister
+- `portal-vortex` - Portal-virvle
+- `sanity-drain` - Sanity-tap visuelt
+- `eldritch-mist` - Eldritch-tåke
+- `combat-hit` - Kamptreff
+- `death-essence` - Død-essens
+- `holy-light` - Hellig lys
+- `tentacle-burst` - Tentakel-utbrudd
+
+**5. Tilgjengelige shader-effekter (Three.js):**
+- `sanity-distortion` - Forvrengning ved lav sanity
+- `portal-warp` - Portal-deformasjon
+- `doom-pulse` - Doom-puls
+- `madness-glitch` - Galskaps-glitch
+- `cosmic-horror` - Kosmisk skrekk
+- `ritual-glow` - Rituell gløde
+- `death-fade` - Døds-fade
+
+**6. Integrert i spill-logikk:**
+- Spiller tar skade → `player-hit` / `critical-hit`
+- Spiller dør → `player-death`
+- Fiende dør → `enemy-death`
+- Sanity = 0 → `sanity-zero`
+- Spell cast → `spell-cast`
+- Victory → `victory`
+- Doom = 0 → `doom-tick`
+
+**7. Innstillinger persisteres til localStorage:**
+- `advancedParticles: false` (default av for ytelse)
+- `shaderEffects: false` (default av for ytelse)
+- `effectsQuality: 'medium'`
+
+### Hvordan bruke fra andre komponenter
+
+```typescript
+import { useVisualEffects } from '../hooks/useVisualEffects';
+
+const MyComponent = () => {
+  const { emitParticles, triggerShader, triggerPreset } = useVisualEffects();
+
+  // Emit partikler på posisjon
+  emitParticles(100, 200, 'blood-splatter');
+
+  // Trigger shader-effekt
+  triggerShader('sanity-distortion', 0.5, 1000);
+
+  // Bruk preset kombinasjon
+  triggerPreset('player-hit', 100, 200);
+};
+```
+
+### Filer endret
+- `src/game/components/OptionsMenu.tsx` - Nye innstillinger UI
+- `src/game/ShadowsGame.tsx` - Integrert effekter i kamp og spill-logikk
+- `package.json` - Nye dependencies
 
 ---
 

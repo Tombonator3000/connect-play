@@ -35,6 +35,8 @@ import FieldGuidePanel from './components/FieldGuidePanel';
 import CharacterSelectionScreen from './components/CharacterSelectionScreen';
 import SaveLoadModal from './components/SaveLoadModal';
 import QuestEditor, { CustomQuestLoader, CampaignPlayManager, convertQuestToScenario } from './components/QuestEditor';
+import AdvancedParticles, { useAdvancedParticles } from './components/AdvancedParticles';
+import ShaderEffects, { useShaderEffects } from './components/ShaderEffects';
 import { autoSave } from './utils/saveManager';
 import {
   loadLegacyData,
@@ -377,6 +379,9 @@ const ShadowsGame: React.FC = () => {
             `-${attack.hpDamage} HP${attack.sanityDamage > 0 ? ` -${attack.sanityDamage} SAN` : ''}`,
             "text-primary");
           triggerScreenShake();
+          // Advanced visual effects for player damage
+          triggerAdvancedEffect(attack.hpDamage >= 3 ? 'critical-hit' : 'player-hit');
+          if (attack.sanityDamage > 0) triggerAdvancedEffect('sanity-loss');
 
           if (attack.hpDamage > 0) {
             addBloodstains(attack.targetPosition.q, attack.targetPosition.r, attack.hpDamage);
@@ -560,6 +565,86 @@ const ShadowsGame: React.FC = () => {
     setTimeout(() => setState(prev => ({ ...prev, screenShake: false })), 500);
   };
 
+  // Advanced visual effects helper - emits GPU-accelerated particles and shaders
+  const triggerAdvancedEffect = useCallback((
+    preset: 'player-hit' | 'player-death' | 'enemy-hit' | 'enemy-death' | 'critical-hit' | 'sanity-loss' | 'sanity-zero' | 'spell-cast' | 'portal-open' | 'doom-tick' | 'victory' | 'horror-check-fail',
+    screenX?: number,
+    screenY?: number
+  ) => {
+    // Only trigger if advanced effects are enabled
+    if (!settings.advancedParticles && !settings.shaderEffects) return;
+
+    const x = screenX ?? window.innerWidth / 2;
+    const y = screenY ?? window.innerHeight / 2;
+
+    const emitFn = (window as any).__emitAdvancedParticles;
+    const shaderFn = (window as any).__triggerShaderEffect;
+
+    switch (preset) {
+      case 'player-hit':
+        if (emitFn && settings.advancedParticles) emitFn(x, y, 'blood-splatter');
+        if (shaderFn && settings.shaderEffects) shaderFn('sanity-distortion', 0.3, 300);
+        break;
+      case 'player-death':
+        if (emitFn && settings.advancedParticles) {
+          emitFn(x, y, 'death-essence');
+          emitFn(x, y, 'blood-splatter');
+        }
+        if (shaderFn && settings.shaderEffects) shaderFn('death-fade', 1, 2000);
+        break;
+      case 'enemy-hit':
+        if (emitFn && settings.advancedParticles) emitFn(x, y, 'combat-hit');
+        break;
+      case 'enemy-death':
+        if (emitFn && settings.advancedParticles) emitFn(x, y, 'death-essence');
+        if (shaderFn && settings.shaderEffects) shaderFn('doom-pulse', 0.2, 500);
+        break;
+      case 'critical-hit':
+        if (emitFn && settings.advancedParticles) {
+          emitFn(x, y, 'combat-hit');
+          emitFn(x, y, 'fire-embers');
+        }
+        if (shaderFn && settings.shaderEffects) shaderFn('doom-pulse', 0.5, 400);
+        break;
+      case 'sanity-loss':
+        if (emitFn && settings.advancedParticles) emitFn(x, y, 'sanity-drain');
+        if (shaderFn && settings.shaderEffects) shaderFn('sanity-distortion', 0.5, 800);
+        break;
+      case 'sanity-zero':
+        if (emitFn && settings.advancedParticles) {
+          emitFn(x, y, 'eldritch-mist');
+          emitFn(x, y, 'tentacle-burst');
+        }
+        if (shaderFn && settings.shaderEffects) shaderFn('madness-glitch', 1, 2000);
+        break;
+      case 'spell-cast':
+        if (emitFn && settings.advancedParticles) emitFn(x, y, 'magic-burst');
+        if (shaderFn && settings.shaderEffects) shaderFn('ritual-glow', 0.6, 1000);
+        break;
+      case 'portal-open':
+        if (emitFn && settings.advancedParticles) emitFn(x, y, 'portal-vortex');
+        if (shaderFn && settings.shaderEffects) shaderFn('portal-warp', 1, 1500);
+        break;
+      case 'doom-tick':
+        if (shaderFn && settings.shaderEffects) shaderFn('doom-pulse', 0.3, 500);
+        break;
+      case 'victory':
+        if (emitFn && settings.advancedParticles) {
+          emitFn(x, y, 'holy-light');
+          emitFn(x, y, 'magic-burst');
+        }
+        if (shaderFn && settings.shaderEffects) shaderFn('ritual-glow', 0.8, 2000);
+        break;
+      case 'horror-check-fail':
+        if (emitFn && settings.advancedParticles) {
+          emitFn(x, y, 'sanity-drain');
+          emitFn(x, y, 'eldritch-mist');
+        }
+        if (shaderFn && settings.shaderEffects) shaderFn('cosmic-horror', 0.7, 1200);
+        break;
+    }
+  }, [settings.advancedParticles, settings.shaderEffects]);
+
   const addFloatingText = (q: number, r: number, content: string, colorClass: string) => {
     const id = `ft-${Date.now()}`;
     setState(prev => ({
@@ -690,6 +775,7 @@ const ShadowsGame: React.FC = () => {
       addToLog(`${player.name} has cracked. Madness sets in: ${newMadness.name}!`);
       addFloatingText(player.position.q, player.position.r, "MENTAL BREAK", "text-sanity");
       triggerScreenShake();
+      triggerAdvancedEffect('sanity-zero');
 
       // Check for 3 madness conditions = character permanently lost
       if (updatedMadnessList.length >= 3) {
@@ -781,6 +867,7 @@ const ShadowsGame: React.FC = () => {
       if (victoryResult.isVictory) {
         addToLog(victoryResult.message);
         setGameOverType('victory');
+        triggerAdvancedEffect('victory');
         setState(prev => ({ ...prev, phase: GamePhase.GAME_OVER }));
         return true;
       }
@@ -796,6 +883,7 @@ const ShadowsGame: React.FC = () => {
       if (defeatResult.isDefeat) {
         addToLog(defeatResult.message);
         setGameOverType(defeatResult.condition?.type === 'doom_zero' ? 'defeat_doom' : 'defeat_death');
+        triggerAdvancedEffect(defeatResult.condition?.type === 'doom_zero' ? 'doom-tick' : 'player-death');
         setState(prev => ({ ...prev, phase: GamePhase.GAME_OVER }));
         return true;
       }
@@ -807,6 +895,7 @@ const ShadowsGame: React.FC = () => {
     if (allPlayersDead) {
       addToLog("All investigators have fallen. The darkness claims victory.");
       setGameOverType('defeat_death');
+      triggerAdvancedEffect('player-death');
       setState(prev => ({ ...prev, phase: GamePhase.GAME_OVER }));
       return true;
     }
@@ -815,6 +904,7 @@ const ShadowsGame: React.FC = () => {
     if (doom <= 0) {
       addToLog("The doom counter has reached zero. The Old Ones stir...");
       setGameOverType('defeat_doom');
+      triggerAdvancedEffect('doom-tick');
       setState(prev => ({ ...prev, phase: GamePhase.GAME_OVER }));
       return true;
     }
@@ -3065,6 +3155,7 @@ const ShadowsGame: React.FC = () => {
             );
 
             triggerScreenShake();
+            triggerAdvancedEffect('spell-cast');
 
             // Add blood stains when spell damage is dealt
             if (spell.value > 0) {
@@ -3996,6 +4087,20 @@ const ShadowsGame: React.FC = () => {
         settings={settings}
         onSettingsChange={setSettings}
         onResetData={handleResetData}
+      />
+
+      {/* Advanced Visual Effects (GPU-accelerated) */}
+      <AdvancedParticles
+        enabled={settings.advancedParticles && settings.particles}
+        quality={settings.effectsQuality}
+      />
+
+      {/* WebGL Shader Effects */}
+      <ShaderEffects
+        enabled={settings.shaderEffects}
+        quality={settings.effectsQuality}
+        sanityLevel={activePlayer ? activePlayer.sanity / (CHARACTERS[activePlayer.character].baseSanity || 4) : 1}
+        doomLevel={state.activeScenario ? (state.activeScenario.doom.max - state.doom) / state.activeScenario.doom.max : 0}
       />
 
       {isMainMenuOpen && mainMenuView === 'title' && (

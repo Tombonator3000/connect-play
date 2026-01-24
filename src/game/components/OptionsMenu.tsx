@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   X, Volume2, Monitor, Gamepad2, Palette, HardDrive,
-  Contrast, Sparkles, Grid3X3, Zap, Maximize, ZoomIn
+  Contrast, Sparkles, Grid3X3, Zap, Maximize, ZoomIn,
+  Flame, Wand2, Cpu
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -18,6 +19,10 @@ export interface GameSettings {
   particles: boolean;
   resolution: 'auto' | '720p' | '1080p' | '1440p' | '4k';
   uiScale: number; // 50-150 percent
+  // Advanced Visual Effects
+  advancedParticles: boolean; // Pixi.js GPU-accelerated particles
+  shaderEffects: boolean; // Three.js WebGL shader effects
+  effectsQuality: 'low' | 'medium' | 'high' | 'ultra';
   // Gameplay
   showGrid: boolean;
   fastMode: boolean;
@@ -34,6 +39,10 @@ const DEFAULT_SETTINGS: GameSettings = {
   particles: true,
   resolution: 'auto',
   uiScale: 100,
+  // Advanced effects off by default for performance
+  advancedParticles: false,
+  shaderEffects: false,
+  effectsQuality: 'medium',
   showGrid: true,
   fastMode: false,
   useGeneratedAssets: false,
@@ -271,6 +280,97 @@ const OptionsMenu: React.FC<OptionsMenuProps> = ({
             onCheckedChange={(checked) => updateSetting('particles', checked)}
           />
         </div>
+
+        {/* Advanced Effects Section Header */}
+        <div className="pt-4 border-t border-border/50">
+          <div className="flex items-center gap-2 mb-4">
+            <Cpu className="text-accent" size={18} />
+            <span className="text-sm font-bold uppercase tracking-wider text-accent">
+              Advanced Visual Effects (GPU)
+            </span>
+          </div>
+          <p className="text-xs text-muted-foreground italic mb-4">
+            These effects use your GPU for stunning visuals. May impact performance on older devices.
+          </p>
+        </div>
+
+        {/* Advanced Particles (Pixi.js) */}
+        <div className="flex items-center justify-between bg-gradient-to-r from-orange-950/30 to-card/50 p-4 rounded-xl border border-orange-900/50">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-orange-500/20 flex items-center justify-center">
+              <Flame className="text-orange-400" size={20} />
+            </div>
+            <div>
+              <div className="font-bold uppercase tracking-wider text-sm flex items-center gap-2">
+                Advanced Particles
+                <span className="text-[10px] px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded">PIXI.JS</span>
+              </div>
+              <div className="text-xs text-muted-foreground italic">
+                GPU-accelerated blood splatter, magic effects, and thousands of simultaneous particles.
+              </div>
+            </div>
+          </div>
+          <Switch
+            checked={settings.advancedParticles}
+            onCheckedChange={(checked) => updateSetting('advancedParticles', checked)}
+          />
+        </div>
+
+        {/* Shader Effects (Three.js) */}
+        <div className="flex items-center justify-between bg-gradient-to-r from-purple-950/30 to-card/50 p-4 rounded-xl border border-purple-900/50">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+              <Wand2 className="text-purple-400" size={20} />
+            </div>
+            <div>
+              <div className="font-bold uppercase tracking-wider text-sm flex items-center gap-2">
+                Shader Effects
+                <span className="text-[10px] px-1.5 py-0.5 bg-purple-500/20 text-purple-400 rounded">WEBGL</span>
+              </div>
+              <div className="text-xs text-muted-foreground italic">
+                Reality distortion, chromatic aberration, portals, and post-processing effects.
+              </div>
+            </div>
+          </div>
+          <Switch
+            checked={settings.shaderEffects}
+            onCheckedChange={(checked) => updateSetting('shaderEffects', checked)}
+          />
+        </div>
+
+        {/* Effects Quality */}
+        {(settings.advancedParticles || settings.shaderEffects) && (
+          <div className="bg-card/50 p-4 rounded-xl border border-border">
+            <div className="flex items-center gap-4 mb-4">
+              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                <Cpu className="text-primary" size={20} />
+              </div>
+              <div>
+                <div className="font-bold uppercase tracking-wider text-sm">Effects Quality</div>
+                <div className="text-xs text-muted-foreground italic">
+                  Higher quality = more particles and shader passes. Lower for better performance.
+                </div>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {(['low', 'medium', 'high', 'ultra'] as const).map((quality) => (
+                <button
+                  key={quality}
+                  onClick={() => updateSetting('effectsQuality', quality)}
+                  className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${
+                    settings.effectsQuality === quality
+                      ? quality === 'ultra'
+                        ? 'bg-gradient-to-r from-purple-500 to-orange-500 text-white'
+                        : 'bg-primary text-primary-foreground'
+                      : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+                  }`}
+                >
+                  {quality}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );};
