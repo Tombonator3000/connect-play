@@ -7,6 +7,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 interface ActionBarProps {
   onAction: (action: string, payload?: any) => void;
   actionsRemaining: number;
+  maxActions: number;  // Maximum actions per turn (includes level bonuses)
   isInvestigatorPhase: boolean;
   contextAction?: ContextAction | null;
   spells: Spell[];
@@ -22,7 +23,7 @@ interface ActionBarProps {
 }
 
 const ActionBar: React.FC<ActionBarProps> = ({
-  onAction, actionsRemaining, isInvestigatorPhase, contextAction, spells, occultistSpells,
+  onAction, actionsRemaining, maxActions, isInvestigatorPhase, contextAction, spells, occultistSpells,
   activeSpell, activeOccultistSpell,
   onToggleCharacter, showCharacter, onToggleInfo, showInfo, onToggleFieldGuide, showFieldGuide
 }) => {
@@ -231,7 +232,7 @@ const ActionBar: React.FC<ActionBarProps> = ({
       <div className={`ml-0.5 md:ml-2 pl-1 md:pl-4 border-l border-border flex flex-col justify-center items-center gap-0.5 md:gap-2 shrink-0`}>
         <div className={`${isMobile ? 'text-[7px]' : 'text-[8px] md:text-[9px]'} text-muted-foreground uppercase font-bold tracking-[0.2em]`}>AP</div>
         <div className={`flex ${isMobile ? 'gap-1' : 'gap-1 md:gap-2'}`}>
-          {[1, 2].map(i => {
+          {Array.from({ length: maxActions }, (_, i) => i + 1).map(i => {
             const isActive = i <= actionsRemaining;
             return (
               <div

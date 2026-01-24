@@ -4866,6 +4866,7 @@ const ShadowsGame: React.FC = () => {
             <ActionBar
               onAction={handleAction}
               actionsRemaining={activePlayer?.actions || 0}
+              maxActions={activePlayer?.maxActions || 2}
               isInvestigatorPhase={state.phase === GamePhase.INVESTIGATOR}
               spells={activePlayer?.spells || []}
               occultistSpells={activePlayer?.selectedSpells}
