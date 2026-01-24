@@ -2748,7 +2748,19 @@ const ShadowsGame: React.FC = () => {
 
   const handleAction = (actionType: string, payload?: any) => {
     const activePlayer = state.players[state.activePlayerIndex];
-    if (!activePlayer || activePlayer.actions <= 0 || activePlayer.isDead || state.phase !== GamePhase.INVESTIGATOR) return;
+    console.log('[DEBUG handleAction]', {
+      actionType,
+      payload,
+      hasActivePlayer: !!activePlayer,
+      actions: activePlayer?.actions,
+      isDead: activePlayer?.isDead,
+      phase: state.phase,
+      isInvestigatorPhase: state.phase === GamePhase.INVESTIGATOR
+    });
+    if (!activePlayer || activePlayer.actions <= 0 || activePlayer.isDead || state.phase !== GamePhase.INVESTIGATOR) {
+      console.log('[DEBUG handleAction] Returning early due to conditions not met');
+      return;
+    }
 
     switch (actionType) {
       case 'move':
@@ -4177,7 +4189,9 @@ const ShadowsGame: React.FC = () => {
   }, [settings.uiScale]);
 
   return (
-    <div className={`h-screen w-screen bg-background text-foreground overflow-hidden select-none font-serif relative transition-all duration-1000 ${state.screenShake && !settings.reduceMotion ? 'animate-shake' : ''} ${activePlayer?.activeMadness?.visualClass || ''}`}>
+    <div
+      onClick={(e) => console.log('[DEBUG ROOT] Click detected at', { target: (e.target as HTMLElement).tagName, className: (e.target as HTMLElement).className?.slice(0, 50) })}
+      className={`h-screen w-screen bg-background text-foreground overflow-hidden select-none font-serif relative transition-all duration-1000 ${state.screenShake && !settings.reduceMotion ? 'animate-shake' : ''} ${activePlayer?.activeMadness?.visualClass || ''}`}>
       {/* Options Menu */}
       <OptionsMenu
         isOpen={isOptionsOpen}
