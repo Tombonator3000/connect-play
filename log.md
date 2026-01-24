@@ -1,5 +1,253 @@
 # Development Log
 
+## 2026-01-24: Teknologi-analyse & Anbefalinger for Kulere Effekter
+
+### Dagens Oppgave
+Gjennomgang av hvilken kode som brukes i spillet, muligheter for andre programmeringsspråk, og anbefalinger for kulere visuell effekter.
+
+---
+
+### 1. NÅVÆRENDE TEKNOLOGI-STACK
+
+**Programmeringsspråk:**
+- **TypeScript 5.8.3** - Hovedspråket (170+ .ts/.tsx filer)
+- **CSS3** - Styling og animasjoner (3,799+ linjer)
+- **HTML5/JSX** - React-basert markup
+
+**Frontend Framework:**
+- **React 18.3.1** - Komponent-basert UI
+- **Vite 5.4.19** - Lynrask build-verktøy
+- **TailwindCSS 3.4.17** - Utility-first CSS
+
+**UI-biblioteker:**
+- **Radix UI** - 30+ tilgjengelige komponenter
+- **Lucide React** - 40+ SVG-ikoner
+- **shadcn/ui** - Ferdigbygde UI-komponenter
+
+**Grafikk-rendering:**
+- **Ren CSS + DOM** - Ingen 3D-motor
+- **SVG** - Hex-grid og ikoner
+- **CSS Keyframe-animasjoner** - 30+ egendefinerte animasjoner
+
+**Lyd:**
+- **Tone.js 15.1.22** - Web Audio synthesis
+
+---
+
+### 2. KAN MAN BRUKE ANDRE PROGRAMMERINGSSPRÅK?
+
+**Kort svar:** JA, men med begrensninger.
+
+**Alternativer som KAN integreres:**
+
+| Teknologi | Integrasjon | Fordeler | Ulemper |
+|-----------|-------------|----------|---------|
+| **WebGL/GLSL Shaders** | Via Three.js/Pixi.js | Ekstreme visuelle effekter, partikler, distortion | Læringskurve, kompleksitet |
+| **Rust (via WebAssembly)** | Kompileres til WASM | Raskere beregninger, physics | Kompleks oppsett |
+| **Canvas 2D** | Native HTML5 | Mer kontroll over piksler | Manuell rendering |
+| **Web Workers** | JavaScript/TypeScript | Bakgrunnsberegninger | Begrenset DOM-tilgang |
+
+**Anbefaling:** Fortsett med TypeScript, men legg til **WebGL shaders** for spesielle effekter.
+
+---
+
+### 3. ANBEFALINGER FOR KULERE EFFEKTER
+
+#### NIVÅ 1: Enkle CSS-forbedringer (Lav innsats)
+
+Disse kan implementeres umiddelbart med eksisterende stack:
+
+```css
+/* Blod-spatter effekt ved skade */
+@keyframes blood-splatter {
+  0% { transform: scale(0); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.8; }
+  100% { transform: scale(2); opacity: 0; }
+}
+
+/* Portal-virvle effekt */
+@keyframes portal-vortex {
+  0% { transform: rotate(0deg) scale(1); filter: hue-rotate(0deg); }
+  100% { transform: rotate(360deg) scale(1.1); filter: hue-rotate(360deg); }
+}
+
+/* Tentakel-bevegelse */
+@keyframes tentacle-writhe {
+  0%, 100% { transform: skewX(0deg) scaleY(1); }
+  25% { transform: skewX(10deg) scaleY(1.05); }
+  75% { transform: skewX(-10deg) scaleY(0.95); }
+}
+```
+
+#### NIVÅ 2: Pixi.js / Canvas-basert rendering (Middels innsats)
+
+**Pixi.js** kan legges til for:
+- **Partikkelsystemer** - Tusenvis av partikler samtidig
+- **Texture sprites** - Animerte monstre
+- **Blend modes** - Screen, multiply, overlay
+- **Filters** - Blur, glow, displacement, noise
+
+```bash
+npm install pixi.js @pixi/filter-glow @pixi/filter-displacement
+```
+
+#### NIVÅ 3: Three.js / WebGL Shaders (Høy innsats, Maksimal effekt)
+
+For **virkelig imponerende effekter**:
+
+| Effekt | Beskrivelse | Bruk i spillet |
+|--------|-------------|----------------|
+| **Displacement Shaders** | Virkelighets-forvrengning | Galskaps-effekter, portaler |
+| **Volumetric Fog** | 3D-tåke med dybde | Atmosfæriske tiles |
+| **Chromatic Aberration** | RGB-splitting | Horror, sanity-tap |
+| **Noise Distortion** | Støy-basert forvrengning | Eldritch-effekter |
+| **Particle Explosions** | GPU-akselererte partikler | Kamp, magi |
+| **Post-processing** | Full-screen effekter | Doom-overlay, game over |
+
+```bash
+npm install three @react-three/fiber @react-three/postprocessing
+```
+
+#### NIVÅ 4: Lottie-animasjoner (Alternativ)
+
+For **pre-rendered animasjoner** som er lette og skalerbare:
+- Eksporter fra After Effects
+- Kjører som JSON
+- Perfekt for cutscenes, UI-animasjoner
+
+```bash
+npm install lottie-react
+```
+
+---
+
+### 4. KONKRET ANBEFALING FOR MYTHOS QUEST
+
+**Prioritert rekkefølge:**
+
+1. **Først: Forbedre CSS-animasjoner** ✅
+   - Legg til flere madness-effekter
+   - Forbedre combat-feedback
+   - Implementer værsystem-visuals
+
+2. **Deretter: Pixi.js for partikler** 🎆
+   - Blod-effekter
+   - Magiske partikler
+   - Røyk og tåke
+
+3. **Senere: Three.js for shaders** 🌀
+   - Portal-effekter
+   - Reality-distortion
+   - Eldritch-visualisering
+
+4. **Bonus: Lottie for cutscenes** 🎬
+   - Scenario-intro animasjoner
+   - Boss-reveal sekvenser
+
+---
+
+### 5. NÅVÆRENDE EFFEKTER SOM ALLEREDE FINNES
+
+Spillet har allerede 30+ animasjoner:
+- `ritual-pulse`, `gaslight-pulse` - Atmosfære
+- `fog-drift`, `rain-fall`, `miasma-float` - Vær
+- `hallucinate`, `paranoia`, `hysteria-pulse` - Madness
+- `shake`, `doom-flicker` - Feedback
+- `cosmic-noise`, `cosmic-glitch` - Eldritch
+
+**ParticleEmitter.tsx** støtter: dust, spark, bubble, ghost, mist, water-ripple, divine-dust, rune-glow
+
+---
+
+### Neste steg
+- ~~Velg hvilket nivå av effekter som ønskes~~ ✅
+- ~~Implementer forbedringer steg for steg~~ ✅
+
+---
+
+## 2026-01-24: Implementert Pixi.js og Three.js Avanserte Effekter
+
+### Hva ble gjort
+
+**1. Installert nye pakker:**
+```bash
+npm install pixi.js three @react-three/fiber @react-three/postprocessing
+```
+
+**2. Nye innstillinger i Options → Display:**
+- **Advanced Particles (PIXI.JS)** - GPU-akselererte partikler
+- **Shader Effects (WEBGL)** - Post-processing effekter
+- **Effects Quality** - Low / Medium / High / Ultra
+
+**3. Nye komponenter opprettet:**
+
+| Fil | Beskrivelse |
+|-----|-------------|
+| `src/game/components/AdvancedParticles.tsx` | Pixi.js GPU-partikkelsystem |
+| `src/game/components/ShaderEffects.tsx` | Three.js WebGL post-processing |
+| `src/game/hooks/useVisualEffects.ts` | Hook for å bruke effekter fra andre komponenter |
+
+**4. Tilgjengelige partikkel-effekter (Pixi.js):**
+- `blood-splatter` - Blod ved skade
+- `magic-burst` - Magiske utbrudd
+- `fire-embers` - Ild-gnister
+- `portal-vortex` - Portal-virvle
+- `sanity-drain` - Sanity-tap visuelt
+- `eldritch-mist` - Eldritch-tåke
+- `combat-hit` - Kamptreff
+- `death-essence` - Død-essens
+- `holy-light` - Hellig lys
+- `tentacle-burst` - Tentakel-utbrudd
+
+**5. Tilgjengelige shader-effekter (Three.js):**
+- `sanity-distortion` - Forvrengning ved lav sanity
+- `portal-warp` - Portal-deformasjon
+- `doom-pulse` - Doom-puls
+- `madness-glitch` - Galskaps-glitch
+- `cosmic-horror` - Kosmisk skrekk
+- `ritual-glow` - Rituell gløde
+- `death-fade` - Døds-fade
+
+**6. Integrert i spill-logikk:**
+- Spiller tar skade → `player-hit` / `critical-hit`
+- Spiller dør → `player-death`
+- Fiende dør → `enemy-death`
+- Sanity = 0 → `sanity-zero`
+- Spell cast → `spell-cast`
+- Victory → `victory`
+- Doom = 0 → `doom-tick`
+
+**7. Innstillinger persisteres til localStorage:**
+- `advancedParticles: false` (default av for ytelse)
+- `shaderEffects: false` (default av for ytelse)
+- `effectsQuality: 'medium'`
+
+### Hvordan bruke fra andre komponenter
+
+```typescript
+import { useVisualEffects } from '../hooks/useVisualEffects';
+
+const MyComponent = () => {
+  const { emitParticles, triggerShader, triggerPreset } = useVisualEffects();
+
+  // Emit partikler på posisjon
+  emitParticles(100, 200, 'blood-splatter');
+
+  // Trigger shader-effekt
+  triggerShader('sanity-distortion', 0.5, 1000);
+
+  // Bruk preset kombinasjon
+  triggerPreset('player-hit', 100, 200);
+};
+```
+
+### Filer endret
+- `src/game/components/OptionsMenu.tsx` - Nye innstillinger UI
+- `src/game/ShadowsGame.tsx` - Integrert effekter i kamp og spill-logikk
+- `package.json` - Nye dependencies
+
+---
+
 ## 2026-01-23: Critical Bug Fixes - Permadeath & Character Sheet
 
 ### Bug 1: Permadeath Not Persisting (FIXED)
