@@ -23335,3 +23335,159 @@ const newFreeMovesRemaining = hasFreeMove ? (p.freeMovesRemaining || 0) - 1 : p.
    - Nullstill ved turstart basert på karakter-type
 
 ---
+
+## 2026-01-24: Fix Exit Door Spawn Issue
+
+### Problem
+Exit door (utgangsdør) spawnet IKKE etter at spilleren fant quest item (nøkkelen). Special condition sier "Exit spawns after key is found", men døren dukket aldri opp.
+
+### Rot-årsak
+To problemer ble funnet:
+
+1. **For restriktive spawn-kategorier**: Exit door kunne KUN spawne på tiles med kategori 'foyer' eller 'facade'. Disse er sjeldne i indoor-scenarier som "The Witch House", og ofte utforsket tidlig i spillet (før nøkkelen er funnet).
+
+2. **Ingen umiddelbar spawn ved reveal**: Når quest item ble samlet og `obj_find_exit` ble revealed, ble bare `revealed: true` satt på quest tile. Den faktiske spawningen skjedde BARE når:
+   - En NY tile ble utforsket etter at nøkkelen var funnet
+   - ELLER guaranteed spawn systemet trigget (krever lav doom/høy exploration)
+
+### Løsning
+
+**1. Utvidet gyldige spawn-kategorier for exit (objectiveSpawner.ts:668-681):**
+```typescript
+exit: {
+  // Primary categories (preferred): foyer/facade near entrance
+  // Secondary categories: corridors, rooms, stairs can also have exits
+  validCategories: ['foyer', 'facade', 'corridor', 'room', 'stairs'],
+  // Perfect match names for guaranteed spawn
+  perfectMatchPatterns: ['entrance', 'exit', 'door', 'gate', 'foyer', 'lobby'],
+  baseChance: 0.3,  // Lower base chance since more categories are valid
+  explorationBonus: 0.08,  // +8% per tile explored (catches up quickly)
+  // Prefer tiles near the entrance (zoneLevel 0-2) but don't require it
+  zoneRequirement: { min: -1, max: 2 },
+  // CRITICAL: If no matching tiles found after key is found, allow ANY tile
+  allowAnyAsLastResort: true,
+}
+```
+
+**2. Ny funksjon for umiddelbar quest tile spawn (objectiveSpawner.ts:1326-1428):**
+```typescript
+export function spawnRevealedQuestTileImmediately(
+  state: ObjectiveSpawnState,
+  revealedQuestTile: QuestTile,
+  availableTiles: Tile[]
+): ImmediateQuestTileSpawnResult
+```
+Denne funksjonen finner beste tilgjengelige tile og spawner exit door umiddelbart når den avsløres.
+
+**3. Integrert i quest item collection (contextActionEffects.ts:393-430):**
+Når et objective completes og avslører et nytt objective med tilhørende quest tile, spawnes quest tile UMIDDELBART i stedet for å vente på neste tile-utforskning.
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/utils/objectiveSpawner.ts` | Utvidet exit spawn kategorier, lagt til `allowAnyAsLastResort` config, ny `spawnRevealedQuestTileImmediately()` funksjon |
+| `src/game/utils/contextActionEffects.ts` | Importert og brukt `spawnRevealedQuestTileImmediately()` ved objective completion |
+
+### Spawn Flow (Ny)
+
+```
+1. Spiller finner quest item (nøkkel)
+2. obj_find_key markeres som completed
+3. obj_find_exit avsløres (isHidden: false)
+4. ➡️ NY: spawnRevealedQuestTileImmediately() kalles
+5. ➡️ NY: Exit door spawnes på beste tilgjengelige tile
+6. Spiller ser "🚪 Exit Door has appeared in [Room Name]!"
+7. Spiller kan nå navigere til exit og rømme
+```
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+### Teknisk Lærdom
+
+1. **Quest tile spawn timing er kritisk:**
+   - `revealed: true` betyr ikke `spawned: true`
+   - Quest tiles må spawne UMIDDELBART når de avsløres, ikke vente på neste tile-utforskning
+
+2. **Tile-kategori restriksjonere kan blokkere gameplay:**
+   - Indoor scenarier har få 'foyer'/'facade' tiles
+   - Exit doors må kunne spawne på vanlige rom/korridorer som fallback
+
+3. **Guaranteed spawn system er ikke nok:**
+   - Trigger bare ved lav doom eller høy exploration
+   - Spilleren kan være "stuck" med plenty of doom remaining
+
+---
+
+## 2026-01-24: Fix Escape Action Victory Trigger
+
+### Problem
+Når spilleren trykker "ESCAPE" på exit door, skjedde ingenting - scenariet avsluttet ikke med seier.
+
+### Rot-årsak
+Victory condition for escape-scenarier krever at ALLE disse objectives er completed:
+- `obj_find_key` (find_item) ✓ - fullført når nøkkel samles
+- `obj_find_exit` (find_tile) ✗ - ALDRI fullført!
+- `obj_escape` (escape) ✓ - fullført av handleEscapeEffect
+
+`obj_find_exit` (type: find_tile) blir bare automatisk fullført når en NY tile spawnes via `checkExploreObjectives()`. Men exit door spawnes på en EKSISTERENDE utforsket tile, så denne sjekken trigges aldri.
+
+### Løsning
+Oppdatert `handleEscapeEffect()` i `contextActionEffects.ts` til å fullføre ALLE escape-relaterte objectives:
+
+```typescript
+export function handleEscapeEffect(ctx, tile) {
+  // 1. Complete any find_tile objectives targeting exit_door
+  const findExitObjective = objectives.find(
+    obj => obj.type === 'find_tile' &&
+           obj.targetId?.includes('exit') &&
+           !obj.completed
+  );
+  if (findExitObjective) {
+    // Mark as completed - player is ON the exit, so they've "found" it
+  }
+
+  // 2. Reveal any dependent hidden objectives
+  // 3. Complete the escape objective
+  // 4. Return updated scenario -> triggers victory check
+}
+```
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/utils/contextActionEffects.ts` | handleEscapeEffect fullføter nå find_exit + escape objectives |
+
+### Escape Flow (Fikset)
+
+```
+1. Spiller på exit door, klikker "ESCAPE"
+2. handleEscapeEffect() kalles
+3. ➡️ NY: obj_find_exit markeres completed (spiller ER på exit)
+4. ➡️ NY: obj_escape revealed (hvis hidden)
+5. obj_escape markeres completed
+6. State oppdateres med alle completed objectives
+7. useEffect detekterer victory conditions met
+8. Victory screen vises! 🎉
+```
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+### Teknisk Lærdom
+
+1. **Victory conditions sjekker ALLE requiredObjectives:**
+   - Alle må være completed for at seier triggers
+   - Én manglende objective = ingen seier
+
+2. **find_tile objectives har timing-problem:**
+   - Auto-completes kun ved NY tile spawn
+   - Må manuelt fullføres når tile transformeres (exit door på eksisterende tile)
+
+3. **Escape action er siste sjanse:**
+   - Når spiller klikker Escape, vet vi at de er på exit med nøkkelen
+   - Trygt å fullføre alle escape-relaterte objectives
+
+---

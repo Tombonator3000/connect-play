@@ -20,7 +20,7 @@ import type {
 } from '../types';
 import { equipItem } from '../types';
 import type { ObjectiveSpawnState, QuestItem } from './objectiveSpawner';
-import { collectQuestItem } from './objectiveSpawner';
+import { collectQuestItem, spawnRevealedQuestTileImmediately } from './objectiveSpawner';
 import {
   startFollowing,
   rescueSurvivor,
@@ -390,27 +390,52 @@ export function handleSearchEffect(
           if (obj.isHidden && obj.revealedBy === completedObjectiveId) {
             logMessages.push(`NEW OBJECTIVE REVEALED: ${obj.shortDescription}`);
 
-            // Also reveal the corresponding quest tile
+            // Also reveal AND SPAWN the corresponding quest tile
             if (updatedObjectiveSpawnState) {
               const questTile = updatedObjectiveSpawnState.questTiles.find(
                 qt => qt.objectiveId === obj.id && !qt.revealed
               );
               if (questTile) {
-                updatedObjectiveSpawnState = {
-                  ...updatedObjectiveSpawnState,
-                  questTiles: updatedObjectiveSpawnState.questTiles.map(qt =>
-                    qt.id === questTile.id ? { ...qt, revealed: true } : qt
-                  )
-                };
-
                 // If this is a final_confrontation tile, spawn the boss!
                 if (questTile.type === 'final_confrontation') {
+                  updatedObjectiveSpawnState = {
+                    ...updatedObjectiveSpawnState,
+                    questTiles: updatedObjectiveSpawnState.questTiles.map(qt =>
+                      qt.id === questTile.id ? { ...qt, revealed: true } : qt
+                    )
+                  };
                   const bossType = questTile.bossType || 'shoggoth';
                   bossToSpawn = {
                     type: bossType,
                     message: `THE FINAL CONFRONTATION: A ${bossType.toUpperCase()} emerges from the shadows!`
                   };
                   logMessages.push(`The truth reveals itself! A ${bossType} appears!`);
+                } else {
+                  // IMMEDIATE SPAWN: Spawn exit doors, altars, etc. immediately when revealed
+                  // This is CRITICAL - without this, exit doors only spawn when exploring NEW tiles
+                  // which may never happen after the key is found
+                  const spawnResult = spawnRevealedQuestTileImmediately(
+                    updatedObjectiveSpawnState,
+                    questTile,
+                    updatedBoard.filter(t => t.explored)
+                  );
+
+                  updatedObjectiveSpawnState = spawnResult.updatedState;
+
+                  // Apply tile modifications to the board
+                  if (spawnResult.targetTileId && spawnResult.tileModifications) {
+                    updatedBoard = updatedBoard.map(t =>
+                      t.id === spawnResult.targetTileId
+                        ? { ...t, ...spawnResult.tileModifications }
+                        : t
+                    );
+                    if (spawnResult.message) {
+                      logMessages.push(spawnResult.message);
+                    }
+                  } else if (spawnResult.message) {
+                    // No tile found, but we have a message (will spawn on next exploration)
+                    logMessages.push(spawnResult.message);
+                  }
                 }
               }
             }
@@ -590,6 +615,14 @@ export function handleObjectiveProgressEffect(
 
 /**
  * Handles escape action effect
+ *
+ * CRITICAL: This completes ALL escape-related objectives to trigger victory:
+ * 1. Any find_tile objective targeting exit_door (player found the exit)
+ * 2. The escape objective itself (player escaped)
+ *
+ * Without this, victory won't trigger because find_tile objectives only
+ * auto-complete when SPAWNING a new tile, not when an existing tile is
+ * transformed into an exit door.
  */
 export function handleEscapeEffect(
   ctx: ActionEffectContext,
@@ -600,36 +633,64 @@ export function handleEscapeEffect(
   const logMessages: string[] = [];
   let floatingText: ActionEffectResult['floatingText'] | undefined;
 
-  const escapeObjective = ctx.activeScenario.objectives.find(
+  // Start with current objectives
+  let updatedObjectives = [...ctx.activeScenario.objectives];
+
+  // 1. Complete any find_tile objectives targeting exit_door
+  // This is needed because the player is ON the exit tile, so they've "found" it
+  const findExitObjective = updatedObjectives.find(
+    obj => obj.type === 'find_tile' &&
+           (obj.targetId === 'exit_door' || obj.targetId?.toLowerCase().includes('exit')) &&
+           !obj.completed
+  );
+
+  if (findExitObjective) {
+    updatedObjectives = updatedObjectives.map(obj =>
+      obj.id === findExitObjective.id
+        ? { ...obj, completed: true, isHidden: false }
+        : obj
+    );
+    logMessages.push(`OBJECTIVE COMPLETE: ${findExitObjective.shortDescription}`);
+  }
+
+  // 2. Reveal any hidden objectives that depend on findExitObjective
+  if (findExitObjective) {
+    updatedObjectives = updatedObjectives.map(obj => {
+      if (obj.isHidden && obj.revealedBy === findExitObjective.id) {
+        return { ...obj, isHidden: false };
+      }
+      return obj;
+    });
+  }
+
+  // 3. Complete the escape objective
+  const escapeObjective = updatedObjectives.find(
     obj => obj.type === 'escape' && !obj.completed
   );
 
   if (escapeObjective) {
-    const updatedScenario = {
-      ...ctx.activeScenario,
-      objectives: ctx.activeScenario.objectives.map(obj =>
-        obj.id === escapeObjective.id
-          ? { ...obj, completed: true }
-          : obj
-      )
-    };
-
+    updatedObjectives = updatedObjectives.map(obj =>
+      obj.id === escapeObjective.id
+        ? { ...obj, completed: true, isHidden: false }
+        : obj
+    );
     logMessages.push(`OBJECTIVE COMPLETE: ${escapeObjective.shortDescription}`);
-    logMessages.push('You have escaped!');
-    floatingText = { q: tile.q, r: tile.r, text: 'ESCAPED!', colorClass: 'text-green-400' };
-
-    return {
-      activeScenario: updatedScenario,
-      logMessages,
-      floatingText
-    };
   }
 
-  // No escape objective but still on exit
-  logMessages.push('You have escaped the horrors within!');
+  // Create updated scenario
+  const updatedScenario = {
+    ...ctx.activeScenario,
+    objectives: updatedObjectives
+  };
+
+  logMessages.push('🎉 VICTORY! You have escaped the horrors within!');
   floatingText = { q: tile.q, r: tile.r, text: 'ESCAPED!', colorClass: 'text-green-400' };
 
-  return { logMessages, floatingText };
+  return {
+    activeScenario: updatedScenario,
+    logMessages,
+    floatingText
+  };
 }
 
 // ============================================================================
