@@ -4747,7 +4747,7 @@ const ShadowsGame: React.FC = () => {
             <button onClick={() => setIsMainMenuOpen(true)} className={`bg-leather/90 border-2 border-primary ${isMobile ? 'rounded-lg p-2' : 'rounded-xl p-3'} text-primary transition-colors hover:bg-background/50 active:scale-95`}><Settings size={isMobile ? 20 : 24} /></button>
           </div>
 
-          <div className="absolute inset-0 z-0">
+          <div className="absolute inset-0 z-10">
             <GameBoard
               tiles={state.board}
               players={state.players}

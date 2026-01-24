@@ -22255,3 +22255,86 @@ Fjerner transient/visuell data fra save:
    - Automatisk cleanup kan frigjøre plass
 
 ---
+
+## 2026-01-24: Fix Menu Buttons and Hex Tiles Not Responsive
+
+### Problem
+Brukeren rapporterte at ingenting var klikkbart i spillet:
+- Menyknapper (CHAR, INVESTIGATE, ATTACK, FLEE, REST, ITEM, etc.) responderte ikke
+- Hex-tiles på brettet var ikke klikkbare
+- "END ROUND" knappen fungerte ikke
+- Hele UI-en var synlig men ingen interaksjon fungerte
+
+### Feilanalyse
+
+1. **Undersøkt mulige årsaker:**
+   - Sjekket z-index på alle overlays og modaler
+   - Verifiserte at pointer-events-none var satt på visuelle overlays (AdvancedParticles, ShaderEffects, WeatherOverlay, etc.)
+   - Undersøkte touch-handling i GameBoard
+   - Sjekket at ingen modaler var stuck i synlig tilstand
+
+2. **Identifiserte potensielle problemer:**
+   - GameBoard wrapper hadde z-0 som kunne være for lavt
+   - GameBoard container brukte `touch-none` som kan forstyrre tap-detection på noen enheter/nettlesere
+
+### Løsning
+
+#### 1. Økt z-index for GameBoard wrapper
+**Fil:** `src/game/ShadowsGame.tsx:4750`
+
+Endret fra:
+```tsx
+<div className="absolute inset-0 z-0">
+```
+
+Til:
+```tsx
+<div className="absolute inset-0 z-10">
+```
+
+**Begrunnelse:** z-10 sikrer at GameBoard er over eventuelle bakgrunnselementer men fortsatt under header/footer (z-50) og modaler.
+
+#### 2. Endret touch-action fra touch-none til touch-manipulation
+**Fil:** `src/game/components/GameBoard.tsx:610`
+
+Endret fra:
+```tsx
+className="game-board-container ... touch-none ..."
+```
+
+Til:
+```tsx
+className="game-board-container ... touch-manipulation ..."
+```
+
+**Begrunnelse:** 
+- `touch-none` disabler alle touch-gestures helt, noe som kan forstyrre tap-detection på enkelte enheter
+- `touch-manipulation` tillater panning/zooming men også native tap-handling, som gir bedre kompatibilitet
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/ShadowsGame.tsx` | Økt z-index på GameBoard wrapper fra z-0 til z-10 |
+| `src/game/components/GameBoard.tsx` | Endret touch-action fra touch-none til touch-manipulation |
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+### Teknisk Lærdom
+
+1. **z-index stacking:**
+   - Elementer med z-0 kan bli blokkert av andre elementer selv med lavere DOM-posisjon
+   - Bruk eksplisitte z-index verdier for å sikre korrekt stacking
+
+2. **touch-action CSS property:**
+   - `touch-none`: Disabler alle browser touch gestures - kan forstyrre tap events
+   - `touch-manipulation`: Tillater pan/zoom men ikke double-tap-to-zoom, bedre for spill
+   - For full custom touch handling, bruk touch-manipulation og implementer egne handlers
+
+3. **Debugging interaksjonsproblemer:**
+   - Sjekk z-index hierarkiet for alle posisjonerte elementer
+   - Verifiser at overlays har pointer-events-none
+   - Test touch-action verdier for mobile kompatibilitet
+
+---

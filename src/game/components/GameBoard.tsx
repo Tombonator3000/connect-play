@@ -607,7 +607,7 @@ const GameBoard: React.FC<GameBoardProps> = ({
   return (
     <div
       ref={containerRef}
-      className="game-board-container w-full h-full overflow-hidden relative cursor-move bg-background touch-none select-none"
+      className="game-board-container w-full h-full overflow-hidden relative cursor-move bg-background touch-manipulation select-none"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={() => setIsDragging(false)}
