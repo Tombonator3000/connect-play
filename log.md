@@ -23419,3 +23419,75 @@ Når et objective completes og avslører et nytt objective med tilhørende quest
    - Spilleren kan være "stuck" med plenty of doom remaining
 
 ---
+
+## 2026-01-24: Fix Escape Action Victory Trigger
+
+### Problem
+Når spilleren trykker "ESCAPE" på exit door, skjedde ingenting - scenariet avsluttet ikke med seier.
+
+### Rot-årsak
+Victory condition for escape-scenarier krever at ALLE disse objectives er completed:
+- `obj_find_key` (find_item) ✓ - fullført når nøkkel samles
+- `obj_find_exit` (find_tile) ✗ - ALDRI fullført!
+- `obj_escape` (escape) ✓ - fullført av handleEscapeEffect
+
+`obj_find_exit` (type: find_tile) blir bare automatisk fullført når en NY tile spawnes via `checkExploreObjectives()`. Men exit door spawnes på en EKSISTERENDE utforsket tile, så denne sjekken trigges aldri.
+
+### Løsning
+Oppdatert `handleEscapeEffect()` i `contextActionEffects.ts` til å fullføre ALLE escape-relaterte objectives:
+
+```typescript
+export function handleEscapeEffect(ctx, tile) {
+  // 1. Complete any find_tile objectives targeting exit_door
+  const findExitObjective = objectives.find(
+    obj => obj.type === 'find_tile' &&
+           obj.targetId?.includes('exit') &&
+           !obj.completed
+  );
+  if (findExitObjective) {
+    // Mark as completed - player is ON the exit, so they've "found" it
+  }
+
+  // 2. Reveal any dependent hidden objectives
+  // 3. Complete the escape objective
+  // 4. Return updated scenario -> triggers victory check
+}
+```
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/utils/contextActionEffects.ts` | handleEscapeEffect fullføter nå find_exit + escape objectives |
+
+### Escape Flow (Fikset)
+
+```
+1. Spiller på exit door, klikker "ESCAPE"
+2. handleEscapeEffect() kalles
+3. ➡️ NY: obj_find_exit markeres completed (spiller ER på exit)
+4. ➡️ NY: obj_escape revealed (hvis hidden)
+5. obj_escape markeres completed
+6. State oppdateres med alle completed objectives
+7. useEffect detekterer victory conditions met
+8. Victory screen vises! 🎉
+```
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+### Teknisk Lærdom
+
+1. **Victory conditions sjekker ALLE requiredObjectives:**
+   - Alle må være completed for at seier triggers
+   - Én manglende objective = ingen seier
+
+2. **find_tile objectives har timing-problem:**
+   - Auto-completes kun ved NY tile spawn
+   - Må manuelt fullføres når tile transformeres (exit door på eksisterende tile)
+
+3. **Escape action er siste sjanse:**
+   - Når spiller klikker Escape, vet vi at de er på exit med nøkkelen
+   - Trygt å fullføre alle escape-relaterte objectives
+
+---

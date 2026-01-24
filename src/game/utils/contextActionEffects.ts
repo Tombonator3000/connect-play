@@ -615,6 +615,14 @@ export function handleObjectiveProgressEffect(
 
 /**
  * Handles escape action effect
+ *
+ * CRITICAL: This completes ALL escape-related objectives to trigger victory:
+ * 1. Any find_tile objective targeting exit_door (player found the exit)
+ * 2. The escape objective itself (player escaped)
+ *
+ * Without this, victory won't trigger because find_tile objectives only
+ * auto-complete when SPAWNING a new tile, not when an existing tile is
+ * transformed into an exit door.
  */
 export function handleEscapeEffect(
   ctx: ActionEffectContext,
@@ -625,36 +633,64 @@ export function handleEscapeEffect(
   const logMessages: string[] = [];
   let floatingText: ActionEffectResult['floatingText'] | undefined;
 
-  const escapeObjective = ctx.activeScenario.objectives.find(
+  // Start with current objectives
+  let updatedObjectives = [...ctx.activeScenario.objectives];
+
+  // 1. Complete any find_tile objectives targeting exit_door
+  // This is needed because the player is ON the exit tile, so they've "found" it
+  const findExitObjective = updatedObjectives.find(
+    obj => obj.type === 'find_tile' &&
+           (obj.targetId === 'exit_door' || obj.targetId?.toLowerCase().includes('exit')) &&
+           !obj.completed
+  );
+
+  if (findExitObjective) {
+    updatedObjectives = updatedObjectives.map(obj =>
+      obj.id === findExitObjective.id
+        ? { ...obj, completed: true, isHidden: false }
+        : obj
+    );
+    logMessages.push(`OBJECTIVE COMPLETE: ${findExitObjective.shortDescription}`);
+  }
+
+  // 2. Reveal any hidden objectives that depend on findExitObjective
+  if (findExitObjective) {
+    updatedObjectives = updatedObjectives.map(obj => {
+      if (obj.isHidden && obj.revealedBy === findExitObjective.id) {
+        return { ...obj, isHidden: false };
+      }
+      return obj;
+    });
+  }
+
+  // 3. Complete the escape objective
+  const escapeObjective = updatedObjectives.find(
     obj => obj.type === 'escape' && !obj.completed
   );
 
   if (escapeObjective) {
-    const updatedScenario = {
-      ...ctx.activeScenario,
-      objectives: ctx.activeScenario.objectives.map(obj =>
-        obj.id === escapeObjective.id
-          ? { ...obj, completed: true }
-          : obj
-      )
-    };
-
+    updatedObjectives = updatedObjectives.map(obj =>
+      obj.id === escapeObjective.id
+        ? { ...obj, completed: true, isHidden: false }
+        : obj
+    );
     logMessages.push(`OBJECTIVE COMPLETE: ${escapeObjective.shortDescription}`);
-    logMessages.push('You have escaped!');
-    floatingText = { q: tile.q, r: tile.r, text: 'ESCAPED!', colorClass: 'text-green-400' };
-
-    return {
-      activeScenario: updatedScenario,
-      logMessages,
-      floatingText
-    };
   }
 
-  // No escape objective but still on exit
-  logMessages.push('You have escaped the horrors within!');
+  // Create updated scenario
+  const updatedScenario = {
+    ...ctx.activeScenario,
+    objectives: updatedObjectives
+  };
+
+  logMessages.push('🎉 VICTORY! You have escaped the horrors within!');
   floatingText = { q: tile.q, r: tile.r, text: 'ESCAPED!', colorClass: 'text-green-400' };
 
-  return { logMessages, floatingText };
+  return {
+    activeScenario: updatedScenario,
+    logMessages,
+    floatingText
+  };
 }
 
 // ============================================================================
