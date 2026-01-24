@@ -2452,13 +2452,16 @@ const ShadowsGame: React.FC = () => {
         }
 
         // Move player to the adjacent position
-        // FIX 2026-01-24: Also mark all visible tiles as explored to prevent black tiles
+        // FIX 2026-01-24: Mark tiles visible from BOTH old and new positions as explored
         const VISIBILITY_RANGE = 2;
-        const newExplored = new Set([...(prev.exploredTiles || []), `${adjPos.q},${adjPos.r}`]);
-        state.board.forEach(tile => {
-          const dist = hexDistance({ q: adjPos.q, r: adjPos.r }, { q: tile.q, r: tile.r });
-          if (dist <= VISIBILITY_RANGE) {
-            newExplored.add(`${tile.q},${tile.r}`);
+        const oldPos = activePlayer?.position || { q: 0, r: 0 };
+        const newExplored = new Set([...(state.exploredTiles || []), `${adjPos.q},${adjPos.r}`]);
+        state.board.forEach(t => {
+          const distFromNew = hexDistance({ q: adjPos.q, r: adjPos.r }, { q: t.q, r: t.r });
+          const distFromOld = hexDistance(oldPos, { q: t.q, r: t.r });
+          // Mark as explored if visible from either old or new position
+          if (distFromNew <= VISIBILITY_RANGE || distFromOld <= VISIBILITY_RANGE) {
+            newExplored.add(`${t.q},${t.r}`);
           }
         });
         setState(prev => ({
@@ -2947,17 +2950,20 @@ const ShadowsGame: React.FC = () => {
         }
 
         // Mark ALL VISIBLE tiles as explored (revealed) so they don't turn black when player moves away
-        // FIX 2026-01-24: Previously only the current tile was marked, causing tiles player had SEEN
-        // but not STOOD ON to turn completely black (fogOpacity=0.9 + unexplored overlay) when
-        // the player moved away. Now all tiles within visibility range are marked as "revealed".
+        // FIX 2026-01-24: Must mark tiles visible from BOTH old and new positions to prevent
+        // tiles becoming black when player moves away. Previously only marked tiles around the
+        // destination, causing tiles visible from the origin to turn black.
         const VISIBILITY_RANGE = 2; // Same as GameBoard.tsx
         const newExplored = new Set(state.exploredTiles || []);
         newExplored.add(`${q},${r}`);
 
-        // Add all tiles within visibility range to explored set
+        // Add all tiles within visibility range from BOTH old position and new position
+        const oldPos = activePlayer.position;
         state.board.forEach(tile => {
-          const dist = hexDistance({ q, r }, { q: tile.q, r: tile.r });
-          if (dist <= VISIBILITY_RANGE) {
+          const distFromNew = hexDistance({ q, r }, { q: tile.q, r: tile.r });
+          const distFromOld = hexDistance(oldPos, { q: tile.q, r: tile.r });
+          // Mark as explored if visible from either old or new position
+          if (distFromNew <= VISIBILITY_RANGE || distFromOld <= VISIBILITY_RANGE) {
             newExplored.add(`${tile.q},${tile.r}`);
           }
         });

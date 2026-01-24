@@ -23823,3 +23823,53 @@ state.board.forEach(tile => {
 ✅ Bygget kompilerer uten feil
 
 ---
+
+## 2026-01-24: FIX - Hex Tiles Bak Spiller Blir Svarte
+
+### Problem
+Hex-ruter bak spilleren ble fortsatt SVARTE når spilleren beveget seg bort, selv etter forrige "fix".
+
+### Rot-årsak
+Forrige fix la bare til tiles innenfor synlighetsradius fra spillerens NYE posisjon (destinasjonen). Men tiles som var synlige fra den GAMLE posisjonen (opprinnelsen) ble IKKE lagt til `exploredTiles`.
+
+Eksempel:
+1. Spiller er på posisjon A, ser tiles A, B, C
+2. Spiller beveger seg til posisjon D
+3. Gammel kode: Kun tiles rundt D ble lagt til explored
+4. Tile A (gammel posisjon) var nå utenfor synlighetsradius fra D
+5. Tile A var aldri eksplisitt lagt til explored → HELT SVART!
+
+### Løsning
+Endret koden til å legge til tiles fra BEGGE posisjoner:
+
+```typescript
+// FØR - Bare tiles rundt ny posisjon
+state.board.forEach(tile => {
+  const dist = hexDistance({ q, r }, { q: tile.q, r: tile.r });
+  if (dist <= VISIBILITY_RANGE) {
+    newExplored.add(`${tile.q},${tile.r}`);
+  }
+});
+
+// ETTER - Tiles rundt BÅDE gammel og ny posisjon
+const oldPos = activePlayer.position;
+state.board.forEach(tile => {
+  const distFromNew = hexDistance({ q, r }, { q: tile.q, r: tile.r });
+  const distFromOld = hexDistance(oldPos, { q: tile.q, r: tile.r });
+  if (distFromNew <= VISIBILITY_RANGE || distFromOld <= VISIBILITY_RANGE) {
+    newExplored.add(`${tile.q},${tile.r}`);
+  }
+});
+```
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/ShadowsGame.tsx:2949-2967` | Hovedbevegelse - legg til tiles fra begge posisjoner |
+| `src/game/ShadowsGame.tsx:2454-2467` | Door passage - legg til tiles fra begge posisjoner |
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
