@@ -23278,3 +23278,37 @@ export function canBuyBagSlot(hero: LegacyHero): boolean {
 - Alltid bruk fallback-verdier (`|| 0`) når man sammenligner potensielt undefined tall
 
 ---
+
+## 2026-01-24: Design Diskusjon - Shop Button Plassering
+
+### Spørsmål
+Bør "The Fence" (MerchantShop) ha en permanent knapp som alltid gir tilgang, eller kun vises etter fullført quest?
+
+### Nåværende Implementasjon
+- Shop åpnes via `setShowMerchantShop(true)` kun etter scenario completion
+- Kan også åpnes fra Campaign mode mellom quests
+- Ingen permanent knapp i hovedmeny eller legacy panel
+
+### Analyse
+
+#### For Permanent Tilgang:
+- Spillere kan forberede seg før quests
+- Mer fleksibilitet for inventory management
+- Mindre frustrasjon hvis de glemmer å handle
+
+#### For Quest-basert Tilgang (Anbefalt):
+- Tematisk konsistent - The Fence er belønning for overlevelselskap
+- Skaper stakes - mislykkes du, får du ikke handle
+- Balanserer spillet - forhindrer "pre-grinding"
+- Standard roguelike mønster
+
+### Anbefaling: Hybrid Tilnærming
+1. **Etter quest**: Full shop-tilgang (kjøp, salg, crafting, services)
+2. **Fra Legacy Panel**: Begrenset tilgang (stash, inventory view - IKKE kjøp)
+
+Alternative: Premium-pris (10% ekstra) for shopping utenfor quest-kontekst
+
+### Status
+Avventer beslutning fra spilldesigner
+
+---
