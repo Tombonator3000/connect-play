@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package, X, Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -35,8 +35,10 @@ import FieldGuidePanel from './components/FieldGuidePanel';
 import CharacterSelectionScreen from './components/CharacterSelectionScreen';
 import SaveLoadModal from './components/SaveLoadModal';
 import QuestEditor, { CustomQuestLoader, CampaignPlayManager, convertQuestToScenario } from './components/QuestEditor';
-import AdvancedParticles, { useAdvancedParticles } from './components/AdvancedParticles';
-import ShaderEffects, { useShaderEffects } from './components/ShaderEffects';
+// Lazy load heavy visual effects libraries to prevent blocking game startup
+// These use pixi.js and three.js which can cause WebGL initialization issues
+const AdvancedParticles = lazy(() => import('./components/AdvancedParticles'));
+const ShaderEffects = lazy(() => import('./components/ShaderEffects'));
 import { autoSave } from './utils/saveManager';
 import {
   loadLegacyData,
@@ -4122,19 +4124,27 @@ const ShadowsGame: React.FC = () => {
         onResetData={handleResetData}
       />
 
-      {/* Advanced Visual Effects (GPU-accelerated) */}
-      <AdvancedParticles
-        enabled={settings.advancedParticles && settings.particles}
-        quality={settings.effectsQuality}
-      />
+      {/* Advanced Visual Effects (GPU-accelerated) - only load when enabled */}
+      {settings.advancedParticles && settings.particles && (
+        <Suspense fallback={null}>
+          <AdvancedParticles
+            enabled={true}
+            quality={settings.effectsQuality}
+          />
+        </Suspense>
+      )}
 
-      {/* WebGL Shader Effects */}
-      <ShaderEffects
-        enabled={settings.shaderEffects}
-        quality={settings.effectsQuality}
-        sanityLevel={activePlayer ? activePlayer.sanity / (CHARACTERS[activePlayer.character].baseSanity || 4) : 1}
-        doomLevel={state.activeScenario ? (state.activeScenario.doom.max - state.doom) / state.activeScenario.doom.max : 0}
-      />
+      {/* WebGL Shader Effects - only load when enabled */}
+      {settings.shaderEffects && (
+        <Suspense fallback={null}>
+          <ShaderEffects
+            enabled={true}
+            quality={settings.effectsQuality}
+            sanityLevel={activePlayer ? activePlayer.sanity / (CHARACTERS[activePlayer.character].baseSanity || 4) : 1}
+            doomLevel={state.activeScenario ? (state.activeScenario.doom.max - state.doom) / state.activeScenario.doom.max : 0}
+          />
+        </Suspense>
+      )}
 
       {isMainMenuOpen && mainMenuView === 'title' && (
         <MainMenu
