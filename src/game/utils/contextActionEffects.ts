@@ -766,6 +766,91 @@ export function handleQuestItemPickupEffect(
   };
 }
 
+/**
+ * Handles picking up loot items (non-quest items) from the ground
+ */
+export function handleLootPickupEffect(
+  ctx: ActionEffectContext,
+  lootIndex: number
+): ActionEffectResult {
+  const tile = ctx.board.find(t => t.id === ctx.tileId);
+  if (!tile) return {};
+
+  // Get non-quest items (loot)
+  const lootItems = (tile.items || []).filter(item => !item.isQuestItem);
+  const lootItem = lootItems[lootIndex];
+
+  if (!lootItem) return {};
+
+  const logMessages: string[] = [];
+  let floatingText: ActionEffectResult['floatingText'] | undefined;
+  let spellParticle: SpellParticle | undefined;
+  let updatedBoard = ctx.board;
+  let updatedPlayers = ctx.players;
+
+  const activePlayer = ctx.players[ctx.activePlayerIndex];
+  if (!activePlayer) return {};
+
+  // Try to add item to player's inventory
+  const equipResult = equipItem(activePlayer.inventory, lootItem);
+
+  if (equipResult.success) {
+    // Update player inventory
+    updatedPlayers = ctx.players.map((p, idx) => {
+      if (idx === ctx.activePlayerIndex) {
+        return { ...p, inventory: equipResult.newInventory };
+      }
+      return p;
+    });
+
+    logMessages.push(`${activePlayer.name} plukket opp ${lootItem.name}.`);
+    floatingText = {
+      q: activePlayer.position.q,
+      r: activePlayer.position.r,
+      text: lootItem.name.toUpperCase(),
+      colorClass: 'text-amber-400'
+    };
+
+    // Create item collection particle effect
+    spellParticle = {
+      id: `loot_collect_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type: 'item_collect',
+      startQ: tile.q,
+      startR: tile.r,
+      startTime: Date.now(),
+      duration: 1000,
+      color: 'amber',
+      size: 'md',
+      count: 8,
+      animation: 'float'
+    };
+
+    // Remove item from tile
+    updatedBoard = updateTile(updatedBoard, ctx.tileId, t => ({
+      ...t,
+      items: (t.items || []).filter(item =>
+        item.id !== lootItem.id || item.name !== lootItem.name
+      )
+    }));
+  } else {
+    logMessages.push(`Inventory full! Could not pick up ${lootItem.name}.`);
+    floatingText = {
+      q: activePlayer.position.q,
+      r: activePlayer.position.r,
+      text: 'INVENTORY FULL',
+      colorClass: 'text-red-400'
+    };
+  }
+
+  return {
+    board: updatedBoard,
+    players: updatedPlayers,
+    logMessages,
+    floatingText,
+    spellParticle
+  };
+}
+
 // ============================================================================
 // SURVIVOR EFFECT HANDLERS
 // ============================================================================
@@ -1118,6 +1203,12 @@ export function processActionEffect(
   if (actionId.startsWith('pickup_quest_item_')) {
     const itemIndex = parseInt(actionId.replace('pickup_quest_item_', ''), 10);
     return handleQuestItemPickupEffect(ctx, itemIndex);
+  }
+
+  // Handle loot pickup (non-quest items dropped on ground)
+  if (actionId.startsWith('pickup_loot_')) {
+    const lootIndex = parseInt(actionId.replace('pickup_loot_', ''), 10);
+    return handleLootPickupEffect(ctx, lootIndex);
   }
 
   // Pass through actions (climbing windows, wading through water, stairs, etc.)

@@ -403,6 +403,21 @@ export function getContextActions(
         });
       }
 
+      // Check if tile has loot items (non-quest items) that can be picked up
+      const lootItems = tile.items?.filter(item => !item.isQuestItem) || [];
+      if (lootItems.length > 0) {
+        lootItems.forEach((item, index) => {
+          actions.push({
+            id: `pickup_loot_${index}`,
+            label: `Plukk opp: ${item.name}`,
+            icon: 'interact',
+            apCost: 0, // Free action to pick up visible loot
+            enabled: true,
+            successMessage: `Du plukket opp ${item.name}!`
+          });
+        });
+      }
+
       // Standard search action for searchable tiles
       if (tile.searchable && !tile.searched) {
         actions.push({

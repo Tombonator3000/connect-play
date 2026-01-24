@@ -20,7 +20,11 @@ import {
   HeroScenarioResult,
   equipItem,
   findAvailableSlot,
-  countInventoryItems
+  countInventoryItems,
+  canBuyBagSlot,
+  getNextBagSlotPrice,
+  getTotalBagSlots,
+  EXTRA_BAG_SLOT_PRICES
 } from '../types';
 import {
   getDefaultShopInventory,
@@ -56,7 +60,9 @@ import {
   FlaskConical,
   Check,
   AlertCircle,
-  Flame
+  Flame,
+  Backpack,
+  Plus
 } from 'lucide-react';
 import { CraftingRecipe } from '../types';
 import { CRAFTING_RECIPES, canCraftRecipe, getCraftedItem } from '../constants';
@@ -71,7 +77,7 @@ interface MerchantShopProps {
 }
 
 type ShopCategory = 'weapons' | 'tools' | 'armor' | 'consumables' | 'relics';
-type ShopMode = 'buy' | 'sell' | 'craft';
+type ShopMode = 'buy' | 'sell' | 'craft' | 'services';
 type SellSource = 'inventory' | 'stash';
 
 // Crafting costs gold instead of AP when done at the Fence
@@ -229,7 +235,8 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
     const canAfford = activeHero && activeHero.gold >= shopItem.goldCost;
     const meetsLevel = !shopItem.requiredLevel || (activeHero && activeHero.level >= shopItem.requiredLevel);
     const inStock = shopItem.stock !== 0;
-    const hasSpace = activeHero && countInventoryItems(activeHero.equipment) < 7;
+    const maxItems = activeHero ? 3 + getTotalBagSlots(activeHero.extraBagSlots || 0) : 7;
+    const hasSpace = activeHero && countInventoryItems(activeHero.equipment) < maxItems;
 
     // Check weapon restrictions for the active hero's class
     const isWeaponRestricted = isWeaponRestrictedForHero(shopItem.item.id, shopItem.item.type);
@@ -670,6 +677,184 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
     );
   };
 
+  // Handle buying extra bag slot
+  const handleBuyBagSlot = () => {
+    if (!activeHero) return;
+
+    // Check if hero can buy more slots
+    if (!canBuyBagSlot(activeHero)) {
+      setPurchaseMessage(`Max slots for Level ${activeHero.level}!`);
+      setTimeout(() => setPurchaseMessage(null), 2000);
+      return;
+    }
+
+    const price = getNextBagSlotPrice(activeHero.extraBagSlots);
+
+    // Check if hero can afford
+    if (activeHero.gold < price) {
+      setPurchaseMessage('Not enough gold!');
+      setTimeout(() => setPurchaseMessage(null), 2000);
+      return;
+    }
+
+    // Purchase the slot
+    const updatedHero: LegacyHero = {
+      ...activeHero,
+      gold: activeHero.gold - price,
+      extraBagSlots: activeHero.extraBagSlots + 1,
+      // Extend bag array with one more null slot
+      equipment: {
+        ...activeHero.equipment,
+        bag: [...activeHero.equipment.bag, null]
+      }
+    };
+
+    onHeroUpdate(updatedHero);
+    setPurchaseMessage(`Purchased bag slot! (${getTotalBagSlots(updatedHero.extraBagSlots)} total)`);
+    setTimeout(() => setPurchaseMessage(null), 2000);
+  };
+
+  // Render the services panel content
+  const renderServicesPanel = () => {
+    if (!activeHero) {
+      return (
+        <div className="flex-1 flex items-center justify-center text-stone-500">
+          <p>Select a hero to use services</p>
+        </div>
+      );
+    }
+
+    const currentExtraSlots = activeHero.extraBagSlots || 0;
+    const maxExtraSlots = activeHero.level;
+    const canBuyMore = canBuyBagSlot(activeHero);
+    const nextSlotPrice = canBuyMore ? getNextBagSlotPrice(currentExtraSlots) : 0;
+    const canAfford = activeHero.gold >= nextSlotPrice;
+
+    return (
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Services info header */}
+        <div className="p-4 border-b border-stone-700 bg-stone-900">
+          <div className="flex items-center gap-2">
+            <Backpack size={20} className="text-cyan-400" />
+            <span className="text-stone-300">
+              The Fence offers special services to expand your carrying capacity
+            </span>
+          </div>
+        </div>
+
+        {/* Services content */}
+        <div className="flex-1 p-4 overflow-y-auto">
+          {/* Bag Slot Upgrade */}
+          <div className="mb-6">
+            <h3 className="text-lg font-bold text-cyan-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Backpack size={18} />
+              Inventory Expansion
+            </h3>
+
+            <div className={`
+              p-6 rounded-lg border-2 transition-all max-w-lg
+              ${canBuyMore && canAfford
+                ? 'border-cyan-600 bg-cyan-900/20 hover:border-cyan-400'
+                : 'border-stone-700 bg-stone-900/50'
+              }
+            `}>
+              {/* Current status */}
+              <div className="mb-4">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-stone-400">Current Bag Slots:</span>
+                  <span className="text-lg font-bold text-cyan-400">
+                    {getTotalBagSlots(currentExtraSlots)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-stone-400">Extra Slots Purchased:</span>
+                  <span className="text-cyan-300">
+                    {currentExtraSlots} / {maxExtraSlots}
+                  </span>
+                </div>
+                <p className="text-xs text-stone-500 italic">
+                  Max extra slots = Hero Level (currently Level {activeHero.level})
+                </p>
+              </div>
+
+              {/* Progress bar */}
+              <div className="mb-4">
+                <div className="h-3 bg-stone-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-cyan-500 transition-all"
+                    style={{ width: `${(currentExtraSlots / 5) * 100}%` }}
+                  />
+                </div>
+                <div className="flex justify-between text-xs text-stone-500 mt-1">
+                  <span>Base (4)</span>
+                  <span>Max (9)</span>
+                </div>
+              </div>
+
+              {/* Price list */}
+              <div className="mb-4 p-3 bg-black/30 rounded-lg">
+                <p className="text-xs text-stone-500 uppercase tracking-wider mb-2">Slot Prices:</p>
+                <div className="grid grid-cols-5 gap-2">
+                  {Object.entries(EXTRA_BAG_SLOT_PRICES).map(([slot, price]) => {
+                    const slotNum = parseInt(slot);
+                    const isPurchased = slotNum <= currentExtraSlots;
+                    const isNext = slotNum === currentExtraSlots + 1;
+                    const isLocked = slotNum > maxExtraSlots;
+                    return (
+                      <div
+                        key={slot}
+                        className={`
+                          p-2 rounded text-center text-xs
+                          ${isPurchased ? 'bg-cyan-900/50 text-cyan-400' : ''}
+                          ${isNext && !isLocked ? 'bg-amber-900/50 text-amber-400 ring-2 ring-amber-500' : ''}
+                          ${isLocked ? 'bg-stone-800/50 text-stone-600' : ''}
+                          ${!isPurchased && !isNext && !isLocked ? 'bg-stone-800/50 text-stone-400' : ''}
+                        `}
+                      >
+                        <div className="font-bold">+{slot}</div>
+                        <div className={isPurchased ? 'text-green-400' : ''}>
+                          {isPurchased ? '✓' : isLocked ? '🔒' : `${price}g`}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Purchase button */}
+              {canBuyMore ? (
+                <button
+                  onClick={handleBuyBagSlot}
+                  disabled={!canAfford}
+                  className={`
+                    w-full py-3 rounded-lg font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all
+                    ${canAfford
+                      ? 'bg-cyan-600 hover:bg-cyan-500 text-white'
+                      : 'bg-stone-700 text-stone-500 cursor-not-allowed'
+                    }
+                  `}
+                >
+                  <Plus size={18} />
+                  Buy Slot #{currentExtraSlots + 1}
+                  <Coins size={16} className="ml-2" />
+                  <span className="text-amber-300">{nextSlotPrice}</span>
+                </button>
+              ) : (
+                <div className="w-full py-3 rounded-lg bg-stone-700 text-stone-400 text-center font-bold uppercase tracking-wider">
+                  {currentExtraSlots >= 5 ? (
+                    'Maximum Capacity Reached!'
+                  ) : (
+                    `Level Up to Unlock More (Need Level ${currentExtraSlots + 1})`
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderRewardsPanel = () => {
     if (!scenarioResult) return null;
 
@@ -831,7 +1016,7 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
                 <div className="flex-1">
                   <div className="flex justify-between items-center mb-2">
                     <h4 className="text-xs text-stone-500 uppercase tracking-wider font-bold">
-                      Inventory ({countInventoryItems(activeHero.equipment)}/7)
+                      Inventory ({countInventoryItems(activeHero.equipment)}/{3 + getTotalBagSlots(activeHero.extraBagSlots || 0)})
                     </h4>
                   </div>
 
@@ -917,6 +1102,19 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
                 <Hammer size={18} />
                 Craft
               </button>
+              <button
+                onClick={() => setShopMode('services')}
+                className={`
+                  flex items-center gap-2 px-6 py-2 rounded-lg border-2 transition-all font-bold uppercase tracking-wider
+                  ${shopMode === 'services'
+                    ? 'border-cyan-500 bg-cyan-900/30 text-cyan-400'
+                    : 'border-stone-700 bg-stone-800 text-stone-400 hover:border-stone-600'
+                  }
+                `}
+              >
+                <Backpack size={18} />
+                Services
+              </button>
               <div className="flex-1" />
               {shopMode === 'sell' && (
                 <div className="flex items-center gap-2 text-sm text-stone-500 italic">
@@ -962,6 +1160,7 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
             )}
             {shopMode === 'sell' && renderSellPanel()}
             {shopMode === 'craft' && renderCraftingPanel()}
+            {shopMode === 'services' && renderServicesPanel()}
           </div>
         </div>
 
