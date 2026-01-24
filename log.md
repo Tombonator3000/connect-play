@@ -1,5 +1,70 @@
 # Development Log
 
+## 2026-01-24: Fix Hex Tile Visibility (Tiles Appearing Black After Player Moves)
+
+### Problem
+Hex-ruter rundt spilleren ble alltid svarte. Tile-grafikk forsvant helt fra hex når spilleren beveget seg bort, spesielt for tiles i umiddelbar nærhet av spilleren. Tidligere "lysetting-fix" hjalp ikke.
+
+### Rot-årsak identifisert
+To problemer ble funnet:
+
+1. **Fog overlay for explored tiles var for høy**: `fogOpacity = 0.35` for tiles som var utforsket men ikke lenger synlige. Kombinert med mørke floor textures ble dette nesten svart.
+
+2. **Floor textures var fortsatt for mørke**: Selv etter forrige fix var lightness verdiene kun ~20-28%, som ble altfor mørkt når fog overlay ble lagt på toppen.
+
+### Løsning
+
+**1. Redusert fog opacity for explored tiles (GameBoard.tsx:654-659):**
+```typescript
+// FØR
+fogOpacity = isExplored ? 0.35 : 0.95;
+
+// ETTER
+fogOpacity = isExplored ? 0.15 : 0.9;
+```
+
+**2. Redusert fog for vision edge tiles:**
+```typescript
+// FØR
+fogOpacity = 0.1 + (distance - 1) * 0.08;
+
+// ETTER
+fogOpacity = 0.05 + (distance - 1) * 0.05;
+```
+
+**3. Betydelig økt floor texture brightness (index.css):**
+Alle floor textures økt fra ~20% til ~35% lightness:
+
+| Texture | Før | Etter |
+|---------|-----|-------|
+| tile-darkwood | 18-22% | 32-38% |
+| tile-cobblestone | 18-28% | 32-42% |
+| tile-stone | 20-25% | 35-40% |
+| tile-carpet | 20-25% | 32-38% |
+| tile-marble | 25-30% | 40-45% |
+| tile-water | 18-25% | 30-38% |
+| tile-tile | 22-28% | 36-42% |
+| tile-grass | 18-24% | 30-38% |
+| tile-dirt | 17-22% | 30-36% |
+| tile-ritual | 18-25% | 30-45% |
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/components/GameBoard.tsx` | Redusert fog opacity fra 0.35→0.15 for explored tiles |
+| `src/index.css` | Økt floor texture lightness fra ~20% til ~35% |
+
+### Hvorfor tidligere fix ikke hjalp
+Den forrige fixen fokuserte på chiaroscuro overlay og økte lightness kun til ~20-28%. Problemet var at:
+- `fogOpacity = 0.35` la et semi-transparent svart lag over alt
+- Floor textures på ~20% lightness + 35% svart overlay = nesten helt svart
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
+
 ## 2026-01-24: Dummy SFX Files Added
 
 ### Oppgave
