@@ -23555,3 +23555,72 @@ Spillet har to separate spell-systemer:
    - Spell-meny trenger høyere z-index (`z-100`) for å vises over
 
 ---
+
+## 2026-01-24: Fix Hex Tile Color (Tiles Appearing Black)
+
+### Problem
+Hex-ruter/tiles rundt spilleren var alltid svarte, selv når de burde vært synlige. Spilleren kunne se en teal-glød fra lanterne-effekten, men selve tile-innholdet var for mørkt til å se.
+
+### Rot-årsak
+To faktorer bidro til problemet:
+
+1. **For mørke gulv-teksturer**: Alle floor textures (tile-stone, tile-darkwood, etc.) hadde svært lav lyshet (8-15% lightness i HSL). Dette er nesten svart.
+
+2. **Aggressiv chiaroscuro-overlay**: `chiaroscuro-overlay` klassen brukte `mix-blend-mode: multiply` med opptil 50% svart ved kantene. Combined med de mørke gulv-teksturene, ble tiles nesten helt svarte når de ikke hadde et tile-bilde.
+
+### Løsning
+
+**1. Redusert chiaroscuro-overlay effekt (src/index.css:159-168):**
+```css
+/* FØR */
+.chiaroscuro-overlay {
+  background: radial-gradient(...rgba(0, 0, 0, 0.5) 100%);
+  mix-blend-mode: multiply;
+}
+
+/* ETTER */
+.chiaroscuro-overlay {
+  background: radial-gradient(...rgba(0, 0, 0, 0.25) 100%);
+  mix-blend-mode: soft-light;  /* Mildere blend mode */
+}
+```
+
+**2. Økt lyshet på alle gulv-teksturer (~10 prosentpoeng økning):**
+- `tile-stone`: 15% → 25% lightness
+- `tile-darkwood`: 12% → 22% lightness
+- `tile-cobblestone`: 12-18% → 22-28% lightness
+- `tile-carpet`: 10-15% → 20-25% lightness
+- `tile-marble`: 15-20% → 25-30% lightness
+- `tile-water`: 8-15% → 18-25% lightness
+- `tile-tile`: 12-18% → 22-28% lightness
+- `tile-grass`: 8-14% → 18-24% lightness
+- `tile-dirt`: 7-12% → 17-22% lightness
+- `tile-ritual`: 8-12% → 18-22% lightness
+
+**3. Redusert opacity i GameBoard.tsx (linje 757):**
+```tsx
+/* FØR */
+<div className="... chiaroscuro-overlay ... opacity-20" />
+
+/* ETTER */
+<div className="... chiaroscuro-overlay ... opacity-10" />
+```
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/index.css` | Lysere gulv-teksturer, mildere chiaroscuro-overlay |
+| `src/game/components/GameBoard.tsx` | Redusert chiaroscuro opacity fra 20% til 10% |
+
+### Visuelt Resultat
+
+- Tiles uten bilder viser nå synlige gulv-teksturer (ikke svart)
+- Atmosfæren beholdes med subtile skygger
+- Tile-bilder er fortsatt tydelige når de finnes
+- Spillerens lanterne-glød kombineres bedre med tile-bakgrunner
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
