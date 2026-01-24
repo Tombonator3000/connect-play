@@ -650,12 +650,16 @@ const GameBoard: React.FC<GameBoardProps> = ({
           const visual = getTileVisuals(tile.name, tile.type);
 
           // Calculate fog opacity based on visibility and exploration
-          // Lower opacity = more visible tile graphics (prevents "disappearing" effect)
+          // CRITICAL: Keep explored tiles visible even when player moves away
+          // Previously fogOpacity was too high (0.35) causing tiles to appear black
           let fogOpacity = 0;
           if (!isVisible) {
-            fogOpacity = isExplored ? 0.35 : 0.95; // Explored but not visible - reduced to 0.35 so tiles remain clearly visible
+            // Explored tiles should remain clearly visible - reduced from 0.35 to 0.15
+            // Unexplored tiles stay dark (0.9) to maintain mystery
+            fogOpacity = isExplored ? 0.15 : 0.9;
           } else if (distance > 1) {
-            fogOpacity = 0.1 + (distance - 1) * 0.08; // Gradient fog at edges - reduced for better visibility
+            // Very subtle fog at vision edges - reduced for better visibility
+            fogOpacity = 0.05 + (distance - 1) * 0.05;
           }
 
           const tileImage = getTileImage(tile.name);
