@@ -160,6 +160,8 @@ export interface Player extends Character {
   tempDefenseBonus?: number;  // Temporary defense bonus from spells like Dark Shield
   // Event card debuffs
   apPenaltyNextTurn?: number;  // AP reduction for next turn (from debuff_player events)
+  // Journalist +1 Movement bonus - free moves remaining this turn
+  freeMovesRemaining?: number;  // Number of free moves (no AP cost) remaining this turn
 }
 
 export interface Item {

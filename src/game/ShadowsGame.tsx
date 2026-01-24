@@ -3081,10 +3081,17 @@ const ShadowsGame: React.FC = () => {
               const totalSanityChange = darkRoomEffects.sanityChange - tileSanityLoss;
               const newSanity = Math.max(0, Math.min(p.maxSanity, p.sanity + totalSanityChange));
               const newInsight = p.insight + darkRoomEffects.insightGain;
+
+              // JOURNALIST BONUS: Use free movement first (no AP cost)
+              const hasFreeMove = (p.freeMovesRemaining || 0) > 0;
+              const newActions = hasFreeMove ? p.actions : p.actions - 1;
+              const newFreeMovesRemaining = hasFreeMove ? (p.freeMovesRemaining || 0) - 1 : p.freeMovesRemaining;
+
               const updatedPlayer = {
                 ...p,
                 position: { q, r },
-                actions: p.actions - 1,
+                actions: newActions,
+                freeMovesRemaining: newFreeMovesRemaining,
                 hp: newHp,
                 sanity: newSanity,
                 insight: newInsight,

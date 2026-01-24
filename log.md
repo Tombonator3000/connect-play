@@ -23278,3 +23278,60 @@ export function canBuyBagSlot(hero: LegacyHero): boolean {
 - Alltid bruk fallback-verdier (`|| 0`) når man sammenligner potensielt undefined tall
 
 ---
+
+## 2026-01-24: Implement Journalist +1 Movement Bonus
+
+### Problem
+Ifølge REGELBOK.MD (linje 175) skal Journalist ha "+1 Movement", men denne bonusen var IKKE implementert. Hver bevegelse kostet alltid 1 AP uansett karakter.
+
+### Analyse
+- Movement håndteres i `ShadowsGame.tsx:3087` hvor `actions: p.actions - 1` trekker 1 AP per bevegelse
+- Journalist har `specialAbility: 'escape_bonus'` i `constants.ts`
+- Det fantes ingen mekanisme for gratis bevegelse
+
+### Løsning
+Implementert "free movement" system for journalist:
+
+**1. Lagt til `freeMovesRemaining` property i Player interface (types.ts:163-164):**
+```typescript
+// Journalist +1 Movement bonus - free moves remaining this turn
+freeMovesRemaining?: number;  // Number of free moves (no AP cost) remaining this turn
+```
+
+**2. Oppdatert `resetPlayersForNewTurn()` (mythosPhaseUtils.ts:518-519):**
+```typescript
+// JOURNALIST BONUS: +1 free movement per turn (escape_bonus specialAbility)
+const freeMovesRemaining = p.specialAbility === 'escape_bonus' && !p.isDead ? 1 : 0;
+```
+
+**3. Oppdatert movement-logikken (ShadowsGame.tsx:3087-3091):**
+```typescript
+// JOURNALIST BONUS: Use free movement first (no AP cost)
+const hasFreeMove = (p.freeMovesRemaining || 0) > 0;
+const newActions = hasFreeMove ? p.actions : p.actions - 1;
+const newFreeMovesRemaining = hasFreeMove ? (p.freeMovesRemaining || 0) - 1 : p.freeMovesRemaining;
+```
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/types.ts` | Lagt til `freeMovesRemaining?: number` i Player interface |
+| `src/game/utils/mythosPhaseUtils.ts` | Sett `freeMovesRemaining = 1` for journalist i `resetPlayersForNewTurn()` |
+| `src/game/ShadowsGame.tsx` | Bruk gratis movement først, deretter trekk AP |
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+### Teknisk Lærdom
+1. **Karakter-spesifikke bonuser må implementeres på flere steder:**
+   - Player interface (lagring av state)
+   - Turn reset (initialisering ved turstart)
+   - Handling logic (faktisk bruk av bonusen)
+
+2. **Free movement pattern:**
+   - Bruk egen property (`freeMovesRemaining`) i stedet for å modifisere `actions`
+   - Sjekk gratis moves først, deretter bruk vanlige actions
+   - Nullstill ved turstart basert på karakter-type
+
+---
