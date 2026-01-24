@@ -22827,3 +22827,88 @@ For å bruke SFX-filer:
    - Ingen feilmeldinger til brukeren hvis fil mangler
 
 ---
+
+## 2026-01-24: Bug Fix - Level AP Rewards Not Showing
+
+### Problem
+Spillere på level 4 rapporterte at de ikke fikk ekstra AP ved leveling. Ved undersøkelse viste det seg at **logikken var korrekt**, men **UI-en viste feil**.
+
+### Rotårsak
+`ActionBar.tsx` hardkodet kun 2 AP-prikker i UI:
+```typescript
+// GAMMEL KODE (BUG):
+{[1, 2].map(i => {
+  const isActive = i <= actionsRemaining;
+  // ...
+})}
+```
+
+Selv om spilleren hadde 3+ AP (fra level-bonuser), viste UI-en bare 2 prikker.
+
+### Level AP Bonuser (Korrekt Implementert)
+Systemet gir automatisk ekstra AP basert på level:
+- **Level 1-2**: 2 AP (base)
+- **Level 3-4**: 3 AP (+1 bonus)
+- **Level 5**: 4 AP (+2 bonus)
+
+Pluss eventuelle manuelle bonuser fra level-up valg (`bonusActionPoints`).
+
+Kode fra `legacyManager.ts:669-672`:
+```typescript
+const automaticAPBonus = hero.level >= 5 ? 2 : hero.level >= 3 ? 1 : 0;
+const manualAPBonus = hero.bonusActionPoints || 0;
+const totalActions = 2 + automaticAPBonus + manualAPBonus;
+```
+
+### Løsning
+Lagt til `maxActions` prop i ActionBar og endret til dynamisk visning:
+
+**1. ActionBar.tsx - Interface oppdatert:**
+```typescript
+interface ActionBarProps {
+  actionsRemaining: number;
+  maxActions: number;  // NY: Maximum actions per turn
+  // ...
+}
+```
+
+**2. ActionBar.tsx - Dynamisk antall prikker:**
+```typescript
+// NY KODE (FIKSET):
+{Array.from({ length: maxActions }, (_, i) => i + 1).map(i => {
+  const isActive = i <= actionsRemaining;
+  // ...
+})}
+```
+
+**3. ShadowsGame.tsx - Sender maxActions:**
+```typescript
+<ActionBar
+  actionsRemaining={activePlayer?.actions || 0}
+  maxActions={activePlayer?.maxActions || 2}  // NY
+  // ...
+/>
+```
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/components/ActionBar.tsx` | Lagt til `maxActions` prop, dynamisk AP-visning |
+| `src/game/ShadowsGame.tsx` | Sender `maxActions` til ActionBar |
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+### Teknisk Lærdom
+
+1. **UI vs Logic mismatch:**
+   - Alltid verifiser at UI reflekterer faktisk state
+   - Hardkodede verdier i UI kan skjule korrekt backend-logikk
+
+2. **AP System Architecture:**
+   - `Player.maxActions` = total AP per runde (med bonuser)
+   - `Player.actions` = gjenstående AP denne runden
+   - `resetPlayersForNewTurn()` resetter `actions` til `maxActions`
+
+---
