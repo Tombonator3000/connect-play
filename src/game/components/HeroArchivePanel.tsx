@@ -1025,7 +1025,7 @@ export const HeroArchivePanel: React.FC<HeroArchivePanelProps> = ({
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-stone-950 via-stone-900 to-stone-950 text-stone-200 p-6 relative overflow-hidden">
+    <div className="fixed inset-0 z-[100] bg-gradient-to-br from-stone-950 via-stone-900 to-stone-950 text-stone-200 p-6 overflow-y-auto">
       {/* Background decorative elements */}
       <div className="absolute inset-0 pointer-events-none">
         {/* Vignette */}
