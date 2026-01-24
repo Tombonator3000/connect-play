@@ -1665,7 +1665,9 @@ export function getNextBagSlotPrice(currentExtraSlots: number): number {
  */
 export function canBuyBagSlot(hero: LegacyHero): boolean {
   // Max extra slots = hero level
-  return hero.extraBagSlots < hero.level;
+  // Handle undefined extraBagSlots (new heroes who haven't bought any yet)
+  const extraSlots = hero.extraBagSlots || 0;
+  return extraSlots < hero.level;
 }
 
 /**
