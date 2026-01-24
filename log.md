@@ -21074,3 +21074,121 @@ GameOverOverlay
 - Share/screenshot funksjonalitet
 
 ---
+
+## 2026-01-23: KRITISKE BUGFIKSER - Permadeath og Character Sheet Crash
+
+### Oversikt
+Dypt audit og fiks av to kritiske bugs:
+1. **Permadeath fungerte ikke** - Helter med permadeath ble aldri markert som døde i memorial
+2. **Character sheet krasjet spillet** - Skjermen gikk til svart ved åpning av character panel
+
+---
+
+### BUG 1: Permadeath Mechanic Feilet
+
+#### Root Cause Analysis
+
+**Lokasjon:** `src/game/ShadowsGame.tsx` linje 3976
+
+```typescript
+// BUGGY KODE:
+if (selectedLegacyHeroIds.length > 0 && (victory || hasSurvivors)) {
+  handleScenarioComplete(victory);
+}
+```
+
+**Problemet:**
+Betingelsen `(victory || hasSurvivors)` forhindret at `handleScenarioComplete()` ble kalt når:
+- `victory = false` (tapte scenariet)
+- `hasSurvivors = false` (alle spillere døde)
+
+Dette betydde at `killHero()` funksjonen ALDRI ble kalt for døde helter, og dermed ble `isDead: true` aldri satt i legacy data.
+
+**Konsekvens:**
+- Permadeath-helter som døde ble ikke sendt til memorial
+- De kunne fortsatt velges for nye scenarier
+- Legacy data ble ikke oppdatert ved total party kill
+
+#### Løsning
+
+```typescript
+// FIKSET KODE:
+// CRITICAL: Always process scenario completion for legacy heroes
+// This handles permadeath - dead heroes MUST be marked as isDead via killHero()
+if (selectedLegacyHeroIds.length > 0) {
+  handleScenarioComplete(victory);
+}
+```
+
+Betingelsen fjernet slik at `handleScenarioComplete()` alltid kalles for legacy-helter, uavhengig av seier eller overlevende.
+
+---
+
+### BUG 2: Character Sheet Button Crash (Svart Skjerm)
+
+#### Root Cause Analysis
+
+**Lokasjon:** `src/game/components/CharacterPanel.tsx` linje 96
+
+```typescript
+// BUGGY KODE - SIRKULÆR REFERANSE:
+const inventory = inventory || {
+  leftHand: null,
+  rightHand: null,
+  body: null,
+  bag: [null, null, null, null],
+  questItems: []
+};
+```
+
+**Problemet:**
+Koden prøvde å bruke variabelen `inventory` til å definere `inventory` selv. Dette er en sirkulær/undefined referanse som forårsaket en runtime-feil:
+- `inventory` er undefined på høyre side av `||`
+- JavaScript kaster ingen feil, men verdien blir `undefined || {...}` = `{...}`
+- MEN dette skjer i feil kontekst og React mister kontrollen over komponenten
+- Skjermen går til svart fordi komponenten feiler å rendre
+
+#### Løsning
+
+```typescript
+// FIKSET KODE:
+// CRITICAL FIX: Previous bug used "inventory = inventory ||" which was a circular reference
+const inventory = player.inventory || {
+  leftHand: null,
+  rightHand: null,
+  body: null,
+  bag: [null, null, null, null],
+  questItems: []
+};
+```
+
+Endret til å bruke `player.inventory` som er den faktiske kilden for inventory-data.
+
+---
+
+### Filer Endret
+
+| Fil | Linje | Endring |
+|-----|-------|---------|
+| `src/game/ShadowsGame.tsx` | 3976 | Fjernet `(victory \|\| hasSurvivors)` betingelse for å alltid prosessere legacy data |
+| `src/game/components/CharacterPanel.tsx` | 96 | Fikset fra `inventory = inventory` til `inventory = player.inventory` |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+### Teknisk Lærdom
+
+1. **Sirkulære referanser i JavaScript:**
+   - `const x = x || {...}` kompilerer uten feil men gir undefined/feil oppførsel
+   - Alltid referer til kildedata (f.eks. `player.inventory`) i stedet for variabelen selv
+
+2. **Kritisk gamelogikk må være ubetinget:**
+   - Death handling/permadeath må alltid kjøres, ikke bare ved seier
+   - Total party kill må også oppdatere legacy data
+
+3. **Testing av edge cases:**
+   - Test TPK (total party kill) scenarioer
+   - Test at permadeath-helter faktisk går til memorial
+   - Test character panel med ulike inventory-tilstander
+
+---
