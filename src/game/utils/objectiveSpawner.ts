@@ -664,11 +664,21 @@ const QUEST_TILE_SPAWN_CONFIG: Record<QuestTile['type'], {
   baseChance: number;
   explorationBonus: number;
   zoneRequirement?: { max?: number; min?: number };
+  /** For exit: allow ANY category as fallback when revealed */
+  allowAnyAsLastResort?: boolean;
 }> = {
   exit: {
-    validCategories: ['foyer', 'facade'],
-    baseChance: 0.4,
-    explorationBonus: 0.05,  // +5% per tile explored
+    // Primary categories (preferred): foyer/facade near entrance
+    // Secondary categories: corridors, rooms, stairs can also have exits
+    validCategories: ['foyer', 'facade', 'corridor', 'room', 'stairs'],
+    // Perfect match names for guaranteed spawn
+    perfectMatchPatterns: ['entrance', 'exit', 'door', 'gate', 'foyer', 'lobby'],
+    baseChance: 0.3,  // Lower base chance since more categories are valid
+    explorationBonus: 0.08,  // +8% per tile explored (catches up quickly)
+    // Prefer tiles near the entrance (zoneLevel 0-2) but don't require it
+    zoneRequirement: { min: -1, max: 2 },
+    // CRITICAL: If no matching tiles found after key is found, allow ANY tile
+    allowAnyAsLastResort: true,
   },
   altar: {
     validCategories: ['crypt', 'basement', 'room'],
@@ -1309,5 +1319,121 @@ export function getSpawnStatus(
     totalTiles: state.questTiles.length,
     spawnedTiles,
     missingRequired,
+  };
+}
+
+// ============================================================================
+// IMMEDIATE QUEST TILE SPAWNING
+// ============================================================================
+
+/**
+ * Result of immediate quest tile spawn.
+ */
+export interface ImmediateQuestTileSpawnResult {
+  updatedState: ObjectiveSpawnState;
+  spawnedQuestTile: QuestTile | null;
+  targetTileId: string | null;
+  tileModifications: Partial<Tile> | null;
+  message: string | null;
+}
+
+/**
+ * Immediately spawns a newly revealed quest tile on the best available tile.
+ *
+ * This is called when an objective is completed and its dependent quest tile
+ * is revealed. Instead of waiting for the player to explore new tiles or
+ * for the guaranteed spawn system to trigger, we spawn the tile immediately.
+ *
+ * This is CRITICAL for exit doors - once the key is found, the exit should
+ * appear somewhere on the map immediately so the player can escape.
+ *
+ * @param state - Current objective spawn state
+ * @param revealedQuestTile - The quest tile that was just revealed
+ * @param availableTiles - All explored tiles on the board
+ * @returns Spawn result with updated state and tile modifications
+ */
+export function spawnRevealedQuestTileImmediately(
+  state: ObjectiveSpawnState,
+  revealedQuestTile: QuestTile,
+  availableTiles: Tile[]
+): ImmediateQuestTileSpawnResult {
+  // Don't spawn if already spawned
+  if (revealedQuestTile.spawned) {
+    return {
+      updatedState: state,
+      spawnedQuestTile: null,
+      targetTileId: null,
+      tileModifications: null,
+      message: null,
+    };
+  }
+
+  // Find the best tile to spawn on
+  const alreadyUsedTileIds = new Set<string>();
+
+  // Mark tiles that already have quest items or are quest tiles
+  state.questItems.filter(i => i.spawnedOnTileId).forEach(i =>
+    alreadyUsedTileIds.add(i.spawnedOnTileId!)
+  );
+
+  const targetTile = findBestQuestTileLocation(revealedQuestTile, availableTiles, alreadyUsedTileIds);
+
+  if (!targetTile) {
+    console.log(`[QuestSpawn] ⚠️ Could not find a suitable tile for ${revealedQuestTile.name} - will spawn on next exploration`);
+    return {
+      updatedState: state,
+      spawnedQuestTile: null,
+      targetTileId: null,
+      tileModifications: null,
+      message: `⚠️ ${revealedQuestTile.name} will appear soon...`,
+    };
+  }
+
+  // Prepare tile modifications based on quest tile type
+  let tileModifications: Partial<Tile> = {};
+  if (revealedQuestTile.type === 'exit') {
+    tileModifications = {
+      name: 'Exit Door',
+      description: 'The way out! But can you make it in time?',
+      isGate: true,
+      // CRITICAL: Set exit_door object type so player can use Escape action
+      object: { type: 'exit_door', searched: false },
+    };
+  } else if (revealedQuestTile.type === 'altar' || revealedQuestTile.type === 'ritual_point') {
+    tileModifications = {
+      name: 'Ritual Altar',
+      description: 'An ancient altar for dark rituals. You can perform the ritual here.',
+      floorType: 'ritual',
+      // CRITICAL: Set altar object type so player can use Perform Ritual action
+      object: { type: 'altar', searched: false },
+    };
+  } else if (revealedQuestTile.type === 'boss_room') {
+    tileModifications = {
+      name: 'Dark Sanctum',
+      description: 'A place of terrible power. The final confrontation awaits.',
+    };
+  } else if (revealedQuestTile.type === 'npc_location') {
+    tileModifications = {
+      name: 'Hidden Chamber',
+      description: 'Someone or something important is here.',
+    };
+  }
+
+  // Update the quest tile as spawned
+  const updatedState: ObjectiveSpawnState = {
+    ...state,
+    questTiles: state.questTiles.map(qt =>
+      qt.id === revealedQuestTile.id ? { ...qt, spawned: true, revealed: true } : qt
+    ),
+  };
+
+  console.log(`[QuestSpawn] 🚪 IMMEDIATE SPAWN: ${revealedQuestTile.name} placed on "${targetTile.name}" (${targetTile.id})`);
+
+  return {
+    updatedState,
+    spawnedQuestTile: { ...revealedQuestTile, spawned: true, revealed: true },
+    targetTileId: targetTile.id,
+    tileModifications,
+    message: `🚪 ${revealedQuestTile.name} has appeared in ${targetTile.name}!`,
   };
 }

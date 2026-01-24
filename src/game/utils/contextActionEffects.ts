@@ -20,7 +20,7 @@ import type {
 } from '../types';
 import { equipItem } from '../types';
 import type { ObjectiveSpawnState, QuestItem } from './objectiveSpawner';
-import { collectQuestItem } from './objectiveSpawner';
+import { collectQuestItem, spawnRevealedQuestTileImmediately } from './objectiveSpawner';
 import {
   startFollowing,
   rescueSurvivor,
@@ -390,27 +390,52 @@ export function handleSearchEffect(
           if (obj.isHidden && obj.revealedBy === completedObjectiveId) {
             logMessages.push(`NEW OBJECTIVE REVEALED: ${obj.shortDescription}`);
 
-            // Also reveal the corresponding quest tile
+            // Also reveal AND SPAWN the corresponding quest tile
             if (updatedObjectiveSpawnState) {
               const questTile = updatedObjectiveSpawnState.questTiles.find(
                 qt => qt.objectiveId === obj.id && !qt.revealed
               );
               if (questTile) {
-                updatedObjectiveSpawnState = {
-                  ...updatedObjectiveSpawnState,
-                  questTiles: updatedObjectiveSpawnState.questTiles.map(qt =>
-                    qt.id === questTile.id ? { ...qt, revealed: true } : qt
-                  )
-                };
-
                 // If this is a final_confrontation tile, spawn the boss!
                 if (questTile.type === 'final_confrontation') {
+                  updatedObjectiveSpawnState = {
+                    ...updatedObjectiveSpawnState,
+                    questTiles: updatedObjectiveSpawnState.questTiles.map(qt =>
+                      qt.id === questTile.id ? { ...qt, revealed: true } : qt
+                    )
+                  };
                   const bossType = questTile.bossType || 'shoggoth';
                   bossToSpawn = {
                     type: bossType,
                     message: `THE FINAL CONFRONTATION: A ${bossType.toUpperCase()} emerges from the shadows!`
                   };
                   logMessages.push(`The truth reveals itself! A ${bossType} appears!`);
+                } else {
+                  // IMMEDIATE SPAWN: Spawn exit doors, altars, etc. immediately when revealed
+                  // This is CRITICAL - without this, exit doors only spawn when exploring NEW tiles
+                  // which may never happen after the key is found
+                  const spawnResult = spawnRevealedQuestTileImmediately(
+                    updatedObjectiveSpawnState,
+                    questTile,
+                    updatedBoard.filter(t => t.explored)
+                  );
+
+                  updatedObjectiveSpawnState = spawnResult.updatedState;
+
+                  // Apply tile modifications to the board
+                  if (spawnResult.targetTileId && spawnResult.tileModifications) {
+                    updatedBoard = updatedBoard.map(t =>
+                      t.id === spawnResult.targetTileId
+                        ? { ...t, ...spawnResult.tileModifications }
+                        : t
+                    );
+                    if (spawnResult.message) {
+                      logMessages.push(spawnResult.message);
+                    }
+                  } else if (spawnResult.message) {
+                    // No tile found, but we have a message (will spawn on next exploration)
+                    logMessages.push(spawnResult.message);
+                  }
                 }
               }
             }
