@@ -2452,12 +2452,21 @@ const ShadowsGame: React.FC = () => {
         }
 
         // Move player to the adjacent position
+        // FIX 2026-01-24: Also mark all visible tiles as explored to prevent black tiles
+        const VISIBILITY_RANGE = 2;
+        const newExplored = new Set([...(prev.exploredTiles || []), `${adjPos.q},${adjPos.r}`]);
+        state.board.forEach(tile => {
+          const dist = hexDistance({ q: adjPos.q, r: adjPos.r }, { q: tile.q, r: tile.r });
+          if (dist <= VISIBILITY_RANGE) {
+            newExplored.add(`${tile.q},${tile.r}`);
+          }
+        });
         setState(prev => ({
           ...prev,
           players: prev.players.map((p, i) =>
             i === prev.activePlayerIndex ? { ...p, position: adjPos } : p
           ),
-          exploredTiles: [...new Set([...(prev.exploredTiles || []), `${adjPos.q},${adjPos.r}`])]
+          exploredTiles: Array.from(newExplored)
         }));
 
         const targetName = existingTile?.name || 'ukjent område';
@@ -2937,10 +2946,21 @@ const ShadowsGame: React.FC = () => {
           }
         }
 
-        // Mark ONLY the current tile as explored (not adjacent tiles)
-        // Adjacent tiles should show as "UTFORSK" (red) until the player actually visits them
+        // Mark ALL VISIBLE tiles as explored (revealed) so they don't turn black when player moves away
+        // FIX 2026-01-24: Previously only the current tile was marked, causing tiles player had SEEN
+        // but not STOOD ON to turn completely black (fogOpacity=0.9 + unexplored overlay) when
+        // the player moved away. Now all tiles within visibility range are marked as "revealed".
+        const VISIBILITY_RANGE = 2; // Same as GameBoard.tsx
         const newExplored = new Set(state.exploredTiles || []);
         newExplored.add(`${q},${r}`);
+
+        // Add all tiles within visibility range to explored set
+        state.board.forEach(tile => {
+          const dist = hexDistance({ q, r }, { q: tile.q, r: tile.r });
+          if (dist <= VISIBILITY_RANGE) {
+            newExplored.add(`${tile.q},${tile.r}`);
+          }
+        });
 
         // Apply movement and hazard damage
         if (hazardDamage > 0) {

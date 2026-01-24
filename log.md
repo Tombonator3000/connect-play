@@ -23731,3 +23731,95 @@ To faktorer bidro til problemet:
 ✅ Bygget kompilerer uten feil
 
 ---
+
+## 2026-01-24: EKTE FIX - Hex Tiles Forsvinner Når Spiller Beveger Seg
+
+### Problem
+Hex-ruter/tiles rundt spilleren ble HELT SVARTE (ikke bare mørke) når spilleren beveget seg bort. Dette var IKKE et lysproblem som tidligere antatt - grafikken forsvant faktisk fullstendig.
+
+### Rot-årsak (DEN VIRKELIGE)
+Problemet var i `exploredTiles` logikken i `ShadowsGame.tsx`:
+
+1. **Kun nåværende tile ble markert som explored:**
+   ```typescript
+   // FØR - Bare tilen spilleren STÅR PÅ ble lagt til
+   const newExplored = new Set(state.exploredTiles || []);
+   newExplored.add(`${q},${r}`);
+   ```
+
+2. **Tiles spilleren hadde SETT (men ikke stått på) ble IKKE lagt til `exploredTiles`**
+
+3. **Når spilleren beveget seg bort, ble disse tilene:**
+   - Ikke synlige (`distance > VISIBILITY_RANGE`)
+   - Ikke explored (`exploredTiles.has()` = false)
+   - `fogOpacity = 0.9` (90% svart!) + `fog-of-war-unexplored` overlay
+   - **RESULTAT: HELT SVART TILE!**
+
+### Tidligere "Løsning" (FEIL)
+Den forrige "fiksen" økte lysheten på gulv-teksturer og justerte chiaroscuro-overlay. Dette hjalp INGENTING fordi:
+- Tile-bildet var fortsatt der
+- Men det var dekket av 90% svart fog overlay + unexplored overlay
+- Problemet var at tiles ikke ble markert som "sett" når spilleren så dem
+
+### Ekte Løsning
+Endret `ShadowsGame.tsx` til å markere ALLE synlige tiles som explored når spilleren beveger seg:
+
+```typescript
+// ETTER - Alle tiles innenfor synlighetsradius markeres
+const VISIBILITY_RANGE = 2; // Same as GameBoard.tsx
+const newExplored = new Set(state.exploredTiles || []);
+newExplored.add(`${q},${r}`);
+
+// Add all tiles within visibility range to explored set
+state.board.forEach(tile => {
+  const dist = hexDistance({ q, r }, { q: tile.q, r: tile.r });
+  if (dist <= VISIBILITY_RANGE) {
+    newExplored.add(`${tile.q},${tile.r}`);
+  }
+});
+```
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/ShadowsGame.tsx:2940-2954` | Hovedbevegelse - legg til alle synlige tiles til explored |
+| `src/game/ShadowsGame.tsx:2454-2466` | Door passage - legg til alle synlige tiles til explored |
+
+### Visuelt Resultat
+
+**FØR:**
+- Spiller ser tile B (adjacent)
+- Spiller beveger seg bort
+- Tile B = HELT SVART (fogOpacity=0.9 + unexplored overlay)
+
+**ETTER:**
+- Spiller ser tile B (adjacent)
+- Tile B legges til `exploredTiles`
+- Spiller beveger seg bort
+- Tile B = synlig med lett fog (fogOpacity=0.15, INGEN unexplored overlay)
+
+### Teknisk Lærdom
+
+1. **"explored" betyr to ting:**
+   - Tiles spilleren har STÅTT PÅ (for sanity-effekter, første besøk, etc.)
+   - Tiles spilleren har SETT (for visuell synlighet)
+   - Koden behandlet bare det første tilfellet!
+
+2. **Fog of war rendering-logikk i GameBoard.tsx:**
+   ```typescript
+   if (!isVisible) {
+     fogOpacity = isExplored ? 0.15 : 0.9;  // 0.9 = HELT SVART!
+   }
+   ```
+   Pluss unexplored overlay (z-40) med `fog-of-war-unexplored` klasse.
+
+3. **Synlighetsradius (VISIBILITY_RANGE = 2):**
+   - Tiles 0-2 hex unna spilleren er synlige
+   - Tiles 3+ hex unna er IKKE synlige
+   - Hvis en tile aldri ble lagt til `exploredTiles` → HELT SVART
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
