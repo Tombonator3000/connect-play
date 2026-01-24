@@ -1,5 +1,42 @@
 # Development Log
 
+## 2026-01-24: Dummy SFX Files Added
+
+### Oppgave
+Legge til placeholder SFX-filer for å fullføre mappestrukturen i `public/audio/sfx/`.
+
+### Gjennomført
+Opprettet 152 dummy placeholder-filer basert på `public/audio/sfx/README.md`:
+
+| Mappe | Antall filer |
+|-------|--------------|
+| ui/ | 12 |
+| combat/ | 22 |
+| movement/ | 11 |
+| doors/ | 12 |
+| monsters/ | 23 |
+| atmosphere/ | 12 |
+| magic/ | 14 |
+| items/ | 16 |
+| events/ | 14 |
+| ambient/ | 15 |
+
+### Filformat
+Filene er tekstbaserte placeholders med innholdet:
+```
+DUMMY SFX PLACEHOLDER - [filnavn]
+```
+
+### Neste steg
+- Erstatte dummy-filer med ekte lydeffekter fra CC0/royalty-free kilder
+- Anbefalt: OpenGameArt.org, Freesound.org (CC0), Sonniss GDC Audio Bundles
+
+### Tekniske detaljer
+- Branch: `claude/add-dummy-sfx-files-7pWZU`
+- Total: 152 nye dummy-filer + 1 eksisterende (rain-loop.ogg) = 153 SFX-filer
+
+---
+
 ## 2026-01-24: UI Responsiveness Debug Session
 
 ### Problem
