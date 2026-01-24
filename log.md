@@ -1,5 +1,76 @@
 # Development Log
 
+## 2026-01-24: Fiks "Assemble Team" Knapp - Spill Starter Ikke
+
+### Oppgave: Assemble Team Knapp Fungerer Ikke (FIKSET ✓)
+
+#### Problemet
+Brukeren rapporterte at "Assemble Team" knappen ikke fungerte:
+- Spillet starter ikke når man trykker på "Assemble Team" etter å ha valgt scenario og karakter
+- Skjermen forblir på Setup-fasen
+
+#### Root Cause Analysis
+
+**Problemet:** Z-index konflikt mellom Setup Phase og ScenarioBriefingPopup.
+
+Når brukeren klikker "Assemble Team":
+1. `setShowBriefing(true)` kalles
+2. ScenarioBriefingPopup renderes med `z-[80]`
+3. MEN Setup Phase div renderes samtidig med `z-[100]`
+4. Setup Phase dekker briefing popup fullstendig - brukeren ser ingenting!
+
+**Kode før (problematisk):**
+```typescript
+// ShadowsGame.tsx linje 4358 - Setup Phase alltid synlig i SETUP fase
+{state.phase === GamePhase.SETUP && !isMainMenuOpen && (
+  <div className="fixed inset-0 z-[100] ...">
+
+// ScenarioBriefingPopup.tsx linje 66 - Lavere z-index
+<div className="fixed inset-0 z-[80] ...">
+```
+
+#### Løsning
+
+**Fiks 1: Skjul Setup Phase når briefing vises**
+```typescript
+// ShadowsGame.tsx - Legg til !showBriefing betingelse
+{state.phase === GamePhase.SETUP && !isMainMenuOpen && !showBriefing && (
+```
+
+**Fiks 2: Øk z-index på ScenarioBriefingPopup**
+```typescript
+// ScenarioBriefingPopup.tsx - z-[80] → z-[110]
+<div className="fixed inset-0 z-[110] ...">
+```
+
+#### Z-Index Hierarki (Oppdatert)
+
+| Komponent | Z-Index | Pointer Events |
+|-----------|---------|----------------|
+| MerchantShop | z-[150] | normal |
+| JournalModal | z-[120] | normal |
+| **ScenarioBriefingPopup** | **z-[110]** | normal |
+| OptionsMenu | z-[110] | normal |
+| MainMenu | z-[100] | normal |
+| HeroArchivePanel | z-[100] | normal |
+| Setup Phase | z-[100] | normal |
+| GameOverOverlay | z-[100] | normal |
+| AdvancedParticles | z-[100] | pointer-events-none |
+| ShaderEffects | z-[99] | pointer-events-none |
+| MythosPhaseOverlay | z-[90] | pointer-events-none |
+
+#### Endrede Filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/ShadowsGame.tsx` | Lagt til `!showBriefing` betingelse på Setup Phase render |
+| `src/game/components/ScenarioBriefingPopup.tsx` | Endret z-index fra z-[80] til z-[110] |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+---
+
 ## 2026-01-24: Fiks Knapper som Ikke Fungerer - Hero Selection og Game Start
 
 ### Oppgave: Knapper Ikke Fungerende (FIKSET ✓)
