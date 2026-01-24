@@ -2302,19 +2302,18 @@ const ShadowsGame: React.FC = () => {
     // Spawn boss for final confrontation
     if (result.spawnBoss) {
       const bossInfo = result.spawnBoss;
+      const activePlayer = state.players[state.activePlayerIndex];
       addToLog(bossInfo.message);
-      addFloatingText(player.position.q, player.position.r, 'BOSS!', 'text-red-500');
+      addFloatingText(activePlayer.position.q, activePlayer.position.r, 'BOSS!', 'text-primary');
 
       // Find a suitable spawn location near the player
       const spawnPos = calculateEnemySpawnPosition(
-        state.board,
-        state.players,
-        state.enemies,
-        player.position
+        activePlayer.position.q,
+        activePlayer.position.r
       );
 
       if (spawnPos) {
-        const bossEnemy = createEnemy(bossInfo.type as EnemyType, spawnPos.q, spawnPos.r);
+        const bossEnemy = createEnemy(bossInfo.type as EnemyType, spawnPos);
         setState(prev => ({
           ...prev,
           enemies: [...prev.enemies, bossEnemy]
@@ -4142,8 +4141,8 @@ const ShadowsGame: React.FC = () => {
           <ShaderEffects
             enabled={true}
             quality={settings.effectsQuality}
-            sanityLevel={activePlayer && CHARACTERS[activePlayer.character] ? activePlayer.sanity / (CHARACTERS[activePlayer.character].maxSanity || 4) : 1}
-            doomLevel={state.activeScenario ? (state.activeScenario.doom.max - state.doom) / state.activeScenario.doom.max : 0}
+            sanityLevel={activePlayer ? activePlayer.sanity / (activePlayer.maxSanity || 4) : 1}
+            doomLevel={state.activeScenario ? (state.activeScenario.startDoom - state.doom) / state.activeScenario.startDoom : 0}
           />
         </Suspense>
       )}
