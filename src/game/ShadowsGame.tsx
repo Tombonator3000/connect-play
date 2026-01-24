@@ -4721,7 +4721,7 @@ const ShadowsGame: React.FC = () => {
                     onUnequipItem={handleUnequipItem}
                     onEquipFromBag={handleEquipFromBag}
                     onDropItem={handleDropItem}
-                    objectives={activeScenario?.objectives}
+                    objectives={state.activeScenario?.objectives}
                   />
                 </div>
               </div>
@@ -4733,7 +4733,7 @@ const ShadowsGame: React.FC = () => {
                   onUnequipItem={handleUnequipItem}
                   onEquipFromBag={handleEquipFromBag}
                   onDropItem={handleDropItem}
-                  objectives={activeScenario?.objectives}
+                  objectives={state.activeScenario?.objectives}
                 />
               </div>
             )
