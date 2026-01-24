@@ -106,6 +106,8 @@ const Effects: React.FC<{
       <ChromaticAberration
         blendFunction={BlendFunction.NORMAL}
         offset={chromaticOffset}
+        radialModulation={false}
+        modulationOffset={0}
       />
 
       <Vignette
