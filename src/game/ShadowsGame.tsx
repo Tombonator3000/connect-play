@@ -4114,6 +4114,18 @@ const ShadowsGame: React.FC = () => {
     setMainMenuView('title');
   };
 
+  // Apply UI Scale to root element so all rem-based sizes scale properly
+  useEffect(() => {
+    // Base font-size is 16px. Scale it based on uiScale (100% = 16px, 150% = 24px, etc.)
+    const scaledFontSize = 16 * (settings.uiScale / 100);
+    document.documentElement.style.fontSize = `${scaledFontSize}px`;
+
+    // Cleanup: reset to default when component unmounts
+    return () => {
+      document.documentElement.style.fontSize = '16px';
+    };
+  }, [settings.uiScale]);
+
   return (
     <div className={`h-screen w-screen bg-background text-foreground overflow-hidden select-none font-serif relative transition-all duration-1000 ${state.screenShake && !settings.reduceMotion ? 'animate-shake' : ''} ${activePlayer?.activeMadness?.visualClass || ''}`}>
       {/* Options Menu */}
