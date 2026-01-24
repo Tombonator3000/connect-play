@@ -5054,7 +5054,7 @@ const ShadowsGame: React.FC = () => {
           stats={state.gameStats}
           players={state.players}
           scenario={state.activeScenario}
-          isLegacyMode={isLegacyMode}
+          isLegacyMode={selectedLegacyHeroIds.length > 0}
         />
       )}
     </div>

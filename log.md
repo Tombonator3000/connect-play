@@ -1,5 +1,127 @@
 # Development Log
 
+## 2026-01-24: Fiks Inventory Purchase, Loot Pickup, og Game Over Crash
+
+### Oppgave 1: Game Over Crash ved Scenario Fullføring (FIKSET ✓)
+
+#### Problemet
+Når spilleren fullfører et scenario, krasjer spillet til svart skjerm med:
+```
+ReferenceError: isLegacyMode is not defined
+```
+
+#### Root Cause Analysis
+
+**Feilplassering:** `src/game/ShadowsGame.tsx` linje 5057
+
+```typescript
+// FEIL (krasjer):
+isLegacyMode={isLegacyMode}
+```
+
+**Problemet:**
+- `isLegacyMode` variabelen eksisterer ikke i ShadowsGame.tsx
+- Den skulle utledes fra `selectedLegacyHeroIds.length > 0`
+
+#### Løsning
+
+```typescript
+// FIKSET:
+isLegacyMode={selectedLegacyHeroIds.length > 0}
+```
+
+### Oppgave 2: Kjøp av Ekstra Inventory Slots (IMPLEMENTERT ✓)
+
+#### Krav fra bruker
+- Funksjon for å kjøpe mer inventory
+- Gradvis økning av pris
+- Max 1 ekstra slot per level
+
+#### Implementasjon
+
+**Nye konstanter i `types.ts`:**
+```typescript
+export const EXTRA_BAG_SLOT_PRICES: Record<number, number> = {
+  1: 100,   // Første ekstra slot
+  2: 200,   // Andre ekstra slot
+  3: 350,   // Tredje ekstra slot
+  4: 550,   // Fjerde ekstra slot
+  5: 800,   // Femte ekstra slot
+};
+```
+
+**Nye funksjoner:**
+- `getNextBagSlotPrice(currentExtraSlots)` - Henter pris for neste slot
+- `canBuyBagSlot(hero)` - Sjekker om helt kan kjøpe flere slots (max = level)
+- `getTotalBagSlots(extraBagSlots)` - Returnerer totalt antall bag slots (base 4 + ekstra)
+
+**Nye felt:**
+- `LegacyHero.extraBagSlots` - Antall ekstra slots kjøpt
+- `Player.extraBagSlots` - For å spore under gameplay
+
+**UI i MerchantShop:**
+- Ny "Services" fane med inventory expansion
+- Viser nåværende slots, ekstra slots kjøpt, og maks basert på level
+- Progress bar viser 4 (base) til 9 (maks)
+- Prisvisning for alle 5 ekstra slots
+- Knapp for å kjøpe neste slot med gull-kostnad
+
+#### Endrede filer
+
+| Fil | Endringer |
+|-----|-----------|
+| `src/game/types.ts` | Lagt til `extraBagSlots` i LegacyHero og Player, nye konstanter og funksjoner |
+| `src/game/utils/legacyManager.ts` | Lagt til `extraBagSlots: 0` i createLegacyHero |
+| `src/game/components/MerchantShop.tsx` | Ny "Services" fane med inventory expansion UI |
+
+### Oppgave 3: Loot Drops Fra Monstre Forsvinner (FIKSET ✓)
+
+#### Problemet
+Når monstre dør og dropper loot, og spillerens inventory er fullt:
+1. Items legges til tile.items (på bakken)
+2. Men det fantes INGEN måte å plukke dem opp igjen!
+
+Kun quest items hadde pickup-funksjonalitet.
+
+#### Løsning
+
+**Lagt til loot pickup i `contextActions.ts`:**
+```typescript
+// Check if tile has loot items (non-quest items) that can be picked up
+const lootItems = tile.items?.filter(item => !item.isQuestItem) || [];
+if (lootItems.length > 0) {
+  lootItems.forEach((item, index) => {
+    actions.push({
+      id: `pickup_loot_${index}`,
+      label: `Plukk opp: ${item.name}`,
+      icon: 'interact',
+      apCost: 0,
+      enabled: true,
+      successMessage: `Du plukket opp ${item.name}!`
+    });
+  });
+}
+```
+
+**Lagt til handler i `contextActionEffects.ts`:**
+- Ny `handleLootPickupEffect()` funksjon
+- Legger item til inventory hvis plass
+- Fjerner item fra tile
+- Viser "INVENTORY FULL" melding hvis fullt
+- Particle effect for visuell feedback
+
+#### Endrede filer
+
+| Fil | Endringer |
+|-----|-----------|
+| `src/game/utils/contextActions.ts` | Lagt til loot pickup actions for non-quest items |
+| `src/game/utils/contextActionEffects.ts` | Ny `handleLootPickupEffect()` funksjon |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+---
+
 ## 2026-01-24: Fiks Shader Effects Crash + Vær-system Verifisering
 
 ### Oppgave 1: Shader Effects Krasjer Spillet (FIKSET ✓)

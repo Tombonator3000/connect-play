@@ -183,6 +183,8 @@ export function createLegacyHero(
     survivorTitle: undefined,
     // Class-specific bonuses
     classBonuses: [],
+    // Inventory expansion
+    extraBagSlots: 0,
     // Field Guide - persistent monster encounters
     encounteredEnemies: []
   };

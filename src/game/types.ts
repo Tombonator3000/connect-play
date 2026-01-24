@@ -154,6 +154,8 @@ export interface Player extends Character {
   level?: number;  // Hero level for display on character sheet
   // Custom portrait from legacy hero
   customPortraitUrl?: string;  // Custom uploaded portrait URL for board and character sheet
+  // Extra bag slots purchased
+  extraBagSlots?: number;  // Extra bag slots (max = level)
   // Temporary combat bonuses (reset at end of round)
   tempDefenseBonus?: number;  // Temporary defense bonus from spells like Dark Shield
   // Event card debuffs
@@ -292,12 +294,14 @@ export function countInventoryItems(inventory: InventorySlots): number {
 }
 
 /**
- * Checks if the inventory is full (7 items max)
+ * Checks if the inventory is full
  * @param inventory - The inventory to check
+ * @param extraBagSlots - Extra bag slots purchased (default 0)
  * @returns boolean indicating if inventory is full
  */
-export function isInventoryFull(inventory: InventorySlots): boolean {
-  return countInventoryItems(inventory) >= 7;
+export function isInventoryFull(inventory: InventorySlots, extraBagSlots: number = 0): boolean {
+  const maxItems = 3 + getTotalBagSlots(extraBagSlots); // 2 hands + 1 body + bag slots
+  return countInventoryItems(inventory) >= maxItems;
 }
 
 /**
@@ -1632,6 +1636,41 @@ export const XP_THRESHOLDS: Record<number, number> = {
 };
 
 /**
+ * Extra bag slot prices - gradual increase
+ * Max extra slots = player level (level 1 = 1 extra, level 5 = 5 extra)
+ */
+export const EXTRA_BAG_SLOT_PRICES: Record<number, number> = {
+  1: 100,   // First extra slot
+  2: 200,   // Second extra slot
+  3: 350,   // Third extra slot
+  4: 550,   // Fourth extra slot
+  5: 800,   // Fifth extra slot
+};
+
+/**
+ * Calculate the price for the next extra bag slot
+ */
+export function getNextBagSlotPrice(currentExtraSlots: number): number {
+  const nextSlot = currentExtraSlots + 1;
+  return EXTRA_BAG_SLOT_PRICES[nextSlot] || 0;
+}
+
+/**
+ * Check if hero can buy another bag slot
+ */
+export function canBuyBagSlot(hero: LegacyHero): boolean {
+  // Max extra slots = hero level
+  return hero.extraBagSlots < hero.level;
+}
+
+/**
+ * Get total bag slots for a hero (base 4 + extra)
+ */
+export function getTotalBagSlots(extraBagSlots: number): number {
+  return 4 + extraBagSlots;
+}
+
+/**
  * Skill mastery types - each gives +1 die on related checks
  */
 export type SkillMasteryType = 'investigation' | 'combat' | 'occult' | 'athletics';
@@ -1775,6 +1814,9 @@ export interface LegacyHero {
 
   // Class-specific bonuses
   classBonuses: string[];               // IDs of unlocked class-specific bonuses
+
+  // Inventory expansion
+  extraBagSlots: number;                // Extra bag slots purchased (max = level)
 
   // Field Guide - persistent monster encounter tracking
   encounteredEnemies: string[];         // EnemyType strings of monsters encountered across all sessions
