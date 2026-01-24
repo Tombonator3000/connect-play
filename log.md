@@ -22668,3 +22668,162 @@ className="game-board-container ... touch-manipulation ..."
    - Test touch-action verdier for mobile kompatibilitet
 
 ---
+
+## 2026-01-24: Add OGG and MP3 Audio Format Support for SFX
+
+### Oppgave
+Implementere støtte for både OGG og MP3 lydformater for SFX (Sound Effects) i spillet.
+
+### Bakgrunn
+Spillet hadde en ferdig mappestruktur for SFX-filer (`public/audio/sfx/`), men audioManager.ts brukte kun Tone.js-syntetiserte lyder. README.md spesifiserte at `.ogg` er foretrukket format med `.mp3` som alternativ.
+
+### Løsning
+
+#### 1. Audio Format Detection
+Lagt til automatisk deteksjon av nettleser-støtte for lydformater:
+
+```typescript
+function detectAudioSupport(): { ogg: boolean; mp3: boolean } {
+  const audio = document.createElement('audio');
+  return {
+    ogg: audio.canPlayType('audio/ogg; codecs="vorbis"') !== '',
+    mp3: audio.canPlayType('audio/mpeg') !== ''
+  };
+}
+```
+
+#### 2. File-Based SFX System
+Nytt system for lasting og avspilling av SFX-filer:
+
+- **SFX_FILE_PATHS**: Mapping fra SoundEffect-type til filsti (uten extension)
+- **sfxPlayerCache**: Cache for Tone.Player-instanser for rask avspilling
+- **failedSfxPaths**: Tracker filer som ikke kunne lastes for å unngå gjentatte forsøk
+
+#### 3. Smart Format Fallback
+Systemet prøver automatisk OGG først, og faller tilbake til MP3:
+
+```typescript
+const formats: ('ogg' | 'mp3')[] = AUDIO_SUPPORT.ogg
+  ? ['ogg', 'mp3']
+  : ['mp3', 'ogg'];
+
+for (const format of formats) {
+  try {
+    const player = new Tone.Player(fullPath).toDestination();
+    await player.load(fullPath);
+    return player;
+  } catch (e) {
+    // Try next format
+  }
+}
+```
+
+#### 4. Synth Fallback
+Hvis ingen lydfil finnes, faller systemet tilbake til syntetiserte lyder:
+
+```typescript
+playFileSfx(effect).then(played => {
+  if (!played) {
+    synthFallback[effect]?.();
+  }
+});
+```
+
+### Nye Funksjoner
+
+| Funksjon | Beskrivelse |
+|----------|-------------|
+| `getPreferredAudioFormat()` | Returnerer 'ogg' eller 'mp3' basert på nettleserstøtte |
+| `getAudioFilePath(basePath)` | Legger til riktig extension basert på format |
+| `preloadCommonSfx()` | Pre-laster vanlige lydeffekter for raskere avspilling |
+| `setUseFileSFX(bool)` | Slår av/på fil-basert SFX |
+| `isUsingFileSFX()` | Sjekker om fil-basert SFX er aktivert |
+| `getAudioFormatSupport()` | Returnerer info om format-støtte |
+| `playSoundSynth(effect)` | Spiller synth-lyd direkte (ingen fil-lookup) |
+
+### Settings Utvidelse
+Lagt til `useFileSFX` i AudioSettings:
+
+```typescript
+interface AudioSettings {
+  masterVolume: number;
+  musicVolume: number;
+  sfxVolume: number;
+  muted: boolean;
+  useFileSFX: boolean;  // NY: Aktiverer fil-basert SFX
+}
+```
+
+### SFX File Mapping
+Følgende lydeffekter har fil-støtte:
+
+| SFX Type | Filsti |
+|----------|--------|
+| click | /audio/sfx/ui/click |
+| success | /audio/sfx/ui/success |
+| error | /audio/sfx/ui/error |
+| attack | /audio/sfx/combat/hit-flesh |
+| damage | /audio/sfx/combat/player-hurt |
+| death | /audio/sfx/combat/player-death |
+| diceRoll | /audio/sfx/combat/dice-roll |
+| footstep | /audio/sfx/movement/step-wood |
+| doorOpen | /audio/sfx/doors/door-open |
+| pickup | /audio/sfx/items/pickup-generic |
+| spellCast | /audio/sfx/magic/spell-cast |
+| sanityLoss | /audio/sfx/atmosphere/sanity-loss |
+| horrorCheck | /audio/sfx/atmosphere/horror-sting |
+| whispers | /audio/sfx/atmosphere/whispers |
+| heartbeat | /audio/sfx/atmosphere/heartbeat |
+| cosmicStatic | /audio/sfx/atmosphere/static-cosmic |
+| enemySpawn | /audio/sfx/monsters/cultist-spawn |
+| doomTick | /audio/sfx/events/doom-tick |
+| eventCard | /audio/sfx/events/event-card-draw |
+| victory | /audio/sfx/events/scenario-victory |
+| defeat | /audio/sfx/events/scenario-defeat |
+
+### Cleanup
+`disposeAudio()` oppdatert til å rydde opp SFX-cachen:
+
+```typescript
+sfxPlayerCache.forEach(player => player.dispose());
+sfxPlayerCache.clear();
+failedSfxPaths.clear();
+```
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/utils/audioManager.ts` | Lagt til multi-format SFX-system |
+
+### Build Status
+✅ Bygget kompilerer uten feil (1.7MB bundle)
+
+### Bruk
+
+For å bruke SFX-filer:
+1. Plasser `.ogg` og/eller `.mp3` filer i `public/audio/sfx/` mappene
+2. Systemet vil automatisk prøve OGG først, deretter MP3
+3. Hvis ingen fil finnes, brukes syntetisert lyd
+
+**Eksempel:**
+- Plasser `click.ogg` i `public/audio/sfx/ui/`
+- Eller `click.mp3` hvis OGG ikke er tilgjengelig
+- Spillet vil automatisk laste riktig format
+
+### Teknisk Lærdom
+
+1. **Audio format kompatibilitet:**
+   - OGG støttes i Chrome, Firefox, Edge, men IKKE Safari
+   - MP3 støttes i alle moderne nettlesere
+   - Alltid ha fallback til MP3 for Safari-kompatibilitet
+
+2. **Pre-loading for latens:**
+   - Lydfiler bør pre-loades for instant avspilling
+   - `preloadCommonSfx()` laster vanlige lyder ved spillstart
+
+3. **Graceful degradation:**
+   - Synth-lyder som fallback sikrer at spillet alltid har lyd
+   - Ingen feilmeldinger til brukeren hvis fil mangler
+
+---

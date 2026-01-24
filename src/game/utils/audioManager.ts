@@ -2,9 +2,48 @@
  * AUDIO MANAGER
  * Handles all game audio using Tone.js
  * Includes SFX, ambient sounds, and atmospheric music
+ *
+ * SUPPORTS: OGG (preferred) and MP3 (fallback) audio formats
  */
 
 import * as Tone from 'tone';
+
+// ============================================================================
+// AUDIO FORMAT DETECTION
+// ============================================================================
+
+/**
+ * Detect which audio formats the browser supports
+ */
+function detectAudioSupport(): { ogg: boolean; mp3: boolean } {
+  const audio = document.createElement('audio');
+  return {
+    ogg: audio.canPlayType('audio/ogg; codecs="vorbis"') !== '',
+    mp3: audio.canPlayType('audio/mpeg') !== ''
+  };
+}
+
+// Cache the format support detection
+const AUDIO_SUPPORT = detectAudioSupport();
+
+/**
+ * Get the preferred audio format based on browser support
+ * OGG is preferred (smaller files, better quality), with MP3 as fallback
+ */
+export function getPreferredAudioFormat(): 'ogg' | 'mp3' {
+  if (AUDIO_SUPPORT.ogg) return 'ogg';
+  if (AUDIO_SUPPORT.mp3) return 'mp3';
+  return 'mp3'; // Default fallback
+}
+
+/**
+ * Get the audio file path with appropriate format
+ * Will try OGG first, then MP3, based on browser support
+ */
+export function getAudioFilePath(basePath: string): string {
+  const format = getPreferredAudioFormat();
+  return `${basePath}.${format}`;
+}
 
 // ============================================================================
 // AUDIO SYSTEM STATE
@@ -15,6 +54,7 @@ interface AudioSettings {
   musicVolume: number;   // 0-1
   sfxVolume: number;     // 0-1
   muted: boolean;
+  useFileSFX: boolean;   // Whether to use file-based SFX (true) or synth (false)
 }
 
 interface AudioState {
@@ -28,7 +68,8 @@ const DEFAULT_SETTINGS: AudioSettings = {
   masterVolume: 0.7,
   musicVolume: 0.5,
   sfxVolume: 0.8,
-  muted: false
+  muted: false,
+  useFileSFX: true  // Use file-based SFX by default when available
 };
 
 let audioState: AudioState = {
@@ -61,6 +102,187 @@ let fmSynth: Tone.FMSynth | null = null;
 let reverb: Tone.Reverb | null = null;
 let delay: Tone.FeedbackDelay | null = null;
 let filter: Tone.Filter | null = null;
+
+// ============================================================================
+// SOUND EFFECT TYPES
+// ============================================================================
+
+export type SoundEffect =
+  | 'click'
+  | 'success'
+  | 'error'
+  | 'damage'
+  | 'death'
+  | 'footstep'
+  | 'doorOpen'
+  | 'diceRoll'
+  | 'attack'
+  | 'spellCast'
+  | 'pickup'
+  | 'sanityLoss'
+  | 'horrorCheck'
+  | 'enemySpawn'
+  | 'doomTick'
+  | 'eventCard'
+  | 'victory'
+  | 'defeat'
+  | 'whispers'
+  | 'heartbeat'
+  | 'cosmicStatic';
+
+// ============================================================================
+// FILE-BASED SFX SYSTEM (OGG/MP3)
+// ============================================================================
+
+/**
+ * SFX file paths mapping (without extension - format is added dynamically)
+ * Base path is relative to public folder
+ */
+const SFX_FILE_PATHS: Partial<Record<SoundEffect, string>> = {
+  // UI sounds
+  click: '/audio/sfx/ui/click',
+  success: '/audio/sfx/ui/success',
+  error: '/audio/sfx/ui/error',
+
+  // Combat sounds
+  attack: '/audio/sfx/combat/hit-flesh',
+  damage: '/audio/sfx/combat/player-hurt',
+  death: '/audio/sfx/combat/player-death',
+  diceRoll: '/audio/sfx/combat/dice-roll',
+
+  // Movement sounds
+  footstep: '/audio/sfx/movement/step-wood',
+
+  // Door sounds
+  doorOpen: '/audio/sfx/doors/door-open',
+
+  // Item sounds
+  pickup: '/audio/sfx/items/pickup-generic',
+
+  // Magic sounds
+  spellCast: '/audio/sfx/magic/spell-cast',
+
+  // Atmosphere sounds
+  sanityLoss: '/audio/sfx/atmosphere/sanity-loss',
+  horrorCheck: '/audio/sfx/atmosphere/horror-sting',
+  whispers: '/audio/sfx/atmosphere/whispers',
+  heartbeat: '/audio/sfx/atmosphere/heartbeat',
+  cosmicStatic: '/audio/sfx/atmosphere/static-cosmic',
+
+  // Monster sounds
+  enemySpawn: '/audio/sfx/monsters/cultist-spawn',
+
+  // Event sounds
+  doomTick: '/audio/sfx/events/doom-tick',
+  eventCard: '/audio/sfx/events/event-card-draw',
+  victory: '/audio/sfx/events/scenario-victory',
+  defeat: '/audio/sfx/events/scenario-defeat',
+};
+
+// Cache for loaded SFX players
+const sfxPlayerCache: Map<string, Tone.Player> = new Map();
+
+// Track which files failed to load (to avoid repeated attempts)
+const failedSfxPaths: Set<string> = new Set();
+
+/**
+ * Load an SFX file and cache it
+ * Tries OGG first, falls back to MP3
+ */
+async function loadSfxFile(basePath: string): Promise<Tone.Player | null> {
+  // Check if already cached
+  const cachedPlayer = sfxPlayerCache.get(basePath);
+  if (cachedPlayer) {
+    return cachedPlayer;
+  }
+
+  // Check if we already tried and failed
+  if (failedSfxPaths.has(basePath)) {
+    return null;
+  }
+
+  // Build the base URL with Vite base path
+  const baseUrl = import.meta.env.BASE_URL || '/';
+  const formats: ('ogg' | 'mp3')[] = AUDIO_SUPPORT.ogg
+    ? ['ogg', 'mp3']
+    : ['mp3', 'ogg'];
+
+  for (const format of formats) {
+    const fullPath = `${baseUrl}${basePath.startsWith('/') ? basePath.slice(1) : basePath}.${format}`;
+
+    try {
+      const player = new Tone.Player(fullPath).toDestination();
+      await player.load(fullPath);
+
+      // Cache successful load
+      sfxPlayerCache.set(basePath, player);
+      console.log(`Loaded SFX: ${fullPath}`);
+      return player;
+    } catch (e) {
+      // Try next format
+      console.debug(`SFX not found: ${fullPath}, trying next format...`);
+    }
+  }
+
+  // All formats failed
+  failedSfxPaths.add(basePath);
+  console.warn(`Failed to load SFX: ${basePath} (tried both OGG and MP3)`);
+  return null;
+}
+
+/**
+ * Play an SFX from file if available
+ * Returns true if file was played, false if not (fallback to synth)
+ */
+async function playFileSfx(effect: SoundEffect): Promise<boolean> {
+  if (!audioState.settings.useFileSFX) {
+    return false;
+  }
+
+  const basePath = SFX_FILE_PATHS[effect];
+  if (!basePath) {
+    return false;
+  }
+
+  const player = await loadSfxFile(basePath);
+  if (!player) {
+    return false;
+  }
+
+  try {
+    // Apply volume
+    const { masterVolume, sfxVolume, muted } = audioState.settings;
+    if (muted) return true; // Muted but file exists
+
+    const effectiveVolume = masterVolume * sfxVolume;
+    player.volume.value = Tone.gainToDb(effectiveVolume);
+
+    // Play from start
+    player.start(undefined, 0);
+    return true;
+  } catch (e) {
+    console.warn(`Error playing SFX ${effect}:`, e);
+    return false;
+  }
+}
+
+/**
+ * Pre-load common SFX files for faster playback
+ */
+export async function preloadCommonSfx(): Promise<void> {
+  if (!audioState.initialized) return;
+
+  const commonEffects: SoundEffect[] = [
+    'click', 'success', 'error', 'footstep', 'doorOpen',
+    'attack', 'damage', 'pickup', 'diceRoll'
+  ];
+
+  await Promise.all(
+    commonEffects
+      .filter(effect => SFX_FILE_PATHS[effect])
+      .map(effect => loadSfxFile(SFX_FILE_PATHS[effect]!))
+  );
+}
 
 // ============================================================================
 // INITIALIZATION
@@ -586,6 +808,7 @@ export function playCosmicStatic(): void {
  */
 export function disposeAudio(): void {
   try {
+    // Dispose synths
     mainSynth?.dispose();
     noiseSynth?.dispose();
     membraneSynth?.dispose();
@@ -595,6 +818,17 @@ export function disposeAudio(): void {
     delay?.dispose();
     filter?.dispose();
     audioState.ambienceLoop?.dispose();
+
+    // Dispose file-based SFX players
+    sfxPlayerCache.forEach(player => {
+      try {
+        player.dispose();
+      } catch (e) {
+        // Ignore disposal errors
+      }
+    });
+    sfxPlayerCache.clear();
+    failedSfxPaths.clear();
 
     mainSynth = null;
     noiseSynth = null;
@@ -618,37 +852,54 @@ export function disposeAudio(): void {
   }
 }
 
-// ============================================================================
-// EXPORT TYPE FOR SOUND EFFECTS
-// ============================================================================
-
-export type SoundEffect =
-  | 'click'
-  | 'success'
-  | 'error'
-  | 'damage'
-  | 'death'
-  | 'footstep'
-  | 'doorOpen'
-  | 'diceRoll'
-  | 'attack'
-  | 'spellCast'
-  | 'pickup'
-  | 'sanityLoss'
-  | 'horrorCheck'
-  | 'enemySpawn'
-  | 'doomTick'
-  | 'eventCard'
-  | 'victory'
-  | 'defeat'
-  | 'whispers'
-  | 'heartbeat'
-  | 'cosmicStatic';
-
 /**
  * Play a sound effect by name
+ * Tries file-based SFX first (OGG/MP3), falls back to synth if not available
  */
 export function playSound(effect: SoundEffect): void {
+  if (!audioState.initialized || audioState.settings.muted) return;
+
+  // Synth fallback functions
+  const synthFallback: Record<SoundEffect, () => void> = {
+    click: playClick,
+    success: playSuccess,
+    error: playError,
+    damage: playDamage,
+    death: playDeath,
+    footstep: playFootstep,
+    doorOpen: playDoorOpen,
+    diceRoll: playDiceRoll,
+    attack: playAttack,
+    spellCast: playSpellCast,
+    pickup: playPickup,
+    sanityLoss: playSanityLoss,
+    horrorCheck: playHorrorCheck,
+    enemySpawn: playEnemySpawn,
+    doomTick: playDoomTick,
+    eventCard: playEventCard,
+    victory: playVictory,
+    defeat: playDefeat,
+    whispers: playWhispers,
+    heartbeat: playHeartbeat,
+    cosmicStatic: playCosmicStatic
+  };
+
+  // Try file-based SFX first, fall back to synth
+  playFileSfx(effect).then(played => {
+    if (!played) {
+      // No file available, use synth
+      synthFallback[effect]?.();
+    }
+  });
+}
+
+/**
+ * Play a sound effect synchronously using synth only (no file loading)
+ * Use this when you need immediate playback without file lookup
+ */
+export function playSoundSynth(effect: SoundEffect): void {
+  if (!audioState.initialized || audioState.settings.muted) return;
+
   const soundMap: Record<SoundEffect, () => void> = {
     click: playClick,
     success: playSuccess,
@@ -674,4 +925,28 @@ export function playSound(effect: SoundEffect): void {
   };
 
   soundMap[effect]?.();
+}
+
+/**
+ * Toggle between file-based and synth SFX
+ */
+export function setUseFileSFX(useFiles: boolean): void {
+  updateAudioSettings({ useFileSFX: useFiles });
+}
+
+/**
+ * Check if file-based SFX is enabled
+ */
+export function isUsingFileSFX(): boolean {
+  return audioState.settings.useFileSFX;
+}
+
+/**
+ * Get audio format support info
+ */
+export function getAudioFormatSupport(): { ogg: boolean; mp3: boolean; preferred: string } {
+  return {
+    ...AUDIO_SUPPORT,
+    preferred: getPreferredAudioFormat()
+  };
 }
