@@ -3684,6 +3684,11 @@ const ShadowsGame: React.FC = () => {
           // Add blood stains when damage is dealt to enemies
           addBloodstains(enemy.position.q, enemy.position.r, damage);
 
+          // Check if elite/boss for stats tracking (defined outside isKilled block so it's available for gameStats update)
+          const isEliteOrBoss = enemy.traits?.includes('elite') ||
+                                enemy.traits?.includes('massive') ||
+                                ['shoggoth', 'star_spawn', 'boss', 'high_priest', 'dark_young'].includes(enemy.type);
+
           if (isKilled) {
             const bestiary = BESTIARY[enemy.type];
             addToLog(bestiary.defeatFlavor || `${enemy.name} er beseiret!`);
@@ -3735,9 +3740,6 @@ const ShadowsGame: React.FC = () => {
             }
 
             // DOOM BONUS: Check if elite/boss kill grants doom (pressure-based doom system)
-            const isEliteOrBoss = enemy.traits?.includes('elite') ||
-                                  enemy.traits?.includes('massive') ||
-                                  ['shoggoth', 'star_spawn', 'boss', 'high_priest', 'dark_young'].includes(enemy.type);
             if (isEliteOrBoss) {
               const doomBonus = state.activeScenario?.doomOnEliteKill ?? 1;
               if (doomBonus > 0) {

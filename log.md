@@ -21900,3 +21900,75 @@ Endret til å bruke `player.inventory` som er den faktiske kilden for inventory-
    - Test character panel med ulike inventory-tilstander
 
 ---
+
+
+## 2026-01-24: Fix Game Crash - isEliteOrBoss ReferenceError
+
+### Problem
+Spillet kræsjet med følgende feilmelding:
+```
+ReferenceError: isEliteOrBoss is not defined
+at index-DtNnA4kX.js:1333:103335
+```
+
+### Feilanalyse
+
+Problemet var i `src/game/ShadowsGame.tsx`:
+
+- Variabelen `isEliteOrBoss` var definert **inne i** `if (isKilled)` blokken (linje 3738)
+- Men den ble brukt på linje 3789 i `setState` kallet som var **utenfor** `if (isKilled)` blokken
+- Når `isKilled` var `false`, ble variabelen aldri definert, som førte til ReferenceError
+
+#### Problemkode
+```typescript
+if (isKilled) {
+  // ... kode ...
+  const isEliteOrBoss = enemy.traits?.includes('elite') || ...;  // FEIL: Definert inne i if
+  // ... mer kode ...
+}
+
+setState(prev => ({
+  // ...
+  bossesDefeated: isKilled && isEliteOrBoss ? [...] : ...,  // FEIL: isEliteOrBoss er undefined her
+}));
+```
+
+### Løsning
+
+Flyttet `isEliteOrBoss` definisjonen **før** `if (isKilled)` blokken slik at den er tilgjengelig i hele scope:
+
+```typescript
+// Check if elite/boss for stats tracking (defined outside isKilled block so it's available for gameStats update)
+const isEliteOrBoss = enemy.traits?.includes('elite') ||
+                      enemy.traits?.includes('massive') ||
+                      ['shoggoth', 'star_spawn', 'boss', 'high_priest', 'dark_young'].includes(enemy.type);
+
+if (isKilled) {
+  // ... kode som bruker isEliteOrBoss ...
+}
+
+setState(prev => ({
+  // ... kan nå trygt bruke isEliteOrBoss ...
+}));
+```
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/ShadowsGame.tsx` | Flyttet `isEliteOrBoss` definisjon fra linje 3738 til linje 3687-3690 (før if-blokken) |
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+### Teknisk Lærdom
+
+1. **JavaScript scope regler:**
+   - Variabler definert inne i en `if`-blokk med `const` er kun tilgjengelig i den blokken
+   - Hvis en variabel trengs utenfor blokken, må den defineres i ytre scope
+
+2. **Feilsøking av minified kode:**
+   - ReferenceError i produksjonskode kan spores tilbake ved å søke etter variabelnavnet i kildekoden
+   - Se alltid etter scope-problemer når en variabel er "not defined"
+
+---
