@@ -76,7 +76,22 @@ export function saveLegacyData(data: LegacyData): void {
     data.lastSaved = new Date().toISOString();
     localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(data));
   } catch (error) {
-    console.error('Failed to save legacy data:', error);
+    // Handle QuotaExceededError specifically
+    if (error instanceof DOMException && (error.name === 'QuotaExceededError' || error.code === 22)) {
+      console.warn('LocalStorage quota exceeded when saving legacy data. Attempting cleanup...');
+      try {
+        // Try to clear non-essential data
+        localStorage.removeItem('shadows_1920s_autosave');
+        localStorage.removeItem('shadows_1920s_gamestate');
+        // Retry save
+        localStorage.setItem(LEGACY_STORAGE_KEY, JSON.stringify(data));
+        console.log('Legacy data saved after cleanup.');
+      } catch {
+        console.error('Failed to save legacy data even after cleanup. CRITICAL: Export your save data!');
+      }
+    } else {
+      console.error('Failed to save legacy data:', error);
+    }
   }
 }
 

@@ -279,7 +279,11 @@ const ShadowsGame: React.FC = () => {
   });
 
   useEffect(() => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    try {
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    } catch (e) {
+      console.error('Failed to save settings:', e);
+    }
   }, [settings]);
 
   const [state, setState] = useState<GameState>(() => {
@@ -294,7 +298,52 @@ const ShadowsGame: React.FC = () => {
   });
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    try {
+      // Create a sanitized state for saving - exclude transient/visual data to reduce size
+      const stateToSave = {
+        ...state,
+        floatingTexts: [], // Transient visual data
+        spellParticles: [], // Transient visual data
+        screenShake: false, // Transient visual state
+        activeSpell: null, // Transient UI state
+        activeOccultistSpell: null, // Transient UI state
+        log: state.log.slice(-50) // Keep only last 50 log entries to reduce size
+      };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(stateToSave));
+    } catch (e) {
+      // Handle QuotaExceededError - localStorage is full
+      if (e instanceof DOMException && (e.name === 'QuotaExceededError' || e.code === 22)) {
+        console.warn('LocalStorage quota exceeded. Attempting to free up space...');
+        // Try to clear auto-save and old slot data to make room
+        try {
+          localStorage.removeItem('shadows_1920s_autosave');
+          // Clear any old save slots
+          const slots = localStorage.getItem('shadows_1920s_saveslots');
+          if (slots) {
+            const slotList = JSON.parse(slots);
+            slotList.forEach((slot: { id: string }) => {
+              localStorage.removeItem(`shadows_1920s_slot_${slot.id}`);
+            });
+            localStorage.removeItem('shadows_1920s_saveslots');
+          }
+          // Try again with minimal state
+          const minimalState = {
+            ...state,
+            floatingTexts: [],
+            spellParticles: [],
+            screenShake: false,
+            activeSpell: null,
+            activeOccultistSpell: null,
+            log: state.log.slice(-20) // Even fewer log entries
+          };
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(minimalState));
+        } catch {
+          console.error('Failed to save game state even after cleanup. Consider exporting your save data.');
+        }
+      } else {
+        console.error('Failed to save game state:', e);
+      }
+    }
   }, [state]);
 
   // Save legacy data when it changes
