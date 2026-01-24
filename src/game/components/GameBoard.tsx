@@ -40,10 +40,10 @@ interface GameBoardProps {
 const HEX_SIZE = 95;
 const VISIBILITY_RANGE = 2;
 // Mobile touch thresholds - increased significantly for better tap detection on touchscreens
-const DRAG_THRESHOLD = 25; // px - increased to 25 to account for finger wobble on mobile
-const TAP_TIME_THRESHOLD = 350; // ms - increased to 350 for more forgiving tap detection
+const DRAG_THRESHOLD = 50; // px - increased to 50 to account for finger wobble and accidental movement
+const TAP_TIME_THRESHOLD = 500; // ms - increased to 500 for more forgiving tap detection
 const LONG_PRESS_THRESHOLD = 400; // ms - time for long press to trigger preview
-const MOBILE_TAP_MOVEMENT_THRESHOLD = 20; // px - max movement allowed during tap on mobile
+const MOBILE_TAP_MOVEMENT_THRESHOLD = 40; // px - increased to 40 for better finger-tolerance on mobile
 const HEX_POLY_POINTS = "25,0 75,0 100,50 75,100 25,100 0,50";
 
 // Hex neighbor directions (flat-top hexagon)
@@ -463,6 +463,10 @@ const GameBoard: React.FC<GameBoardProps> = ({
       // Clear long-press state
       handleTileLongPressEnd();
 
+      // CRITICAL FIX: Reset hasDragged after touch ends so next tap works correctly
+      // This ensures that after panning the board, tapping tiles still registers
+      hasDragged.current = false;
+
       // Check if this was a valid tap (short duration and small movement)
       const touchDuration = Date.now() - touchStartTime.current;
       const wasQuickTap = touchDuration < TAP_TIME_THRESHOLD;
@@ -610,8 +614,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
       className="game-board-container w-full h-full overflow-hidden relative cursor-move bg-background touch-manipulation select-none"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
-      onMouseUp={() => setIsDragging(false)}
-      onMouseLeave={() => setIsDragging(false)}
+      onMouseUp={() => { setIsDragging(false); hasDragged.current = false; }}
+      onMouseLeave={() => { setIsDragging(false); hasDragged.current = false; }}
       onWheel={(e) => setScale(prev => Math.min(Math.max(prev + (e.deltaY > 0 ? -0.1 : 0.1), 0.3), 2.5))}
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}

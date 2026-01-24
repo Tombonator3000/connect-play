@@ -22912,3 +22912,73 @@ interface ActionBarProps {
    - `resetPlayersForNewTurn()` resetter `actions` til `maxActions`
 
 ---
+
+## 2026-01-24: Bug Fix - UI Responsiveness / Click Not Working
+
+### Problem
+UI-knapper og spillbrettet responderte ikke på klikk. Bruker kunne ikke interagere med spillet.
+
+### Rotårsak
+`hasDragged` ref i `GameBoard.tsx` ble satt til `true` ved drag/pan, men ble IKKE resettet etter at drag var ferdig. Dette blokkerte alle påfølgende klikk fordi onClick-handleren sjekket:
+
+```typescript
+// GAMMEL KODE (BUG):
+onClick={(e) => {
+  if (!hasDragged.current) onTileClick(tile.q, tile.r);
+}}
+```
+
+Etter en drag-operasjon forble `hasDragged = true` til neste `mousedown`/`touchstart`, noe som betydde at klikk ikke ble registrert.
+
+### Løsning
+Tre endringer i `GameBoard.tsx`:
+
+**1. Reset hasDragged ved mouseUp/mouseLeave:**
+```typescript
+// NY KODE:
+onMouseUp={() => { setIsDragging(false); hasDragged.current = false; }}
+onMouseLeave={() => { setIsDragging(false); hasDragged.current = false; }}
+```
+
+**2. Reset hasDragged ved touchEnd:**
+```typescript
+// NY KODE:
+// CRITICAL FIX: Reset hasDragged after touch ends
+hasDragged.current = false;
+```
+
+**3. Økte thresholds for bedre touch-toleranse:**
+```typescript
+// GAMMEL:
+const DRAG_THRESHOLD = 25;
+const TAP_TIME_THRESHOLD = 350;
+const MOBILE_TAP_MOVEMENT_THRESHOLD = 20;
+
+// NY:
+const DRAG_THRESHOLD = 50; // px - økt for finger-wobble
+const TAP_TIME_THRESHOLD = 500; // ms - mer forgiving tap detection
+const MOBILE_TAP_MOVEMENT_THRESHOLD = 40; // px - bedre finger-toleranse
+```
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/components/GameBoard.tsx` | Reset hasDragged ved mouseUp/touchEnd, økte touch-thresholds |
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+### Teknisk Lærdom
+
+1. **Ref-verdier må resettes manuelt:**
+   - `useRef` verdier persisterer mellom renders
+   - Må eksplisitt nullstilles når tilstanden endres
+   - Spesielt viktig for drag-state som påvirker klikk-handling
+
+2. **Touch thresholds:**
+   - 25px er for sensitivt for finger-input
+   - 50px gir bedre toleranse for finger-wobble
+   - 500ms tap-threshold er mer forgiving for langsomme brukere
+
+---
