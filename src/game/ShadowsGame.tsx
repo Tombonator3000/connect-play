@@ -4140,7 +4140,7 @@ const ShadowsGame: React.FC = () => {
           <ShaderEffects
             enabled={true}
             quality={settings.effectsQuality}
-            sanityLevel={activePlayer ? activePlayer.sanity / (CHARACTERS[activePlayer.character].baseSanity || 4) : 1}
+            sanityLevel={activePlayer && CHARACTERS[activePlayer.character] ? activePlayer.sanity / (CHARACTERS[activePlayer.character].maxSanity || 4) : 1}
             doomLevel={state.activeScenario ? (state.activeScenario.doom.max - state.doom) / state.activeScenario.doom.max : 0}
           />
         </Suspense>

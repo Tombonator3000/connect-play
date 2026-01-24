@@ -1,5 +1,100 @@
 # Development Log
 
+## 2026-01-24: Fiks Shader Effects Crash + Vær-system Verifisering
+
+### Oppgave 1: Shader Effects Krasjer Spillet (FIKSET ✓)
+
+#### Problemet
+Når spilleren slår på "SHADER EFFECTS" i Advanced Visual Effects-innstillingene, krasjer spillet med:
+```
+TypeError: Cannot read properties of undefined (reading 'baseSanity')
+```
+
+#### Root Cause Analysis
+
+**Feilplassering:** `src/game/ShadowsGame.tsx` linje 4143
+
+```typescript
+// FEIL (krasjer):
+sanityLevel={activePlayer ? activePlayer.sanity / (CHARACTERS[activePlayer.character].baseSanity || 4) : 1}
+```
+
+**Problemet:**
+1. `baseSanity` eksisterer IKKE i Character-interfacet - riktig property er `maxSanity`
+2. Ingen null-sjekk for `CHARACTERS[activePlayer.character]` som kan være undefined
+
+**Character interface (fra types.ts):**
+```typescript
+export interface Character {
+  id: CharacterType;
+  name: string;
+  hp: number;
+  maxHp: number;
+  sanity: number;
+  maxSanity: number;  // <-- Riktig property
+  // ...
+}
+```
+
+#### Løsning
+
+```typescript
+// FIKSET:
+sanityLevel={activePlayer && CHARACTERS[activePlayer.character] ? activePlayer.sanity / (CHARACTERS[activePlayer.character].maxSanity || 4) : 1}
+```
+
+**Endringer:**
+1. Byttet `baseSanity` til `maxSanity`
+2. La til null-sjekk for `CHARACTERS[activePlayer.character]`
+
+#### Endrede filer
+
+| Fil | Linje | Endring |
+|-----|-------|---------|
+| `src/game/ShadowsGame.tsx` | 4143 | Fikset fra `baseSanity` til `maxSanity` + null guard |
+
+### Oppgave 2: Sjekk om Vær Påvirker Spillet (BEKREFTET ✓)
+
+#### Funn: Vær-systemet er Fullt Implementert og Aktivt
+
+**Hvor vær brukes i spillet:**
+
+| Lokasjon | Effekt |
+|----------|--------|
+| `ShadowsGame.tsx:1761-1767` | Agility skill checks får penalty fra vær |
+| `constants.ts:4203` | `calculateWeatherAgilityPenalty()` |
+| `constants.ts:4190` | `calculateWeatherVision()` - redusert synlighet |
+| `constants.ts:4215` | `weatherBlocksRanged()` - blokkerer ranged angrep |
+| `constants.ts:4226` | `weatherHidesEnemy()` - skjuler fiender på avstand |
+| `constants.ts:4238` | `rollWeatherHorror()` - trigger horror checks |
+| `monsterWeatherBehavior.ts` | Monster AI påvirkes av vær |
+| `mythosPhaseHelpers.ts:248` | `processWeatherForNewRound()` |
+
+**Vær-typer og effekter:**
+- `fog` - Redusert synlighet, agility penalty
+- `rain` - Agility penalty, blokkerer ranged
+- `miasma` - Supernatural tåke, horror chance
+- `cosmic_static` - Reality distortion, vision reduction
+- `unnatural_glow` - Eldritch glow effekter
+- `darkness` - Kraftig synlighetsreduksjon
+
+**Hvordan vær trigges:**
+1. Basert på Doom-nivå via `getWeatherForDoom(doom)`
+2. Prosesseres hver runde i `processWeatherForNewRound()`
+3. Visuelt via `WeatherOverlay.tsx` komponenten
+
+**Konklusjon:** Vær-systemet fungerer korrekt og påvirker:
+- ✓ Spillerens agility-sjekker
+- ✓ Monster-oppførsel
+- ✓ Synlighet og range
+- ✓ Ranged angrep
+- ✓ Horror checks
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+---
+
 ## 2026-01-24: Fiks Character Sheet Crash - activeScenario ReferenceError
 
 ### Problemet
