@@ -1,5 +1,54 @@
 # Development Log
 
+## 2026-01-25: Bugfix - End Round Fungerer Ikke
+
+### Problem
+"End Round"-knappen fungerte ikke lenger. Når siste spiller trykket "End Round", skulle `MythosPhaseOverlay` vises i 2.5 sekunder og deretter kalle `handleMythosOverlayComplete()` for å starte neste runde. Men dette skjedde ikke.
+
+### Årsak
+**Fil:** `src/game/components/MythosPhaseOverlay.tsx` (linje 40)
+
+I `useEffect` dependency array var `onComplete` inkludert:
+```typescript
+}, [isVisible, onComplete]);
+```
+
+Problemet: `handleMythosOverlayComplete` i `ShadowsGame.tsx` er en vanlig funksjon som **opprettes på nytt ved hver render**. Dette førte til:
+1. useEffect trigget på nytt ved hver render
+2. Timerne ble nullstilt kontinuerlig
+3. `onComplete()` ble aldri kalt
+4. Spillet ble stuck etter Mythos Phase overlay
+
+### Løsning
+Brukte `useRef` for å lagre callback-funksjonen uten å trigge re-renders:
+
+```typescript
+// Før
+useEffect(() => {
+  // ...timers...
+  onComplete();
+}, [isVisible, onComplete]);
+
+// Etter
+const onCompleteRef = useRef(onComplete);
+onCompleteRef.current = onComplete;
+
+useEffect(() => {
+  // ...timers...
+  onCompleteRef.current();
+}, [isVisible]); // onComplete fjernet fra dependencies
+```
+
+### Endrede Filer
+| Fil | Endring |
+|-----|---------|
+| `src/game/components/MythosPhaseOverlay.tsx` | Lagt til `useRef` for callback, fjernet `onComplete` fra dependency array |
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
+
 ## 2026-01-25: Revidert Fase 3-6 i todo.md
 
 ### Endringer

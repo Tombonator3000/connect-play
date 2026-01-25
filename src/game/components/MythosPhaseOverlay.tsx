@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 interface MythosPhaseOverlayProps {
   isVisible: boolean;
@@ -10,6 +10,9 @@ const MythosPhaseOverlay: React.FC<MythosPhaseOverlayProps> = ({
   onComplete,
 }) => {
   const [phase, setPhase] = useState<'entering' | 'visible' | 'exiting' | 'hidden'>('hidden');
+  // Use ref to store onComplete to avoid re-triggering useEffect on every render
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     if (isVisible) {
@@ -26,7 +29,7 @@ const MythosPhaseOverlay: React.FC<MythosPhaseOverlayProps> = ({
 
       const hideTimer = setTimeout(() => {
         setPhase('hidden');
-        onComplete();
+        onCompleteRef.current();
       }, 2500);
 
       return () => {
@@ -37,7 +40,7 @@ const MythosPhaseOverlay: React.FC<MythosPhaseOverlayProps> = ({
     } else {
       setPhase('hidden');
     }
-  }, [isVisible, onComplete]);
+  }, [isVisible]);
 
   if (phase === 'hidden') return null;
 
