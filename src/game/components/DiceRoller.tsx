@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Sparkles, Skull, Check, X, Star } from 'lucide-react';
 
 interface DiceRollerProps {
@@ -12,6 +12,11 @@ const DiceRoller: React.FC<DiceRollerProps> = ({ values, onComplete }) => {
   const [shakeOffsets, setShakeOffsets] = useState<{ x: number, y: number }[]>(values.map(() => ({ x: 0, y: 0 })));
   const [isRolling, setIsRolling] = useState(true);
   const [showParticles, setShowParticles] = useState(false);
+
+  // Use ref to store onComplete callback to avoid useEffect dependency issues
+  // This prevents the animation from restarting when onComplete reference changes
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -30,14 +35,14 @@ const DiceRoller: React.FC<DiceRollerProps> = ({ values, onComplete }) => {
       setShakeOffsets(values.map(() => ({ x: 0, y: 0 })));
       setIsRolling(false);
       setShowParticles(true);
-      setTimeout(onComplete, 2500);
+      setTimeout(() => onCompleteRef.current(), 2500);
     }, 1200);
 
     return () => {
       clearInterval(interval);
       clearTimeout(timeout);
     };
-  }, [values, onComplete]);
+  }, [values]);
 
   const Particles = ({ type }: { type: 'crit' | 'fail' | 'normal' }) => {
     const color = type === 'crit' ? 'text-gold' : type === 'fail' ? 'text-primary' : 'text-green-400';

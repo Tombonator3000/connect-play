@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Player, Enemy } from '../types';
 import { getCharacterPortrait } from '../utils/characterAssets';
 import { getMonsterDisplayName } from '../utils/monsterAssets';
@@ -44,6 +44,11 @@ const CombatOverlay: React.FC<CombatOverlayProps> = ({
   const playerPortrait = player.customPortraitUrl || getCharacterPortrait(player.id);
   const bestiaryInfo = BESTIARY[enemy.type];
 
+  // Use ref to store onComplete callback to avoid useEffect dependency issues
+  // This prevents the animation from restarting when onComplete reference changes
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
   // Animate dice rolling
   useEffect(() => {
     const allDice = [...attackRolls, ...defenseRolls];
@@ -74,7 +79,7 @@ const CombatOverlay: React.FC<CombatOverlayProps> = ({
 
           // Auto-close after showing result
           setTimeout(() => {
-            onComplete();
+            onCompleteRef.current();
           }, 2000);
         }, 800);
       }, 1000);
@@ -84,7 +89,7 @@ const CombatOverlay: React.FC<CombatOverlayProps> = ({
       clearInterval(rollInterval);
       clearTimeout(stopRolling);
     };
-  }, [attackRolls, defenseRolls, onComplete]);
+  }, [attackRolls, defenseRolls]);
 
   const renderDie = (value: number, index: number, isSuccess: boolean, isAttack: boolean) => {
     const rotation = diceRotations[isAttack ? index : attackRolls.length + index] || 0;

@@ -1,5 +1,52 @@
 # Development Log
 
+## 2026-01-25: Fix Dice Rolling Freeze Bug
+
+### Problem
+Spillet hang seg under terningkast-animasjonen. Terningene viste bare "1" og animasjonen fullførte aldri.
+
+### Rot-årsak
+Både `DiceRoller.tsx` og `CombatOverlay.tsx` hadde `onComplete` callback i useEffect dependency array. Siden `resolveDiceResult` i ShadowsGame.tsx IKKE var wrappet i `useCallback`, fikk den ny referanse ved hver render. Dette forårsaket:
+
+1. DiceRoller/CombatOverlay rendres → useEffect starter animasjon
+2. State oppdateres → ShadowsGame re-rendrer → ny `resolveDiceResult` referanse
+3. `onComplete` endres → useEffect cleanup kjører → clearTimeout/clearInterval
+4. useEffect kjører på nytt → animasjon restartes fra begynnelsen
+5. Uendelig løkke - animasjonen fullføres aldri
+
+### Løsning
+Brukte `useRef` pattern for å lagre `onComplete` callback, slik at useEffect ikke er avhengig av den:
+
+```typescript
+// Use ref to store onComplete callback to avoid useEffect dependency issues
+const onCompleteRef = useRef(onComplete);
+onCompleteRef.current = onComplete;
+
+useEffect(() => {
+  // ... animation logic ...
+  setTimeout(() => onCompleteRef.current(), 2500);
+}, [values]); // onComplete removed from dependencies
+```
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/components/DiceRoller.tsx` | Brukte useRef for onComplete, fjernet fra useEffect deps |
+| `src/game/components/CombatOverlay.tsx` | Samme fix som DiceRoller |
+
+### Teknisk Forklaring
+Ref-patternet fungerer fordi:
+1. `useRef` returnerer et stabilt objekt (samme referanse mellom renders)
+2. `.current` oppdateres synkront til siste callback
+3. useEffect trenger ikke re-kjøres siden ref-objektet ikke endres
+4. Når timeout trigges, leser den `.current` som alltid har riktig callback
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
+
 ## 2026-01-25: GM Narration Display Improvements
 
 ### Oppgave
