@@ -303,6 +303,34 @@ const ShadowsGame: React.FC = () => {
     });
   }, [settings.masterVolume, settings.musicVolume, settings.sfxVolume]);
 
+  // Sync Voice GM settings with AI Game Master when they change
+  useEffect(() => {
+    aiGameMaster.updateSettings({
+      enabled: settings.aiGMEnabled,
+      voiceEnabled: settings.voiceGMEnabled,
+      voiceVolume: settings.voiceGMVolume / 100, // Convert from 0-100 to 0-1
+      voiceRate: settings.voiceGMSpeed / 100, // Convert from 50-150 to 0.5-1.5
+      narrateExploration: settings.narrateExploration,
+      narrateCombat: settings.narrateCombat,
+      narrateSanity: settings.narrateSanity,
+      narrateDoom: settings.narrateDoom,
+      narrateDiscovery: settings.narrateDiscovery,
+      narrateAmbient: settings.narrateAmbient,
+    });
+  }, [
+    settings.aiGMEnabled,
+    settings.voiceGMEnabled,
+    settings.voiceGMVolume,
+    settings.voiceGMSpeed,
+    settings.narrateExploration,
+    settings.narrateCombat,
+    settings.narrateSanity,
+    settings.narrateDoom,
+    settings.narrateDiscovery,
+    settings.narrateAmbient,
+    aiGameMaster,
+  ]);
+
   const [state, setState] = useState<GameState>(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -4273,6 +4301,8 @@ const ShadowsGame: React.FC = () => {
         settings={settings}
         onSettingsChange={setSettings}
         onResetData={handleResetData}
+        ttsAvailable={aiGameMaster.ttsAvailable}
+        ttsProvider={aiGameMaster.ttsProvider}
       />
 
       {/* Advanced Visual Effects (GPU-accelerated) - only load when enabled */}

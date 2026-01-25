@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   X, Volume2, Monitor, Gamepad2, Palette, HardDrive,
   Contrast, Sparkles, Grid3X3, Zap, Maximize, ZoomIn,
-  Flame, Wand2, Cpu
+  Flame, Wand2, Cpu, Mic, MessageSquare, VolumeX
 } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
@@ -13,6 +13,17 @@ export interface GameSettings {
   masterVolume: number;
   musicVolume: number;
   sfxVolume: number;
+  // Voice GM (AI Game Master)
+  voiceGMEnabled: boolean;
+  voiceGMVolume: number; // 0-100
+  voiceGMSpeed: number; // 50-150 (representing 0.5x - 1.5x)
+  aiGMEnabled: boolean;
+  narrateExploration: boolean;
+  narrateCombat: boolean;
+  narrateSanity: boolean;
+  narrateDoom: boolean;
+  narrateDiscovery: boolean;
+  narrateAmbient: boolean;
   // Display
   highContrast: boolean;
   reduceMotion: boolean;
@@ -34,6 +45,17 @@ const DEFAULT_SETTINGS: GameSettings = {
   masterVolume: 80,
   musicVolume: 60,
   sfxVolume: 100,
+  // Voice GM defaults
+  voiceGMEnabled: true,
+  voiceGMVolume: 80,
+  voiceGMSpeed: 90, // 0.9x - slightly slower for dramatic effect
+  aiGMEnabled: true,
+  narrateExploration: true,
+  narrateCombat: true,
+  narrateSanity: true,
+  narrateDoom: true,
+  narrateDiscovery: true,
+  narrateAmbient: false, // Ambient is opt-in (can be frequent)
   highContrast: false,
   reduceMotion: false,
   particles: true,
@@ -56,6 +78,9 @@ interface OptionsMenuProps {
   settings: GameSettings;
   onSettingsChange: (settings: GameSettings) => void;
   onResetData: () => void;
+  // TTS status (optional, passed from ShadowsGame)
+  ttsAvailable?: boolean;
+  ttsProvider?: 'qwen-local' | 'web-speech' | 'none';
 }
 
 const OptionsMenu: React.FC<OptionsMenuProps> = ({
@@ -64,6 +89,8 @@ const OptionsMenu: React.FC<OptionsMenuProps> = ({
   settings,
   onSettingsChange,
   onResetData,
+  ttsAvailable = true,
+  ttsProvider = 'web-speech',
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('audio');
   const [confirmReset, setConfirmReset] = useState(false);
@@ -144,6 +171,197 @@ const OptionsMenu: React.FC<OptionsMenuProps> = ({
             step={1}
             className="w-full"
           />
+        </div>
+
+        {/* Voice GM Section */}
+        <div className="pt-6 border-t border-border/50">
+          <div className="flex items-center gap-2 mb-4">
+            <Mic className="text-accent" size={18} />
+            <span className="text-sm font-bold uppercase tracking-wider text-accent">
+              Voice Game Master
+            </span>
+            {ttsAvailable && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/50 text-green-400">
+                {ttsProvider === 'qwen-local' ? 'Qwen3-TTS' : 'Web Speech'}
+              </span>
+            )}
+            {!ttsAvailable && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                Unavailable
+              </span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground italic mb-4">
+            AI-powered narration with voice synthesis for immersive gameplay.
+          </p>
+
+          {/* Enable AI GM */}
+          <div className="flex items-center justify-between bg-card/50 p-4 rounded-xl border border-border mb-3">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                <MessageSquare className="text-primary" size={20} />
+              </div>
+              <div>
+                <div className="font-bold uppercase tracking-wider text-sm">AI Game Master</div>
+                <div className="text-xs text-muted-foreground italic">
+                  Enable AI-generated narration during gameplay.
+                </div>
+              </div>
+            </div>
+            <Switch
+              checked={settings.aiGMEnabled}
+              onCheckedChange={(checked) => updateSetting('aiGMEnabled', checked)}
+            />
+          </div>
+
+          {/* Enable Voice */}
+          <div className="flex items-center justify-between bg-card/50 p-4 rounded-xl border border-border mb-3">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                {settings.voiceGMEnabled ? (
+                  <Volume2 className="text-primary" size={20} />
+                ) : (
+                  <VolumeX className="text-primary" size={20} />
+                )}
+              </div>
+              <div>
+                <div className="font-bold uppercase tracking-wider text-sm">Voice Narration</div>
+                <div className="text-xs text-muted-foreground italic">
+                  Speak narration aloud using text-to-speech.
+                </div>
+              </div>
+            </div>
+            <Switch
+              checked={settings.voiceGMEnabled}
+              onCheckedChange={(checked) => updateSetting('voiceGMEnabled', checked)}
+              disabled={!settings.aiGMEnabled || !ttsAvailable}
+            />
+          </div>
+
+          {/* Voice Volume */}
+          <div className={`space-y-3 mb-3 ${(!settings.aiGMEnabled || !settings.voiceGMEnabled) ? 'opacity-50' : ''}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Volume2 size={16} />
+                <span className="uppercase tracking-wider text-sm font-bold">Voice Volume</span>
+              </div>
+              <span className="text-primary font-bold">{settings.voiceGMVolume}%</span>
+            </div>
+            <Slider
+              value={[settings.voiceGMVolume]}
+              onValueChange={([val]) => updateSetting('voiceGMVolume', val)}
+              max={100}
+              step={1}
+              className="w-full"
+              disabled={!settings.aiGMEnabled || !settings.voiceGMEnabled}
+            />
+          </div>
+
+          {/* Voice Speed */}
+          <div className={`space-y-3 mb-4 ${(!settings.aiGMEnabled || !settings.voiceGMEnabled) ? 'opacity-50' : ''}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Zap size={16} />
+                <span className="uppercase tracking-wider text-sm font-bold">Voice Speed</span>
+              </div>
+              <span className="text-primary font-bold">{(settings.voiceGMSpeed / 100).toFixed(1)}x</span>
+            </div>
+            <Slider
+              value={[settings.voiceGMSpeed]}
+              onValueChange={([val]) => updateSetting('voiceGMSpeed', val)}
+              min={50}
+              max={150}
+              step={5}
+              className="w-full"
+              disabled={!settings.aiGMEnabled || !settings.voiceGMEnabled}
+            />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>0.5x</span>
+              <span>1.0x</span>
+              <span>1.5x</span>
+            </div>
+          </div>
+
+          {/* Narration Types */}
+          <div className={`pt-4 border-t border-border/30 ${!settings.aiGMEnabled ? 'opacity-50' : ''}`}>
+            <p className="text-xs text-muted-foreground mb-3 uppercase tracking-wider font-bold">
+              Narration Types
+            </p>
+
+            <div className="grid grid-cols-2 gap-2">
+              {/* Exploration */}
+              <label className="flex items-center gap-2 p-2 rounded-lg bg-card/30 border border-border/50 cursor-pointer hover:bg-card/50 transition-colors">
+                <Switch
+                  checked={settings.narrateExploration}
+                  onCheckedChange={(checked) => updateSetting('narrateExploration', checked)}
+                  disabled={!settings.aiGMEnabled}
+                  className="scale-75"
+                />
+                <span className="text-xs">Exploration</span>
+              </label>
+
+              {/* Combat */}
+              <label className="flex items-center gap-2 p-2 rounded-lg bg-card/30 border border-border/50 cursor-pointer hover:bg-card/50 transition-colors">
+                <Switch
+                  checked={settings.narrateCombat}
+                  onCheckedChange={(checked) => updateSetting('narrateCombat', checked)}
+                  disabled={!settings.aiGMEnabled}
+                  className="scale-75"
+                />
+                <span className="text-xs">Combat</span>
+              </label>
+
+              {/* Sanity Events */}
+              <label className="flex items-center gap-2 p-2 rounded-lg bg-card/30 border border-border/50 cursor-pointer hover:bg-card/50 transition-colors">
+                <Switch
+                  checked={settings.narrateSanity}
+                  onCheckedChange={(checked) => updateSetting('narrateSanity', checked)}
+                  disabled={!settings.aiGMEnabled}
+                  className="scale-75"
+                />
+                <span className="text-xs">Sanity</span>
+              </label>
+
+              {/* Doom & Phases */}
+              <label className="flex items-center gap-2 p-2 rounded-lg bg-card/30 border border-border/50 cursor-pointer hover:bg-card/50 transition-colors">
+                <Switch
+                  checked={settings.narrateDoom}
+                  onCheckedChange={(checked) => updateSetting('narrateDoom', checked)}
+                  disabled={!settings.aiGMEnabled}
+                  className="scale-75"
+                />
+                <span className="text-xs">Doom & Phases</span>
+              </label>
+
+              {/* Discoveries */}
+              <label className="flex items-center gap-2 p-2 rounded-lg bg-card/30 border border-border/50 cursor-pointer hover:bg-card/50 transition-colors">
+                <Switch
+                  checked={settings.narrateDiscovery}
+                  onCheckedChange={(checked) => updateSetting('narrateDiscovery', checked)}
+                  disabled={!settings.aiGMEnabled}
+                  className="scale-75"
+                />
+                <span className="text-xs">Discoveries</span>
+              </label>
+
+              {/* Ambient */}
+              <label className="flex items-center gap-2 p-2 rounded-lg bg-card/30 border border-border/50 cursor-pointer hover:bg-card/50 transition-colors">
+                <Switch
+                  checked={settings.narrateAmbient}
+                  onCheckedChange={(checked) => updateSetting('narrateAmbient', checked)}
+                  disabled={!settings.aiGMEnabled}
+                  className="scale-75"
+                />
+                <span className="text-xs">Ambient</span>
+              </label>
+            </div>
+
+            {settings.narrateAmbient && settings.aiGMEnabled && (
+              <p className="text-[10px] text-amber-500/60 mt-2 italic">
+                Ambient narration can be frequent. Disable if overwhelming.
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>
