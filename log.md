@@ -1,5 +1,54 @@
 # Development Log
 
+## 2026-01-25: GM Narration Display Improvements
+
+### Oppgave
+1. Når GM kommer med narration så kan den bruke tile description
+2. Plasser GM narration UNDER round counter og doom counter så den ikke blokkerer dette
+
+### Gjennomført
+
+**1. GM Narration bruker nå Tile Description:**
+- Oppdatert `exploration` template i `claudeService.ts` til å inkludere `tile.description`
+- Oppdatert `ambient` template til også å bruke tile description
+- AI kan nå generere mer kontekstuell narration basert på stedets etablerte atmosfære
+
+**2. GM Narration Panel Repositionert:**
+- Flyttet fra `top-4` til `top-20` (mobile) / `top-24` (desktop)
+- Redusert z-index fra `z-[90]` til `z-[40]` (under header bar som er `z-50`)
+- Panel vises nå under Round/Doom counters og blokkerer ikke UI-elementer
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/services/claudeService.ts` | Lagt til tile.description i exploration og ambient templates |
+| `src/game/components/DMNarrationPanel.tsx` | Endret posisjonering og z-index |
+
+### Tekniske Detaljer
+
+**claudeService.ts exploration template:**
+```typescript
+exploration: (ctx: GMNarrationContext) => {
+  const tileDesc = ctx.tile?.description ? `Location atmosphere: "${ctx.tile.description}"` : '';
+  return `${ctx.player?.name || 'The investigator'} enters ${ctx.tile?.name || 'a new area'}. ${ctx.tile?.category || 'Unknown type'}. ${tileDesc} Generate atmospheric entry narration that builds on the location's established mood.`;
+},
+```
+
+**DMNarrationPanel positioning:**
+```css
+/* Før: */
+fixed top-4 left-1/2 -translate-x-1/2 z-[90]
+
+/* Etter: */
+fixed top-20 md:top-24 left-1/2 -translate-x-1/2 z-[40]
+```
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
+
 ## 2026-01-24: Horror Ambient Background Music
 
 ### Oppgave
