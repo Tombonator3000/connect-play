@@ -25014,3 +25014,123 @@ public stop(): void {
 ✅ Bygget kompilerer uten feil
 
 ---
+
+## 2026-01-25: Voice GM Options i Options Menu
+
+### Oppgave
+Legge til Voice GM innstillinger i den generelle Options-menyen slik at spillere kan konfigurere AI Game Master og stemmenarrasjon fra én sentral plass.
+
+### Endringer
+
+#### OptionsMenu.tsx
+- **Utvidet `GameSettings` interface** med nye felter:
+  - `voiceGMEnabled` - Slår stemmenarrasjon av/på
+  - `voiceGMVolume` - Stemmevolum (0-100)
+  - `voiceGMSpeed` - Stemmehastighet (50-150, representerer 0.5x-1.5x)
+  - `aiGMEnabled` - Aktiverer AI Game Master
+  - `narrateExploration` - Narrasjon for utforskning
+  - `narrateCombat` - Narrasjon for kamp
+  - `narrateSanity` - Narrasjon for sanity-hendelser
+  - `narrateDoom` - Narrasjon for doom og faser
+  - `narrateDiscovery` - Narrasjon for oppdagelser
+  - `narrateAmbient` - Ambient narrasjon (opt-in)
+
+- **Ny "Voice Game Master" seksjon** i Audio-tabben:
+  - TTS-status indikator (viser Qwen3-TTS eller Web Speech)
+  - Toggle for AI Game Master
+  - Toggle for Voice Narration
+  - Slider for stemmevolum
+  - Slider for stemmehastighet
+  - 2x3 grid med toggles for narrasjonstyper
+  - Advarsel for ambient narrasjon (kan være hyppig)
+
+- **Nye ikoner importert**: `Mic`, `MessageSquare`, `VolumeX`
+- **Props utvidet** med `ttsAvailable` og `ttsProvider`
+
+#### ShadowsGame.tsx
+- **Ny `useEffect`** som synkroniserer `GameSettings` med `GMSettings`:
+  - Konverterer volum fra 0-100 til 0-1
+  - Konverterer hastighet fra 50-150 til 0.5-1.5
+  - Oppdaterer `aiGameMaster.updateSettings()` når relevante innstillinger endres
+
+- **OptionsMenu** får nå `ttsAvailable` og `ttsProvider` props fra `aiGameMaster`
+
+### UI-design
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     AUDIO SETTINGS                              │
+├─────────────────────────────────────────────────────────────────┤
+│  Master Volume    ████████████████░░░░  80%                     │
+│  Music Volume     ██████████████░░░░░░  60%                     │
+│  SFX Volume       ████████████████████  100%                    │
+├─────────────────────────────────────────────────────────────────┤
+│  🎤 VOICE GAME MASTER                    [Web Speech]           │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────┐           │
+│  │ 💬 AI Game Master                         [✓]  │           │
+│  │    Enable AI-generated narration                │           │
+│  └─────────────────────────────────────────────────┘           │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────┐           │
+│  │ 🔊 Voice Narration                        [✓]  │           │
+│  │    Speak narration aloud using TTS              │           │
+│  └─────────────────────────────────────────────────┘           │
+│                                                                 │
+│  Voice Volume     ████████████████░░░░  80%                     │
+│  Voice Speed      ██████████████░░░░░░  0.9x                    │
+│                                                                 │
+│  NARRATION TYPES                                                │
+│  ┌──────────────┐  ┌──────────────┐                            │
+│  │[✓] Exploration│  │[✓] Combat   │                            │
+│  ├──────────────┤  ├──────────────┤                            │
+│  │[✓] Sanity    │  │[✓] Doom     │                            │
+│  ├──────────────┤  ├──────────────┤                            │
+│  │[✓] Discoveries│ │[ ] Ambient  │                            │
+│  └──────────────┘  └──────────────┘                            │
+│                                                                 │
+│  ⚠️ Ambient narration can be frequent.                          │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Arkitektur - Dataflyt
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     OPTIONS MENU (UI)                           │
+│                                                                 │
+│  GameSettings {                                                 │
+│    voiceGMEnabled, voiceGMVolume, voiceGMSpeed,                │
+│    aiGMEnabled, narrateExploration, narrateCombat, ...         │
+│  }                                                              │
+└─────────────────────────────────┬───────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   SHADOWSGAME (Controller)                      │
+│                                                                 │
+│  useEffect → aiGameMaster.updateSettings({                     │
+│    enabled: settings.aiGMEnabled,                               │
+│    voiceEnabled: settings.voiceGMEnabled,                       │
+│    voiceVolume: settings.voiceGMVolume / 100,                  │
+│    voiceRate: settings.voiceGMSpeed / 100,                     │
+│    ...                                                          │
+│  })                                                             │
+└─────────────────────────────────┬───────────────────────────────┘
+                                  │
+                                  ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                   useAIGameMaster (Hook)                        │
+│                                                                 │
+│  GMSettings → ttsService.updateConfig({                        │
+│    volume, rate                                                 │
+│  })                                                             │
+│                                                                 │
+│  → ttsService.speak(narration)                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
