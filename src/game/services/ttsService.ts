@@ -82,8 +82,9 @@ class TTSService {
 
   private audioContext: AudioContext | null = null;
   private currentUtterance: SpeechSynthesisUtterance | null = null;
-  private audioQueue: string[] = [];
-  private isPlaying: boolean = false;
+  private currentAudio: HTMLAudioElement | null = null;
+  private speechQueue: string[] = [];
+  private isProcessingQueue: boolean = false;
   private webSpeechVoice: SpeechSynthesisVoice | null = null;
   private statusListeners: Set<(status: TTSStatus) => void> = new Set();
 
@@ -254,6 +255,10 @@ class TTSService {
   // SPEECH SYNTHESIS
   // ============================================================================
 
+  /**
+   * Queue text for speech synthesis.
+   * The text will be spoken after any currently playing speech finishes.
+   */
   public async speak(text: string): Promise<void> {
     if (!this.config.enabled || !this.status.isAvailable) {
       return;
@@ -262,11 +267,46 @@ class TTSService {
     // Clean up text for speech
     const cleanText = this.prepareTextForSpeech(text);
 
-    if (this.status.activeProvider === 'qwen-local') {
-      await this.speakWithQwen(cleanText);
-    } else if (this.status.activeProvider === 'web-speech') {
-      await this.speakWithWebSpeech(cleanText);
+    // Add to queue and process
+    this.speechQueue.push(cleanText);
+    console.log('[TTS] Added to queue. Queue length:', this.speechQueue.length);
+
+    // Start processing if not already processing
+    if (!this.isProcessingQueue) {
+      await this.processQueue();
     }
+  }
+
+  /**
+   * Process the speech queue sequentially.
+   * Ensures one narration finishes before the next starts.
+   */
+  private async processQueue(): Promise<void> {
+    if (this.isProcessingQueue) {
+      return;
+    }
+
+    this.isProcessingQueue = true;
+
+    while (this.speechQueue.length > 0) {
+      const text = this.speechQueue.shift();
+      if (!text) continue;
+
+      console.log('[TTS] Processing speech. Remaining in queue:', this.speechQueue.length);
+
+      try {
+        if (this.status.activeProvider === 'qwen-local') {
+          await this.speakWithQwen(text);
+        } else if (this.status.activeProvider === 'web-speech') {
+          await this.speakWithWebSpeech(text);
+        }
+      } catch (error) {
+        console.error('[TTS] Speech failed:', error);
+      }
+    }
+
+    this.isProcessingQueue = false;
+    console.log('[TTS] Queue processing complete');
   }
 
   private prepareTextForSpeech(text: string): string {
@@ -348,18 +388,24 @@ class TTSService {
     return new Promise((resolve, reject) => {
       const audio = new Audio(URL.createObjectURL(blob));
       audio.volume = this.config.volume;
+      this.currentAudio = audio;
 
       audio.onended = () => {
         URL.revokeObjectURL(audio.src);
+        this.currentAudio = null;
         resolve();
       };
 
       audio.onerror = () => {
         URL.revokeObjectURL(audio.src);
+        this.currentAudio = null;
         reject(new Error('Audio playback failed'));
       };
 
-      audio.play().catch(reject);
+      audio.play().catch((err) => {
+        this.currentAudio = null;
+        reject(err);
+      });
     });
   }
 
@@ -368,11 +414,24 @@ class TTSService {
   // ============================================================================
 
   public stop(): void {
+    // Stop Web Speech
     if (this.status.activeProvider === 'web-speech') {
       speechSynthesis.cancel();
     }
     this.currentUtterance = null;
-    this.audioQueue = [];
+
+    // Stop Qwen audio playback
+    if (this.currentAudio) {
+      this.currentAudio.pause();
+      this.currentAudio.currentTime = 0;
+      URL.revokeObjectURL(this.currentAudio.src);
+      this.currentAudio = null;
+    }
+
+    // Clear the queue
+    this.speechQueue = [];
+    this.isProcessingQueue = false;
+    console.log('[TTS] Stopped and cleared queue');
   }
 
   public pause(): void {
@@ -389,9 +448,13 @@ class TTSService {
 
   public isSpeaking(): boolean {
     if (this.status.activeProvider === 'web-speech') {
-      return speechSynthesis.speaking;
+      return speechSynthesis.speaking || this.isProcessingQueue;
     }
-    return this.isPlaying;
+    return this.currentAudio !== null || this.isProcessingQueue;
+  }
+
+  public getQueueLength(): number {
+    return this.speechQueue.length;
   }
 
   // ============================================================================

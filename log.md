@@ -24933,3 +24933,84 @@ Nye voice-innstillinger i GM Settings:
 
 ---
 
+
+---
+
+## 2026-01-25: Voice Narration Timing Fix
+
+### Problem
+Voice narration startet ny tale før forrige var ferdig. Når flere GM-narrations kom raskt etter hverandre, ble talene overlappende og vanskelige å forstå.
+
+### Løsning
+Implementert en sekvensiell kø-mekanisme i `ttsService.ts`:
+
+1. **Speech Queue**: Alle tale-forespørsler legges i en kø (`speechQueue`)
+2. **Sekvensiell prosessering**: `processQueue()` prosesserer én tale om gangen
+3. **Vente på ferdig**: Hver tale må fullføres før neste starter
+4. **Forbedret stop()**: Stopper pågående tale og tømmer køen
+
+### Endrede Filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/services/ttsService.ts` | Lagt til kø-system for sekvensiell tale |
+
+### Kode-endringer i ttsService.ts
+
+```typescript
+// Nye variabler
+private currentAudio: HTMLAudioElement | null = null;
+private speechQueue: string[] = [];
+private isProcessingQueue: boolean = false;
+
+// speak() legger nå i kø og starter prosessering
+public async speak(text: string): Promise<void> {
+  this.speechQueue.push(cleanText);
+  if (!this.isProcessingQueue) {
+    await this.processQueue();
+  }
+}
+
+// Ny metode som prosesserer køen sekvensielt
+private async processQueue(): Promise<void> {
+  this.isProcessingQueue = true;
+  while (this.speechQueue.length > 0) {
+    const text = this.speechQueue.shift();
+    await this.speakWithQwen/WebSpeech(text); // Venter på ferdig
+  }
+  this.isProcessingQueue = false;
+}
+
+// Forbedret stop() som tømmer køen
+public stop(): void {
+  speechSynthesis.cancel();
+  if (this.currentAudio) {
+    this.currentAudio.pause();
+  }
+  this.speechQueue = [];
+  this.isProcessingQueue = false;
+}
+```
+
+### Hvordan det fungerer
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    NARRATION KØ-SYSTEM                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  GM Event 1 ──┐                                                 │
+│               │    ┌──────────┐    ┌─────────────┐             │
+│  GM Event 2 ──┼───▶│  QUEUE   │───▶│  PROCESS    │──▶ Lydutgang│
+│               │    │  [1,2,3] │    │  En om gangen│             │
+│  GM Event 3 ──┘    └──────────┘    └─────────────┘             │
+│                                                                 │
+│  Resultat: Tale 1 ferdig → Tale 2 ferdig → Tale 3 ferdig       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
