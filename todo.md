@@ -4,29 +4,28 @@
 
 ## Manglende Grafikk (Identifisert 2026-01-25)
 
-### Høy Prioritet: Monster-Grafikk (15 stk)
+### ✅ Høy Prioritet: Monster-Grafikk (14 stk) - FERDIG 2026-01-25
 
-Disse monstrene bruker placeholder-bilder fra andre monstre:
+Alle monstre har nå unike AI-genererte portretter:
 
-| Monster | Nåværende Placeholder | Status |
-|---------|----------------------|--------|
-| ghast | ghoul.png | [ ] Mangler |
-| zoog | mi-go.png | [ ] Mangler |
-| rat_thing | ghoul.png | [ ] Mangler |
-| fire_vampire | boss.png | [ ] Mangler |
-| dimensional_shambler | nightgaunt.png | [ ] Mangler |
-| serpent_man | deepone.png | [ ] Mangler |
-| gug | shoggoth.png | [ ] Mangler |
-| cthonian | shoggoth.png | [ ] Mangler |
-| tcho_tcho | cultist.png | [ ] Mangler |
-| flying_polyp | hunting_horror.png | [ ] Mangler |
-| lloigor | boss.png | [ ] Mangler |
-| gnoph_keh | dark_young.png | [ ] Mangler |
-| colour_out_of_space | boss.png | [ ] Mangler |
-| elder_thing | star_spawn.png | [ ] Mangler |
+| Monster | Status |
+|---------|--------|
+| ghast | ✅ Generert |
+| zoog | ✅ Generert |
+| rat_thing | ✅ Generert |
+| fire_vampire | ✅ Generert |
+| dimensional_shambler | ✅ Generert |
+| serpent_man | ✅ Generert |
+| gug | ✅ Generert |
+| cthonian | ✅ Generert |
+| tcho_tcho | ✅ Generert |
+| flying_polyp | ✅ Generert |
+| lloigor | ✅ Generert |
+| gnoph_keh | ✅ Generert |
+| colour_out_of_space | ✅ Generert |
+| elder_thing | ✅ Generert |
 
 **Filplassering:** `/src/assets/monsters/`
-**Mapping-fil:** `src/game/data/monsterAssets.ts`
 
 ### Medium Prioritet: Item-Ikoner
 

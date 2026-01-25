@@ -1,5 +1,47 @@
 # Shadows of the 1920s - Development Log
 
+## 2026-01-25
+
+### Session 14 - Monster Graphics & Item Icons
+
+#### Monster Portraits Generated (14 nye):
+AI-genererte Lovecraft-portretter for alle monstre som manglet unike bilder:
+- **Ghast** - Blek, langlemmet skapning fra krypter
+- **Zoog** - Liten flaggermus-rotte fra Dreamlands
+- **Rat-Thing** - Brown Jenkin-inspirert heksefamiliar
+- **Fire Vampire** - Levende flammevesen fra verdensrommet
+- **Dimensional Shambler** - Grå dimensjonsreisende med tentakler
+- **Serpent Man** - Reptilhumanoid magiker
+- **Gug** - Massiv firarmet skapning
+- **Cthonian** - Kjempeorm med telepatiske evner
+- **Tcho-Tcho** - Degenerert menneskestamme
+- **Flying Polyp** - Semi-synlig eldgammel rase
+- **Lloigor** - Energivesen med lyn-silhuett
+- **Gnoph-Keh** - Arktisk seksbent beist
+- **Colour Out of Space** - Prismatisk kosmisk entitet
+- **Elder Thing** - Antarktisk alien fra At the Mountains of Madness
+
+#### Item Icons Added (12 nye SVG-ikoner):
+- **Tools**: Rope, Grappling Hook
+- **Consumables**: Morphine (syringe), Smelling Salts, Ancient Tome
+- **Armor**: Chain Mail, Heavy Coat, Leather Vest
+- **Relics**: Silver Dagger, Powder of Ibn Ghazi
+- **Weapons**: Axe, Crossbow
+
+#### Build-feil fikset:
+- **claudeService.ts** - Endret `state.weatherCondition` til `state.weatherState?.global`
+
+#### Filer endret:
+- `src/game/utils/monsterAssets.ts` - Nye monster-importer og mappinger
+- `src/game/utils/AssetLibrary.ts` - Oppdatert MONSTER_PORTRAITS
+- `src/game/components/ItemIcons.tsx` - 12 nye SVG-ikoner
+- `src/game/services/claudeService.ts` - Build-fix
+
+#### Nye assets:
+- `src/assets/monsters/ghast.png` → `elder_thing.png` (14 bilder)
+
+---
+
 ## 2026-01-21
 
 ### Session 13 - Audio Structure & Build Fixes
