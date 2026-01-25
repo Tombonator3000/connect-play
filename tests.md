@@ -8,10 +8,18 @@ This document tracks the test coverage implementation for the Shadows of the 192
 
 | Module | Tests | Status |
 |--------|-------|--------|
-| `diceUtils.ts` | 48 tests | Implemented |
-| `combatUtils.ts` | 76 tests | Implemented |
-| `criticals.ts` | 39 tests | Implemented |
-| **Total** | **163 tests** | **All Passing** |
+| `diceUtils.ts` | 48 tests | ✅ Implemented |
+| `combatUtils.ts` | 76 tests | ✅ Implemented |
+| `criticals.ts` | 39 tests | ✅ Implemented |
+| `scenarioGenerator.ts` | 58 tests | ✅ Implemented |
+| `scenarioGeneratorHelpers.ts` | 57 tests | ✅ Implemented |
+| `scenarioValidator.ts` | 42 tests | ✅ Implemented |
+| `monsterAI.ts` | 54 tests | ✅ Implemented |
+| `tileConnectionSystem.ts` | 141 tests | ✅ Implemented |
+| `survivorSystem.ts` | 77 tests | ✅ Implemented |
+| `objectiveSpawner.ts` | 55 tests | ✅ Implemented |
+| `mythosPhaseUtils.ts` | 39 tests | ✅ Implemented |
+| **Total** | **686 tests** | **All Passing** |
 
 ---
 
@@ -264,6 +272,347 @@ This document tracks the test coverage implementation for the Shadows of the 192
 
 ---
 
+## Scenario Generator (`src/game/utils/scenarioGenerator.ts`)
+
+**Test File:** `src/game/utils/scenarioGenerator.test.ts`
+
+### Configuration Constants Tests
+- MISSION_TYPES array contains required types
+- LOCATION_POOLS has entries for all themes
+- ENEMY_POOLS has entries for all themes
+- THEME_ENEMY_MAPPING maps mission types to themes
+
+### Narrative Content Tests
+- NARRATIVE_TEMPLATES contains required templates
+- Templates have proper structure with scenes and text arrays
+- RANDOM_TITLES contains themed title options
+- RANDOM_BRIEFINGS contains themed briefing templates
+
+### `generateRandomScenario()` Tests
+- Returns valid scenario with required fields
+- Generates objectives based on mission type
+- Creates location entries with proper structure
+- Produces syntactically correct story content
+
+### `generateScenarioPool()` Tests
+- Generates requested number of scenarios
+- Uses specified theme when provided
+- Returns array of valid scenarios
+
+### `generateValidatedScenario()` Tests
+- Returns validated scenario
+- Scenario passes winnability checks
+
+---
+
+## Scenario Generator Helpers (`src/game/utils/scenarioGeneratorHelpers.ts`)
+
+**Test File:** `src/game/utils/scenarioGeneratorHelpers.test.ts`
+
+### Utility Functions Tests
+- `randomElement()` returns valid array element
+- `randomRange()` returns value within bounds
+- `generateId()` creates unique identifiers
+
+### Template Interpolation Tests
+- `interpolateTemplate()` replaces placeholders
+- Handles multiple placeholders
+- Preserves text without placeholders
+
+### Context Building Tests
+- `buildNarrativeContext()` includes theme elements
+- Context contains villain and location info
+
+### Location Generation Tests
+- `generateLocations()` creates valid location arrays
+- Locations have proper hex positioning
+- Respects count parameters
+
+### Objective Generation Tests
+- `generateObjectives()` creates mission-specific objectives
+- Kill objectives have enemy targets
+- Collect objectives have item requirements
+- Survival objectives have turn counts
+
+### Doom Events Tests
+- `generateDoomEvents()` creates timed events
+- Events have doom thresholds
+- Events include descriptions and effects
+
+### Title/Briefing Generation Tests
+- `generateTitle()` creates themed titles
+- `generateBriefing()` creates narrative briefings
+
+---
+
+## Scenario Validator (`src/game/utils/scenarioValidator.ts`)
+
+**Test File:** `src/game/utils/scenarioValidator.test.ts`
+
+### `validateScenarioWinnability()` Tests
+- Returns valid result for winnable scenarios
+- Identifies missing required items
+- Identifies unreachable objectives
+- Calculates objective completion feasibility
+
+### `isScenarioBasicallyWinnable()` Tests
+- Returns true for valid scenarios
+- Returns false for impossible scenarios
+- Handles edge cases gracefully
+
+### `getValidationSummary()` Tests
+- Generates human-readable summary
+- Lists all issues found
+- Provides recommendations
+
+### `autoFixScenario()` Tests
+- Adds missing quest items
+- Adjusts impossible turn counts
+- Places required enemies for kill objectives
+
+### Integration Tests
+- `generateValidatedScenario()` produces winnable scenarios
+- Validation catches common scenario bugs
+
+---
+
+## Monster AI (`src/game/utils/monsterAI.ts`)
+
+**Test File:** `src/game/utils/monsterAI.test.ts`
+
+### Flanking & Pack Tactics Tests
+- `calculateFlankingBonus()` rewards surrounding enemies
+- `calculatePackBonus()` rewards nearby allies
+- Combined bonuses affect combat decisions
+
+### Target Prioritization Tests
+- `prioritizeTargets()` ranks players by threat
+- Considers player HP, position, and equipment
+- Weights wounded players higher
+
+### Pathfinding Tests
+- `findPathToTarget()` finds valid routes
+- Avoids blocked tiles
+- Handles unreachable targets
+
+### Special Movement Tests
+- Teleport-capable enemies bypass walls
+- Flying enemies ignore terrain
+- Phase-shift enemies have special movement
+
+### Ranged Attack Tests
+- `canAttackFromRange()` checks line of sight
+- `calculateCoverPenalty()` applies terrain modifiers
+- Ranged enemies prefer distance
+
+### Special Abilities Tests
+- `processSpecialAbility()` handles unique powers
+- Fear effects cause sanity damage
+- Summoning creates new enemies
+
+### Flee/Morale Tests
+- `shouldFlee()` checks morale thresholds
+- Wounded enemies may retreat
+- Boss enemies never flee
+
+### Turn Processing Tests
+- `processEnemyTurn()` handles full AI cycle
+- Enemies move then attack
+- Returns updated enemy states
+
+---
+
+## Tile Connection System (`src/game/tileConnectionSystem.ts`)
+
+**Test File:** `src/game/tileConnectionSystem.test.ts`
+
+### Edge Compatibility Tests (30 tests)
+- `isEdgeCompatible()` validates matching edges
+- Door-to-door connections valid
+- Open-to-open connections valid
+- Wall-to-wall compatible but not traversable
+- Mismatched edges rejected
+
+### Direction Utilities Tests (18 tests)
+- `getOppositeDirection()` returns correct opposite
+- `getAdjacentDirections()` returns neighbors
+- Direction wrapping handles edge cases
+
+### Edge Rotation Tests (24 tests)
+- `rotateEdges()` applies rotation correctly
+- 60° increments supported
+- Full 360° returns original
+
+### Tile Template Tests (69 tests)
+- Foyer templates (9 tests)
+- Corridor templates (12 tests)
+- Room templates (9 tests)
+- Stairs templates (9 tests)
+- Basement templates (6 tests)
+- Crypt templates (6 tests)
+- Facade templates (9 tests)
+- Street templates (6 tests)
+- Nature templates (3 tests)
+
+---
+
+## Survivor System (`src/game/utils/survivorSystem.ts`)
+
+**Test File:** `src/game/utils/survivorSystem.test.ts`
+
+### Template Tests (12 tests)
+- `SURVIVOR_TEMPLATES` contains all types
+- Templates have required properties
+- Abilities have proper effects
+
+### Spawn Configuration Tests (6 tests)
+- Spawn chance within valid range
+- Required tiles for spawning
+- Max survivors per game
+
+### `selectSurvivorType()` Tests (6 tests)
+- Returns valid survivor type
+- Respects scenario theme
+- Randomization works correctly
+
+### `createSurvivor()` Tests (9 tests)
+- Creates survivor with proper stats
+- Assigns unique ID
+- Sets correct position
+
+### `shouldSpawnSurvivor()` Tests (12 tests)
+- Returns true when conditions met
+- Returns false at max capacity
+- Considers exploration progress
+
+### `startFollowing()` Tests (6 tests)
+- Updates survivor state
+- Links to rescue player
+- Clears previous follower
+
+### `rescueSurvivor()` Tests (9 tests)
+- Awards rescue points
+- Triggers survivor ability
+- Updates game state
+
+### `killSurvivor()` Tests (6 tests)
+- Removes survivor from game
+- Triggers sanity loss for nearby players
+- Updates statistics
+
+### `useSurvivorAbility()` Tests (6 tests)
+- Applies ability effect
+- Respects cooldowns
+- Returns updated state
+
+### `shouldTargetSurvivor()` Tests (3 tests)
+- Enemies may target survivors
+- Considers survivor value
+
+### `processSurvivorTurn()` Tests (2 tests)
+- Survivors follow their rescuer
+- Idle survivors may wander
+
+---
+
+## Objective Spawner (`src/game/utils/objectiveSpawner.ts`)
+
+**Test File:** `src/game/utils/objectiveSpawner.test.ts`
+
+### Lookup Helper Tests (6 tests)
+- `getQuestItemDefinition()` returns correct item
+- `getQuestTileDefinition()` returns correct tile
+- Returns undefined for unknown types
+
+### Quest Item Definition Tests (9 tests)
+- All quest item types defined
+- Items have required properties
+- Descriptions are localized (Norwegian)
+
+### Initialization Tests (6 tests)
+- `initializeObjectiveSpawnState()` creates valid state
+- State tracks all scenario objectives
+- Pity timer initialized correctly
+
+### Spawn Probability Tests (12 tests)
+- `calculateSpawnProbability()` increases over time
+- Pity timer affects probability
+- Caps at maximum probability
+
+### Quest Tile Reveal Tests (6 tests)
+- `shouldRevealQuestTile()` checks conditions
+- Returns true when prerequisites met
+- Returns false for already revealed
+
+### Collection Tests (6 tests)
+- `collectQuestItem()` updates state
+- Marks objective progress
+- Handles multiple items per objective
+
+### Tile Exploration Tests (3 tests)
+- `processTileExploration()` may spawn items
+- Updates pity timer on no spawn
+
+### Guaranteed Spawn Tests (6 tests)
+- `checkGuaranteedSpawns()` detects critical state
+- Forces spawns when doom is low
+- Returns urgency level
+
+### Immediate Spawn Tests (3 tests)
+- `spawnRevealedQuestTileImmediately()` places tiles
+- Selects best available location
+
+### Spawn Status Tests (3 tests)
+- `getObjectiveSpawnStatus()` returns progress
+- Tracks spawned vs required items
+
+### Victory Helper Tests (3 tests)
+- `shouldSpawnVictoryTile()` checks conditions
+- Returns true when all objectives complete
+
+---
+
+## Mythos Phase Utils (`src/game/utils/mythosPhaseUtils.ts`)
+
+**Test File:** `src/game/utils/mythosPhaseUtils.test.ts`
+
+### Portal Spawning Tests (10 tests)
+- `collectActivePortals()` finds active portals
+- Ignores inactive portals
+- Uses default spawn parameters
+- `processPortalSpawns()` rolls for spawns
+- Randomly selects enemy types
+- Creates floating text messages
+
+### Combat Processing Tests (6 tests)
+- `applyDamageToPlayer()` reduces HP/sanity
+- Marks player as dead at 0 HP
+- Reports newly dead status
+- Clamps at minimum 0
+
+### Event Card Tests (2 tests)
+- `tryDrawEventCard()` has 50% chance
+- Returns null when no draw
+
+### Phase Transition Tests (16 tests)
+- `resetPlayersForNewTurn()` restores actions
+- Uses maxActions when available
+- Applies AP penalties
+- Dead players get 0 base actions
+- Journalists get free movement
+- `shouldApplyMadnessEffects()` checks madness
+- `areAllPlayersDead()` checks game over
+
+### Helper Function Tests (2 tests)
+- `createLogEntry()` formats correctly
+
+### Integration Flow Tests (3 tests)
+- Complete mythos phase flow
+- Player death handling
+- Game over detection
+
+---
+
 ## Test Fixtures
 
 The test suite includes reusable fixtures for creating mock objects:
@@ -309,16 +658,17 @@ npx vitest run src/game/constants/diceUtils.test.ts
 
 ## Recommended Next Steps
 
-### Tier 2: Game Systems (Priority)
-1. `scenarioGenerator.ts` - Random scenario creation
-2. `scenarioValidator.ts` - Winnability validation
-3. `monsterAI.ts` - Enemy decision logic
-4. `tileConnectionSystem.ts` - Hex grid connectivity
-5. `survivorSystem.ts` - Character traits
-6. `objectiveSpawner.ts` - Objective placement
-7. `mythosPhaseUtils.ts` - Phase progression
+### Tier 2: Game Systems ✅ COMPLETE
+All 7 modules fully tested:
+1. ✅ `scenarioGenerator.ts` - Random scenario creation (58 tests)
+2. ✅ `scenarioValidator.ts` - Winnability validation (42 tests)
+3. ✅ `monsterAI.ts` - Enemy decision logic (54 tests)
+4. ✅ `tileConnectionSystem.ts` - Hex grid connectivity (141 tests)
+5. ✅ `survivorSystem.ts` - NPC rescue system (77 tests)
+6. ✅ `objectiveSpawner.ts` - Quest item/tile placement (55 tests)
+7. ✅ `mythosPhaseUtils.ts` - Mythos phase progression (39 tests)
 
-### Tier 3: Components & Hooks
+### Tier 3: Components & Hooks (Next Priority)
 1. Game components (GameBoard, CombatOverlay, etc.)
 2. Custom hooks (useAIGameMaster, useAudio, useVisualEffects)
 3. Quest editor components
@@ -332,6 +682,15 @@ npx vitest run src/game/constants/diceUtils.test.ts
 ## Last Updated
 
 **Date:** 2026-01-25
-**Tests Added:** 163
-**Tests Passing:** 163 (100%)
-**Coverage Focus:** Dice/Combat Utilities (Core Gameplay)
+**Tests Added:** 686
+**Tests Passing:** 686 (100%)
+**Coverage Focus:** Core Utilities + Complete Tier 2 Game Systems
+
+### Recent Updates (2026-01-25)
+- Added complete Tier 2 test coverage (+523 tests)
+- Scenario generation and validation fully tested
+- Monster AI decision logic fully tested
+- Tile connection system fully tested
+- Survivor NPC system fully tested
+- Objective spawner system fully tested
+- Mythos phase utilities fully tested
