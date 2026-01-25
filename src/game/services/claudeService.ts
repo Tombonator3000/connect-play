@@ -327,8 +327,10 @@ Guidelines:
       discovery: (ctx: GMNarrationContext) =>
         `${ctx.player?.name || 'The investigator'} discovered: ${ctx.item || ctx.additionalContext || 'something important'}. Generate brief narration about the discovery.`,
 
-      exploration: (ctx: GMNarrationContext) =>
-        `${ctx.player?.name || 'The investigator'} enters ${ctx.tile?.name || 'a new area'}. ${ctx.tile?.category || 'Unknown type'}. Generate atmospheric entry narration.`,
+      exploration: (ctx: GMNarrationContext) => {
+        const tileDesc = ctx.tile?.description ? `Location atmosphere: "${ctx.tile.description}"` : '';
+        return `${ctx.player?.name || 'The investigator'} enters ${ctx.tile?.name || 'a new area'}. ${ctx.tile?.category || 'Unknown type'}. ${tileDesc} Generate atmospheric entry narration that builds on the location's established mood.`;
+      },
 
       enemy_spawn: (ctx: GMNarrationContext) =>
         `A ${ctx.enemy?.name || 'creature'} has appeared! Generate a terrifying introduction for this monster.`,
@@ -345,8 +347,10 @@ Guidelines:
       boss_encounter: (ctx: GMNarrationContext) =>
         `A powerful entity appears: ${ctx.enemy?.name || 'Unknown Horror'}. Generate an epic, terrifying boss introduction.`,
 
-      ambient: (ctx: GMNarrationContext) =>
-        `Location: ${ctx.tile?.name || 'Unknown'}. Weather: ${ctx.weather || 'still'}. Doom: ${ctx.doomLevel || 12}/12. Generate ambient atmospheric narration.`,
+      ambient: (ctx: GMNarrationContext) => {
+        const tileDesc = ctx.tile?.description ? `Location atmosphere: "${ctx.tile.description}"` : '';
+        return `Location: ${ctx.tile?.name || 'Unknown'}. Weather: ${ctx.weather || 'still'}. Doom: ${ctx.doomLevel || 12}/12. ${tileDesc} Generate ambient atmospheric narration.`;
+      },
     },
   },
 };
