@@ -324,7 +324,7 @@ export async function generateDMNarration(
     player: activePlayer,
     nearbyEnemies,
     doomLevel: state.doom,
-    weather: state.weatherCondition?.type,
+    weather: state.weatherState?.global?.type,
     recentEvents,
   };
 

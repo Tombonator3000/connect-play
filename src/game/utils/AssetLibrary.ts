@@ -38,6 +38,21 @@ import starSpawnImg from '@/assets/monsters/star_spawn.png';
 import formlessSpawnImg from '@/assets/monsters/formless_spawn.png';
 import huntingHorrorImg from '@/assets/monsters/hunting_horror.png';
 import moonBeastImg from '@/assets/monsters/moon_beast.png';
+// New monsters (2026-01-25) - AI generated portraits
+import ghastImg from '@/assets/monsters/ghast.png';
+import zoogImg from '@/assets/monsters/zoog.png';
+import ratThingImg from '@/assets/monsters/rat_thing.png';
+import fireVampireImg from '@/assets/monsters/fire_vampire.png';
+import dimensionalShamblerImg from '@/assets/monsters/dimensional_shambler.png';
+import serpentManImg from '@/assets/monsters/serpent_man.png';
+import gugImg from '@/assets/monsters/gug.png';
+import cthonianImg from '@/assets/monsters/cthonian.png';
+import tchoTchoImg from '@/assets/monsters/tcho_tcho.png';
+import flyingPolypImg from '@/assets/monsters/flying_polyp.png';
+import lloigorImg from '@/assets/monsters/lloigor.png';
+import gnophKehImg from '@/assets/monsters/gnoph_keh.png';
+import colourOutOfSpaceImg from '@/assets/monsters/colour_out_of_space.png';
+import elderThingImg from '@/assets/monsters/elder_thing.png';
 
 // ============================================================================
 // STATIC ASSETS (DEFAULT - from GitHub)
@@ -68,7 +83,22 @@ export const MONSTER_PORTRAITS: Partial<Record<EnemyType, string>> = {
   star_spawn: starSpawnImg,
   formless_spawn: formlessSpawnImg,
   hunting_horror: huntingHorrorImg,
-  moon_beast: moonBeastImg
+  moon_beast: moonBeastImg,
+  // New monsters (2026-01-25)
+  ghast: ghastImg,
+  zoog: zoogImg,
+  rat_thing: ratThingImg,
+  fire_vampire: fireVampireImg,
+  dimensional_shambler: dimensionalShamblerImg,
+  serpent_man: serpentManImg,
+  gug: gugImg,
+  cthonian: cthonianImg,
+  tcho_tcho: tchoTchoImg,
+  flying_polyp: flyingPolypImg,
+  lloigor: lloigorImg,
+  gnoph_keh: gnophKehImg,
+  colour_out_of_space: colourOutOfSpaceImg,
+  elder_thing: elderThingImg
 };
 
 // ============================================================================

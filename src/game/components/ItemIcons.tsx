@@ -704,15 +704,304 @@ export const QuestComponentIcon: React.FC<ItemIconProps> = ({ size = 24, classNa
   </svg>
 );
 
+// ===== ADDITIONAL TOOLS =====
+
+export const RopeIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Coiled rope */}
+    <ellipse cx="12" cy="14" rx="8" ry="4" fill="none" stroke="#A0522D" strokeWidth="2"/>
+    <ellipse cx="12" cy="12" rx="7" ry="3.5" fill="none" stroke="#8B4513" strokeWidth="2"/>
+    <ellipse cx="12" cy="10" rx="6" ry="3" fill="none" stroke="#A0522D" strokeWidth="2"/>
+    <ellipse cx="12" cy="8" rx="5" ry="2.5" fill="none" stroke="#8B4513" strokeWidth="2"/>
+    {/* Rope end */}
+    <path d="M17 8C17 8 19 6 20 8" stroke="#A0522D" strokeWidth="2" strokeLinecap="round"/>
+  </svg>
+);
+
+export const GrapplingHookIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Hook */}
+    <path d="M12 4L8 10L12 14L16 10L12 4Z" fill="url(#hook-metal)"/>
+    {/* Prongs */}
+    <path d="M8 10C6 12 6 14 8 14" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"/>
+    <path d="M16 10C18 12 18 14 16 14" stroke="#6B7280" strokeWidth="2" strokeLinecap="round"/>
+    {/* Ring */}
+    <circle cx="12" cy="6" r="2" fill="none" stroke="#D4AF37" strokeWidth="1.5"/>
+    {/* Rope */}
+    <path d="M12 8L12 22" stroke="#A0522D" strokeWidth="2" strokeDasharray="2 2"/>
+    <defs>
+      <linearGradient id="hook-metal" x1="8" y1="4" x2="16" y2="14">
+        <stop stopColor="#9CA3AF"/>
+        <stop offset="1" stopColor="#4B5563"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+// ===== ADDITIONAL CONSUMABLES =====
+
+export const MorphineIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Syringe body */}
+    <rect x="4" y="10" width="14" height="4" rx="1" fill="url(#syringe-glass)"/>
+    {/* Liquid */}
+    <rect x="5" y="11" width="8" height="2" fill="#22C55E"/>
+    {/* Needle */}
+    <path d="M18 12L22 12" stroke="#9CA3AF" strokeWidth="1"/>
+    <path d="M22 12L23 11.5L23 12.5L22 12Z" fill="#9CA3AF"/>
+    {/* Plunger */}
+    <rect x="2" y="11" width="3" height="2" fill="#374151"/>
+    {/* Grip rings */}
+    <rect x="3" y="9" width="1" height="6" fill="#4B5563"/>
+    {/* Measurement marks */}
+    <line x1="7" y1="10" x2="7" y2="14" stroke="#374151" strokeWidth="0.5"/>
+    <line x1="10" y1="10" x2="10" y2="14" stroke="#374151" strokeWidth="0.5"/>
+    <line x1="13" y1="10" x2="13" y2="14" stroke="#374151" strokeWidth="0.5"/>
+    <defs>
+      <linearGradient id="syringe-glass" x1="4" y1="10" x2="18" y2="14">
+        <stop stopColor="#E5E7EB" stopOpacity="0.6"/>
+        <stop offset="1" stopColor="#9CA3AF" stopOpacity="0.4"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+export const SmellingSaltsIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Small bottle */}
+    <rect x="8" y="10" width="8" height="10" rx="1" fill="url(#salts-bottle)"/>
+    {/* Cap */}
+    <rect x="9" y="7" width="6" height="4" rx="0.5" fill="#1F2937"/>
+    {/* Vapors */}
+    <path d="M10 5C10 3 11 2 12 2" stroke="#A855F7" strokeWidth="1" opacity="0.6"/>
+    <path d="M12 6C12 4 13 3 14 3" stroke="#A855F7" strokeWidth="1" opacity="0.4"/>
+    <path d="M11 4C11 2 10 1 9 1" stroke="#A855F7" strokeWidth="1" opacity="0.5"/>
+    {/* Label */}
+    <rect x="9" y="13" width="6" height="4" rx="0.5" fill="white"/>
+    <text x="12" y="16" fontSize="3" fill="#4B5563" textAnchor="middle">NH₃</text>
+    <defs>
+      <linearGradient id="salts-bottle" x1="8" y1="10" x2="16" y2="20">
+        <stop stopColor="#4B5563" stopOpacity="0.5"/>
+        <stop offset="1" stopColor="#1F2937" stopOpacity="0.7"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+export const AncientTomeIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Book cover */}
+    <path d="M4 3H18C19 3 20 4 20 5V19C20 20 19 21 18 21H4V3Z" fill="url(#tome-cover)"/>
+    {/* Spine */}
+    <rect x="4" y="3" width="2" height="18" fill="#654321"/>
+    {/* Pages */}
+    <rect x="6" y="4" width="12" height="16" fill="#FEF3C7"/>
+    {/* Mystical symbol */}
+    <circle cx="12" cy="12" r="4" fill="none" stroke="#7C3AED" strokeWidth="1"/>
+    <path d="M12 8L14 11L12 16L10 11Z" fill="#7C3AED"/>
+    {/* Corner decorations */}
+    <path d="M7 5L9 5L7 7Z" fill="#D4AF37"/>
+    <path d="M17 5L17 7L15 5Z" fill="#D4AF37"/>
+    <path d="M7 19L9 19L7 17Z" fill="#D4AF37"/>
+    <path d="M17 19L17 17L15 19Z" fill="#D4AF37"/>
+    <defs>
+      <linearGradient id="tome-cover" x1="4" y1="3" x2="20" y2="21">
+        <stop stopColor="#8B4513"/>
+        <stop offset="1" stopColor="#654321"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+// ===== ADDITIONAL ARMOR =====
+
+export const ChainMailIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Shirt shape */}
+    <path d="M6 6L8 4H16L18 6V10L20 12V20H4V12L6 10V6Z" fill="url(#chainmail-metal)"/>
+    {/* Chain pattern - rows of interlocking circles */}
+    <g stroke="#6B7280" strokeWidth="0.5" fill="none">
+      <circle cx="8" cy="8" r="1.5"/><circle cx="11" cy="8" r="1.5"/><circle cx="14" cy="8" r="1.5"/><circle cx="17" cy="8" r="1.5"/>
+      <circle cx="6.5" cy="10.5" r="1.5"/><circle cx="9.5" cy="10.5" r="1.5"/><circle cx="12.5" cy="10.5" r="1.5"/><circle cx="15.5" cy="10.5" r="1.5"/><circle cx="18.5" cy="10.5" r="1.5"/>
+      <circle cx="8" cy="13" r="1.5"/><circle cx="11" cy="13" r="1.5"/><circle cx="14" cy="13" r="1.5"/><circle cx="17" cy="13" r="1.5"/>
+      <circle cx="6.5" cy="15.5" r="1.5"/><circle cx="9.5" cy="15.5" r="1.5"/><circle cx="12.5" cy="15.5" r="1.5"/><circle cx="15.5" cy="15.5" r="1.5"/><circle cx="18.5" cy="15.5" r="1.5"/>
+      <circle cx="8" cy="18" r="1.5"/><circle cx="11" cy="18" r="1.5"/><circle cx="14" cy="18" r="1.5"/><circle cx="17" cy="18" r="1.5"/>
+    </g>
+    <defs>
+      <linearGradient id="chainmail-metal" x1="4" y1="4" x2="20" y2="20">
+        <stop stopColor="#9CA3AF"/>
+        <stop offset="1" stopColor="#4B5563"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+export const HeavyCoatIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Coat body */}
+    <path d="M6 6L8 3H16L18 6V22H6V6Z" fill="url(#coat-fabric)"/>
+    {/* Collar */}
+    <path d="M8 3L10 6H14L16 3" stroke="#1F2937" strokeWidth="1" fill="#374151"/>
+    {/* Lapels */}
+    <path d="M10 6L8 12L10 12Z" fill="#374151"/>
+    <path d="M14 6L16 12L14 12Z" fill="#374151"/>
+    {/* Buttons */}
+    <circle cx="12" cy="10" r="0.8" fill="#D4AF37"/>
+    <circle cx="12" cy="13" r="0.8" fill="#D4AF37"/>
+    <circle cx="12" cy="16" r="0.8" fill="#D4AF37"/>
+    <circle cx="12" cy="19" r="0.8" fill="#D4AF37"/>
+    {/* Pockets */}
+    <rect x="7" y="14" width="3" height="2" rx="0.5" fill="#374151"/>
+    <rect x="14" y="14" width="3" height="2" rx="0.5" fill="#374151"/>
+    <defs>
+      <linearGradient id="coat-fabric" x1="6" y1="3" x2="18" y2="22">
+        <stop stopColor="#4B5563"/>
+        <stop offset="1" stopColor="#1F2937"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+export const LeatherVestIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Vest body */}
+    <path d="M6 5L8 3H16L18 5V20H14V22H10V20H6V5Z" fill="url(#vest-leather)"/>
+    {/* V-neck */}
+    <path d="M10 3L12 8L14 3" fill="#1F2937"/>
+    {/* Stitching */}
+    <line x1="8" y1="5" x2="8" y2="19" stroke="#654321" strokeWidth="0.5" strokeDasharray="2 1"/>
+    <line x1="16" y1="5" x2="16" y2="19" stroke="#654321" strokeWidth="0.5" strokeDasharray="2 1"/>
+    {/* Buttons */}
+    <circle cx="10" cy="10" r="0.7" fill="#B45309"/>
+    <circle cx="10" cy="13" r="0.7" fill="#B45309"/>
+    <circle cx="10" cy="16" r="0.7" fill="#B45309"/>
+    <defs>
+      <linearGradient id="vest-leather" x1="6" y1="3" x2="18" y2="22">
+        <stop stopColor="#A0522D"/>
+        <stop offset="1" stopColor="#654321"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+// ===== ADDITIONAL RELICS =====
+
+export const SilverDaggerIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Glow */}
+    <ellipse cx="12" cy="12" rx="10" ry="10" fill="url(#silver-glow)" opacity="0.3"/>
+    {/* Blade */}
+    <path d="M18 3L13 11L12 14L11 11L6 3L12 2L18 3Z" fill="url(#silver-blade)" stroke="#9CA3AF" strokeWidth="0.5"/>
+    {/* Fuller */}
+    <line x1="12" y1="4" x2="12" y2="11" stroke="#E5E7EB" strokeWidth="1"/>
+    {/* Guard */}
+    <rect x="9" y="14" width="6" height="2" rx="0.5" fill="#D4AF37"/>
+    {/* Handle */}
+    <rect x="10" y="16" width="4" height="5" rx="0.5" fill="url(#dagger-handle)"/>
+    {/* Pommel */}
+    <circle cx="12" cy="22" r="1.5" fill="#D4AF37"/>
+    {/* Sparkle */}
+    <circle cx="14" cy="5" r="0.5" fill="white" opacity="0.8"/>
+    <defs>
+      <radialGradient id="silver-glow" cx="12" cy="12" r="10">
+        <stop stopColor="#E5E7EB"/>
+        <stop offset="1" stopColor="#E5E7EB" stopOpacity="0"/>
+      </radialGradient>
+      <linearGradient id="silver-blade" x1="6" y1="2" x2="18" y2="14">
+        <stop stopColor="#F3F4F6"/>
+        <stop offset="0.5" stopColor="#D1D5DB"/>
+        <stop offset="1" stopColor="#9CA3AF"/>
+      </linearGradient>
+      <linearGradient id="dagger-handle" x1="10" y1="16" x2="14" y2="21">
+        <stop stopColor="#1F2937"/>
+        <stop offset="1" stopColor="#111827"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+export const PowderOfIbnGhaziIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Pouch */}
+    <path d="M6 10C6 8 8 6 12 6C16 6 18 8 18 10V18C18 20 16 22 12 22C8 22 6 20 6 18V10Z" fill="url(#pouch-leather)"/>
+    {/* Drawstring */}
+    <path d="M8 8C8 8 10 10 12 10C14 10 16 8 16 8" stroke="#D4AF37" strokeWidth="1"/>
+    <circle cx="10" cy="6" r="1" fill="#D4AF37"/>
+    <circle cx="14" cy="6" r="1" fill="#D4AF37"/>
+    {/* Magical dust escaping */}
+    <circle cx="11" cy="4" r="0.5" fill="#A855F7" opacity="0.8"/>
+    <circle cx="13" cy="3" r="0.5" fill="#A855F7" opacity="0.6"/>
+    <circle cx="10" cy="2" r="0.5" fill="#A855F7" opacity="0.4"/>
+    <circle cx="14" cy="1" r="0.5" fill="#A855F7" opacity="0.3"/>
+    {/* Mystical symbol on pouch */}
+    <path d="M12 12L14 15L12 18L10 15Z" fill="#7C3AED" opacity="0.7"/>
+    <defs>
+      <linearGradient id="pouch-leather" x1="6" y1="6" x2="18" y2="22">
+        <stop stopColor="#8B4513"/>
+        <stop offset="1" stopColor="#654321"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+export const AxeIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Handle */}
+    <rect x="10" y="6" width="4" height="16" rx="0.5" fill="url(#axe-handle)"/>
+    {/* Axe head */}
+    <path d="M6 4C4 6 4 10 6 12L14 8L6 4Z" fill="url(#axe-blade)" stroke="#4B5563" strokeWidth="0.5"/>
+    {/* Blade edge */}
+    <path d="M6 4C4 6 4 10 6 12" stroke="#E5E7EB" strokeWidth="1"/>
+    {/* Binding */}
+    <rect x="9" y="8" width="6" height="2" fill="#8B4513"/>
+    <rect x="9" y="7" width="6" height="1" fill="#654321"/>
+    <defs>
+      <linearGradient id="axe-handle" x1="10" y1="6" x2="14" y2="22">
+        <stop stopColor="#A0522D"/>
+        <stop offset="1" stopColor="#654321"/>
+      </linearGradient>
+      <linearGradient id="axe-blade" x1="4" y1="4" x2="14" y2="12">
+        <stop stopColor="#9CA3AF"/>
+        <stop offset="1" stopColor="#4B5563"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
+export const CrossbowIcon: React.FC<ItemIconProps> = ({ size = 24, className = '' }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" className={className}>
+    {/* Stock */}
+    <rect x="10" y="10" width="12" height="4" rx="0.5" fill="url(#crossbow-stock)"/>
+    {/* Bow arms */}
+    <path d="M4 6C6 4 10 4 12 6" stroke="#8B4513" strokeWidth="2" fill="none"/>
+    <path d="M4 18C6 20 10 20 12 18" stroke="#8B4513" strokeWidth="2" fill="none"/>
+    {/* String */}
+    <line x1="4" y1="6" x2="4" y2="18" stroke="#D4AF37" strokeWidth="1"/>
+    {/* Bolt */}
+    <rect x="6" y="11" width="8" height="2" fill="#6B7280"/>
+    <path d="M4 12L6 11V13L4 12Z" fill="#4B5563"/>
+    {/* Trigger mechanism */}
+    <rect x="14" y="14" width="2" height="3" fill="#374151"/>
+    {/* Sight */}
+    <rect x="10" y="9" width="1" height="2" fill="#4B5563"/>
+    <defs>
+      <linearGradient id="crossbow-stock" x1="10" y1="10" x2="22" y2="14">
+        <stop stopColor="#A0522D"/>
+        <stop offset="1" stopColor="#654321"/>
+      </linearGradient>
+    </defs>
+  </svg>
+);
+
 // ===== ITEM ICON MAPPING =====
 
 export type ItemIconId =
-  | 'knife' | 'club' | 'machete'
+  | 'knife' | 'club' | 'machete' | 'axe' | 'crossbow'
   | 'derringer' | 'rev' | 'shot' | 'rifle' | 'tommy'
-  | 'leather_jacket' | 'trench_coat' | 'armored_vest'
-  | 'flash' | 'lantern' | 'lockpick' | 'crowbar'
-  | 'med' | 'whiskey' | 'bandages' | 'sedatives'
-  | 'elder_sign' | 'protective_ward' | 'book'
+  | 'leather_jacket' | 'trench_coat' | 'armored_vest' | 'chain_mail' | 'heavy_coat' | 'leather_vest'
+  | 'flash' | 'lantern' | 'lockpick' | 'crowbar' | 'rope' | 'grappling_hook'
+  | 'med' | 'whiskey' | 'bandages' | 'sedatives' | 'morphine' | 'smelling_salts' | 'ancient_tome'
+  | 'elder_sign' | 'protective_ward' | 'book' | 'silver_dagger' | 'powder_ibn_ghazi'
   | 'quest_key' | 'quest_clue' | 'quest_artifact' | 'quest_collectible' | 'quest_component' | 'quest_item';
 
 export const ITEM_ICONS: Record<ItemIconId, React.FC<ItemIconProps>> = {
@@ -720,6 +1009,8 @@ export const ITEM_ICONS: Record<ItemIconId, React.FC<ItemIconProps>> = {
   knife: KnifeIcon,
   club: ClubIcon,
   machete: MacheteIcon,
+  axe: AxeIcon,
+  crossbow: CrossbowIcon,
   // Ranged weapons
   derringer: DerringerIcon,
   rev: RevolverIcon,
@@ -730,20 +1021,30 @@ export const ITEM_ICONS: Record<ItemIconId, React.FC<ItemIconProps>> = {
   leather_jacket: LeatherJacketIcon,
   trench_coat: TrenchCoatIcon,
   armored_vest: ArmoredVestIcon,
+  chain_mail: ChainMailIcon,
+  heavy_coat: HeavyCoatIcon,
+  leather_vest: LeatherVestIcon,
   // Tools
   flash: FlashlightIcon,
   lantern: LanternIcon,
   lockpick: LockpickIcon,
   crowbar: CrowbarIcon,
+  rope: RopeIcon,
+  grappling_hook: GrapplingHookIcon,
   // Consumables
   med: MedkitIcon,
   whiskey: WhiskeyIcon,
   bandages: BandagesIcon,
   sedatives: SedativesIcon,
+  morphine: MorphineIcon,
+  smelling_salts: SmellingSaltsIcon,
+  ancient_tome: AncientTomeIcon,
   // Relics
   elder_sign: ElderSignIcon,
   protective_ward: ProtectiveWardIcon,
   book: NecronomiconIcon,
+  silver_dagger: SilverDaggerIcon,
+  powder_ibn_ghazi: PowderOfIbnGhaziIcon,
   // Quest items
   quest_key: QuestKeyIcon,
   quest_clue: QuestClueIcon,
