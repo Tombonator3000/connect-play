@@ -36,6 +36,8 @@ import FieldGuidePanel from './components/FieldGuidePanel';
 import CharacterSelectionScreen from './components/CharacterSelectionScreen';
 import SaveLoadModal from './components/SaveLoadModal';
 import QuestEditor, { CustomQuestLoader, CampaignPlayManager, convertQuestToScenario } from './components/QuestEditor';
+import { DMNarrationPanel } from './components/DMNarrationPanel';
+import { useAIGameMaster } from './hooks/useAIGameMaster';
 // Lazy load heavy visual effects libraries to prevent blocking game startup
 // These use pixi.js and three.js which can cause WebGL initialization issues
 const AdvancedParticles = lazy(() => import('./components/AdvancedParticles'));
@@ -252,6 +254,9 @@ const ShadowsGame: React.FC = () => {
 
   // Difficulty selection for random scenario
   const [selectedDifficulty, setSelectedDifficulty] = useState<'Normal' | 'Hard' | 'Nightmare' | null>(null);
+
+  // AI Game Master System
+  const aiGameMaster = useAIGameMaster();
 
   // Generate random scenario based on difficulty using validated dynamic generator
   const getRandomScenario = useCallback((difficulty: 'Normal' | 'Hard' | 'Nightmare'): Scenario => {
@@ -1990,7 +1995,15 @@ const ShadowsGame: React.FC = () => {
 
     // Emit spawn particle effect - eldritch portal manifestation
     emitSpellEffect(q, r, 'banish'); // Uses implode animation reversed visually
-  }, []);
+
+    // Trigger AI Game Master narration for enemy spawn
+    const isBoss = bestiary.traits?.includes('boss') || newEnemy.maxHp >= 10;
+    if (isBoss) {
+      aiGameMaster.triggerBossEncounter(newEnemy);
+    } else {
+      aiGameMaster.triggerEnemySpawn(newEnemy);
+    }
+  }, [aiGameMaster]);
 
   /**
    * LOGICAL TILE CONNECTION SYSTEM
@@ -2247,6 +2260,12 @@ const ShadowsGame: React.FC = () => {
     });
     addToLog(`UTFORSKET: ${finalTile.name}. [${finalTile.category?.toUpperCase() || 'UNKNOWN'}]`);
 
+    // Trigger AI Game Master exploration narration
+    const activePlayer = state.players[state.activePlayerIndex];
+    if (activePlayer) {
+      aiGameMaster.triggerExploration(activePlayer, finalTile);
+    }
+
     // Show atmospheric description from template or location descriptions
     if (selected.template.description) {
       addToLog(selected.template.description);
@@ -2269,6 +2288,7 @@ const ShadowsGame: React.FC = () => {
 
         if (exploreCheck.shouldComplete) {
           addToLog(`OBJECTIVE COMPLETE: ${exploreCheck.objective.shortDescription}`);
+          aiGameMaster.triggerObjectiveComplete(exploreCheck.objective.shortDescription);
 
           // DOOM BONUS: Completing objectives pushes back the darkness (pressure-based doom)
           const doomBonus = state.activeScenario?.doomOnObjectiveComplete ?? 1;
@@ -2300,7 +2320,7 @@ const ShadowsGame: React.FC = () => {
         spawnEnemy(enemyType, spawnPos.q, spawnPos.r);
       }
     }
-  }, [state.board, state.doom, state.enemies, state.activeScenario, state.objectiveSpawnState, spawnEnemy]);
+  }, [state.board, state.doom, state.enemies, state.activeScenario, state.objectiveSpawnState, state.players, state.activePlayerIndex, spawnEnemy, aiGameMaster]);
 
   // Handle specific action effects (opening doors, etc.)
   // REFACTORED: Now uses processActionEffect from contextActionEffects.ts
@@ -4091,6 +4111,16 @@ const ShadowsGame: React.FC = () => {
       addToLog(`DOOM: The darkness grows closer... (${doomResult.baseDoomTick} doom)`);
     }
 
+    // Trigger AI Game Master doom narration
+    if (newDoom <= 3) {
+      aiGameMaster.triggerDoomChange(newDoom);
+    } else if (newDoom <= 6 && state.doom > 6) {
+      aiGameMaster.triggerDoomChange(newDoom);
+    }
+
+    // Trigger AI Game Master phase change narration
+    aiGameMaster.triggerPhaseChange('mythos' as any, newDoom);
+
     // Log dark insight effects
     if (doomResult.darkInsightPenalty > 0) {
       doomResult.affectedPlayers.forEach(p => {
@@ -5194,6 +5224,18 @@ const ShadowsGame: React.FC = () => {
           currentDoom={state.doom}
           currentRound={state.round}
           onClose={() => setShowScenarioInfo(false)}
+        />
+      )}
+
+      {/* AI Game Master Narration Panel */}
+      {state.phase !== GamePhase.SETUP && (
+        <DMNarrationPanel
+          narration={aiGameMaster.currentNarration}
+          isLoading={aiGameMaster.isLoading}
+          queueLength={aiGameMaster.queueLength}
+          onDismiss={aiGameMaster.dismissNarration}
+          settings={aiGameMaster.settings}
+          onSettingsChange={aiGameMaster.updateSettings}
         />
       )}
 
