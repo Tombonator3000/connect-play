@@ -35,9 +35,11 @@ AI-genererte Lovecraft-portretter for alle monstre som manglet unike bilder:
 - `src/game/utils/monsterAssets.ts` - Nye monster-importer og mappinger
 - `src/game/utils/AssetLibrary.ts` - Oppdatert MONSTER_PORTRAITS
 - `src/game/components/ItemIcons.tsx` - 12 nye SVG-ikoner
+- `src/game/components/MonsterPortrait.tsx` - **NY** - Animert monster-portrett med trait-effekter
+- `src/game/components/EnemyPanel.tsx` - Bruker MonsterPortrait
+- `src/game/components/CombatOverlay.tsx` - Bruker MonsterPortrait
 - `src/game/services/claudeService.ts` - Build-fix
-
-#### Nye assets:
+- `src/index.css` - 14 nye animasjoner for monster-traits
 - `src/assets/monsters/ghast.png` → `elder_thing.png` (14 bilder)
 
 ---
