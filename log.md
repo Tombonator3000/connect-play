@@ -25134,3 +25134,103 @@ Legge til Voice GM innstillinger i den generelle Options-menyen slik at spillere
 ✅ Bygget kompilerer uten feil
 
 ---
+
+## 2026-01-25: Fix End Turn Button Not Working
+
+### Problem
+End Turn-knappen så ut til å ikke fungere. Etter å klikke på knappen skjedde det ingenting synlig for brukeren.
+
+### Årsak
+To separate bugs i `ShadowsGame.tsx`:
+
+1. **Actions ikke tilbakestilt ved turn change**: Når `handleNextTurn()` byttet til neste spiller, ble ikke spillerens `actions` tilbakestilt til `maxActions`. Dette betydde at etterfølgende spillere hadde 0 actions og kunne ikke gjøre noe.
+
+2. **Feil fase etter Mythos**: `handleMythosOverlayComplete()` satte `phase` til `GamePhase.MYTHOS` istedenfor `GamePhase.INVESTIGATOR`. Dette deaktiverte alle spillerhandlinger i ActionBar fordi `isInvestigatorPhase` ble `false`.
+
+### Løsning
+
+#### handleNextTurn (linje 4067-4101)
+```typescript
+// FØR: Byttet bare activePlayerIndex uten å resette actions
+setState(prev => {
+  return { ...prev, activePlayerIndex: nextAliveIndex, ... };
+});
+
+// ETTER: Resetter actions til maxActions for ny spiller
+setState(prev => {
+  const updatedPlayers = prev.players.map((p, i) => {
+    if (i === nextAliveIndex) {
+      let updatedPlayer = { ...p, actions: p.maxActions || 2 };
+      if (p.activeMadness) {
+        updatedPlayer = applyMadnessTurnStartEffects(updatedPlayer);
+      }
+      return updatedPlayer;
+    }
+    return p;
+  });
+  return { ...prev, activePlayerIndex: nextAliveIndex, ..., players: updatedPlayers };
+});
+```
+
+#### handleMythosOverlayComplete (linje 4235-4252)
+```typescript
+// FØR: Satte feil fase
+setState(prev => ({
+  ...prev,
+  phase: GamePhase.MYTHOS,  // ← FEIL!
+  ...
+}));
+
+// ETTER: Setter riktig fase og resetter actions
+setState(prev => ({
+  ...prev,
+  phase: GamePhase.INVESTIGATOR,  // ← RIKTIG
+  players: prev.players.map((p, i) =>
+    i === firstAliveIndex ? { ...p, actions: p.maxActions || 2 } : p
+  ),
+  ...
+}));
+```
+
+### Endrede Filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/ShadowsGame.tsx` | Fikset actions reset og phase transition |
+
+### Flyt-diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    TURN SYSTEM - FIKSET                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Spiller 1 → [End Turn] → handleNextTurn()                     │
+│                               │                                 │
+│                               ▼                                 │
+│              ┌────────────────────────────────┐                 │
+│              │ Finn neste levende spiller     │                 │
+│              │ (findNextAlivePlayerIndex)     │                 │
+│              └────────────────┬───────────────┘                 │
+│                               │                                 │
+│              ┌────────────────┴───────────────┐                 │
+│              ▼                                ▼                 │
+│     [nextAlive !== -1]              [nextAlive === -1]          │
+│     Flere spillere igjen           Slutt på runden              │
+│              │                                │                 │
+│              ▼                                ▼                 │
+│     ✅ activePlayerIndex = next     setShowMythosOverlay(true)  │
+│     ✅ actions = maxActions         → handleMythosOverlayComplete│
+│                                              │                  │
+│                                              ▼                  │
+│                                     ✅ phase = INVESTIGATOR     │
+│                                     ✅ activePlayerIndex = 0    │
+│                                     ✅ actions = maxActions     │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
