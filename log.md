@@ -24305,3 +24305,88 @@ const MOCK_DESCRIPTIONS = {
    - Lage UI-komponent for DM-meldinger
 
 ---
+
+---
+
+## 2026-01-25: Grafikk-Analyse - Manglende Grafikk
+
+### Oppgave
+Gjennomgå alle tiles, monstre, items og andre spillelementer for å identifisere manglende grafikk.
+
+### Analyse-Resultater
+
+#### Komplett Grafikk ✅
+
+| Kategori | Antall | Status |
+|----------|--------|--------|
+| Tile-bilder | 128 | ✅ Alle har PNG |
+| Karakter-portretter | 6 | ✅ Alle har PNG |
+| Original monster-bilder | 16 | ✅ Alle har PNG |
+| Event-kort | 8 | ✅ Alle har PNG |
+| Våpen-ikoner | 10+ | ✅ SVG-ikoner |
+| CSS tile-teksturer | 10 | ✅ Fallback gradients |
+
+#### Manglende Grafikk ❌
+
+**1. Nye Monster-Typer (15 stk) - Bruker Placeholder**
+
+| Monster | Placeholder-bilde |
+|---------|-------------------|
+| ghast | ghoul.png |
+| zoog | mi-go.png |
+| rat_thing | ghoul.png |
+| fire_vampire | boss.png |
+| dimensional_shambler | nightgaunt.png |
+| serpent_man | deepone.png |
+| gug | shoggoth.png |
+| cthonian | shoggoth.png |
+| tcho_tcho | cultist.png |
+| flying_polyp | hunting_horror.png |
+| lloigor | boss.png |
+| gnoph_keh | dark_young.png |
+| colour_out_of_space | boss.png |
+| elder_thing | star_spawn.png |
+
+**2. Item-Kategorier Uten Dedikert Grafikk**
+
+| Kategori | Eksempler | Nåværende Løsning |
+|----------|-----------|-------------------|
+| Armor | Leather vest, Chain mail, Heavy coat | Kun tekstliste |
+| Tools | Lock pick, Crowbar, Rope, Flashlight | Kun tekstliste |
+| Consumables | Healing items, Insight books | Kun tekstliste |
+| Keys/Clues | Nøkler, tilstandsobjekter | Kun tekstliste |
+| Relics | Magiske gjenstander | Kun tekstliste |
+
+### Grafikk-Dekningsgrad
+
+- **Tiles**: 100% ✅
+- **Karakterer**: 100% ✅
+- **Monstre**: 52% (16/31) - 15 bruker placeholder
+- **Events**: 100% ✅
+- **Våpen**: 100% (SVG) ✅
+- **Items**: ~20% (kun våpen har ikoner)
+
+### Fallback-Systemer
+
+1. **Tiles**: CSS-gradients basert på `floorType`
+2. **Monstre**: Intelligent mapping til lignende eksisterende monster
+3. **Events**: `event-sanity.png` som standard fallback
+4. **Items**: Tekstbasert visning
+
+### Filstruktur
+
+```
+/src/assets/
+├── characters/     (6 PNG)
+├── tiles/          (128 PNG)
+├── monsters/       (16 PNG)
+└── events/         (8 PNG)
+```
+
+### Konklusjon
+
+Spillet fungerer visuelt, men har to hovedområder som trenger grafikk:
+1. **15 nye monstre** - Prioritet høy (bruker placeholder som ikke matcher)
+2. **Items utenom våpen** - Prioritet medium (fungerer med tekst)
+
+---

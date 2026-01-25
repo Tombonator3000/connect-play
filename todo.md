@@ -1,3 +1,59 @@
+# Mythos Quest - Todo List
+
+---
+
+## Manglende Grafikk (Identifisert 2026-01-25)
+
+### Høy Prioritet: Monster-Grafikk (15 stk)
+
+Disse monstrene bruker placeholder-bilder fra andre monstre:
+
+| Monster | Nåværende Placeholder | Status |
+|---------|----------------------|--------|
+| ghast | ghoul.png | [ ] Mangler |
+| zoog | mi-go.png | [ ] Mangler |
+| rat_thing | ghoul.png | [ ] Mangler |
+| fire_vampire | boss.png | [ ] Mangler |
+| dimensional_shambler | nightgaunt.png | [ ] Mangler |
+| serpent_man | deepone.png | [ ] Mangler |
+| gug | shoggoth.png | [ ] Mangler |
+| cthonian | shoggoth.png | [ ] Mangler |
+| tcho_tcho | cultist.png | [ ] Mangler |
+| flying_polyp | hunting_horror.png | [ ] Mangler |
+| lloigor | boss.png | [ ] Mangler |
+| gnoph_keh | dark_young.png | [ ] Mangler |
+| colour_out_of_space | boss.png | [ ] Mangler |
+| elder_thing | star_spawn.png | [ ] Mangler |
+
+**Filplassering:** `/src/assets/monsters/`
+**Mapping-fil:** `src/game/data/monsterAssets.ts`
+
+### Medium Prioritet: Item-Ikoner
+
+Item-kategorier som kun vises som tekstliste:
+
+- [ ] **Armor-ikoner** (5+ typer)
+  - Leather vest, Chain mail, Heavy coat, Reinforced jacket, etc.
+- [ ] **Tool-ikoner** (8+ typer)
+  - Lock pick, Crowbar, Rope, Flashlight, First aid kit, etc.
+- [ ] **Consumable-ikoner** (6+ typer)
+  - Bandages, Morphine, Whiskey, Ancient tome, etc.
+- [ ] **Key/Clue-ikoner** (scenario-spesifikke)
+  - Library key, Safe combination, Strange artifact, etc.
+- [ ] **Relic-ikoner** (5+ typer)
+  - Elder Sign, Powder of Ibn Ghazi, Silver dagger, etc.
+
+**Nåværende løsning:** Tekstbasert liste uten ikoner
+**Mulig løsning:** SVG-ikoner som våpnene bruker
+
+### Lav Prioritet: Forbedringsforslag
+
+- [ ] Animated monster sprites (idle, attack)
+- [ ] Item rarity-based glow effects
+- [ ] Character ability icons
+
+---
+
 # Claude AI Integration - Todo List
 
 ## Fase 1: Dynamic Room Descriptions (Current)
