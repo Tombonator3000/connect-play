@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Tile, EdgeData, Enemy, TileObject } from '../types';
 import { BESTIARY, LOCATION_DESCRIPTIONS } from '../constants';
+import { useAIDescription } from '../hooks/useAIDescription';
 import {
   Skull, Brain, Swords, BookOpen, Flame, Lock, Hammer, AlertTriangle,
   DoorOpen, DoorClosed, KeyRound, Ban, ArrowUpRight, ArrowDownRight,
@@ -111,7 +112,8 @@ const TooltipContent: React.FC<{ data: HoverData }> = ({ data }) => {
 // ============================================================================
 
 const TileTooltipContent: React.FC<{ tile: Tile }> = ({ tile }) => {
-  const description = tile.description || LOCATION_DESCRIPTIONS[tile.name] || null;
+  // Use AI-powered description with fallback to static descriptions
+  const { description, isLoading, isAIGenerated } = useAIDescription(tile);
 
   return (
     <div className="w-[260px] bg-leather/95 border-2 border-primary/50 rounded-lg shadow-[var(--shadow-doom)] overflow-hidden">
@@ -127,11 +129,22 @@ const TileTooltipContent: React.FC<{ tile: Tile }> = ({ tile }) => {
         )}
       </div>
       <div className="p-3 space-y-2">
-        {description && (
-          <p className="text-[11px] text-muted-foreground italic leading-relaxed">
-            "{description}"
+        {isLoading ? (
+          <p className="text-[11px] text-muted-foreground italic leading-relaxed animate-pulse">
+            "The shadows whisper secrets..."
           </p>
-        )}
+        ) : description ? (
+          <div className="relative">
+            <p className="text-[11px] text-muted-foreground italic leading-relaxed">
+              "{description}"
+            </p>
+            {isAIGenerated && (
+              <span className="absolute -top-1 -right-1 text-[8px] text-purple-400/60" title="AI-generated">
+                ✧
+              </span>
+            )}
+          </div>
+        ) : null}
         {tile.searchable && !tile.searched && (
           <div className="flex items-center gap-1 text-[10px] text-amber-400">
             <Eye size={10} />

@@ -24133,8 +24133,175 @@ Tone: Dread, mystery, cosmic horror. No gore.
 ---
 
 ### Neste Steg
-- [ ] Bestemme hvilken feature å starte med
-- [ ] Sette opp API-integrasjon (backend eller proxy)
-- [ ] Prototype første Claude-integrering
+- [x] Bestemme hvilken feature å starte med → Dynamic Room Descriptions
+- [x] Sette opp API-integrasjon → claudeService.ts
+- [x] Prototype første Claude-integrering → CursorTooltip
+
+---
+
+## 2026-01-25: Implementering av Claude AI Dynamic Room Descriptions
+
+### Oppgave
+Implementere første fase av Claude AI-integrasjon: dynamiske rom-beskrivelser.
+
+### Implementerte Filer
+
+#### 1. `src/game/services/claudeService.ts` (NY)
+Hovedtjenesten for Claude API-kommunikasjon.
+
+**Features:**
+- API-konfigurasjon via environment variables
+- localStorage caching med versjonskontroll og utløpsdato
+- Rate limiting (min 1000ms mellom requests)
+- Prompt templates for room descriptions og DM narration
+- Mock mode for utvikling uten API-nøkkel
+- Cache utilities (clear, stats)
+
+**Funksjoner:**
+```typescript
+generateRoomDescription(tile, weather?, hasEnemies?) → Promise<string | null>
+generateDMNarration(state, lastAction, recentEvents) → Promise<string | null>
+isAIEnabled() → boolean
+clearAICache() → void
+getCacheStats() → { count, sizeKB }
+getMockDescription(category) → string
+```
+
+#### 2. `src/game/hooks/useAIDescription.ts` (NY)
+React hook for enkel bruk av AI-beskrivelser i komponenter.
+
+**Features:**
+- Automatisk caching og fallback
+- Loading states
+- Indikator for AI-generert innhold
+- Refresh-funksjon
+
+**Prioriteringsrekkefølge:**
+1. Tile's egen description
+2. Hardkodede LOCATION_DESCRIPTIONS
+3. AI-generert beskrivelse
+4. Mock beskrivelse (hvis AI disabled)
+
+#### 3. `src/game/components/CursorTooltip.tsx` (OPPDATERT)
+Integrert AI-beskrivelser i tile tooltips.
+
+**Endringer:**
+- Importert useAIDescription hook
+- TileTooltipContent bruker nå hook i stedet for statisk lookup
+- Loading state vises med animert tekst
+- AI-genererte beskrivelser markert med ✧ symbol
+
+#### 4. `todo.md` (NY)
+Komplett todo-liste for all fremtidig Claude AI-utvikling.
+
+**Faser dokumentert:**
+- Fase 1: Dynamic Room Descriptions ✅
+- Fase 2: Dynamic Game Master
+- Fase 3: Adaptive Hints System
+- Fase 4: Scenario Generator
+- Fase 5: Monster Personality
+- Fase 6: Event Generator
+
+---
+
+### Teknisk Arkitektur
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      React Components                        │
+│  (CursorTooltip, GameBoard, ShadowsGame)                    │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    useAIDescription Hook                     │
+│  - Handles caching priority                                  │
+│  - Manages loading states                                    │
+│  - Provides fallbacks                                        │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     claudeService.ts                         │
+│  - API communication                                         │
+│  - Prompt templates                                          │
+│  - localStorage caching                                      │
+│  - Rate limiting                                             │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+              ┌────────────┴────────────┐
+              ▼                         ▼
+┌─────────────────────┐    ┌─────────────────────┐
+│   Claude API        │    │   localStorage      │
+│   (Production)      │    │   (Cache)           │
+└─────────────────────┘    └─────────────────────┘
+```
+
+---
+
+### Konfigurasjon
+
+**Environment Variables:**
+```env
+VITE_CLAUDE_API_KEY=sk-ant-xxx        # API-nøkkel
+VITE_CLAUDE_API_URL=https://...       # API URL (optional)
+VITE_ENABLE_AI_FEATURES=true          # Feature flag
+```
+
+**Cache Settings (i claudeService.ts):**
+- Prefix: `mythos_ai_`
+- Expiry: 7 dager
+- Max entries: 100 (auto-cleanup)
+
+---
+
+### Mock Mode
+
+Når AI ikke er aktivert, brukes mock beskrivelser:
+
+```typescript
+const MOCK_DESCRIPTIONS = {
+  room: [
+    "The air hangs heavy here, thick with the scent of mold and something older, fouler.",
+    "Shadows seem to move of their own accord in the corners of this forsaken place.",
+    ...
+  ],
+  corridor: [...],
+  basement: [...],
+  crypt: [...]
+};
+```
+
+---
+
+### UI Integrasjon
+
+**CursorTooltip visning:**
+- Normal: Viser beskrivelse i kursiv med anførselstegn
+- Loading: "The shadows whisper secrets..." med pulse-animasjon
+- AI-generert: Markert med ✧ symbol øverst til høyre
+
+---
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
+
+### Neste Steg for AI-systemet
+
+1. **Testing med API-nøkkel**
+   - Sett environment variables
+   - Test med faktiske API-kall
+   - Verifiser caching fungerer
+
+2. **Utvide til ShadowsGame log**
+   - Vise AI-beskrivelser i game log ved tile entry
+   - Fallback til eksisterende LOCATION_DESCRIPTIONS
+
+3. **Game Master Narration**
+   - Aktivere DMContext og generateDMNarration
+   - Identifisere trigger-points
+   - Lage UI-komponent for DM-meldinger
 
 ---
