@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
-import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package, X, Info } from 'lucide-react';
+import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package, X, Info, MessageSquare } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent, OccultistSpell, SpellParticleType, LogEntry, detectLogCategory, getLogCategoryClasses, LevelUpBonus, SurvivorTrait, GameStats, createInitialGameStats } from './types';
@@ -36,7 +36,7 @@ import FieldGuidePanel from './components/FieldGuidePanel';
 import CharacterSelectionScreen from './components/CharacterSelectionScreen';
 import SaveLoadModal from './components/SaveLoadModal';
 import QuestEditor, { CustomQuestLoader, CampaignPlayManager, convertQuestToScenario } from './components/QuestEditor';
-import { DMNarrationPanel } from './components/DMNarrationPanel';
+import { DMNarrationPanel, DMSettingsPanel } from './components/DMNarrationPanel';
 import { useAIGameMaster } from './hooks/useAIGameMaster';
 // Lazy load heavy visual effects libraries to prevent blocking game startup
 // These use pixi.js and three.js which can cause WebGL initialization issues
@@ -228,6 +228,9 @@ const ShadowsGame: React.FC = () => {
 
   // Save/Load Modal state
   const [showSaveLoadModal, setShowSaveLoadModal] = useState(false);
+
+  // AI Game Master Settings state
+  const [showDMSettings, setShowDMSettings] = useState(false);
 
   // Context Action state
   const [activeContextTarget, setActiveContextTarget] = useState<ContextActionTarget | null>(null);
@@ -1959,6 +1962,8 @@ const ShadowsGame: React.FC = () => {
           )
         }));
         addFloatingText(player.position.q, player.position.r, `-${sanValue} SAN`, "text-sanity");
+        // Trigger AI Game Master sanity loss narration
+        aiGameMaster.triggerSanityLoss(player, sanValue);
         if (consequence.message) addToLog(consequence.message);
         break;
 
@@ -2448,7 +2453,17 @@ const ShadowsGame: React.FC = () => {
 
     // Apply log messages
     if (result.logMessages) {
-      result.logMessages.forEach(msg => addToLog(msg));
+      result.logMessages.forEach(msg => {
+        addToLog(msg);
+        // Trigger AI Game Master discovery narration for quest items
+        if (msg.startsWith('QUEST ITEM FOUND:')) {
+          const itemName = msg.replace('QUEST ITEM FOUND:', '').trim();
+          const activePlayer = state.players[state.activePlayerIndex];
+          if (activePlayer) {
+            aiGameMaster.triggerDiscovery(activePlayer, itemName);
+          }
+        }
+      });
     }
 
     // Apply floating text
@@ -2840,11 +2855,13 @@ const ShadowsGame: React.FC = () => {
       setTimeout(() => {
         addToLog(`${player.name} received ${item.name}!`);
         addFloatingText(player.position.q, player.position.r, `+${item.name}`, "text-yellow-400");
+        // Trigger AI Game Master discovery narration
+        aiGameMaster.triggerDiscovery(player, item.name);
       }, 0);
 
       return { ...prev, players: newPlayers };
     });
-  }, [addToLog, addFloatingText]);
+  }, [addToLog, addFloatingText, aiGameMaster]);
 
   /**
    * Instantiate a room cluster at the given world position
@@ -3152,6 +3169,8 @@ const ShadowsGame: React.FC = () => {
                 addToLog(`Your light reveals something that should not exist. -${Math.abs(darkRoomEffects.sanityChange)} Sanity`);
                 addFloatingText(q, r, `${darkRoomEffects.sanityChange} SAN`, "text-sanity");
                 triggerScreenShake();
+                // Trigger AI Game Master sanity loss narration for horror discoveries
+                aiGameMaster.triggerSanityLoss(activePlayer, Math.abs(darkRoomEffects.sanityChange));
                 break;
 
               case 'trap':
@@ -3305,6 +3324,8 @@ const ShadowsGame: React.FC = () => {
               }) : p),
               lastDiceRoll: horrorResult.rolls
             }));
+            // Trigger AI Game Master sanity loss narration
+            aiGameMaster.triggerSanityLoss(activePlayer, horrorResult.sanityLoss);
             // Horror check uses action but doesn't prevent attack this turn
           } else {
             setState(prev => ({
@@ -3338,6 +3359,9 @@ const ShadowsGame: React.FC = () => {
             playerDamageDealt: combatResult.damage
           }
         }));
+
+        // Trigger AI Game Master combat narration
+        aiGameMaster.triggerCombatStart(activePlayer, targetEnemy);
         break;
 
       case 'cast':
@@ -3918,6 +3942,9 @@ const ShadowsGame: React.FC = () => {
             addToLog(bestiary.defeatFlavor || `${enemy.name} er beseiret!`);
             addFloatingText(enemy.position.q, enemy.position.r, "DREPT!", "text-accent");
 
+            // Trigger AI Game Master combat victory narration
+            aiGameMaster.triggerCombatVictory(activePlayer, enemy);
+
             // Track kill for legacy hero XP rewards
             const heroId = activePlayer.heroId || activePlayer.id;
             incrementHeroKills(heroId);
@@ -3939,6 +3966,8 @@ const ShadowsGame: React.FC = () => {
                   const equipResult = equipItem(activePlayer.inventory, item);
                   addToLog(`LOOT: Fant ${item.name} fra ${enemy.name}!`);
                   addFloatingText(enemy.position.q, enemy.position.r, item.name.toUpperCase(), "text-accent");
+                  // Trigger AI Game Master discovery narration
+                  aiGameMaster.triggerDiscovery(activePlayer, item.name);
                   setState(prev => ({
                     ...prev,
                     players: prev.players.map((p, i) =>
@@ -4947,6 +4976,21 @@ const ShadowsGame: React.FC = () => {
                 </Tooltip>
               </TooltipProvider>
             )}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setShowDMSettings(true)}
+                    className={`bg-leather/90 border-2 border-amber-600/50 ${isMobile ? 'rounded-lg p-2' : 'rounded-xl p-3'} text-amber-500 transition-colors hover:bg-background/50 active:scale-95`}
+                  >
+                    <MessageSquare size={isMobile ? 20 : 24} />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="bg-card border-2 border-primary/50 p-2 shadow-[var(--shadow-doom)]">
+                  <p className="text-xs">AI Game Master Settings</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <button onClick={() => setIsMainMenuOpen(true)} className={`bg-leather/90 border-2 border-primary ${isMobile ? 'rounded-lg p-2' : 'rounded-xl p-3'} text-primary transition-colors hover:bg-background/50 active:scale-95`}><Settings size={isMobile ? 20 : 24} /></button>
           </div>
 
@@ -5348,6 +5392,17 @@ const ShadowsGame: React.FC = () => {
           onDismiss={aiGameMaster.dismissNarration}
           settings={aiGameMaster.settings}
           onSettingsChange={aiGameMaster.updateSettings}
+          ttsAvailable={aiGameMaster.ttsAvailable}
+          ttsProvider={aiGameMaster.ttsProvider}
+        />
+      )}
+
+      {/* AI Game Master Settings Panel */}
+      {showDMSettings && (
+        <DMSettingsPanel
+          settings={aiGameMaster.settings}
+          onSettingsChange={aiGameMaster.updateSettings}
+          onClose={() => setShowDMSettings(false)}
           ttsAvailable={aiGameMaster.ttsAvailable}
           ttsProvider={aiGameMaster.ttsProvider}
         />

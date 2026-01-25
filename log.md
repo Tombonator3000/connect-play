@@ -25663,3 +25663,63 @@ Gjennomgang av todo.md viser følgende gjenstående oppgaver for Fase 2 (Dynamic
 4. **Settings UI**: Legge til synlig knapp for AI DM innstillinger
 
 ---
+
+### Implementert
+
+#### 1. Combat-triggere ✅
+**Fil:** `ShadowsGame.tsx`
+
+Lagt til AI Game Master narration for:
+- **Combat Start** (linje ~3343): Trigger når spilleren starter et angrep
+  ```typescript
+  aiGameMaster.triggerCombatStart(activePlayer, targetEnemy);
+  ```
+- **Combat Victory** (linje ~3922): Trigger når fienden drepes
+  ```typescript
+  aiGameMaster.triggerCombatVictory(activePlayer, enemy);
+  ```
+
+#### 2. Sanity-triggere ✅
+**Fil:** `ShadowsGame.tsx`
+
+Lagt til AI Game Master narration for sanity tap:
+- **Horror Check Failure** (linje ~3309): Når spilleren mislykkes horror check
+- **Event Consequence** (linje ~1963): Når events fører til sanity tap
+- **Dark Room Horror** (linje ~3158): Når spilleren avdekker horror i mørke rom
+
+```typescript
+aiGameMaster.triggerSanityLoss(activePlayer, sanityLost);
+```
+
+#### 3. Item Discovery-triggere ✅
+**Fil:** `ShadowsGame.tsx`
+
+Lagt til AI Game Master narration for item-oppdagelser:
+- **Enemy Loot** (linje ~3944): Når spilleren får loot fra fiender
+- **Event Item Rewards** (linje ~2846): Når events gir items
+- **Quest Items** (linje ~2458): Når spilleren finner quest items
+
+```typescript
+aiGameMaster.triggerDiscovery(activePlayer, itemName);
+```
+
+#### 4. Settings-knapp i Game UI ✅
+**Fil:** `ShadowsGame.tsx`
+
+Lagt til:
+- Importert `DMSettingsPanel` fra `DMNarrationPanel.tsx`
+- Ny state: `showDMSettings` for å kontrollere settings-panelet
+- Ny knapp med `MessageSquare`-ikon i top-right UI (ved siden av Settings)
+- Tooltip: "AI Game Master Settings"
+- Knappen har amber/gull-farger for å skille den fra hovedinnstillinger
+
+### Endrede Filer
+
+| Fil | Endringer |
+|-----|-----------|
+| `src/game/ShadowsGame.tsx` | +12 trigger-kall, +Settings-knapp, +DMSettingsPanel import |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+
+---
