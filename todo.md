@@ -95,11 +95,11 @@ Item-kategorier som kun vises som tekstliste:
   - [x] Farge-skjemaer per type
   - [x] Dekorative elementer
 
-### Remaining (minor)
-- [ ] Koble combat-triggere (start/victory/defeat)
-- [ ] Koble sanity-triggere
-- [ ] Koble item discovery triggere
-- [ ] Settings-knapp i game UI
+### Remaining (minor) - ✅ FERDIG 2026-01-25
+- [x] Koble combat-triggere (start/victory/defeat)
+- [x] Koble sanity-triggere
+- [x] Koble item discovery triggere
+- [x] Settings-knapp i game UI
 
 ---
 
