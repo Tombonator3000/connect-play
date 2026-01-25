@@ -3318,6 +3318,14 @@ const ShadowsGame: React.FC = () => {
         const combatResult = performAttack(activePlayer, targetEnemy, isRanged);
         playSound('attack');
         playSound('diceRoll');
+
+        // Pre-generate defense rolls to avoid re-render issues in CombatOverlay
+        const enemyBestiary = BESTIARY[targetEnemy.type];
+        const defenseRolls = Array.from(
+          { length: enemyBestiary?.defenseDice || 1 },
+          () => Math.floor(Math.random() * 6) + 1
+        );
+
         setState(prev => ({
           ...prev,
           lastDiceRoll: combatResult.rolls,
@@ -3326,6 +3334,7 @@ const ShadowsGame: React.FC = () => {
             enemyId: targetEnemy.id,
             phase: 'player_attack',
             playerRoll: combatResult.rolls,
+            defenseRolls,
             playerDamageDealt: combatResult.damage
           }
         }));
@@ -5092,14 +5101,14 @@ const ShadowsGame: React.FC = () => {
       {state.activeCombat && state.lastDiceRoll && (() => {
         const combatPlayer = state.players.find(p => p.id === state.activeCombat?.playerId);
         const combatEnemy = state.enemies.find(e => e.id === state.activeCombat?.enemyId);
-        if (combatPlayer && combatEnemy) {
+        if (combatPlayer && combatEnemy && state.activeCombat.defenseRolls) {
           const attackSuccesses = state.lastDiceRoll.filter(v => v >= 4).length;
-          const bestiaryEntry = BESTIARY[combatEnemy.type];
-          const defenseRolls = Array.from({ length: bestiaryEntry?.defenseDice || 1 }, () => Math.floor(Math.random() * 6) + 1);
+          // Use pre-generated defense rolls from state to prevent re-render issues
+          const defenseRolls = state.activeCombat.defenseRolls;
           const defenseSuccesses = defenseRolls.filter(v => v >= 4).length;
           const netDamage = Math.max(0, attackSuccesses - defenseSuccesses);
           const isCritical = attackSuccesses === state.lastDiceRoll.length && state.lastDiceRoll.length > 0;
-          
+
           return (
             <CombatOverlay
               player={combatPlayer}
