@@ -25639,3 +25639,27 @@ Dette skapte NYE array-referanser på hver re-render, som trigget CombatOverlay 
 ✅ Bygget kompilerer uten feil
 
 ---
+
+
+## 2026-01-25: Sesjon - Fase 2 Ferdigstilling
+
+### Dagens Oppgaver
+
+Gjennomgang av todo.md viser følgende gjenstående oppgaver for Fase 2 (Dynamic Game Master):
+
+#### Fase 2 - Remaining Minor Tasks
+| Oppgave | Status |
+|---------|--------|
+| Koble combat-triggere (start/victory/defeat) | 🔲 Pending |
+| Koble sanity-triggere | 🔲 Pending |
+| Koble item discovery triggere | 🔲 Pending |
+| Settings-knapp i game UI | 🔲 Pending |
+
+### Plan
+
+1. **Combat-triggere**: Integrere `triggerNarration()` med kamp-events i ShadowsGame
+2. **Sanity-triggere**: Koble til sanity-endringer (sanity_loss, sanity_restored)
+3. **Item discovery**: Trigge narration når spilleren finner items
+4. **Settings UI**: Legge til synlig knapp for AI DM innstillinger
+
+---
