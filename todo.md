@@ -105,57 +105,89 @@ Item-kategorier som kun vises som tekstliste:
 
 ## Fase 3: Adaptive Hints System (Future)
 
+> **Status:** Ikke startet
+> **Avhengigheter:** Fase 2 (GM Narration) ✅
+
 ### Planning
 - [ ] Design hint trigger logic
-- [ ] Identifiser "stuck" heuristics
+- [ ] Identifiser "stuck" heuristics (tid på samme tile, mange runder uten progress, etc.)
+- [ ] Definere hint-typer (objective hints, combat tips, exploration suggestions)
 
 ### Implementation
-- [ ] Track player progress metrics
-- [ ] Lag hint generation prompts
-- [ ] Integrer med objective system
-- [ ] Lag hint UI (subtle, non-intrusive)
+- [ ] Track player progress metrics i game state
+- [ ] Lag hint generation prompts for Claude API
+- [ ] Integrer med objective system for kontekstuell relevans
+- [ ] Lag hint UI (subtle toast, integrert i GM panel)
+- [ ] Cooldown-system for å unngå hint-spam
 
 ---
 
-## Fase 4: Scenario Generator (Future)
+## Fase 4: AI-Enhanced Scenario Narratives (Future) - REVIDERT
 
-### Planning
-- [ ] Design scenario template format
-- [ ] Identifiser genererbare elementer
+> **Status:** Ikke startet
+> **Merk:** Algoritmisk scenario generator eksisterer allerede i `scenarioGenerator.ts`
+
+### Eksisterende System
+Vi har allerede en komplett scenario generator med:
+- 9 mission types (escape, assassination, survival, collection, rescue, investigation, ritual, seal_portal, purge)
+- Automatic location/enemy/doom event generation
+- Winnability validation (`scenarioValidator.ts`)
+- 100+ unike kombinasjoner
+
+### Revidert Scope: AI Enhancement (ikke erstatning)
+- [ ] AI-genererte briefings som utvider template-baserte briefings
+- [ ] Dynamiske plot twists basert på spillerhandlinger
+- [ ] Personaliserte narrative hooks basert på valgt karakter
+- [ ] AI-forbedret location descriptions for genererte tiles
 
 ### Implementation
-- [ ] Lag scenario generation prompts
-- [ ] Integrer med Quest Editor
-- [ ] Validering av genererte scenarier
-- [ ] Balanserings-sjekker
+- [ ] Lag prompts for briefing enhancement
+- [ ] Integrer med eksisterende `generateRandomScenario()`
+- [ ] Cache AI-generert innhold per scenario-seed
+- [ ] Fallback til template-briefings ved API-feil
 
 ---
 
-## Fase 5: Monster Personality (Future)
+## Fase 5: Monster Personality & Combat Narration (Future)
+
+> **Status:** Ikke startet
+> **Prioritet:** Medium - gir god atmosfære
 
 ### Planning
-- [ ] Design personality trait system
-- [ ] Identifiser narration points
+- [ ] Design personality trait system (aggressive, cunning, fearful, ancient, hungry)
+- [ ] Identifiser narration points (spawn, attack, damage, flee, death)
+- [ ] Definere personality-to-behavior mapping
 
 ### Implementation
-- [ ] Extend Enemy type med personality
-- [ ] Lag personality generation ved spawn
-- [ ] Integrer med monsterAI for flavor text
-- [ ] Combat narration basert på personality
+- [ ] Extend `Enemy` type med `personality?: MonsterPersonality`
+- [ ] Lag personality generation ved spawn (basert på enemy type + context)
+- [ ] AI-generert flavor text for combat actions
+- [ ] Integrer med DMNarrationPanel for combat narration
+- [ ] Cache personality per enemy instance
 
 ---
 
-## Fase 6: Event Generator (Future)
+## Fase 6: AI-Enhanced Doom Events (Future) - REVIDERT
 
-### Planning
-- [ ] Design event structure for AI generation
-- [ ] Identifiser context requirements
+> **Status:** Ikke startet
+> **Merk:** Doom events genereres allerede i `scenarioGeneratorHelpers.ts`
+
+### Eksisterende System
+- Doom events med enemy spawns og boss encounters
+- Mission-specific og atmosphere-specific enemy pools
+- Threshold-basert triggering
+
+### Revidert Scope: AI Enhancement
+- [ ] AI-genererte event descriptions (utover standard messages)
+- [ ] Dynamiske events basert på spillsituasjon
+- [ ] "Random encounters" generert av AI mid-game
+- [ ] Narrative konsekvenser av doom events
 
 ### Implementation
-- [ ] Extend eventDeckManager
-- [ ] Lag event generation prompts
-- [ ] Validering av genererte events
-- [ ] Balanserings-sjekker
+- [ ] Extend `DoomEvent` type med `aiDescription?: string`
+- [ ] Lag prompts for contextual event narration
+- [ ] Integrer med GM system for event announcements
+- [ ] Balanserings-sjekker for AI-genererte encounters
 
 ---
 

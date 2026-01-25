@@ -1,5 +1,21 @@
 # Development Log
 
+## 2026-01-25: Revidert Fase 3-6 i todo.md
+
+### Endringer
+Oppdatert todo.md med reviderte definisjoner for Fase 3-6:
+
+| Fase | Før | Etter |
+|------|-----|-------|
+| Fase 3 | Adaptive Hints | Beholdt - lagt til detaljer |
+| Fase 4 | "Scenario Generator" | → "AI-Enhanced Scenario Narratives" |
+| Fase 5 | Monster Personality | Beholdt - lagt til detaljer |
+| Fase 6 | "Event Generator" | → "AI-Enhanced Doom Events" |
+
+**Hovedendring:** Fase 4 og 6 handler nå om AI *enhancement* av eksisterende systemer, ikke erstatning.
+
+---
+
 ## 2026-01-25: Scenario Generator Review
 
 ### Oppgave
