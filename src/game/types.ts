@@ -1381,6 +1381,7 @@ export interface CombatState {
   playerId: string;
   phase: 'player_attack' | 'enemy_attack' | 'horror_check' | 'resolved';
   playerRoll?: number[];
+  defenseRolls?: number[];  // Pre-generated defense rolls to prevent re-render issues
   enemyDamageDealt?: number;
   playerDamageDealt?: number;
 }

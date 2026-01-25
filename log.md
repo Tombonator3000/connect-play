@@ -25609,3 +25609,33 @@ const getClusterProbability = (): number => {
 ✅ Bygget kompilerer uten feil
 
 ---
+
+## 2026-01-25: Fix Dice Rolling Freeze (CombatOverlay)
+
+### Problem
+Spillet hang seg opp under terningkast i kamp. CombatOverlay-animasjonen startet aldri fullstendig fordi useEffect kontinuerlig ble restartet.
+
+### Rotårsak
+`defenseRolls` ble generert INNE i render-funksjonen:
+```javascript
+const defenseRolls = Array.from({ length: bestiaryEntry?.defenseDice || 1 }, 
+  () => Math.floor(Math.random() * 6) + 1);
+```
+
+Dette skapte NYE array-referanser på hver re-render, som trigget CombatOverlay sin useEffect å restarte fordi `[attackRolls, defenseRolls]` var i dependency array.
+
+### Løsning
+1. La til `defenseRolls?: number[]` felt i `CombatState` interface (types.ts)
+2. Genererer defenseRolls ÉN gang når `activeCombat` settes (ShadowsGame.tsx:3317-3338)
+3. Bruker lagrede verdier fra state i render i stedet for å generere nye
+
+### Endrede Filer
+| Fil | Endring |
+|-----|---------|
+| `src/game/types.ts` | La til `defenseRolls?: number[]` i CombatState |
+| `src/game/ShadowsGame.tsx` | Pre-genererer defenseRolls ved combat start, bruker lagrede verdier i render |
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
