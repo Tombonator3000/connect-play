@@ -4082,15 +4082,21 @@ const ShadowsGame: React.FC = () => {
       // Show Mythos phase overlay
       setShowMythosOverlay(true);
     } else {
-      // Apply madness turn start effects to next alive player
+      // Apply madness turn start effects to next alive player and reset their actions
       setState(prev => {
-        const nextPlayer = prev.players[nextAliveIndex];
-        if (nextPlayer && nextPlayer.activeMadness) {
-          const updatedPlayers = [...prev.players];
-          updatedPlayers[nextAliveIndex] = applyMadnessTurnStartEffects(nextPlayer);
-          return { ...prev, activePlayerIndex: nextAliveIndex, activeSpell: null, activeOccultistSpell: null, players: updatedPlayers };
-        }
-        return { ...prev, activePlayerIndex: nextAliveIndex, activeSpell: null, activeOccultistSpell: null };
+        const updatedPlayers = prev.players.map((p, i) => {
+          if (i === nextAliveIndex) {
+            // Reset actions to maxActions for the new active player
+            let updatedPlayer = { ...p, actions: p.maxActions || 2 };
+            // Apply madness effects if applicable
+            if (p.activeMadness) {
+              updatedPlayer = applyMadnessTurnStartEffects(updatedPlayer);
+            }
+            return updatedPlayer;
+          }
+          return p;
+        });
+        return { ...prev, activePlayerIndex: nextAliveIndex, activeSpell: null, activeOccultistSpell: null, players: updatedPlayers };
       });
     }
   };
@@ -4226,16 +4232,21 @@ const ShadowsGame: React.FC = () => {
       }
     }
 
+    // Reset actions for the first player of the new round
     setState(prev => ({
       ...prev,
-      phase: GamePhase.MYTHOS,
+      phase: GamePhase.INVESTIGATOR, // Back to investigator phase for new round
       activePlayerIndex: firstAliveIndex,
       doom: newDoom,
       round: newRound,
       activeSpell: null,
       activeOccultistSpell: null,
       activeScenario: updatedScenario,
-      weatherState: newWeatherState
+      weatherState: newWeatherState,
+      // Reset actions for the first player
+      players: prev.players.map((p, i) =>
+        i === firstAliveIndex ? { ...p, actions: p.maxActions || 2 } : p
+      )
     }));
   };
 
