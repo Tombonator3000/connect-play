@@ -24648,3 +24648,139 @@ Lagt til `ATMOSPHERE_ENEMY_POOLS` for tematisk konsistens med lokasjon:
 ✅ Bygget kompilerer uten feil
 
 ---
+
+
+---
+
+## 2026-01-25: Voice Clone TTS Research - Qwen3-TTS for GM Narration
+
+### Oppgave
+Undersøke om Qwen3-TTS voice clone-teknologi kan brukes for voice narration i spillet (Game Master narration).
+
+### Qwen3-TTS Analyse
+
+**Prosjekt:** https://github.com/QwenLM/Qwen3-TTS
+
+#### Kjerne-funksjoner
+1. **Voice Cloning** - Krever kun 3 sekunder referanseaudio med transkripsjon
+2. **Voice Design** - Generer stemme fra naturlige språkbeskrivelser
+3. **Pre-built Voices** - 9 premium stemmer med instruksjonsbasert stilkontroll
+4. **10 språk støttet** - Engelsk, Kinesisk, Japansk, Koreansk, Tysk, Fransk, Russisk, Portugisisk, Spansk, Italiensk
+
+#### Teknisk arkitektur
+- **Modellstørrelser:** 0.6B og 1.7B parametre
+- **Tokenizer:** Qwen3-TTS-Tokenizer-12Hz for effektiv akustisk kompresjon
+- **Streaming:** Dual-track hybrid streaming med latency ned til 97ms
+- **Lisens:** Apache-2.0 (kommersiell bruk tillatt)
+
+#### Kjøremåter
+1. **Lokal deployment:**
+   - Python-pakke via pip
+   - Gradio web UI demo (`qwen-tts-demo`)
+   - Krav: Python 3.12, PyTorch, FlashAttention 2 (anbefalt)
+
+2. **Cloud/API:**
+   - DashScope API for voice cloning, design og custom voices
+   - vLLM-Omni integrasjon for offline inferens
+
+### Integrasjonsmuligheter for Mythos Quest
+
+#### Eksisterende GM-system
+- `useAIGameMaster.ts` - Hook som genererer tekst-narration via Claude API
+- `DMNarrationPanel.tsx` - Viser tekst med typewriter-effekt
+- Priority-basert kø med cooldowns (3 sek mellom narrations)
+- 16 narration-typer (combat, sanity, doom, exploration, etc.)
+
+#### Integrasjonsstrategier
+
+**Strategi 1: Lokal TTS Server (Avansert)**
+```
+[Claude API] → Tekst → [Qwen3-TTS Lokal Server] → Audio → [Web Audio API]
+```
+- Fordeler: Full kontroll, ingen API-kostnader, fungerer offline
+- Ulemper: Krever at brukeren kjører TTS-server lokalt, GPU-krevende
+
+**Strategi 2: Backend TTS Service (Produksjon)**
+```
+[Claude API] → Tekst → [Backend med Qwen3-TTS] → Audio URL → [Frontend Audio]
+```
+- Fordeler: Ingen krav til brukerens maskin
+- Ulemper: Krever server-infrastruktur, økt latency
+
+**Strategi 3: DashScope Cloud API**
+```
+[Claude API] → Tekst → [DashScope API] → Audio → [Frontend Audio]
+```
+- Fordeler: Enklest å implementere, skalerbar
+- Ulemper: API-kostnader, avhengighet av ekstern tjeneste
+
+### Anbefalt Implementeringsplan
+
+#### Fase 1: Proof of Concept (Lokal)
+1. Sett opp Qwen3-TTS lokalt for testing
+2. Lag en voice clone av en "creepy GM" stemme
+3. Test med mock GM-tekster fra spillet
+
+#### Fase 2: Service-lag (Frontend)
+1. Lag `src/game/services/ttsService.ts`
+2. Abstraher TTS-provider (lokal/cloud/mock)
+3. Integrer med `useAIGameMaster` hook
+
+#### Fase 3: UI-integrasjon
+1. Utvid `DMNarrationPanel` med audio-avspilling
+2. Legg til settings for voice narration on/off
+3. Implementer audio queue synkronisert med tekst
+
+### Teknisk Design-skisse
+
+```typescript
+// src/game/services/ttsService.ts
+interface TTSService {
+  generateSpeech(text: string, voiceId: string): Promise<AudioBuffer>;
+  preloadVoice(voiceId: string): Promise<void>;
+  getAvailableVoices(): Voice[];
+}
+
+// Utvidelse av GMSettings i useAIGameMaster.ts
+interface GMSettings {
+  // ... eksisterende
+  enableVoiceNarration: boolean;
+  voiceId: string;
+  voiceVolume: number;
+}
+
+// Utvidelse av DMNarrationPanel
+interface DMNarrationPanelProps {
+  // ... eksisterende
+  audioBuffer?: AudioBuffer;
+  playAudio: boolean;
+}
+```
+
+### Vurdering
+
+| Aspekt | Vurdering |
+|--------|-----------|
+| Teknisk mulig | ✅ Ja, Qwen3-TTS støtter alt vi trenger |
+| Voice cloning | ✅ 3 sek referanse er tilstrekkelig |
+| Latency | ✅ 97ms streaming er akseptabelt for spill |
+| Lovecraft-atmosfære | ✅ Kan klone/designe passende stemme |
+| Implementeringskompleksitet | ⚠️ Medium-høy (krever backend eller lokal server) |
+| Browser-støtte | ✅ Web Audio API er godt støttet |
+
+### Konklusjon
+
+**JA, dette er absolutt mulig\!** Qwen3-TTS er et utmerket valg for voice narration i Mythos Quest fordi:
+
+1. **Voice cloning** kan skape en unik, atmosfærisk GM-stemme
+2. **Lav latency** (97ms) passer bra for real-time spill-narration
+3. **Apache-2.0 lisens** tillater kommersiell bruk
+4. **Multi-språk støtte** gir fleksibilitet for fremtidig lokalisering
+
+**Neste steg:**
+- [ ] Bestemme deployment-strategi (lokal vs cloud)
+- [ ] Finne/lage referanseaudio for GM-stemme (3 sek)
+- [ ] Sette opp proof-of-concept med Qwen3-TTS
+
+---
+
