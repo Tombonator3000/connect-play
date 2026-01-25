@@ -7,7 +7,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Sparkles, Skull, Brain, Swords, Eye, AlertTriangle, BookOpen } from 'lucide-react';
+import { X, Sparkles, Skull, Brain, Swords, Eye, AlertTriangle, BookOpen, Volume2, VolumeX } from 'lucide-react';
 import { GMNarrationResult, GMNarrationType } from '../services/claudeService';
 import { GMSettings } from '../hooks/useAIGameMaster';
 
@@ -23,6 +23,9 @@ interface DMNarrationPanelProps {
   settings: GMSettings;
   onSettingsChange?: (settings: Partial<GMSettings>) => void;
   showSettings?: boolean;
+  // TTS status
+  ttsAvailable?: boolean;
+  ttsProvider?: 'qwen-local' | 'web-speech' | 'none';
 }
 
 // Icon mapping for different narration types
@@ -232,16 +235,20 @@ interface DMSettingsPanelProps {
   settings: GMSettings;
   onSettingsChange: (settings: Partial<GMSettings>) => void;
   onClose: () => void;
+  ttsAvailable?: boolean;
+  ttsProvider?: 'qwen-local' | 'web-speech' | 'none';
 }
 
 export const DMSettingsPanel: React.FC<DMSettingsPanelProps> = ({
   settings,
   onSettingsChange,
   onClose,
+  ttsAvailable = false,
+  ttsProvider = 'none',
 }) => {
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="bg-stone-900 border-2 border-amber-800/50 rounded-lg shadow-2xl max-w-sm w-full mx-4">
+      <div className="bg-stone-900 border-2 border-amber-800/50 rounded-lg shadow-2xl max-w-sm w-full mx-4 max-h-[90vh] overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-amber-900/30">
           <h3 className="text-amber-400 font-semibold">Game Master Settings</h3>
@@ -261,6 +268,75 @@ export const DMSettingsPanel: React.FC<DMSettingsPanelProps> = ({
             checked={settings.enabled}
             onChange={(enabled) => onSettingsChange({ enabled })}
           />
+
+          {/* Voice Narration Section */}
+          <div className="border-t border-amber-900/20 pt-4">
+            <div className="flex items-center gap-2 mb-3">
+              {settings.voiceEnabled ? (
+                <Volume2 className="w-4 h-4 text-amber-500/60" />
+              ) : (
+                <VolumeX className="w-4 h-4 text-amber-500/60" />
+              )}
+              <p className="text-xs text-amber-500/60">Voice Narration</p>
+              {ttsAvailable && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/50 text-green-400">
+                  {ttsProvider === 'qwen-local' ? 'Qwen3-TTS' : 'Web Speech'}
+                </span>
+              )}
+              {!ttsAvailable && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-stone-700 text-stone-400">
+                  Unavailable
+                </span>
+              )}
+            </div>
+
+            <SettingToggle
+              label="Enable Voice"
+              checked={settings.voiceEnabled}
+              onChange={(voiceEnabled) => onSettingsChange({ voiceEnabled })}
+              disabled={!settings.enabled || !ttsAvailable}
+            />
+
+            {/* Volume slider */}
+            <div className={`py-2 ${(!settings.enabled || !settings.voiceEnabled) ? 'opacity-50' : ''}`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-amber-200/80">Volume</span>
+                <span className="text-xs text-amber-500/60">{Math.round(settings.voiceVolume * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                value={settings.voiceVolume * 100}
+                onChange={(e) => onSettingsChange({ voiceVolume: Number(e.target.value) / 100 })}
+                disabled={!settings.enabled || !settings.voiceEnabled}
+                className="w-full h-2 bg-stone-700 rounded-lg appearance-none cursor-pointer accent-amber-600"
+              />
+            </div>
+
+            {/* Rate slider */}
+            <div className={`py-2 ${(!settings.enabled || !settings.voiceEnabled) ? 'opacity-50' : ''}`}>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-sm text-amber-200/80">Speed</span>
+                <span className="text-xs text-amber-500/60">{settings.voiceRate.toFixed(1)}x</span>
+              </div>
+              <input
+                type="range"
+                min="50"
+                max="150"
+                value={settings.voiceRate * 100}
+                onChange={(e) => onSettingsChange({ voiceRate: Number(e.target.value) / 100 })}
+                disabled={!settings.enabled || !settings.voiceEnabled}
+                className="w-full h-2 bg-stone-700 rounded-lg appearance-none cursor-pointer accent-amber-600"
+              />
+            </div>
+
+            {ttsProvider === 'web-speech' && settings.voiceEnabled && (
+              <p className="text-[10px] text-amber-500/40 mt-2">
+                Using browser voice. For custom GM voice, run the local TTS server.
+              </p>
+            )}
+          </div>
 
           <div className="border-t border-amber-900/20 pt-4">
             <p className="text-xs text-amber-500/60 mb-3">Narration Types</p>

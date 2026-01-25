@@ -24784,3 +24784,103 @@ interface DMNarrationPanelProps {
 
 ---
 
+
+
+### Implementasjon Fullført (2026-01-25)
+
+#### Filer Opprettet
+
+| Fil | Beskrivelse |
+|-----|-------------|
+| `src/game/services/ttsService.ts` | TTS service med støtte for Qwen3-TTS og Web Speech API |
+| `src/game/hooks/useTTS.ts` | React hook for TTS |
+| `tts-server/server.py` | Python server for Qwen3-TTS |
+| `tts-server/requirements.txt` | Python dependencies |
+| `tts-server/README.md` | Setup-instruksjoner |
+| `tts-server/reference/README.md` | Guide for referanseaudio |
+
+#### Endrede Filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/hooks/useAIGameMaster.ts` | Lagt til voice settings og TTS-integrasjon |
+| `src/game/components/DMNarrationPanel.tsx` | Lagt til voice controls i settings |
+| `src/game/ShadowsGame.tsx` | Koblet TTS-props til DMNarrationPanel |
+
+#### Arkitektur
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        SPILL (Browser)                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  ┌──────────────────┐      ┌──────────────────┐                │
+│  │ useAIGameMaster  │──────│   ttsService     │                │
+│  │ (tekst-narration)│      │ (voice-narration)│                │
+│  └──────────────────┘      └────────┬─────────┘                │
+│                                     │                           │
+│                          ┌──────────┴──────────┐               │
+│                          ▼                     ▼               │
+│                    ┌──────────┐          ┌──────────┐          │
+│                    │ Qwen3   │          │ Web      │          │
+│                    │ Server  │          │ Speech   │          │
+│                    │ (lokal) │          │ API      │          │
+│                    └────┬────┘          └──────────┘          │
+│                         │              (fallback)              │
+└─────────────────────────┼──────────────────────────────────────┘
+                          │
+┌─────────────────────────┼──────────────────────────────────────┐
+│            TTS SERVER (localhost:8765)                          │
+├─────────────────────────┼──────────────────────────────────────┤
+│                         ▼                                       │
+│  ┌──────────────────────────────────────────┐                  │
+│  │              Flask Server                 │                  │
+│  │  /health     - Status check              │                  │
+│  │  /synthesize - Generer tale              │                  │
+│  │  /voices     - Liste stemmer             │                  │
+│  │  /reference  - Last opp ref-audio        │                  │
+│  └──────────────────┬───────────────────────┘                  │
+│                     │                                           │
+│                     ▼                                           │
+│  ┌──────────────────────────────────────────┐                  │
+│  │           Qwen3-TTS Engine               │                  │
+│  │  - Voice cloning fra 3s audio            │                  │
+│  │  - Caching av generert tale              │                  │
+│  │  - 0.6B eller 1.7B modell                │                  │
+│  └──────────────────────────────────────────┘                  │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Hvordan det fungerer
+
+1. **Ved oppstart:** ttsService sjekker om Qwen3-TTS server er tilgjengelig
+2. **Fallback:** Hvis ingen server, brukes Web Speech API (innebygd i nettleseren)
+3. **Ved narration:** Når GM-tekst genereres, sendes den også til TTS
+4. **Voice cloning:** Hvis referanseaudio er lastet, klones stemmen
+
+#### Brukerveiledning
+
+**For Web Speech (ingen setup):**
+1. Åpne spillet i nettleseren
+2. Voice narration fungerer automatisk
+
+**For Qwen3-TTS (bedre kvalitet):**
+1. Installer Python 3.12+
+2. `cd tts-server && pip install -r requirements.txt`
+3. Legg til referanseaudio i `tts-server/reference/gm-voice.wav`
+4. `python server.py`
+5. Spillet kobler seg automatisk til serveren
+
+#### Settings i Spillet
+
+Nye voice-innstillinger i GM Settings:
+- **Enable Voice** - Slå voice narration av/på
+- **Volume** - Juster volum (0-100%)
+- **Speed** - Juster hastighet (0.5x - 1.5x)
+
+#### Build Status
+✅ Bygget kompilerer uten feil
+
+---
+
