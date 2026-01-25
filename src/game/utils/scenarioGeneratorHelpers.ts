@@ -267,12 +267,61 @@ export function generateBonusObjectives(count: number): ScenarioObjective[] {
 // DOOM EVENT GENERATION
 // ============================================================================
 
-/** Doom threshold percentages for enemy wave timing */
-const DOOM_THRESHOLDS = {
+/** Default doom threshold percentages for enemy wave timing */
+const DEFAULT_DOOM_THRESHOLDS = {
   early: 0.55,  // First encounter - gives exploration time
   mid: 0.35,    // Pressure builds
   late: 0.15    // Boss appears near finale
 } as const;
+
+/**
+ * Mission-specific doom threshold adjustments.
+ * Different mission types benefit from different pacing:
+ * - Survival: More waves earlier, more time between boss
+ * - Collection: Later waves to allow exploration
+ * - Assassination: Earlier pressure to create urgency
+ *
+ * ADDED (2026-01-25): Mission-specific doom timing for better pacing.
+ */
+const MISSION_DOOM_THRESHOLDS: Record<string, { early: number; mid: number; late: number }> = {
+  // Survival missions: Earlier waves, later boss (more time to survive)
+  survival: { early: 0.70, mid: 0.50, late: 0.20 },
+
+  // Collection missions: Later waves (more exploration time)
+  collection: { early: 0.50, mid: 0.30, late: 0.12 },
+
+  // Investigation missions: Even later waves (thorough search needed)
+  investigation: { early: 0.48, mid: 0.28, late: 0.10 },
+
+  // Ritual missions: Medium pacing (balance gathering and combat)
+  ritual: { early: 0.52, mid: 0.32, late: 0.12 },
+
+  // Assassination missions: Earlier pressure (urgency)
+  assassination: { early: 0.60, mid: 0.40, late: 0.18 },
+
+  // Purge missions: Waves spread out (many enemies to kill)
+  purge: { early: 0.65, mid: 0.45, late: 0.20 },
+
+  // Escape missions: Default pacing
+  escape_manor: { early: 0.55, mid: 0.35, late: 0.15 },
+
+  // Rescue missions: Earlier pressure (victim at risk)
+  rescue: { early: 0.58, mid: 0.38, late: 0.16 },
+
+  // Seal portal missions: Medium pacing
+  seal_portal: { early: 0.52, mid: 0.32, late: 0.12 },
+};
+
+/**
+ * Get doom thresholds for a specific mission type.
+ * Falls back to default thresholds if mission not found.
+ */
+function getDoomThresholds(missionId?: string): { early: number; mid: number; late: number } {
+  if (missionId && MISSION_DOOM_THRESHOLDS[missionId]) {
+    return MISSION_DOOM_THRESHOLDS[missionId];
+  }
+  return { ...DEFAULT_DOOM_THRESHOLDS };
+}
 
 /**
  * Build a combined enemy pool from multiple sources.
@@ -306,6 +355,9 @@ function buildCombinedEnemyPool(
  * Generate doom events for scenario based on difficulty, mission type, and atmosphere.
  * Creates early, mid, and late (boss) waves with appropriate timing.
  * Now uses combined pools for better monster variety per quest type.
+ *
+ * ENHANCED (2026-01-25): Uses mission-specific doom thresholds for better pacing.
+ * Survival missions get more time, assassination missions get more pressure, etc.
  */
 export function generateDoomEvents(
   difficulty: 'Normal' | 'Hard' | 'Nightmare',
@@ -317,6 +369,9 @@ export function generateDoomEvents(
   const events: DoomEvent[] = [];
   const usedTypes = new Set<string>(); // Track used enemy types to ensure variety
 
+  // Get mission-specific doom thresholds (NEW)
+  const thresholds = getDoomThresholds(missionId);
+
   // Helper to select enemy avoiding repeats when possible
   const selectUniqueEnemy = () => {
     // Try to find an unused enemy type
@@ -327,10 +382,10 @@ export function generateDoomEvents(
     return selected;
   };
 
-  // Early wave
+  // Early wave - uses mission-specific threshold
   const earlyEnemy = selectUniqueEnemy();
   events.push({
-    threshold: Math.ceil(baseDoom * DOOM_THRESHOLDS.early),
+    threshold: Math.ceil(baseDoom * thresholds.early),
     triggered: false,
     type: 'spawn_enemy',
     targetId: earlyEnemy.type,
@@ -341,7 +396,7 @@ export function generateDoomEvents(
   // Mid wave - select different enemy type if possible
   const midEnemy = selectUniqueEnemy();
   events.push({
-    threshold: Math.ceil(baseDoom * DOOM_THRESHOLDS.mid),
+    threshold: Math.ceil(baseDoom * thresholds.mid),
     triggered: false,
     type: 'spawn_enemy',
     targetId: midEnemy.type,
@@ -352,7 +407,7 @@ export function generateDoomEvents(
   // Late wave - boss
   const boss = selectBossForDifficulty(difficulty);
   events.push({
-    threshold: Math.ceil(baseDoom * DOOM_THRESHOLDS.late),
+    threshold: Math.ceil(baseDoom * thresholds.late),
     triggered: false,
     type: 'spawn_boss',
     targetId: boss.type,

@@ -25234,3 +25234,331 @@ setState(prev => ({
 ✅ Bygget kompilerer uten feil
 
 ---
+
+## 2026-01-25: Deep Audit - Random Quest og Tiles Layout Forbedringer
+
+### Oversikt
+
+Gjennomførte en dyp analyse av Random Quest-systemet og Tiles Layout-systemet. Identifiserte 5 hovedområder for forbedring og implementerte løsninger for alle.
+
+### Analyse-funn
+
+#### Random Quest System Analyse
+
+| Komponent | Fil | Funksjon |
+|-----------|-----|----------|
+| Scenario Generator | `scenarioGenerator.ts` | Genererer tilfeldige scenarier fra element pools |
+| Objective Spawner | `objectiveSpawner.ts` | Spawner quest items og tiles under spill |
+| Scenario Validator | `scenarioValidator.ts` | Validerer at scenarier er vinnbare |
+| Scenario Helpers | `scenarioGeneratorHelpers.ts` | Doom events, briefings, objectives |
+
+**Quest Flow:**
+```
+1. User velger difficulty
+   ↓
+2. generateRandomScenario(difficulty)
+   ├─ Velg MissionType (9 typer)
+   ├─ Velg Location (23 lokasjoner)
+   ├─ Generer Objectives fra templates
+   ├─ Generer DoomEvents med enemy pools
+   └─ Bygg Victory/Defeat conditions
+   ↓
+3. initializeObjectiveSpawns(scenario)
+   ├─ Lag QuestItems (keys, collectibles)
+   └─ Lag QuestTiles (exit, altar, boss_room)
+   ↓
+4. Spiller utforsker tiles
+   ├─ onTileExplored() → spawn items med pity timer
+   └─ shouldSpawnQuestTile() → spawn exit/altar
+```
+
+#### Tiles Layout System Analyse
+
+| Komponent | Fil | Funksjon |
+|-----------|-----|----------|
+| Tile Connection | `tileConnectionSystem.ts` | 130+ tile templates med edge matching |
+| Room Spawn Helpers | `roomSpawnHelpers.ts` | Fallback tiles, category selection |
+| Hex Utils | `hexUtils.ts` | Axial coordinates, distance, neighbors |
+| spawnRoom | `ShadowsGame.tsx:2042` | Hovedfunksjon for tile spawning |
+
+**Tile Spawn Flow:**
+```
+spawnRoom(q, r, tileSet)
+   ├─ gatherConstraints() → edge requirements fra naboer
+   ├─ findValidTemplates() → templates som matcher
+   ├─ Apply theme preferences (boost/penalty)
+   ├─ selectWeightedTemplate() → velg basert på score
+   ├─ createTileFromTemplate()
+   ├─ onTileExplored() → quest item/tile spawning
+   └─ synchronizeEdgesWithNeighbors()
+```
+
+### Identifiserte Problemer
+
+1. **Tema-filtering kun navn-basert**: Tiles ble kun scoret basert på navn-matching, ikke kategori. "Manor"-tema kunne få outdoor tiles.
+
+2. **Quest item spawn ubalansert for collection missions**: Collection missions med 5+ items hadde stram margin med 45% spawn chance.
+
+3. **Fallback tiles ignorerte tema**: Når ingen templates matchet, valgte fallback tilfeldig kategori uten tema-preferanser.
+
+4. **Doom event timing hardkodet**: Alle mission types brukte samme doom thresholds, selv om noen trenger mer tid.
+
+5. **Cluster spawn hardkodet til 30%**: Forest/outdoor themes burde ikke ha samme cluster probability som manor themes.
+
+### Implementerte Forbedringer
+
+#### Forbedring 1: Kategori-basert Tema-filtering
+
+**Fil:** `scenarioGenerator.ts`, `ShadowsGame.tsx`
+
+Utvidet `THEME_TILE_PREFERENCES` med kategori-preferanser:
+
+```typescript
+export const THEME_TILE_PREFERENCES: Record<ScenarioTheme, {
+  preferredNames: string[];
+  avoidNames: string[];
+  preferredCategories: string[];  // NYT
+  avoidCategories: string[];      // NYT
+  floorPreference: string;
+}> = {
+  manor: {
+    preferredCategories: ['foyer', 'corridor', 'room', 'stairs', 'basement'],
+    avoidCategories: ['nature', 'urban', 'street'],
+    // ...
+  },
+  forest: {
+    preferredCategories: ['nature', 'street'],
+    avoidCategories: ['corridor', 'crypt', 'basement'],
+    // ...
+  },
+  // ... 9 themes totalt
+};
+```
+
+**Scoring i spawnRoom:**
+```typescript
+// Kategori-preferanser har sterkere effekt enn navn-preferanser
+if (isPreferredCategory) adjustedScore *= 2.0;
+if (isAvoidedCategory) adjustedScore *= 0.15;
+if (isPreferredName) adjustedScore *= 1.8;
+if (isAvoidedName) adjustedScore *= 0.2;
+
+// Strikt filter: Fjern tiles som matcher BÅDE avoided name OG category
+const isStronglyAvoided = isAvoidedName && isAvoidedCategory;
+```
+
+#### Forbedring 2: Dynamisk Spawn Probabilities
+
+**Fil:** `objectiveSpawner.ts`
+
+La til dynamisk justering av spawn rates basert på antall items som trengs:
+
+```typescript
+export function getAdjustedSpawnConfig(totalItemsNeeded: number) {
+  const config = { ...SPAWN_PROBABILITY_CONFIG };
+
+  // Boost spawn rates for collection missions med mange items
+  if (totalItemsNeeded >= config.COLLECTION_THRESHOLD) { // 4+
+    config.NORMAL_SPAWN_CHANCE += 0.12;     // +12% base
+    config.PITY_TIMER_TILES -= 1;           // Reduser pity timer
+
+    // Scale boost med item count
+    const extraItems = totalItemsNeeded - 4;
+    config.NORMAL_SPAWN_CHANCE += extraItems * 0.03; // +3% per ekstra item
+  }
+
+  return config;
+}
+```
+
+**Eksempel:**
+- 3 items: Standard 45% spawn chance
+- 5 items: 45% + 12% + 3% = 60% spawn chance
+- 7 items: 45% + 12% + 9% = 66% spawn chance
+
+#### Forbedring 3: Theme-aware Fallback System
+
+**Fil:** `roomSpawnHelpers.ts`
+
+La til tema-preferanser i fallback tile creation:
+
+```typescript
+function selectCategoryWithThemeBias(
+  sourceCategory: TileCategory,
+  preferIndoor: boolean,
+  selectCategoryFn: Function,
+  themePreferences?: { preferredCategories: string[]; avoidCategories: string[] }
+): TileCategory {
+  if (!themePreferences) return selectCategoryFn(sourceCategory, preferIndoor);
+
+  // Prøv inntil 5 ganger å få tema-passende kategori
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const category = selectCategoryFn(sourceCategory, preferIndoor);
+    const isAvoided = themePreferences.avoidCategories.includes(category);
+    const isPreferred = themePreferences.preferredCategories.includes(category);
+
+    if (isPreferred || !isAvoided) return category;
+  }
+
+  return selectCategoryFn(sourceCategory, preferIndoor);
+}
+```
+
+#### Forbedring 4: Mission-spesifikk Doom Timing
+
+**Fil:** `scenarioGeneratorHelpers.ts`
+
+La til mission-spesifikke doom thresholds:
+
+```typescript
+const MISSION_DOOM_THRESHOLDS: Record<string, ThresholdConfig> = {
+  // Survival: Tidligere waves, senere boss (mer tid til å overleve)
+  survival: { early: 0.70, mid: 0.50, late: 0.20 },
+
+  // Collection: Senere waves (mer utforskningstid)
+  collection: { early: 0.50, mid: 0.30, late: 0.12 },
+
+  // Investigation: Enda senere waves (grundig søk)
+  investigation: { early: 0.48, mid: 0.28, late: 0.10 },
+
+  // Assassination: Tidligere press (hastverket)
+  assassination: { early: 0.60, mid: 0.40, late: 0.18 },
+
+  // Purge: Spredte waves (mange fiender å drepe)
+  purge: { early: 0.65, mid: 0.45, late: 0.20 },
+
+  // ... 9 mission types totalt
+};
+```
+
+**Eksempel med baseDoom=16:**
+| Mission | Early Wave | Mid Wave | Boss |
+|---------|------------|----------|------|
+| Collection | Doom 8 | Doom 5 | Doom 2 |
+| Assassination | Doom 10 | Doom 6 | Doom 3 |
+| Survival | Doom 11 | Doom 8 | Doom 3 |
+
+#### Forbedring 5: Context-based Cluster Spawn
+
+**Fil:** `ShadowsGame.tsx`
+
+La til kontekst-basert cluster probability:
+
+```typescript
+const getClusterProbability = (): number => {
+  // Base probability basert på tileset
+  if (tileSet === 'outdoor') return 0.05;  // Veldig sjelden
+  if (tileSet === 'mixed') return 0.15;    // Lavere
+
+  // Theme-spesifikke justeringer for indoor
+  switch (scenarioTheme) {
+    case 'manor':
+    case 'asylum':
+    case 'academic':
+      return 0.35; // Høyere for bygning-fokuserte themes
+    case 'church':
+    case 'warehouse':
+      return 0.25; // Medium for strukturerte bygninger
+    case 'underground':
+    case 'coastal':
+      return 0.15; // Lavere for grotter/brygger
+    case 'forest':
+    case 'urban':
+      return 0.08; // Veldig lav for natur/gater
+    default:
+      return 0.30;
+  }
+};
+```
+
+### Arkitektur-diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                FORBEDRET TILE SPAWN FLOW                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  spawnRoom(q, r, tileSet)                                       │
+│       │                                                         │
+│       ├─ 1. gatherConstraints() → edge requirements             │
+│       │                                                         │
+│       ├─ 2. findValidTemplates() → matching templates           │
+│       │                                                         │
+│       ├─ 3. FORBEDRET: Kategori + Navn tema-filtering          │
+│       │    ├─ isPreferredCategory → score × 2.0                │
+│       │    ├─ isAvoidedCategory → score × 0.15                 │
+│       │    ├─ isPreferredName → score × 1.8                    │
+│       │    └─ isAvoidedName → score × 0.2                      │
+│       │                                                         │
+│       ├─ 4. FORBEDRET: Context-based cluster spawn             │
+│       │    ├─ Manor/Asylum: 35%                                │
+│       │    ├─ Church/Warehouse: 25%                            │
+│       │    ├─ Forest/Urban: 8%                                 │
+│       │    └─ Outdoor: 5%                                      │
+│       │                                                         │
+│       ├─ 5. FORBEDRET: Theme-aware fallback                    │
+│       │    └─ selectCategoryWithThemeBias()                    │
+│       │                                                         │
+│       └─ 6. onTileExplored()                                   │
+│            └─ FORBEDRET: Dynamisk spawn config                 │
+│                ├─ Collection 5+ items: +12% base chance        │
+│                └─ Pity timer redusert for collections          │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│            FORBEDRET DOOM EVENT TIMING                          │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  generateDoomEvents(difficulty, baseDoom, missionId)            │
+│       │                                                         │
+│       ├─ getDoomThresholds(missionId)                          │
+│       │    ├─ Collection: early=0.50, mid=0.30, late=0.12     │
+│       │    ├─ Survival: early=0.70, mid=0.50, late=0.20       │
+│       │    ├─ Assassination: early=0.60, mid=0.40, late=0.18  │
+│       │    └─ Default: early=0.55, mid=0.35, late=0.15        │
+│       │                                                         │
+│       ├─ Early Wave: threshold = baseDoom × early              │
+│       ├─ Mid Wave: threshold = baseDoom × mid                  │
+│       └─ Boss Wave: threshold = baseDoom × late                │
+│                                                                 │
+│  EKSEMPEL (baseDoom=16):                                        │
+│  ┌────────────────┬───────────┬──────────┬─────────┐           │
+│  │ Mission        │ Early     │ Mid      │ Boss    │           │
+│  ├────────────────┼───────────┼──────────┼─────────┤           │
+│  │ Collection     │ Doom 8    │ Doom 5   │ Doom 2  │           │
+│  │ Survival       │ Doom 11   │ Doom 8   │ Doom 3  │           │
+│  │ Assassination  │ Doom 10   │ Doom 6   │ Doom 3  │           │
+│  └────────────────┴───────────┴──────────┴─────────┘           │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Endrede Filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/utils/scenarioGenerator.ts` | Kategori-preferanser i THEME_TILE_PREFERENCES |
+| `src/game/utils/scenarioGeneratorHelpers.ts` | Mission-spesifikke doom thresholds |
+| `src/game/utils/objectiveSpawner.ts` | Dynamisk spawn config for collections |
+| `src/game/utils/roomSpawnHelpers.ts` | Theme-aware fallback category selection |
+| `src/game/ShadowsGame.tsx` | Kategori+navn scoring, context-based clusters, theme-aware fallbacks |
+
+### Forventet Effekt
+
+1. **Bedre tematisk sammenheng**: Manor-quests får primært innendørs tiles, forest-quests får primært outdoor tiles.
+
+2. **Mer balansert item spawning**: Collection missions med mange items har høyere spawn rates, så items dukker opp i tide.
+
+3. **Konsistente fallback tiles**: Selv når template matching feiler, velges tiles som passer temaet.
+
+4. **Mission-tilpasset pacing**: Survival missions gir mer tid, assassination missions skaper mer press.
+
+5. **Kontekstuell building spawning**: Manor-quests får oftere multi-rom bygninger, forest-quests får enkeltstående tiles.
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---

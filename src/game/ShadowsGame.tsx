@@ -2072,33 +2072,47 @@ const ShadowsGame: React.FC = () => {
 
     // Apply theme-based tile preferences from scenario
     // This ensures tiles match the quest context (e.g. manor quests get indoor tiles, not sewers)
+    // ENHANCED (2026-01-25): Now includes category-based filtering for better theme coherence
     const scenarioTheme = state.activeScenario?.theme;
     const themePreferences = scenarioTheme ? getThemedTilePreferences(scenarioTheme) : null;
 
     let filteredMatches = filteredByTileSet;
     if (themePreferences) {
-      // Score and filter tiles based on theme preferences
+      // Score and filter tiles based on theme preferences (both name and category)
       filteredMatches = filteredByTileSet.map(match => {
         const tileName = match.template.name.toLowerCase();
         const tileId = match.template.id.toLowerCase();
+        const tileCategory = match.template.category;
 
-        // Check if tile matches preferred names (bonus)
-        const isPreferred = themePreferences.preferredNames.some(
+        // Check name-based preferences
+        const isPreferredName = themePreferences.preferredNames.some(
           pref => tileName.includes(pref) || tileId.includes(pref)
         );
-
-        // Check if tile should be avoided (penalty)
-        const isAvoided = themePreferences.avoidNames.some(
+        const isAvoidedName = themePreferences.avoidNames.some(
           avoid => tileName.includes(avoid) || tileId.includes(avoid)
         );
 
+        // Check category-based preferences (stronger impact)
+        const isPreferredCategory = themePreferences.preferredCategories.includes(tileCategory);
+        const isAvoidedCategory = themePreferences.avoidCategories.includes(tileCategory);
+
         // Adjust match score based on theme
         let adjustedScore = match.matchScore;
-        if (isPreferred) {
-          adjustedScore *= 2.5;  // Strong bonus for preferred tiles
+
+        // Category preferences have stronger impact than name preferences
+        if (isPreferredCategory) {
+          adjustedScore *= 2.0;  // Good bonus for preferred categories
         }
-        if (isAvoided) {
-          adjustedScore *= 0.1;  // Heavy penalty for avoided tiles
+        if (isAvoidedCategory) {
+          adjustedScore *= 0.15; // Heavy penalty for avoided categories
+        }
+
+        // Name preferences stack with category preferences
+        if (isPreferredName) {
+          adjustedScore *= 1.8;  // Bonus for preferred names
+        }
+        if (isAvoidedName) {
+          adjustedScore *= 0.2;  // Penalty for avoided names
         }
 
         return { ...match, matchScore: Math.round(adjustedScore) };
@@ -2106,11 +2120,17 @@ const ShadowsGame: React.FC = () => {
         // Filter out heavily penalized tiles if we have alternatives
         const tileName = match.template.name.toLowerCase();
         const tileId = match.template.id.toLowerCase();
-        const isAvoided = themePreferences.avoidNames.some(
+        const tileCategory = match.template.category;
+
+        const isAvoidedName = themePreferences.avoidNames.some(
           avoid => tileName.includes(avoid) || tileId.includes(avoid)
         );
-        // Only filter out avoided tiles if we have non-avoided alternatives
-        return !isAvoided || filteredByTileSet.length <= 3;
+        const isAvoidedCategory = themePreferences.avoidCategories.includes(tileCategory);
+
+        // Strict filter: Remove tiles that match both avoided name AND category
+        // Soft filter: Only filter avoided if we have enough alternatives
+        const isStronglyAvoided = isAvoidedName && isAvoidedCategory;
+        return !isStronglyAvoided || filteredByTileSet.length <= 3;
       });
     }
 
@@ -2122,6 +2142,7 @@ const ShadowsGame: React.FC = () => {
       console.warn(`No valid templates for (${startQ},${startR}), using fallback`);
 
       // Use consolidated fallback helper to reduce code duplication
+      // ENHANCED (2026-01-25): Now passes theme preferences for theme-aware fallback
       const fallbackResult = createFallbackSpawnResult({
         startQ,
         startR,
@@ -2130,7 +2151,12 @@ const ShadowsGame: React.FC = () => {
         roomId,
         boardMap,
         locationDescriptions: LOCATION_DESCRIPTIONS,
-        selectCategoryFn: selectRandomConnectableCategory
+        selectCategoryFn: selectRandomConnectableCategory,
+        scenarioTheme,
+        themePreferences: themePreferences ? {
+          preferredCategories: themePreferences.preferredCategories,
+          avoidCategories: themePreferences.avoidCategories
+        } : undefined
       });
 
       // Synchronize edges with neighboring tiles using functional setState
@@ -2154,6 +2180,7 @@ const ShadowsGame: React.FC = () => {
       console.warn(`Template selection failed for (${startQ},${startR}), using fallback`);
 
       // Use consolidated fallback helper to reduce code duplication
+      // ENHANCED (2026-01-25): Now passes theme preferences for theme-aware fallback
       const fallbackResult = createFallbackSpawnResult({
         startQ,
         startR,
@@ -2162,7 +2189,12 @@ const ShadowsGame: React.FC = () => {
         roomId,
         boardMap,
         locationDescriptions: LOCATION_DESCRIPTIONS,
-        selectCategoryFn: selectRandomConnectableCategory
+        selectCategoryFn: selectRandomConnectableCategory,
+        scenarioTheme,
+        themePreferences: themePreferences ? {
+          preferredCategories: themePreferences.preferredCategories,
+          avoidCategories: themePreferences.avoidCategories
+        } : undefined
       });
 
       // Synchronize edges with neighboring tiles using functional setState
@@ -2180,11 +2212,41 @@ const ShadowsGame: React.FC = () => {
     }
 
     // Check if we should spawn a room cluster instead of single tile
-    // (30% chance when entering a building from facade or entering from street)
+    // ENHANCED (2026-01-25): Context-based cluster spawn probability
+    // Indoor themes get higher cluster chance, outdoor/forest themes get lower
+    const getClusterProbability = (): number => {
+      // Base probability depends on tileset
+      if (tileSet === 'outdoor') return 0.05; // Very rare for outdoor
+      if (tileSet === 'mixed') return 0.15;   // Lower for mixed
+
+      // Theme-specific adjustments for indoor
+      if (scenarioTheme) {
+        switch (scenarioTheme) {
+          case 'manor':
+          case 'asylum':
+          case 'academic':
+            return 0.35; // Higher for building-focused themes
+          case 'church':
+          case 'warehouse':
+            return 0.25; // Medium for structured buildings
+          case 'underground':
+          case 'coastal':
+            return 0.15; // Lower for caverns/docks
+          case 'forest':
+          case 'urban':
+            return 0.08; // Very low for nature/street themes
+          default:
+            return 0.30;
+        }
+      }
+      return 0.30; // Default indoor probability
+    };
+
+    const clusterProbability = getClusterProbability();
     const shouldSpawnCluster =
       (sourceCategory === 'facade' || sourceCategory === 'street') &&
       ['foyer', 'facade'].includes(selected.template.category) &&
-      Math.random() < 0.3;
+      Math.random() < clusterProbability;
 
     if (shouldSpawnCluster) {
       // Try to spawn a room cluster
