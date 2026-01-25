@@ -168,6 +168,10 @@ export function handleNoTargetBehavior(
 /**
  * Check if monster hesitates due to low aggression
  * Returns hesitation decision or null if monster should proceed
+ *
+ * IMPROVED: Monsters with high aggression (70+) never hesitate.
+ * Hesitation only occurs at distance 3+ for moderately aggressive monsters.
+ * This ensures monsters are more threatening in combat.
  */
 export function tryHesitationDecision(
   ctx: DecisionContext,
@@ -175,8 +179,23 @@ export function tryHesitationDecision(
 ): AIDecision | null {
   const { enemy, personality } = ctx;
 
+  // Highly aggressive monsters (70+) never hesitate
+  if (personality.aggressionLevel >= 70) {
+    return null;
+  }
+
+  // Only hesitate at distance 3 or more
+  if (distanceToPlayer <= 2) {
+    return null;
+  }
+
+  // Roll against aggression - higher aggression = less likely to hesitate
   const aggressionRoll = Math.random() * 100;
-  if (aggressionRoll > personality.aggressionLevel && distanceToPlayer > 1) {
+  // Add distance modifier - closer = less hesitation
+  const distanceModifier = (distanceToPlayer - 2) * 10;
+  const hesitationThreshold = personality.aggressionLevel + 20 - distanceModifier;
+
+  if (aggressionRoll > hesitationThreshold) {
     return {
       action: 'wait',
       message: getHesitationMessage(enemy)

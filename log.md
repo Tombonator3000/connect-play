@@ -24544,3 +24544,107 @@ const aiGameMaster = useAIGameMaster();
    - Lyd-effekter for narration
 
 ---
+
+## 2026-01-25: Forbedret Monster AI og Quest Monster Variasjon
+
+### Oppgave
+1. Forbedre monster AI angrep mot spillere - gjøre monstre mer aggressive
+2. Øke variasjon av monstre i quests - forskjellige quest-typer skal ha tematisk passende monstre
+
+### Gjennomført
+
+#### 1. Monster AI Forbedringer (`monsterAI.ts`, `monsterDecisionHelpers.ts`)
+
+**Endret angrepsrekkefølge:**
+- Monstre som er i angrepsrekkevidde angriper NÅ alltid først
+- Hesitation-sjekk kommer nå ETTER angrep-sjekk for monstre i range
+- Dette forhindrer at monstre "nøler" når de kan treffe spilleren
+
+**Forbedret hesitation-logikk:**
+```typescript
+// FØR: Alle monstre kunne nøle selv når de var nær spilleren
+if (aggressionRoll > personality.aggressionLevel && distanceToPlayer > 1)
+
+// ETTER: Aggressive monstre (70+) nøler aldri, andre kun på avstand 3+
+if (personality.aggressionLevel >= 70) return null;
+if (distanceToPlayer <= 2) return null;
+```
+
+**Smart target selection etter bevegelse:**
+- Monstre som beveger seg og havner i range bruker nå `findSmartTarget()`
+- Velger beste mål basert på HP, sanity, isolasjon og klasse-preferanser
+- Gjelder både vanlig bevegelse og special movement (teleport, phase)
+
+#### 2. Utvidet ENEMY_POOLS (`scenarioGenerator.ts`)
+
+**Normal vanskelighetsgrad (5 typer, opp fra 2):**
+- cultist, ghoul (eksisterende)
+- rat_thing, zoog, ghast (nye)
+
+**Hard vanskelighetsgrad (7 typer, opp fra 3):**
+- cultist, ghoul, deepone (eksisterende)
+- tcho_tcho, serpent_man, fire_vampire, cthonian (nye)
+
+**Nightmare vanskelighetsgrad (8 typer, opp fra 4):**
+- cultist, ghoul, deepone, mi-go (eksisterende)
+- gug, dimensional_shambler, flying_polyp, nightgaunt (nye)
+
+#### 3. Nye Mission-Type Spesifikke Pools (`scenarioGenerator.ts`)
+
+Lagt til `MISSION_ENEMY_POOLS` med tematisk passende monstre per quest-type:
+
+| Quest Type | Monstre | Tema |
+|------------|---------|------|
+| escape | ghoul, nightgaunt, hound, dimensional_shambler | Raske forfølgere |
+| assassination | cultist, priest, tcho_tcho, serpent_man | Kult-beskyttere |
+| survival | ghoul, zoog, formless_spawn, byakhee | Bølger av fiender |
+| collection | rat_thing, mi-go, serpent_man, elder_thing | Voktere og tyver |
+| ritual | cultist, fire_vampire, lloigor, colour_out_of_space | Magiske vesener |
+| rescue | ghoul, deepone, ghast, cthonian | Fangevoktere |
+| investigation | rat_thing, serpent_man, nightgaunt, hunting_horror | Forfølgere |
+| purge | cultist, ghoul, tcho_tcho, dark_young | Forsvarere |
+| seal_portal | dimensional_shambler, nightgaunt, byakhee, star_spawn | Tverrdimensjonale |
+
+#### 4. Nye Atmosphere-Spesifikke Pools (`scenarioGenerator.ts`)
+
+Lagt til `ATMOSPHERE_ENEMY_POOLS` for tematisk konsistens med lokasjon:
+
+| Atmosphere | Monstre |
+|------------|---------|
+| creepy | ghoul, ghast, nightgaunt |
+| urban | cultist, serpent_man, tcho_tcho |
+| wilderness | zoog, gnoph_keh, dark_young |
+| academic | mi-go, rat_thing, elder_thing |
+| industrial | formless_spawn, fire_vampire, cthonian |
+
+#### 5. Forbedret Doom Event Generering (`scenarioGeneratorHelpers.ts`)
+
+**Ny funksjon `buildCombinedEnemyPool()`:**
+- Kombinerer difficulty pool + mission pool + atmosphere pool
+- Mission-spesifikke monstre får dobbel vekting for tematisk konsistens
+- Sørger for variasjon ved å tracke brukte monster-typer
+
+**Oppdatert `generateDoomEvents()`:**
+- Tar nå imot `missionId` og `atmosphere` parametre
+- Velger forskjellige monster-typer for early og mid waves
+- Forhindrer at samme monster spawner to ganger i samme quest
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/utils/monsterAI.ts` | Endret angrepsrekkefølge, smart targeting etter bevegelse |
+| `src/game/utils/monsterDecisionHelpers.ts` | Forbedret hesitation-logikk |
+| `src/game/utils/scenarioGenerator.ts` | Utvidet ENEMY_POOLS, nye MISSION/ATMOSPHERE pools |
+| `src/game/utils/scenarioGeneratorHelpers.ts` | buildCombinedEnemyPool(), oppdatert generateDoomEvents() |
+
+### Resultat
+
+- **Monster AI**: Monstre er nå betydelig mer aggressive og vil alltid angripe når de kan
+- **Quest Variasjon**: Over 30 forskjellige monster-typer kan nå spawne basert på quest og lokasjon
+- **Tematisk Konsistens**: Escape-quests har forfølgere, ritual-quests har magiske vesener, etc.
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---

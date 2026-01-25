@@ -22,6 +22,8 @@ import {
   ObjectiveTemplate,
   LocationOption,
   ENEMY_POOLS,
+  MISSION_ENEMY_POOLS,
+  ATMOSPHERE_ENEMY_POOLS,
   BOSS_POOL,
   BRIEFING_OPENINGS,
   BRIEFING_MIDDLES,
@@ -273,18 +275,60 @@ const DOOM_THRESHOLDS = {
 } as const;
 
 /**
- * Generate doom events for scenario based on difficulty.
+ * Build a combined enemy pool from multiple sources.
+ * Prioritizes mission-specific monsters, adds atmosphere monsters, and fills with difficulty pool.
+ * This ensures quest variety while maintaining difficulty balance.
+ */
+function buildCombinedEnemyPool(
+  difficulty: 'Normal' | 'Hard' | 'Nightmare',
+  missionId?: string,
+  atmosphere?: string
+): typeof ENEMY_POOLS[string] {
+  const basePool = [...ENEMY_POOLS[difficulty]];
+
+  // Add mission-specific enemies (higher priority for thematic consistency)
+  if (missionId && MISSION_ENEMY_POOLS[missionId]) {
+    const missionPool = MISSION_ENEMY_POOLS[missionId];
+    // Add mission enemies with increased weighting
+    basePool.push(...missionPool);
+    basePool.push(...missionPool); // Double weight for mission-specific
+  }
+
+  // Add atmosphere-specific enemies
+  if (atmosphere && ATMOSPHERE_ENEMY_POOLS[atmosphere]) {
+    basePool.push(...ATMOSPHERE_ENEMY_POOLS[atmosphere]);
+  }
+
+  return basePool;
+}
+
+/**
+ * Generate doom events for scenario based on difficulty, mission type, and atmosphere.
  * Creates early, mid, and late (boss) waves with appropriate timing.
+ * Now uses combined pools for better monster variety per quest type.
  */
 export function generateDoomEvents(
   difficulty: 'Normal' | 'Hard' | 'Nightmare',
-  baseDoom: number
+  baseDoom: number,
+  missionId?: string,
+  atmosphere?: string
 ): DoomEvent[] {
-  const enemyPool = ENEMY_POOLS[difficulty];
+  const combinedPool = buildCombinedEnemyPool(difficulty, missionId, atmosphere);
   const events: DoomEvent[] = [];
+  const usedTypes = new Set<string>(); // Track used enemy types to ensure variety
+
+  // Helper to select enemy avoiding repeats when possible
+  const selectUniqueEnemy = () => {
+    // Try to find an unused enemy type
+    const unusedEnemies = combinedPool.filter(e => !usedTypes.has(e.type));
+    const pool = unusedEnemies.length > 0 ? unusedEnemies : combinedPool;
+    const selected = randomElement(pool);
+    usedTypes.add(selected.type);
+    return selected;
+  };
 
   // Early wave
-  const earlyEnemy = randomElement(enemyPool);
+  const earlyEnemy = selectUniqueEnemy();
   events.push({
     threshold: Math.ceil(baseDoom * DOOM_THRESHOLDS.early),
     triggered: false,
@@ -294,8 +338,8 @@ export function generateDoomEvents(
     message: earlyEnemy.message
   });
 
-  // Mid wave
-  const midEnemy = randomElement(enemyPool);
+  // Mid wave - select different enemy type if possible
+  const midEnemy = selectUniqueEnemy();
   events.push({
     threshold: Math.ceil(baseDoom * DOOM_THRESHOLDS.mid),
     triggered: false,

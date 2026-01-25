@@ -684,18 +684,133 @@ export const MIXED_START_LOCATIONS: LocationOption[] = [
 export const ENEMY_POOLS: Record<string, EnemySpawnConfig[]> = {
   Normal: [
     { type: 'cultist', amount: { min: 2, max: 3 }, doomThreshold: { early: 9, mid: 6, late: 3 }, message: 'Cultists emerge from the shadows!' },
-    { type: 'ghoul', amount: { min: 1, max: 2 }, doomThreshold: { early: 7, mid: 4, late: 2 }, message: 'Hungry ghouls crawl from the darkness!' }
+    { type: 'ghoul', amount: { min: 1, max: 2 }, doomThreshold: { early: 7, mid: 4, late: 2 }, message: 'Hungry ghouls crawl from the darkness!' },
+    { type: 'rat_thing', amount: { min: 2, max: 3 }, doomThreshold: { early: 8, mid: 5, late: 3 }, message: 'Brown Jenkin and his kin scurry from the walls!' },
+    { type: 'zoog', amount: { min: 2, max: 4 }, doomThreshold: { early: 8, mid: 5, late: 3 }, message: 'A pack of zoogs emerges from the dreamlands!' },
+    { type: 'ghast', amount: { min: 1, max: 2 }, doomThreshold: { early: 7, mid: 4, late: 2 }, message: 'Ghasts rise from the crypts below!' }
   ],
   Hard: [
     { type: 'cultist', amount: { min: 2, max: 3 }, doomThreshold: { early: 8, mid: 5, late: 3 }, message: 'Cultists have found you!' },
     { type: 'ghoul', amount: { min: 2, max: 3 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'A ghoul pack attacks!' },
-    { type: 'deepone', amount: { min: 1, max: 2 }, doomThreshold: { early: 5, mid: 3, late: 1 }, message: 'Deep Ones rise from the depths!' }
+    { type: 'deepone', amount: { min: 1, max: 2 }, doomThreshold: { early: 5, mid: 3, late: 1 }, message: 'Deep Ones rise from the depths!' },
+    { type: 'tcho_tcho', amount: { min: 2, max: 3 }, doomThreshold: { early: 7, mid: 4, late: 2 }, message: 'Tcho-Tcho warriors emerge with ritual daggers!' },
+    { type: 'serpent_man', amount: { min: 1, max: 2 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'A serpent man sheds its human disguise!' },
+    { type: 'fire_vampire', amount: { min: 1, max: 2 }, doomThreshold: { early: 5, mid: 3, late: 2 }, message: 'Fire vampires descend from the stars!' },
+    { type: 'cthonian', amount: { min: 1, max: 1 }, doomThreshold: { early: 4, mid: 3, late: 1 }, message: 'The ground trembles as a cthonian burrows up!' }
   ],
   Nightmare: [
     { type: 'cultist', amount: { min: 3, max: 4 }, doomThreshold: { early: 7, mid: 5, late: 3 }, message: 'Cultists swarm your position!' },
     { type: 'ghoul', amount: { min: 2, max: 3 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'A ghoul horde descends!' },
     { type: 'deepone', amount: { min: 2, max: 3 }, doomThreshold: { early: 5, mid: 3, late: 2 }, message: 'Deep Ones breach the surface!' },
-    { type: 'mi-go', amount: { min: 1, max: 2 }, doomThreshold: { early: 4, mid: 2, late: 1 }, message: 'Mi-Go swoop from the darkness!' }
+    { type: 'mi-go', amount: { min: 1, max: 2 }, doomThreshold: { early: 4, mid: 2, late: 1 }, message: 'Mi-Go swoop from the darkness!' },
+    { type: 'gug', amount: { min: 1, max: 1 }, doomThreshold: { early: 4, mid: 2, late: 1 }, message: 'A massive gug tears through the doorway!' },
+    { type: 'dimensional_shambler', amount: { min: 1, max: 2 }, doomThreshold: { early: 4, mid: 2, late: 1 }, message: 'Dimensional shamblers phase into reality!' },
+    { type: 'flying_polyp', amount: { min: 1, max: 1 }, doomThreshold: { early: 3, mid: 2, late: 1 }, message: 'A flying polyp materializes with devastating winds!' },
+    { type: 'nightgaunt', amount: { min: 2, max: 3 }, doomThreshold: { early: 5, mid: 3, late: 2 }, message: 'Nightgaunts descend from the darkness!' }
+  ]
+};
+
+// ============================================================================
+// MISSION-TYPE SPECIFIC ENEMY POOLS
+// Different quest types feature thematically appropriate monsters
+// ============================================================================
+
+export const MISSION_ENEMY_POOLS: Record<string, EnemySpawnConfig[]> = {
+  // Escape missions - fast pursuers and blockers
+  escape: [
+    { type: 'ghoul', amount: { min: 2, max: 3 }, doomThreshold: { early: 8, mid: 5, late: 2 }, message: 'Ghouls block your escape route!' },
+    { type: 'nightgaunt', amount: { min: 1, max: 2 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'Nightgaunts swoop to cut off your retreat!' },
+    { type: 'hound', amount: { min: 1, max: 1 }, doomThreshold: { early: 4, mid: 2, late: 1 }, message: 'A Hound of Tindalos appears from the angles!' },
+    { type: 'dimensional_shambler', amount: { min: 1, max: 2 }, doomThreshold: { early: 5, mid: 3, late: 1 }, message: 'Shamblers materialize between you and freedom!' }
+  ],
+  // Assassination missions - cult protectors
+  assassination: [
+    { type: 'cultist', amount: { min: 3, max: 4 }, doomThreshold: { early: 9, mid: 6, late: 3 }, message: 'Cultist guards raise the alarm!' },
+    { type: 'priest', amount: { min: 1, max: 1 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'A dark priest chants protective wards!' },
+    { type: 'tcho_tcho', amount: { min: 2, max: 3 }, doomThreshold: { early: 7, mid: 4, late: 2 }, message: 'Tcho-Tcho assassins emerge from hiding!' },
+    { type: 'serpent_man', amount: { min: 1, max: 2 }, doomThreshold: { early: 5, mid: 3, late: 2 }, message: 'Serpent men reveal their true forms!' }
+  ],
+  // Survival missions - waves of enemies
+  survival: [
+    { type: 'ghoul', amount: { min: 2, max: 4 }, doomThreshold: { early: 8, mid: 5, late: 2 }, message: 'The ghoul horde presses forward!' },
+    { type: 'zoog', amount: { min: 3, max: 5 }, doomThreshold: { early: 9, mid: 6, late: 3 }, message: 'Zoogs swarm from every shadow!' },
+    { type: 'formless_spawn', amount: { min: 1, max: 2 }, doomThreshold: { early: 5, mid: 3, late: 1 }, message: 'Formless spawns ooze from the walls!' },
+    { type: 'byakhee', amount: { min: 2, max: 3 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'Byakhee screech as they dive attack!' }
+  ],
+  // Collection missions - guardians and thieves
+  collection: [
+    { type: 'rat_thing', amount: { min: 2, max: 3 }, doomThreshold: { early: 8, mid: 5, late: 3 }, message: 'Rat-things scurry to steal your findings!' },
+    { type: 'mi-go', amount: { min: 1, max: 2 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'Mi-Go arrive to claim the artifacts!' },
+    { type: 'serpent_man', amount: { min: 1, max: 2 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'Serpent men seek the same knowledge!' },
+    { type: 'elder_thing', amount: { min: 1, max: 1 }, doomThreshold: { early: 4, mid: 2, late: 1 }, message: 'An Elder Thing guards ancient secrets!' }
+  ],
+  // Ritual missions - magical creatures and interrupters
+  ritual: [
+    { type: 'cultist', amount: { min: 2, max: 3 }, doomThreshold: { early: 8, mid: 5, late: 3 }, message: 'Cultists attempt to disrupt your ritual!' },
+    { type: 'fire_vampire', amount: { min: 1, max: 2 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'Fire vampires are drawn to the ritual energy!' },
+    { type: 'lloigor', amount: { min: 1, max: 1 }, doomThreshold: { early: 4, mid: 2, late: 1 }, message: 'A lloigor manifests to feed on the psychic power!' },
+    { type: 'colour_out_of_space', amount: { min: 1, max: 1 }, doomThreshold: { early: 3, mid: 2, late: 1 }, message: 'A Colour Out of Space is attracted to the energy!' }
+  ],
+  // Rescue missions - captors and tormentors
+  rescue: [
+    { type: 'ghoul', amount: { min: 2, max: 3 }, doomThreshold: { early: 8, mid: 5, late: 2 }, message: 'Ghouls guard their captive feast!' },
+    { type: 'deepone', amount: { min: 1, max: 2 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'Deep Ones defend their prisoner!' },
+    { type: 'ghast', amount: { min: 2, max: 3 }, doomThreshold: { early: 7, mid: 4, late: 2 }, message: 'Ghasts lurk near the prisoner!' },
+    { type: 'cthonian', amount: { min: 1, max: 1 }, doomThreshold: { early: 4, mid: 2, late: 1 }, message: 'A cthonian blocks the rescue route!' }
+  ],
+  // Investigation missions - stalkers and ambushers
+  investigation: [
+    { type: 'rat_thing', amount: { min: 2, max: 3 }, doomThreshold: { early: 8, mid: 5, late: 3 }, message: 'Rat-things spy on your investigation!' },
+    { type: 'serpent_man', amount: { min: 1, max: 2 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'A serpent man has been watching you!' },
+    { type: 'nightgaunt', amount: { min: 1, max: 2 }, doomThreshold: { early: 5, mid: 3, late: 2 }, message: 'Nightgaunts have been following you!' },
+    { type: 'hunting_horror', amount: { min: 1, max: 1 }, doomThreshold: { early: 3, mid: 2, late: 1 }, message: 'A Hunting Horror tracks your scent!' }
+  ],
+  // Purge missions - defenders in large numbers
+  purge: [
+    { type: 'cultist', amount: { min: 3, max: 5 }, doomThreshold: { early: 9, mid: 6, late: 3 }, message: 'Cultists rally to defend their sanctum!' },
+    { type: 'ghoul', amount: { min: 2, max: 4 }, doomThreshold: { early: 7, mid: 5, late: 2 }, message: 'Ghouls swarm to protect the darkness!' },
+    { type: 'tcho_tcho', amount: { min: 2, max: 3 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'Tcho-Tcho warriors defend their shrine!' },
+    { type: 'dark_young', amount: { min: 1, max: 1 }, doomThreshold: { early: 4, mid: 2, late: 1 }, message: 'A Dark Young rises to defend the cult!' }
+  ],
+  // Seal portal missions - otherworldly creatures
+  seal_portal: [
+    { type: 'dimensional_shambler', amount: { min: 1, max: 2 }, doomThreshold: { early: 7, mid: 4, late: 2 }, message: 'Dimensional shamblers pour through the gate!' },
+    { type: 'nightgaunt', amount: { min: 2, max: 3 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'Nightgaunts emerge from beyond!' },
+    { type: 'byakhee', amount: { min: 2, max: 3 }, doomThreshold: { early: 5, mid: 3, late: 2 }, message: 'Byakhee fly through the portal!' },
+    { type: 'star_spawn', amount: { min: 1, max: 1 }, doomThreshold: { early: 3, mid: 2, late: 1 }, message: 'A Star Spawn attempts to breach the portal!' }
+  ]
+};
+
+// ============================================================================
+// ATMOSPHERE-SPECIFIC ENEMY POOLS
+// Monsters that fit the location theme
+// ============================================================================
+
+export const ATMOSPHERE_ENEMY_POOLS: Record<string, EnemySpawnConfig[]> = {
+  creepy: [
+    { type: 'ghoul', amount: { min: 1, max: 3 }, doomThreshold: { early: 8, mid: 5, late: 2 }, message: 'Ghouls emerge from the shadows!' },
+    { type: 'ghast', amount: { min: 1, max: 2 }, doomThreshold: { early: 7, mid: 4, late: 2 }, message: 'Ghasts crawl from the darkness!' },
+    { type: 'nightgaunt', amount: { min: 1, max: 2 }, doomThreshold: { early: 5, mid: 3, late: 2 }, message: 'Nightgaunts descend silently!' }
+  ],
+  urban: [
+    { type: 'cultist', amount: { min: 2, max: 4 }, doomThreshold: { early: 9, mid: 6, late: 3 }, message: 'Cultists emerge from the crowd!' },
+    { type: 'serpent_man', amount: { min: 1, max: 2 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'A serpent man sheds its disguise!' },
+    { type: 'tcho_tcho', amount: { min: 2, max: 3 }, doomThreshold: { early: 7, mid: 4, late: 2 }, message: 'Tcho-Tcho fanatics attack!' }
+  ],
+  wilderness: [
+    { type: 'zoog', amount: { min: 3, max: 5 }, doomThreshold: { early: 8, mid: 5, late: 3 }, message: 'Zoogs swarm from the trees!' },
+    { type: 'gnoph_keh', amount: { min: 1, max: 1 }, doomThreshold: { early: 4, mid: 2, late: 1 }, message: 'A Gnoph-Keh stalks through the wilderness!' },
+    { type: 'dark_young', amount: { min: 1, max: 1 }, doomThreshold: { early: 4, mid: 2, late: 1 }, message: 'A Dark Young crashes through the trees!' }
+  ],
+  academic: [
+    { type: 'mi-go', amount: { min: 1, max: 2 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'Mi-Go have infiltrated the campus!' },
+    { type: 'rat_thing', amount: { min: 2, max: 3 }, doomThreshold: { early: 8, mid: 5, late: 3 }, message: 'Rat-things infest the old building!' },
+    { type: 'elder_thing', amount: { min: 1, max: 1 }, doomThreshold: { early: 4, mid: 2, late: 1 }, message: 'An Elder Thing has awakened in the archives!' }
+  ],
+  industrial: [
+    { type: 'formless_spawn', amount: { min: 1, max: 2 }, doomThreshold: { early: 6, mid: 4, late: 2 }, message: 'Formless spawns ooze from the machinery!' },
+    { type: 'fire_vampire', amount: { min: 1, max: 2 }, doomThreshold: { early: 5, mid: 3, late: 2 }, message: 'Fire vampires ignite the factory!' },
+    { type: 'cthonian', amount: { min: 1, max: 1 }, doomThreshold: { early: 4, mid: 2, late: 1 }, message: 'A cthonian burrows up through the floor!' }
   ]
 };
 
@@ -992,7 +1107,8 @@ export function generateRandomScenario(difficulty: 'Normal' | 'Hard' | 'Nightmar
   const title = generateTitle(missionType, ctx);
   const goal = interpolateTemplate(missionType.goalTemplate, goalCtx);
   const briefing = generateBriefing(missionType, difficulty, location.name, goal);
-  const doomEvents = generateDoomEvents(difficulty, baseDoom);
+  // Pass mission type and atmosphere for quest-specific monster variety
+  const doomEvents = generateDoomEvents(difficulty, baseDoom, missionType.id, location.atmosphere);
   const victoryConditions = buildVictoryConditions(missionType, objectives);
   const defeatConditions = buildDefeatConditions(missionType, victim, objectives);
   const theme = getThemeFromLocation(location.name, location.atmosphere);
