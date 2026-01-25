@@ -1401,11 +1401,30 @@ export function getMonsterDecision(
 
   const distanceToPlayer = hexDistance(enemy.position, targetPlayer.position);
 
-  // 4. AGGRESSION CHECK - Low aggression monsters may hesitate
+  // 4. IMMEDIATE ATTACK - Monsters in range ALWAYS attack (aggressive behavior)
+  // This ensures monsters don't hesitate when they can hit the player
+  if (distanceToPlayer <= enemy.attackRange) {
+    // Check for ranged attack first (if enemy has ranged capability)
+    const rangedDecision = tryRangedAttackDecision(
+      ctx,
+      targetPlayer,
+      distanceToPlayer,
+      canMakeRangedAttack,
+      findOptimalRangedPosition,
+      findRetreatPosition
+    );
+    if (rangedDecision) return rangedDecision;
+
+    // Then melee attack
+    const meleeDecision = tryMeleeAttackDecision(ctx, targetPlayer, distanceToPlayer, priority);
+    if (meleeDecision) return meleeDecision;
+  }
+
+  // 5. AGGRESSION CHECK - Low aggression monsters may hesitate when NOT in range
   const hesitationDecision = tryHesitationDecision(ctx, distanceToPlayer);
   if (hesitationDecision) return hesitationDecision;
 
-  // 5. RANGED ATTACK - Check if ranged attack is possible/preferred
+  // 6. RANGED POSITIONING - Ranged attackers try to get into position
   const rangedDecision = tryRangedAttackDecision(
     ctx,
     targetPlayer,
@@ -1415,10 +1434,6 @@ export function getMonsterDecision(
     findRetreatPosition
   );
   if (rangedDecision) return rangedDecision;
-
-  // 6. MELEE ATTACK - Attack if in range
-  const meleeDecision = tryMeleeAttackDecision(ctx, targetPlayer, distanceToPlayer, priority);
-  if (meleeDecision) return meleeDecision;
 
   // 7. SPECIAL MOVEMENT - Hound teleportation, etc.
   const specialDecision = trySpecialMovementDecision(ctx, distanceToPlayer, executeSpecialMovement);
@@ -1592,25 +1607,31 @@ export function processEnemyTurn(
 
           // CRITICAL FIX: After moving, check if monster can now attack a player
           // This allows monsters to move AND attack in the same turn (Hero Quest style)
+          // IMPROVED: Use smart targeting to find best target in range
           const movedEnemy = updatedEnemies[i];
           const alivePlayers = players.filter(p => !p.isDead);
-          for (const player of alivePlayers) {
-            const distanceAfterMove = hexDistance(movedEnemy.position, player.position);
-            if (distanceAfterMove <= movedEnemy.attackRange) {
-              // Check if monster can see the player from new position
-              if (hasLineOfSight(movedEnemy.position, player.position, tiles, movedEnemy.visionRange)) {
-                const bonuses = getAttackBonuses(movedEnemy, player);
-                attacks.push({
-                  enemy: movedEnemy,
-                  targetPlayer: player,
-                  weatherHorrorBonus: weatherMods.horrorBonus,
-                  flankingBonus: bonuses.flankingBonus,
-                  packBonus: bonuses.packBonus
-                });
-                messages.push(`${movedEnemy.name} angriper ${player.name}!`);
-                break; // Only attack one player
-              }
-            }
+
+          // Find all players in range
+          const playersInRange = alivePlayers.filter(player => {
+            const dist = hexDistance(movedEnemy.position, player.position);
+            return dist <= movedEnemy.attackRange &&
+              hasLineOfSight(movedEnemy.position, player.position, tiles, movedEnemy.visionRange);
+          });
+
+          if (playersInRange.length > 0) {
+            // Use smart targeting to pick the best target
+            const targetResult = findSmartTarget(movedEnemy, playersInRange, tiles, weather);
+            const attackTarget = targetResult.target || playersInRange[0];
+
+            const bonuses = getAttackBonuses(movedEnemy, attackTarget);
+            attacks.push({
+              enemy: movedEnemy,
+              targetPlayer: attackTarget,
+              weatherHorrorBonus: weatherMods.horrorBonus,
+              flankingBonus: bonuses.flankingBonus,
+              packBonus: bonuses.packBonus
+            });
+            messages.push(`${movedEnemy.name} angriper ${attackTarget.name}!`);
           }
         }
         break;
@@ -1678,24 +1699,31 @@ export function processEnemyTurn(
           });
 
           // CRITICAL FIX: After special movement, check if monster can attack
+          // IMPROVED: Use smart targeting for best target selection
           const specialMovedEnemy = updatedEnemies[i];
           const alivePlayersForSpecial = players.filter(p => !p.isDead);
-          for (const player of alivePlayersForSpecial) {
-            const distanceAfterSpecial = hexDistance(specialMovedEnemy.position, player.position);
-            if (distanceAfterSpecial <= specialMovedEnemy.attackRange) {
-              if (hasLineOfSight(specialMovedEnemy.position, player.position, tiles, specialMovedEnemy.visionRange)) {
-                const specialBonuses = getAttackBonuses(specialMovedEnemy, player);
-                attacks.push({
-                  enemy: specialMovedEnemy,
-                  targetPlayer: player,
-                  weatherHorrorBonus: weatherMods.horrorBonus,
-                  flankingBonus: specialBonuses.flankingBonus,
-                  packBonus: specialBonuses.packBonus
-                });
-                messages.push(`${specialMovedEnemy.name} angriper ${player.name}!`);
-                break;
-              }
-            }
+
+          // Find all players in range after special movement
+          const specialPlayersInRange = alivePlayersForSpecial.filter(player => {
+            const dist = hexDistance(specialMovedEnemy.position, player.position);
+            return dist <= specialMovedEnemy.attackRange &&
+              hasLineOfSight(specialMovedEnemy.position, player.position, tiles, specialMovedEnemy.visionRange);
+          });
+
+          if (specialPlayersInRange.length > 0) {
+            // Use smart targeting to pick the best target
+            const specialTargetResult = findSmartTarget(specialMovedEnemy, specialPlayersInRange, tiles, weather);
+            const specialAttackTarget = specialTargetResult.target || specialPlayersInRange[0];
+
+            const specialBonuses = getAttackBonuses(specialMovedEnemy, specialAttackTarget);
+            attacks.push({
+              enemy: specialMovedEnemy,
+              targetPlayer: specialAttackTarget,
+              weatherHorrorBonus: weatherMods.horrorBonus,
+              flankingBonus: specialBonuses.flankingBonus,
+              packBonus: specialBonuses.packBonus
+            });
+            messages.push(`${specialMovedEnemy.name} angriper ${specialAttackTarget.name}!`);
           }
         }
         break;
