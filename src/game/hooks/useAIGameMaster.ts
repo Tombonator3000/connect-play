@@ -16,6 +16,7 @@ import {
   isAIEnabled,
   getMockGMNarration,
 } from '../services/claudeService';
+import { ttsService } from '../services/ttsService';
 
 // ============================================================================
 // TYPES
@@ -31,6 +32,10 @@ export interface GMSettings {
   narrateAmbient: boolean;
   cooldownMs: number; // Minimum time between narrations
   maxQueueSize: number;
+  // Voice narration settings
+  voiceEnabled: boolean;
+  voiceVolume: number; // 0.0 - 1.0
+  voiceRate: number; // 0.5 - 2.0
 }
 
 export const DEFAULT_GM_SETTINGS: GMSettings = {
@@ -43,6 +48,10 @@ export const DEFAULT_GM_SETTINGS: GMSettings = {
   narrateAmbient: false, // Ambient is opt-in
   cooldownMs: 3000, // 3 seconds between narrations
   maxQueueSize: 5,
+  // Voice narration defaults
+  voiceEnabled: true,
+  voiceVolume: 0.8,
+  voiceRate: 0.9, // Slightly slower for dramatic effect
 };
 
 interface QueuedNarration {
@@ -76,6 +85,11 @@ export interface UseAIGameMasterResult {
   clearQueue: () => void;
   updateSettings: (settings: Partial<GMSettings>) => void;
   settings: GMSettings;
+
+  // TTS status
+  ttsAvailable: boolean;
+  ttsProvider: 'qwen-local' | 'web-speech' | 'none';
+  stopSpeaking: () => void;
 }
 
 // Priority levels for different narration types
@@ -169,21 +183,44 @@ export function useAIGameMaster(): UseAIGameMasterResult {
       const result = await generateGMNarration(nextItem.context);
       setCurrentNarration(result);
       lastNarrationTime.current = Date.now();
+
+      // Speak the narration if voice is enabled
+      if (settings.voiceEnabled && result.text) {
+        ttsService.updateConfig({
+          volume: settings.voiceVolume,
+          rate: settings.voiceRate,
+        });
+        ttsService.speak(result.text).catch(err => {
+          console.warn('[AIGameMaster] TTS failed:', err);
+        });
+      }
     } catch (error) {
       console.error('[AIGameMaster] Narration generation failed:', error);
       // Use mock narration as fallback
       const mockText = getMockGMNarration(nextItem.context);
-      setCurrentNarration({
+      const fallbackResult = {
         text: mockText,
         type: nextItem.context.type,
         isAIGenerated: false,
         timestamp: Date.now(),
-      });
+      };
+      setCurrentNarration(fallbackResult);
+
+      // Speak fallback narration too
+      if (settings.voiceEnabled && mockText) {
+        ttsService.updateConfig({
+          volume: settings.voiceVolume,
+          rate: settings.voiceRate,
+        });
+        ttsService.speak(mockText).catch(err => {
+          console.warn('[AIGameMaster] TTS failed:', err);
+        });
+      }
     }
 
     setIsLoading(false);
     processingRef.current = false;
-  }, [queue]);
+  }, [queue, settings.voiceEnabled, settings.voiceVolume, settings.voiceRate]);
 
   const queueNarration = useCallback((context: GMNarrationContext) => {
     if (!settings.enabled) return;
@@ -314,7 +351,11 @@ export function useAIGameMaster(): UseAIGameMasterResult {
 
   const dismissNarration = useCallback(() => {
     setCurrentNarration(null);
-  }, []);
+    // Stop any ongoing speech when dismissing
+    if (settings.voiceEnabled) {
+      ttsService.stop();
+    }
+  }, [settings.voiceEnabled]);
 
   const clearQueue = useCallback(() => {
     setQueue([]);
@@ -322,7 +363,21 @@ export function useAIGameMaster(): UseAIGameMasterResult {
 
   const updateSettings = useCallback((newSettings: Partial<GMSettings>) => {
     setSettings(prev => ({ ...prev, ...newSettings }));
+    // Update TTS config if voice settings changed
+    if (newSettings.voiceVolume !== undefined || newSettings.voiceRate !== undefined) {
+      ttsService.updateConfig({
+        volume: newSettings.voiceVolume,
+        rate: newSettings.voiceRate,
+      });
+    }
   }, []);
+
+  const stopSpeaking = useCallback(() => {
+    ttsService.stop();
+  }, []);
+
+  // Get TTS status
+  const ttsStatus = ttsService.getStatus();
 
   return {
     currentNarration,
@@ -344,6 +399,10 @@ export function useAIGameMaster(): UseAIGameMasterResult {
     clearQueue,
     updateSettings,
     settings,
+    // TTS status
+    ttsAvailable: ttsStatus.isAvailable,
+    ttsProvider: ttsStatus.activeProvider,
+    stopSpeaking,
   };
 }
 

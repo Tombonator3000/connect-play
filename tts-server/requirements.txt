@@ -1,0 +1,20 @@
+# Qwen3-TTS Server Requirements
+# Install with: pip install -r requirements.txt
+
+# Core TTS
+qwen-tts>=0.1.0
+
+# Web server
+flask>=3.0.0
+flask-cors>=4.0.0
+
+# Audio processing
+numpy>=1.24.0
+
+# PyTorch (install separately for CUDA support)
+# For CUDA: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+# For CPU: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
+torch>=2.0.0
+
+# Optional: Better performance
+# flashattn2 (requires CUDA)

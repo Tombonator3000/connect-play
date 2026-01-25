@@ -5236,6 +5236,8 @@ const ShadowsGame: React.FC = () => {
           onDismiss={aiGameMaster.dismissNarration}
           settings={aiGameMaster.settings}
           onSettingsChange={aiGameMaster.updateSettings}
+          ttsAvailable={aiGameMaster.ttsAvailable}
+          ttsProvider={aiGameMaster.ttsProvider}
         />
       )}
 
