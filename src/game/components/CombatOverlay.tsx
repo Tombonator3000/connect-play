@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Player, Enemy } from '../types';
 import { getCharacterPortrait } from '../utils/characterAssets';
-import { getMonsterPortrait, getMonsterDisplayName } from '../utils/monsterAssets';
+import { getMonsterDisplayName } from '../utils/monsterAssets';
 import { COMBAT_DC, formatDiceRolls } from '../constants/diceUtils';
 import { BESTIARY } from '../constants/bestiary';
 import { Heart, Brain, Flame } from 'lucide-react';
+import MonsterPortrait from './MonsterPortrait';
 
 interface CombatOverlayProps {
   player: Player;
@@ -41,7 +42,6 @@ const CombatOverlay: React.FC<CombatOverlayProps> = ({
   const [diceRotations, setDiceRotations] = useState<number[]>([]);
 
   const playerPortrait = player.customPortraitUrl || getCharacterPortrait(player.id);
-  const enemyPortrait = getMonsterPortrait(enemy.type);
   const bestiaryInfo = BESTIARY[enemy.type];
 
   // Animate dice rolling
@@ -212,18 +212,17 @@ const CombatOverlay: React.FC<CombatOverlayProps> = ({
             {getMonsterDisplayName(enemy.type)}
           </h3>
 
-          {/* Enemy Portrait Frame */}
-          <div className="relative w-36 h-44 md:w-48 md:h-56 rounded-md overflow-hidden border-4 border-[#6b4423] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]">
-            <img
-              src={enemyPortrait}
-              alt={enemy.name}
-              className="w-full h-full object-cover"
-              onError={(e) => {
-                (e.target as HTMLImageElement).style.display = 'none';
-              }}
+          {/* Enemy Portrait with Trait Effects */}
+          <div className="relative w-36 h-44 md:w-48 md:h-56">
+            <MonsterPortrait 
+              enemyType={enemy.type}
+              size="xl"
+              showTraitEffects={true}
+              isActive={phase === 'final' && netDamage > 0}
+              className="w-full h-full border-4 border-[#6b4423] shadow-[inset_0_0_20px_rgba(0,0,0,0.5)]"
             />
             {/* Horror overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-red-900/40 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-t from-red-900/40 to-transparent pointer-events-none rounded-xl" />
 
             {/* Damage indicator on enemy */}
             {phase === 'final' && netDamage > 0 && (
