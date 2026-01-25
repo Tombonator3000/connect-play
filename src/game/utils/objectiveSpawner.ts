@@ -422,6 +422,8 @@ function createQuestTile(objective: ScenarioObjective): QuestTile {
  * SPAWN PROBABILITY CONFIGURATION
  * These values control how often quest items appear.
  * Increased significantly to ensure items are findable within reasonable time.
+ *
+ * ENHANCED (2026-01-25): Added mission-type specific adjustments for collection missions.
  */
 export const SPAWN_PROBABILITY_CONFIG = {
   // Early game (first 15% of exploration)
@@ -448,7 +450,42 @@ export const SPAWN_PROBABILITY_CONFIG = {
   TARGET_EXPLORATION_PERCENT: 0.70,   // Items should spawn by 70% exploration
 
   // Room bonuses are added on top (ritual +25%, study +20%, etc.)
+
+  // COLLECTION MISSION ADJUSTMENTS
+  // When many items need to spawn, increase probabilities
+  COLLECTION_THRESHOLD: 4,            // Apply boost when collecting 4+ items
+  COLLECTION_SPAWN_BOOST: 0.12,       // +12% base chance for collection missions
+  COLLECTION_PITY_REDUCTION: 1,       // Reduce pity timer by 1 tile for collections
 };
+
+/**
+ * Gets adjusted spawn configuration based on scenario requirements.
+ * Collection missions with many items get boosted spawn rates.
+ *
+ * @param totalItemsNeeded - Total number of quest items needed for the scenario
+ * @returns Adjusted spawn configuration
+ */
+export function getAdjustedSpawnConfig(totalItemsNeeded: number): typeof SPAWN_PROBABILITY_CONFIG {
+  const config = { ...SPAWN_PROBABILITY_CONFIG };
+
+  // Boost spawn rates for collection missions with many items
+  if (totalItemsNeeded >= config.COLLECTION_THRESHOLD) {
+    config.NORMAL_SPAWN_CHANCE += config.COLLECTION_SPAWN_BOOST;
+    config.EARLY_SPAWN_CHANCE += config.COLLECTION_SPAWN_BOOST * 0.5; // Smaller boost early
+    config.PITY_TIMER_TILES = Math.max(2, config.PITY_TIMER_TILES - config.COLLECTION_PITY_REDUCTION);
+
+    // Scale boost with item count (more items = higher spawn rate)
+    const extraItems = totalItemsNeeded - config.COLLECTION_THRESHOLD;
+    config.NORMAL_SPAWN_CHANCE += extraItems * 0.03; // +3% per extra item
+    config.BEHIND_SCHEDULE_CHANCE = Math.min(0.85, config.BEHIND_SCHEDULE_CHANCE + extraItems * 0.03);
+  }
+
+  // Ensure values stay within reasonable bounds
+  config.NORMAL_SPAWN_CHANCE = Math.min(config.MAX_SPAWN_CHANCE - 0.1, config.NORMAL_SPAWN_CHANCE);
+  config.EARLY_SPAWN_CHANCE = Math.min(0.60, config.EARLY_SPAWN_CHANCE);
+
+  return config;
+}
 
 // ============================================================================
 // SPAWN VALIDATION & CALCULATION HELPERS
@@ -564,6 +601,9 @@ function calculateSpawnBonuses(
  * 3. Calculate probability based on exploration progress
  * 4. Apply bonuses (room type, pity timer)
  * 5. Roll for spawn
+ *
+ * ENHANCED (2026-01-25): Uses dynamic spawn configuration based on total items needed.
+ * Collection missions with many items automatically get boosted spawn rates.
  */
 export function shouldSpawnQuestItem(
   state: ObjectiveSpawnState,
@@ -571,7 +611,8 @@ export function shouldSpawnQuestItem(
   totalTilesExplored: number,
   scenario: Scenario
 ): QuestItem | null {
-  const config = SPAWN_PROBABILITY_CONFIG;
+  // Get adjusted config based on total items needed (collection missions get boost)
+  const config = getAdjustedSpawnConfig(state.questItems.length);
 
   // Step 1: Validate tile
   if (!isValidSpawnTile(tile)) {

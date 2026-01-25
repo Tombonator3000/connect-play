@@ -383,6 +383,7 @@ export interface FallbackTileSpawnResult {
 
 /**
  * Configuration for creating a fallback tile spawn result.
+ * ENHANCED (2026-01-25): Added optional theme parameter for theme-aware category selection.
  */
 export interface CreateFallbackSpawnConfig {
   /** Starting Q coordinate */
@@ -401,6 +402,60 @@ export interface CreateFallbackSpawnConfig {
   locationDescriptions: Record<string, string>;
   /** Function to select a random connectable category */
   selectCategoryFn: (fromCategory: TileCategory, preferIndoor: boolean) => TileCategory;
+  /** Optional scenario theme for theme-aware fallback (NEW) */
+  scenarioTheme?: string;
+  /** Optional theme preferences for biasing category selection (NEW) */
+  themePreferences?: {
+    preferredCategories: string[];
+    avoidCategories: string[];
+  };
+}
+
+/**
+ * Select category with theme preference bias.
+ * If theme preferences are provided, tries to select a preferred category
+ * while avoiding penalized categories.
+ *
+ * ADDED (2026-01-25): Theme-aware category selection for fallback tiles.
+ *
+ * @param sourceCategory - The source category (where player is coming from)
+ * @param preferIndoor - Whether to prefer indoor categories
+ * @param selectCategoryFn - Base category selection function
+ * @param themePreferences - Optional theme preferences for biasing selection
+ * @returns Selected category with theme bias applied
+ */
+function selectCategoryWithThemeBias(
+  sourceCategory: TileCategory,
+  preferIndoor: boolean,
+  selectCategoryFn: (fromCategory: TileCategory, preferIndoor: boolean) => TileCategory,
+  themePreferences?: { preferredCategories: string[]; avoidCategories: string[] }
+): TileCategory {
+  // If no theme preferences, use default selection
+  if (!themePreferences) {
+    return selectCategoryFn(sourceCategory, preferIndoor);
+  }
+
+  // Try up to 5 times to get a theme-appropriate category
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const category = selectCategoryFn(sourceCategory, preferIndoor);
+
+    // Check if this category is strongly avoided
+    const isAvoided = themePreferences.avoidCategories.includes(category);
+
+    // Accept if not avoided, or if it's a preferred category
+    const isPreferred = themePreferences.preferredCategories.includes(category);
+    if (isPreferred || !isAvoided) {
+      return category;
+    }
+
+    // On later attempts, be more lenient
+    if (attempt >= 3 && !isAvoided) {
+      return category;
+    }
+  }
+
+  // Fallback: just use the default selection
+  return selectCategoryFn(sourceCategory, preferIndoor);
 }
 
 /**
@@ -412,6 +467,9 @@ export interface CreateFallbackSpawnConfig {
  * - Room name selection based on category
  * - Tile creation with proper edges
  * - Log message generation
+ *
+ * ENHANCED (2026-01-25): Now supports theme-aware category selection to ensure
+ * fallback tiles match the scenario theme better.
  *
  * The caller is responsible for:
  * - Synchronizing edges with neighbors
@@ -432,13 +490,16 @@ export function createFallbackSpawnResult(
     roomId,
     boardMap,
     locationDescriptions,
-    selectCategoryFn
+    selectCategoryFn,
+    themePreferences
   } = config;
 
-  // Select category based on source
-  const newCategory = selectCategoryFn(
+  // Select category based on source with theme bias (NEW)
+  const newCategory = selectCategoryWithThemeBias(
     sourceCategory,
-    tileSet === 'indoor'
+    tileSet === 'indoor',
+    selectCategoryFn,
+    themePreferences
   );
 
   // Select room name based on category
