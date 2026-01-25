@@ -23873,3 +23873,435 @@ state.board.forEach(tile => {
 ✅ Bygget kompilerer uten feil
 
 ---
+
+## 2026-01-25: Claude Skills Analyse for Mythos Quest
+
+### Oppgave
+Analysere hvilke Claude AI-skills som kan være nyttige å integrere i spillprosjektet.
+
+### Prosjektoversikt (Recap)
+- **52 spillfiler**, 40+ komponenter
+- **Systemer**: Combat, Inventory, Spells, Monster AI, Weather, Puzzles, Events, Legacy/Progression
+- **25+ monstre**, 6 karakterklasser, 8 madness-typer
+- **Quest Editor** for scenario-creation
+
+---
+
+### 🎯 Nyttige Claude Skills for Mythos Quest
+
+#### 1. **Narrative Content Generation** ⭐⭐⭐ (Høy Prioritet)
+
+**Hva Claude kan generere:**
+- **Scenario Briefings**: Atmosfæriske intro-tekster til scenarier
+- **Room Descriptions**: Dynamiske beskrivelser når spilleren utforsker
+- **NPC Dialogue**: Survivor-dialoger, merchant-samtaler
+- **Epilogues**: Personlige avslutninger basert på spillerens valg
+- **Monster Lore**: Bestiary-oppføringer med Lovecraft-stil
+
+**Implementering:**
+```typescript
+// Eksempel: Generer rom-beskrivelse
+const roomPrompt = `Generate a Lovecraftian description for a ${tile.type}
+with features: ${tile.features}. Max 2 sentences. 1920s setting.`;
+const description = await claudeGenerate(roomPrompt);
+```
+
+**Filer som påvirkes:**
+- `src/game/components/TileInfoPanel.tsx` - Vise genererte beskrivelser
+- `src/game/data/epilogues.ts` - Utvide med AI-genererte epiloger
+- `src/game/components/EventModal.tsx` - Dynamisk event-tekst
+
+---
+
+#### 2. **Dynamic Game Master (DM)** ⭐⭐⭐ (Høy Prioritet)
+
+**Funksjon:**
+En AI "Game Master" som kommenterer spillerens handlinger og skaper atmosfære.
+
+**Eksempler:**
+- "Du hører noe skrape mot veggen bak deg..." (når Ghoul spawner nærme)
+- "Professoren kjenner igjen symbolene fra Necronomicon" (Investigate success)
+- "Nattens tåke kryper nærmere..." (Doom øker)
+
+**Implementering:**
+```typescript
+interface DMContext {
+  lastAction: PlayerAction;
+  nearbyEnemies: Enemy[];
+  playerState: Player;
+  currentTile: Tile;
+  doomLevel: number;
+}
+
+const dmNarration = await generateDMNarration(context);
+```
+
+**Fordeler:**
+- Øker immersjon uten å kreve forhåndsskrevne tekster
+- Tilpasser seg spillsituasjonen
+- Kan gi subtile hints
+
+---
+
+#### 3. **Scenario/Quest Generator** ⭐⭐ (Medium Prioritet)
+
+**Hva Claude kan gjøre:**
+- Generere komplette scenarier basert på tema/vanskelighetsgrad
+- Foreslå objective-chains
+- Skape balanserte enemy-spawns
+- Designe logiske tile-layouts
+
+**Brukerflyt:**
+1. Bruker velger tema: "Haunted Asylum", "Deep One Cult", etc.
+2. Velger vanskelighetsgrad og lengde
+3. Claude genererer scenario-struktur
+4. Quest Editor viser forslag for review
+
+**Filer:**
+- `src/game/components/QuestEditor/` - Integrer AI-assist
+- `src/game/utils/scenarioGenerator.ts` - Utvide med AI
+
+---
+
+#### 4. **Adaptive Hints System** ⭐⭐ (Medium Prioritet)
+
+**Funksjon:**
+Gi kontekstsensitive tips når spillere sliter.
+
+**Triggere:**
+- Spiller står stille lenge
+- Gjentatte mislykkede skill checks
+- Lav sanity/health uten å bruke items
+- Mangler objective progress
+
+**Eksempel:**
+```typescript
+if (turnsWithoutProgress > 5) {
+  const hint = await generateHint({
+    currentObjective: state.objectives.find(o => !o.completed),
+    playerInventory: player.inventory,
+    exploredTiles: state.exploredTiles
+  });
+  showHint(hint);
+}
+```
+
+---
+
+#### 5. **Monster Personality Generator** ⭐⭐ (Medium Prioritet)
+
+**Nåværende system:**
+`monsterAI.ts` har 25+ monstre med hardkodede personligheter.
+
+**Claude-forbedring:**
+- Generere unike personlighetstrekk per spawn
+- Skape dynamiske taktikker basert på spillsituasjon
+- Legge til flavor-tekst for monster-handlinger
+
+**Eksempel:**
+```typescript
+// I stedet for generisk "Ghoul attacks"
+const attackNarration = await generateMonsterAction({
+  monster: ghoul,
+  target: player,
+  personality: "feral, cunning, patient"
+});
+// Output: "The Ghoul circles you, its hollow eyes fixed on your wounded arm..."
+```
+
+---
+
+#### 6. **Event/Encounter Generator** ⭐⭐ (Medium Prioritet)
+
+**Nåværende system:**
+`eventDeckManager.ts` har fast pool av event cards.
+
+**Claude-forbedring:**
+- Generere nye events basert på spillkontekst
+- Tilpasse events til karakterklasse
+- Skape branching events med valg
+
+**Eksempel:**
+```typescript
+const event = await generateMythosEvent({
+  doomLevel: state.doom,
+  currentTile: tile,
+  playerClass: player.characterType,
+  previousEvents: state.eventHistory
+});
+```
+
+---
+
+#### 7. **Puzzle Generator** ⭐ (Lavere Prioritet)
+
+**Nåværende puzzles:**
+- sequence, code_lock, symbol_match, blood_ritual, astronomy, pressure_plate, mirror_light
+
+**Claude-forbedring:**
+- Generere unike puzzle-løsninger
+- Skape tematiske hints
+- Lage varierte symbol-sekvenser
+
+---
+
+#### 8. **Item Description Generator** ⭐ (Lavere Prioritet)
+
+**Funksjon:**
+Generere unike beskrivelser for items basert på hvor de finnes.
+
+**Eksempel:**
+- Vanlig pistol funnet i studie: "A worn Colt .38 with initials carved in the grip"
+- Samme pistol i krypt: "A rusted revolver with strange symbols etched on the barrel"
+
+---
+
+### 📋 Implementeringsplan
+
+| Prioritet | Feature | Estimert Kompleksitet | Verdi |
+|-----------|---------|----------------------|-------|
+| 1 | Narrative Content (Room Descriptions) | Lav | Høy |
+| 2 | Dynamic DM Narration | Medium | Høy |
+| 3 | Adaptive Hints | Lav | Medium |
+| 4 | Scenario Generator | Høy | Høy |
+| 5 | Monster Personality | Medium | Medium |
+| 6 | Event Generator | Medium | Medium |
+| 7 | Puzzle Generator | Medium | Lav |
+| 8 | Item Descriptions | Lav | Lav |
+
+---
+
+### 🔧 Teknisk Arkitektur
+
+**Anbefalte tilnærminger:**
+
+#### A) Server-side API (Anbefalt for produksjon)
+```
+User → React App → Backend API → Claude API
+                      ↓
+              Cache/Rate Limiting
+```
+
+**Fordeler:**
+- API-nøkkel sikret
+- Rate limiting
+- Caching av generert innhold
+- Kan pre-generere innhold
+
+#### B) Client-side med proxy (Raskere prototyping)
+```
+User → React App → Proxy Server → Claude API
+```
+
+**Fordeler:**
+- Raskere å implementere
+- Enklere testing
+
+#### C) Hybrid: Pre-generert + On-demand
+```
+Build time: Generate content pool → JSON files
+Runtime: Use pool + occasional API calls for special cases
+```
+
+---
+
+### 🎮 Konkret Første Steg: Dynamic Room Descriptions
+
+**Hvorfor dette først:**
+1. Lav kompleksitet
+2. Høy visuell impact
+3. Tester AI-integrasjonen
+4. Kan bygges videre til DM-system
+
+**Implementering:**
+1. Lag `src/game/services/claudeService.ts`
+2. Legg til beskrivelse-felt i TileInfoPanel
+3. Generer ved første tile-besøk
+4. Cache i localStorage
+
+**Eksempel prompt template:**
+```
+You are a Lovecraftian narrator for a 1920s horror board game.
+Generate a 2-sentence atmospheric description for:
+- Room type: ${tile.type}
+- Features: ${tile.features.join(', ')}
+- Weather: ${state.weather}
+- Time: ${state.timeOfDay}
+Tone: Dread, mystery, cosmic horror. No gore.
+```
+
+---
+
+### Neste Steg
+- [x] Bestemme hvilken feature å starte med → Dynamic Room Descriptions
+- [x] Sette opp API-integrasjon → claudeService.ts
+- [x] Prototype første Claude-integrering → CursorTooltip
+
+---
+
+## 2026-01-25: Implementering av Claude AI Dynamic Room Descriptions
+
+### Oppgave
+Implementere første fase av Claude AI-integrasjon: dynamiske rom-beskrivelser.
+
+### Implementerte Filer
+
+#### 1. `src/game/services/claudeService.ts` (NY)
+Hovedtjenesten for Claude API-kommunikasjon.
+
+**Features:**
+- API-konfigurasjon via environment variables
+- localStorage caching med versjonskontroll og utløpsdato
+- Rate limiting (min 1000ms mellom requests)
+- Prompt templates for room descriptions og DM narration
+- Mock mode for utvikling uten API-nøkkel
+- Cache utilities (clear, stats)
+
+**Funksjoner:**
+```typescript
+generateRoomDescription(tile, weather?, hasEnemies?) → Promise<string | null>
+generateDMNarration(state, lastAction, recentEvents) → Promise<string | null>
+isAIEnabled() → boolean
+clearAICache() → void
+getCacheStats() → { count, sizeKB }
+getMockDescription(category) → string
+```
+
+#### 2. `src/game/hooks/useAIDescription.ts` (NY)
+React hook for enkel bruk av AI-beskrivelser i komponenter.
+
+**Features:**
+- Automatisk caching og fallback
+- Loading states
+- Indikator for AI-generert innhold
+- Refresh-funksjon
+
+**Prioriteringsrekkefølge:**
+1. Tile's egen description
+2. Hardkodede LOCATION_DESCRIPTIONS
+3. AI-generert beskrivelse
+4. Mock beskrivelse (hvis AI disabled)
+
+#### 3. `src/game/components/CursorTooltip.tsx` (OPPDATERT)
+Integrert AI-beskrivelser i tile tooltips.
+
+**Endringer:**
+- Importert useAIDescription hook
+- TileTooltipContent bruker nå hook i stedet for statisk lookup
+- Loading state vises med animert tekst
+- AI-genererte beskrivelser markert med ✧ symbol
+
+#### 4. `todo.md` (NY)
+Komplett todo-liste for all fremtidig Claude AI-utvikling.
+
+**Faser dokumentert:**
+- Fase 1: Dynamic Room Descriptions ✅
+- Fase 2: Dynamic Game Master
+- Fase 3: Adaptive Hints System
+- Fase 4: Scenario Generator
+- Fase 5: Monster Personality
+- Fase 6: Event Generator
+
+---
+
+### Teknisk Arkitektur
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      React Components                        │
+│  (CursorTooltip, GameBoard, ShadowsGame)                    │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    useAIDescription Hook                     │
+│  - Handles caching priority                                  │
+│  - Manages loading states                                    │
+│  - Provides fallbacks                                        │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     claudeService.ts                         │
+│  - API communication                                         │
+│  - Prompt templates                                          │
+│  - localStorage caching                                      │
+│  - Rate limiting                                             │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+              ┌────────────┴────────────┐
+              ▼                         ▼
+┌─────────────────────┐    ┌─────────────────────┐
+│   Claude API        │    │   localStorage      │
+│   (Production)      │    │   (Cache)           │
+└─────────────────────┘    └─────────────────────┘
+```
+
+---
+
+### Konfigurasjon
+
+**Environment Variables:**
+```env
+VITE_CLAUDE_API_KEY=sk-ant-xxx        # API-nøkkel
+VITE_CLAUDE_API_URL=https://...       # API URL (optional)
+VITE_ENABLE_AI_FEATURES=true          # Feature flag
+```
+
+**Cache Settings (i claudeService.ts):**
+- Prefix: `mythos_ai_`
+- Expiry: 7 dager
+- Max entries: 100 (auto-cleanup)
+
+---
+
+### Mock Mode
+
+Når AI ikke er aktivert, brukes mock beskrivelser:
+
+```typescript
+const MOCK_DESCRIPTIONS = {
+  room: [
+    "The air hangs heavy here, thick with the scent of mold and something older, fouler.",
+    "Shadows seem to move of their own accord in the corners of this forsaken place.",
+    ...
+  ],
+  corridor: [...],
+  basement: [...],
+  crypt: [...]
+};
+```
+
+---
+
+### UI Integrasjon
+
+**CursorTooltip visning:**
+- Normal: Viser beskrivelse i kursiv med anførselstegn
+- Loading: "The shadows whisper secrets..." med pulse-animasjon
+- AI-generert: Markert med ✧ symbol øverst til høyre
+
+---
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
+
+### Neste Steg for AI-systemet
+
+1. **Testing med API-nøkkel**
+   - Sett environment variables
+   - Test med faktiske API-kall
+   - Verifiser caching fungerer
+
+2. **Utvide til ShadowsGame log**
+   - Vise AI-beskrivelser i game log ved tile entry
+   - Fallback til eksisterende LOCATION_DESCRIPTIONS
+
+3. **Game Master Narration**
+   - Aktivere DMContext og generateDMNarration
+   - Identifisere trigger-points
+   - Lage UI-komponent for DM-meldinger
+
+---
