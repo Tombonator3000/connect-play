@@ -24390,3 +24390,157 @@ Spillet fungerer visuelt, men har to hovedområder som trenger grafikk:
 2. **Items utenom våpen** - Prioritet medium (fungerer med tekst)
 
 ---
+
+---
+
+## 2026-01-25: Utvidelse av AI Game Master System
+
+### Oppgave
+Utvide det eksisterende AI-systemet med full Game Master-funksjonalitet.
+
+### Analyse av Eksisterende System
+
+**Allerede implementert:**
+- `claudeService.ts` - API-integrasjon, caching, rate limiting
+- `useAIDescription.ts` - Hook for room descriptions
+- `generateDMNarration()` - Funksjon definert men aldri brukt
+- `DMContext` interface - Type for GM-kontekst
+
+**Mangler:**
+- Hook for GM-narration (`useAIGameMaster`)
+- UI-komponent for å vise GM-meldinger (`DMNarrationPanel`)
+- Integrasjon i spilløkke (ShadowsGame)
+- Flere GM-funksjoner (combat, events, etc.)
+
+### Implementasjonsplan
+
+1. **Utvid claudeService.ts**
+   - Legg til flere prompt templates (combat, sanity, discovery, doom)
+   - Legg til funksjoner for ulike narration-typer
+   - Implementer narration queue system
+
+2. **Lag useAIGameMaster hook**
+   - Trigger narration basert på game events
+   - Håndter narration queue
+   - Integrer med game state
+
+3. **Lag DMNarrationPanel komponent**
+   - Vise GM-meldinger med atmosfærisk styling
+   - Fade-in/fade-out animasjoner
+   - Typewriter-effekt for tekst
+
+4. **Integrer i ShadowsGame**
+   - Koble hook til game events
+   - Trigger narration på riktige tidspunkt
+
+---
+
+### Implementasjonslogg
+
+
+#### 1. Utvidet `claudeService.ts`
+
+**Nye typer:**
+- `GMNarrationType` - 16 ulike narration-typer (combat, sanity, doom, discovery, etc.)
+- `GMNarrationContext` - Kontekst for AI-generering
+- `GMNarrationResult` - Resultat med tekst, type og metadata
+
+**Nye funksjoner:**
+- `generateGMNarration()` - Hovedfunksjon for GM-narration
+- `getMockGMNarration()` - Fallback når AI ikke er aktivert
+
+**Nye prompt templates:**
+- 16 spesialiserte templates for ulike situasjoner
+- Alle følger Lovecraft-stil og 1920-talls språk
+
+#### 2. Ny hook: `useAIGameMaster.ts`
+
+**Funksjoner:**
+- Prioritetsbasert narration-kø
+- Cooldown mellom meldinger (3 sekunder)
+- Innstillinger lagret i localStorage
+- 12 trigger-metoder for ulike hendelser:
+  - `triggerCombatStart`, `triggerCombatVictory`, `triggerCombatDamage`
+  - `triggerSanityLoss`, `triggerDoomChange`
+  - `triggerDiscovery`, `triggerExploration`
+  - `triggerEnemySpawn`, `triggerBossEncounter`
+  - `triggerObjectiveComplete`, `triggerPhaseChange`, `triggerAmbient`
+
+**Innstillinger (GMSettings):**
+- `enabled` - Master toggle
+- `narrateExploration`, `narrateCombat`, `narrateSanity`
+- `narrateDoom`, `narrateDiscovery`, `narrateAmbient`
+- `cooldownMs`, `maxQueueSize`
+
+#### 3. Ny komponent: `DMNarrationPanel.tsx`
+
+**Features:**
+- Portal-basert rendering (z-index 90)
+- Typewriter-effekt for tekst
+- Farge-skjemaer for ulike narration-typer
+- Auto-dismiss etter 5-8 sekunder
+- Dekorative hjørne-elementer
+- Animasjoner for kritiske meldinger
+
+**Settings panel:**
+- Toggle for hver narration-type
+- Vises som modal
+
+#### 4. Integrasjon i `ShadowsGame.tsx`
+
+**Import:**
+```typescript
+import { DMNarrationPanel } from './components/DMNarrationPanel';
+import { useAIGameMaster } from './hooks/useAIGameMaster';
+```
+
+**Hook-kall:**
+```typescript
+const aiGameMaster = useAIGameMaster();
+```
+
+**Triggere koblet til:**
+- `spawnEnemy()` - Enemy spawn og boss encounters
+- `spawnRoom()` - Exploration narration
+- `handleMythosOverlayComplete()` - Phase change og doom warnings
+- Objective completion events
+
+**JSX:**
+```tsx
+{state.phase !== GamePhase.SETUP && (
+  <DMNarrationPanel
+    narration={aiGameMaster.currentNarration}
+    isLoading={aiGameMaster.isLoading}
+    queueLength={aiGameMaster.queueLength}
+    onDismiss={aiGameMaster.dismissNarration}
+    settings={aiGameMaster.settings}
+    onSettingsChange={aiGameMaster.updateSettings}
+  />
+)}
+```
+
+---
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
+
+### Neste Steg
+
+1. **Testing**
+   - Test med faktisk gameplay
+   - Verifiser at alle triggere fungerer
+   - Sjekk timing og prioritering
+
+2. **Utvidelser**
+   - Koble combat-triggere til kamp-system
+   - Legg til sanity-triggere
+   - Implementer item discovery triggere
+
+3. **UI Forbedringer**
+   - Settings-knapp i game UI
+   - Bedre mobile-støtte
+   - Lyd-effekter for narration
+
+---

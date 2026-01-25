@@ -55,43 +55,51 @@ Item-kategorier som kun vises som tekstliste:
 
 # Claude AI Integration - Todo List
 
-## Fase 1: Dynamic Room Descriptions (Current)
+## Fase 1: Dynamic Room Descriptions ✅ FERDIG
 
 ### Completed
 - [x] Analyse av eksisterende systemer
 - [x] Identifisert integreringspunkter (CursorTooltip, ShadowsGame)
-
-### In Progress
-- [ ] Lag `src/game/services/claudeService.ts`
-- [ ] Lag prompt templates for room descriptions
-- [ ] Integrer med tile description system
-- [ ] Legg til localStorage caching
-
-### Todo
-- [ ] Test med ulike tile-typer
-- [ ] Fallback til LOCATION_DESCRIPTIONS ved API-feil
-- [ ] Rate limiting / debounce for API calls
-- [ ] Loading states i UI
+- [x] Lag `src/game/services/claudeService.ts`
+- [x] Lag prompt templates for room descriptions
+- [x] Integrer med tile description system
+- [x] Legg til localStorage caching
+- [x] Fallback til LOCATION_DESCRIPTIONS ved API-feil
+- [x] Rate limiting / debounce for API calls
+- [x] Loading states i UI
 
 ---
 
-## Fase 2: Dynamic Game Master (Future)
+## Fase 2: Dynamic Game Master ✅ FERDIG (2026-01-25)
 
-### Planning
-- [ ] Design DM context interface
-- [ ] Identifiser trigger-points for narration
-- [ ] Design UI for DM-meldinger (toast/overlay)
+### Completed
+- [x] Design DM context interface (`GMNarrationContext`)
+- [x] Identifiser trigger-points for narration (16 typer)
+- [x] Design UI for DM-meldinger (DMNarrationPanel)
+- [x] Extend claudeService med DM-funksjonalitet
+- [x] Lag DMContext type med spilltilstand
+- [x] Lag `useAIGameMaster` hook med:
+  - [x] Priority queue system
+  - [x] Cooldown mellom meldinger
+  - [x] Settings persistence
+- [x] Integrer i ShadowsGame for events:
+  - [x] Enemy spawn nearby
+  - [x] Boss encounters
+  - [x] Exploration narration
+  - [x] Doom level changes
+  - [x] Phase changes
+  - [x] Objective completion
+- [x] Lag DMNarrationPanel komponent med:
+  - [x] Typewriter effekt
+  - [x] Auto-dismiss
+  - [x] Farge-skjemaer per type
+  - [x] Dekorative elementer
 
-### Implementation
-- [ ] Extend claudeService med DM-funksjonalitet
-- [ ] Lag DMContext type med spilltilstand
-- [ ] Integrer i ShadowsGame for events:
-  - [ ] Enemy spawn nearby
-  - [ ] Low sanity warnings
-  - [ ] Objective progress
-  - [ ] Combat outcomes
-  - [ ] Doom level changes
-- [ ] Lag DMNarrationPanel komponent
+### Remaining (minor)
+- [ ] Koble combat-triggere (start/victory/defeat)
+- [ ] Koble sanity-triggere
+- [ ] Koble item discovery triggere
+- [ ] Settings-knapp i game UI
 
 ---
 
