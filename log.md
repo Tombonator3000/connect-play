@@ -1,5 +1,39 @@
 # Development Log
 
+## 2026-01-26: Ny README.md
+
+### Oppgave
+Bytte ut standard Lovable README med en spillfokusert README som forklarer:
+- Hva Mythos Quest er
+- Hvordan spille
+- Reglene (kort sammendrag)
+- Quest Editor-funksjonen
+
+### Endringer
+
+**Fil:** `README.md`
+
+Erstattet generisk Lovable-mal med komplett spilldokumentasjon:
+
+| Seksjon | Innhold |
+|---------|---------|
+| Om spillet | Introduksjon til Mythos Quest |
+| Hvordan spille | Spillstart, faser, handlinger, seier/tap |
+| Kampsystemet | Hero Quest-stil terningsystem med eksempel |
+| Karakterer | Oversikt over alle 6 klasser |
+| Sanity | Mental helse og galskap-mekanikk |
+| Doom-systemet | Tidspress-mekanikk |
+| Quest Editor | Komplett guide til scenario-editoren |
+| Teknisk info | Stack og utviklingsinstruksjoner |
+
+### Retningslinjer fulgt
+- Saklig skrivestil
+- Ingen unødvendige emojis
+- Ingen AI-klisjeer
+- Kort og presis informasjon
+
+---
+
 ## 2026-01-25: Test Suite Verifisering
 
 ### Oppgave
