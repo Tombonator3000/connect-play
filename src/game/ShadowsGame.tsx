@@ -38,10 +38,11 @@ import SaveLoadModal from './components/SaveLoadModal';
 import QuestEditor, { CustomQuestLoader, CampaignPlayManager, convertQuestToScenario } from './components/QuestEditor';
 import { DMNarrationPanel, DMSettingsPanel } from './components/DMNarrationPanel';
 import { useAIGameMaster } from './hooks/useAIGameMaster';
+import VisualEffectsErrorBoundary from './components/VisualEffectsErrorBoundary';
 // Lazy load heavy visual effects libraries to prevent blocking game startup
 // These use pixi.js and three.js which can cause WebGL initialization issues
-const AdvancedParticles = lazy(() => import('./components/AdvancedParticles'));
-const ShaderEffects = lazy(() => import('./components/ShaderEffects'));
+const AdvancedParticles = lazy(() => import('./components/AdvancedParticles').catch(() => ({ default: () => null })));
+const ShaderEffects = lazy(() => import('./components/ShaderEffects').catch(() => ({ default: () => null })));
 import { autoSave } from './utils/saveManager';
 import {
   loadLegacyData,
@@ -4418,24 +4419,28 @@ const ShadowsGame: React.FC = () => {
 
       {/* Advanced Visual Effects (GPU-accelerated) - only load when enabled */}
       {settings.advancedParticles && settings.particles && (
-        <Suspense fallback={null}>
-          <AdvancedParticles
-            enabled={true}
-            quality={settings.effectsQuality}
-          />
-        </Suspense>
+        <VisualEffectsErrorBoundary effectName="AdvancedParticles">
+          <Suspense fallback={null}>
+            <AdvancedParticles
+              enabled={true}
+              quality={settings.effectsQuality}
+            />
+          </Suspense>
+        </VisualEffectsErrorBoundary>
       )}
 
       {/* WebGL Shader Effects - only load when enabled */}
       {settings.shaderEffects && (
-        <Suspense fallback={null}>
-          <ShaderEffects
-            enabled={true}
-            quality={settings.effectsQuality}
-            sanityLevel={activePlayer ? activePlayer.sanity / (activePlayer.maxSanity || 4) : 1}
-            doomLevel={state.activeScenario ? (state.activeScenario.startDoom - state.doom) / state.activeScenario.startDoom : 0}
-          />
-        </Suspense>
+        <VisualEffectsErrorBoundary effectName="ShaderEffects">
+          <Suspense fallback={null}>
+            <ShaderEffects
+              enabled={true}
+              quality={settings.effectsQuality}
+              sanityLevel={activePlayer ? activePlayer.sanity / (activePlayer.maxSanity || 4) : 1}
+              doomLevel={state.activeScenario ? (state.activeScenario.startDoom - state.doom) / state.activeScenario.startDoom : 0}
+            />
+          </Suspense>
+        </VisualEffectsErrorBoundary>
       )}
 
       {isMainMenuOpen && mainMenuView === 'title' && (

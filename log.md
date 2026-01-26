@@ -1,5 +1,86 @@
 # Development Log
 
+## 2026-01-26: Fix Svart Skjerm ved Oppstart - Error Boundary & WebGL Feilhåndtering
+
+### Problem
+Spillet viste svart skjerm ved oppstart i visse tilfeller. Dette kunne skyldes:
+- Uhandlede JavaScript-feil som krasjet hele React-treet
+- WebGL/PIXI initialisering som feilet uten feilhåndtering
+- Lazy-loadede komponenter (AdvancedParticles, ShaderEffects) som krasjet stille
+
+### Deep Audit Funn
+Gjennomført grundig kode-audit av oppstartsprosessen:
+
+| Område | Status | Kommentar |
+|--------|--------|-----------|
+| Index.tsx | ✅ OK | Enkel wrapper rundt ShadowsGame |
+| App.tsx | ⚠️ Manglet | Ingen Error Boundary |
+| ShadowsGame.tsx | ⚠️ Manglet | WebGL lazy loading uten feilhåndtering |
+| AdvancedParticles.tsx | ⚠️ Manglet | PIXI.js init uten try-catch |
+| ShaderEffects.tsx | ⚠️ Manglet | Three.js Canvas uten Error Boundary |
+| constants.ts | ✅ OK | START_TILE og DEFAULT_EDGES korrekt definert |
+| GameBoard.tsx | ✅ OK | Rendering fungerer |
+
+### Løsning
+
+#### 1. Global Error Boundary (`src/components/ErrorBoundary.tsx`)
+Ny komponent som fanger opp uhandlede feil og viser brukervennlig feilmelding i stedet for svart skjerm:
+- Viser feilmelding med stack trace
+- "Try Again", "Reload" og "Clear Data" knapper
+- Forhindrer at hele appen krasjer
+
+#### 2. Visual Effects Error Boundary (`src/game/components/VisualEffectsErrorBoundary.tsx`)
+Spesialisert Error Boundary for WebGL-komponenter:
+- Feiler stille - spillet fortsetter uten visuelle effekter
+- Logger advarsel til konsollen for debugging
+
+#### 3. Lazy Loading med Catch (`ShadowsGame.tsx:43-44`)
+```typescript
+// Før:
+const AdvancedParticles = lazy(() => import('./components/AdvancedParticles'));
+
+// Etter:
+const AdvancedParticles = lazy(() =>
+  import('./components/AdvancedParticles').catch(() => ({ default: () => null }))
+);
+```
+
+#### 4. PIXI.js Initialisering med Try-Catch (`AdvancedParticles.tsx:181`)
+```typescript
+const initPixi = async () => {
+  try {
+    const app = new PIXI.Application();
+    await app.init({ ... });
+    // ...
+  } catch (error) {
+    console.warn('[AdvancedParticles] Failed to initialize PIXI.js:', error);
+    // Silently fail - game continues without particle effects
+  }
+};
+```
+
+### Endrede Filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/components/ErrorBoundary.tsx` | Ny - Global error boundary |
+| `src/game/components/VisualEffectsErrorBoundary.tsx` | Ny - WebGL error boundary |
+| `src/App.tsx` | Lagt til ErrorBoundary wrapper |
+| `src/game/ShadowsGame.tsx` | Lazy loading med catch + VisualEffectsErrorBoundary |
+| `src/game/components/AdvancedParticles.tsx` | Try-catch rundt PIXI init |
+
+### Test Status
+✅ Build kompilerer uten feil
+✅ Alle 686 tester passerer
+
+### Resultat
+Spillet vil nå:
+1. Vise brukervennlig feilside i stedet for svart skjerm ved JavaScript-feil
+2. Fortsette å fungere selv om WebGL/PIXI feiler
+3. Logge advarsler til konsollen for debugging
+
+---
+
 ## 2026-01-26: Ny README.md
 
 ### Oppgave
