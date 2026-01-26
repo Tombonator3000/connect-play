@@ -179,28 +179,33 @@ const AdvancedParticles: React.FC<AdvancedParticlesProps> = ({
     if (!enabled || !containerRef.current) return;
 
     const initPixi = async () => {
-      const app = new PIXI.Application();
-      await app.init({
-        width,
-        height,
-        backgroundAlpha: 0,
-        antialias: true,
-        resolution: window.devicePixelRatio || 1,
-        autoDensity: true,
-      });
+      try {
+        const app = new PIXI.Application();
+        await app.init({
+          width,
+          height,
+          backgroundAlpha: 0,
+          antialias: true,
+          resolution: window.devicePixelRatio || 1,
+          autoDensity: true,
+        });
 
-      const canvas = app.canvas as HTMLCanvasElement;
-      // CRITICAL: Set pointer-events to none on canvas to allow clicks through
-      canvas.style.pointerEvents = 'none';
-      containerRef.current?.appendChild(canvas);
-      appRef.current = app;
+        const canvas = app.canvas as HTMLCanvasElement;
+        // CRITICAL: Set pointer-events to none on canvas to allow clicks through
+        canvas.style.pointerEvents = 'none';
+        containerRef.current?.appendChild(canvas);
+        appRef.current = app;
 
-      // Start animation loop
-      const animate = () => {
-        updateParticles();
-        animationRef.current = requestAnimationFrame(animate);
-      };
-      animate();
+        // Start animation loop
+        const animate = () => {
+          updateParticles();
+          animationRef.current = requestAnimationFrame(animate);
+        };
+        animate();
+      } catch (error) {
+        console.warn('[AdvancedParticles] Failed to initialize PIXI.js:', error);
+        // Silently fail - game continues without particle effects
+      }
     };
 
     initPixi();
