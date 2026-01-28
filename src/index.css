@@ -4127,4 +4127,391 @@
       rgba(17, 24, 39, 0.6) 100%
     );
   }
+
+  /* ==========================================================================
+     TILE ANIMATION SYSTEM - "The Living Board"
+     Category-based atmospheric effects for game tiles
+     ========================================================================== */
+
+  /* --------------------------------------------------------------------------
+     SUPERNATURAL TILES - Eldritch glow and pulsing
+     For: Portals, ritual chambers, occult sites
+     -------------------------------------------------------------------------- */
+  @keyframes eldritch-pulse {
+    0%, 100% {
+      filter: brightness(1) hue-rotate(0deg);
+      box-shadow: inset 0 0 20px hsla(280, 60%, 40%, 0.2);
+    }
+    50% {
+      filter: brightness(1.08) hue-rotate(5deg);
+      box-shadow: inset 0 0 40px hsla(280, 60%, 50%, 0.4);
+    }
+  }
+
+  .tile-animate-eldritch {
+    animation: eldritch-pulse 4s ease-in-out infinite;
+  }
+
+  .tile-glow-eldritch {
+    box-shadow: 
+      inset 0 0 30px hsla(280, 50%, 35%, 0.3),
+      0 0 15px hsla(280, 60%, 40%, 0.2);
+  }
+
+  .tile-overlay-eldritch {
+    background: radial-gradient(
+      ellipse at center,
+      hsla(280, 60%, 50%, 0.15) 0%,
+      hsla(300, 50%, 40%, 0.1) 40%,
+      transparent 70%
+    );
+    animation: eldritch-overlay 5s ease-in-out infinite;
+  }
+
+  @keyframes eldritch-overlay {
+    0%, 100% { opacity: 0.6; transform: scale(1); }
+    50% { opacity: 1; transform: scale(1.05); }
+  }
+
+  .tile-image-eldritch {
+    animation: eldritch-image-pulse 4s ease-in-out infinite;
+  }
+
+  @keyframes eldritch-image-pulse {
+    0%, 100% { filter: saturate(1) brightness(1); }
+    50% { filter: saturate(1.15) brightness(1.05); }
+  }
+
+  /* --------------------------------------------------------------------------
+     OUTDOOR TILES - Subtle wind/atmosphere
+     For: Streets, parks, cemetery, courtyards
+     -------------------------------------------------------------------------- */
+  @keyframes outdoor-breeze {
+    0%, 100% {
+      transform: translateX(0);
+    }
+    25% {
+      transform: translateX(0.5px);
+    }
+    75% {
+      transform: translateX(-0.5px);
+    }
+  }
+
+  .tile-animate-outdoor {
+    animation: outdoor-breeze 8s ease-in-out infinite;
+  }
+
+  .tile-overlay-wind {
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsla(200, 30%, 60%, 0.03) 30%,
+      hsla(200, 30%, 60%, 0.05) 50%,
+      hsla(200, 30%, 60%, 0.03) 70%,
+      transparent 100%
+    );
+    animation: wind-sweep 10s linear infinite;
+  }
+
+  @keyframes wind-sweep {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  .tile-image-outdoor {
+    animation: outdoor-subtle 12s ease-in-out infinite;
+  }
+
+  @keyframes outdoor-subtle {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.02); }
+  }
+
+  /* --------------------------------------------------------------------------
+     WATER TILES - Rippling reflections
+     For: Harbors, docks, sewers, cisterns
+     -------------------------------------------------------------------------- */
+  @keyframes water-tile-ripple {
+    0%, 100% {
+      transform: scaleY(1);
+      filter: brightness(1);
+    }
+    25% {
+      filter: brightness(1.03);
+    }
+    50% {
+      transform: scaleY(1.002);
+      filter: brightness(0.98);
+    }
+    75% {
+      filter: brightness(1.02);
+    }
+  }
+
+  .tile-animate-water {
+    animation: water-tile-ripple 3s ease-in-out infinite;
+  }
+
+  .tile-glow-water {
+    box-shadow: inset 0 0 25px hsla(200, 50%, 40%, 0.2);
+  }
+
+  .tile-overlay-water {
+    background: 
+      radial-gradient(ellipse at 30% 40%, hsla(200, 60%, 60%, 0.1) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 60%, hsla(200, 60%, 60%, 0.08) 0%, transparent 50%);
+    animation: water-light-dance 4s ease-in-out infinite;
+  }
+
+  @keyframes water-light-dance {
+    0%, 100% { 
+      opacity: 0.7;
+      transform: translateX(0) translateY(0);
+    }
+    25% {
+      opacity: 0.9;
+      transform: translateX(2px) translateY(-1px);
+    }
+    50% {
+      opacity: 0.6;
+      transform: translateX(-1px) translateY(1px);
+    }
+    75% {
+      opacity: 0.85;
+      transform: translateX(1px) translateY(-2px);
+    }
+  }
+
+  .tile-image-water {
+    animation: water-image-shimmer 5s ease-in-out infinite;
+  }
+
+  @keyframes water-image-shimmer {
+    0%, 100% { filter: saturate(1) contrast(1); }
+    50% { filter: saturate(1.1) contrast(1.03); }
+  }
+
+  /* --------------------------------------------------------------------------
+     UNDERGROUND TILES - Creeping mist
+     For: Crypts, tunnels, basements, caves
+     -------------------------------------------------------------------------- */
+  @keyframes underground-mist {
+    0%, 100% {
+      opacity: 0.4;
+      transform: translateY(10%);
+    }
+    50% {
+      opacity: 0.7;
+      transform: translateY(-5%);
+    }
+  }
+
+  .tile-animate-underground {
+    position: relative;
+  }
+
+  .tile-overlay-mist {
+    background: linear-gradient(
+      0deg,
+      hsla(230, 20%, 50%, 0.2) 0%,
+      hsla(230, 20%, 50%, 0.1) 30%,
+      transparent 60%
+    );
+    animation: underground-mist 8s ease-in-out infinite;
+  }
+
+  .tile-image-underground {
+    animation: underground-flicker 10s ease-in-out infinite;
+  }
+
+  @keyframes underground-flicker {
+    0%, 90%, 100% { filter: brightness(1); }
+    92% { filter: brightness(0.9); }
+    94% { filter: brightness(1.05); }
+    96% { filter: brightness(0.95); }
+  }
+
+  /* --------------------------------------------------------------------------
+     CHURCH TILES - Divine light rays
+     For: Churches, chapels, shrines
+     -------------------------------------------------------------------------- */
+  @keyframes divine-light {
+    0%, 100% {
+      opacity: 0.2;
+      transform: scaleY(1);
+    }
+    50% {
+      opacity: 0.4;
+      transform: scaleY(1.02);
+    }
+  }
+
+  .tile-animate-church {
+    animation: divine-light 6s ease-in-out infinite;
+  }
+
+  .tile-glow-divine {
+    box-shadow: inset 0 0 30px hsla(45, 80%, 60%, 0.15);
+  }
+
+  .tile-overlay-divine {
+    background: linear-gradient(
+      180deg,
+      hsla(45, 90%, 70%, 0.12) 0%,
+      hsla(45, 80%, 60%, 0.05) 50%,
+      transparent 100%
+    );
+    animation: divine-rays 5s ease-in-out infinite;
+  }
+
+  @keyframes divine-rays {
+    0%, 100% { opacity: 0.6; }
+    50% { opacity: 1; }
+  }
+
+  .tile-image-church {
+    animation: church-glow 6s ease-in-out infinite;
+  }
+
+  @keyframes church-glow {
+    0%, 100% { filter: brightness(1) saturate(1); }
+    50% { filter: brightness(1.06) saturate(1.1); }
+  }
+
+  /* --------------------------------------------------------------------------
+     LABORATORY TILES - Electric sparks
+     For: Labs, morgues, experiments
+     -------------------------------------------------------------------------- */
+  @keyframes electric-flicker {
+    0%, 90%, 100% { 
+      filter: brightness(1);
+      box-shadow: inset 0 0 10px hsla(200, 80%, 50%, 0.1);
+    }
+    92% { 
+      filter: brightness(1.15);
+      box-shadow: inset 0 0 20px hsla(200, 80%, 60%, 0.3);
+    }
+    94% { 
+      filter: brightness(0.95);
+      box-shadow: inset 0 0 10px hsla(200, 80%, 50%, 0.1);
+    }
+    96% { 
+      filter: brightness(1.1);
+      box-shadow: inset 0 0 15px hsla(200, 80%, 60%, 0.25);
+    }
+  }
+
+  .tile-animate-laboratory {
+    animation: electric-flicker 4s ease-in-out infinite;
+  }
+
+  .tile-glow-electric {
+    box-shadow: inset 0 0 20px hsla(200, 70%, 50%, 0.15);
+  }
+
+  .tile-overlay-electric {
+    background: 
+      radial-gradient(circle at 20% 30%, hsla(180, 80%, 60%, 0.1) 0%, transparent 30%),
+      radial-gradient(circle at 80% 70%, hsla(140, 70%, 50%, 0.08) 0%, transparent 30%);
+    animation: electric-shimmer 3s ease-in-out infinite alternate;
+  }
+
+  @keyframes electric-shimmer {
+    0% { opacity: 0.5; }
+    100% { opacity: 1; }
+  }
+
+  .tile-image-laboratory {
+    animation: lab-hum 4s ease-in-out infinite;
+  }
+
+  @keyframes lab-hum {
+    0%, 100% { filter: brightness(1) hue-rotate(0deg); }
+    50% { filter: brightness(1.03) hue-rotate(2deg); }
+  }
+
+  /* --------------------------------------------------------------------------
+     NATURE TILES - Wind through trees
+     For: Forests, clearings, moors
+     -------------------------------------------------------------------------- */
+  @keyframes nature-sway {
+    0%, 100% {
+      transform: rotate(0deg) translateX(0);
+    }
+    25% {
+      transform: rotate(0.2deg) translateX(0.3px);
+    }
+    75% {
+      transform: rotate(-0.2deg) translateX(-0.3px);
+    }
+  }
+
+  .tile-animate-nature {
+    animation: nature-sway 6s ease-in-out infinite;
+  }
+
+  .tile-image-nature {
+    animation: nature-rustle 8s ease-in-out infinite;
+  }
+
+  @keyframes nature-rustle {
+    0%, 100% { filter: brightness(1) contrast(1); }
+    33% { filter: brightness(1.02) contrast(1.01); }
+    66% { filter: brightness(0.99) contrast(1); }
+  }
+
+  /* --------------------------------------------------------------------------
+     INTERIOR TILES - Candlelight flicker
+     For: Studies, libraries, bedrooms, parlors
+     -------------------------------------------------------------------------- */
+  @keyframes candle-flicker {
+    0%, 100% {
+      box-shadow: inset 0 0 20px hsla(35, 80%, 50%, 0.1);
+    }
+    20% {
+      box-shadow: inset 0 0 25px hsla(35, 80%, 55%, 0.15);
+    }
+    40% {
+      box-shadow: inset 0 0 18px hsla(35, 80%, 45%, 0.08);
+    }
+    60% {
+      box-shadow: inset 0 0 22px hsla(35, 80%, 52%, 0.12);
+    }
+    80% {
+      box-shadow: inset 0 0 20px hsla(35, 80%, 48%, 0.1);
+    }
+  }
+
+  .tile-animate-interior {
+    animation: candle-flicker 3s ease-in-out infinite;
+  }
+
+  .tile-glow-candle {
+    box-shadow: inset 0 0 25px hsla(35, 70%, 45%, 0.12);
+  }
+
+  .tile-overlay-candle {
+    background: radial-gradient(
+      ellipse at 50% 30%,
+      hsla(35, 80%, 60%, 0.1) 0%,
+      hsla(35, 70%, 50%, 0.05) 40%,
+      transparent 70%
+    );
+    animation: candle-dance 4s ease-in-out infinite;
+  }
+
+  @keyframes candle-dance {
+    0%, 100% { opacity: 0.7; transform: translateY(0); }
+    50% { opacity: 1; transform: translateY(-1px); }
+  }
+
+  .tile-image-interior {
+    animation: interior-warmth 5s ease-in-out infinite;
+  }
+
+  @keyframes interior-warmth {
+    0%, 100% { filter: brightness(1) sepia(0); }
+    50% { filter: brightness(1.02) sepia(0.03); }
+  }
 }

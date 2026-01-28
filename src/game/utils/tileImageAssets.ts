@@ -485,9 +485,8 @@ export const TILE_IMAGES: Record<string, string> = {
   bell: tileBelltower,
   tower: tileBelltower,
 
-  // ===== GALLERY =====
+  // ===== GALLERY ===== (portrait already mapped above in CRYPTS section for tilePortraitgallery)
   gallery: tileGallery,
-  portrait: tileGallery,
 
   // ===== RECORDS ROOM =====
   records: tileRecords,
@@ -549,7 +548,7 @@ export const TILE_IMAGES: Record<string, string> = {
   floor: tileHallway,
   tasting: tileCellar,
   rats: tileSewer,
-  pit: tileCrypt,
+  // pit already mapped in CRYPTS section
   standing: tileStonecircle,
   devils: tileGraveyard,
   dead: tileDeadend,

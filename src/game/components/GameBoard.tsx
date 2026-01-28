@@ -20,6 +20,8 @@ import { TileAtmosphericEffects, DoomOverlay, SanityOverlay } from './ParticleEm
 
 // Tile image assets - REFACTORED: Extracted to separate module for maintainability
 import { getTileImage } from '../utils/tileImageAssets';
+// Tile animations - Category-based atmospheric effects
+import { getTileContainerAnimationClass, getTileImageAnimationClass, getTileOverlayClass } from '../utils/tileAnimations';
 
 interface GameBoardProps {
   tiles: Tile[];
@@ -747,15 +749,20 @@ const GameBoard: React.FC<GameBoardProps> = ({
               {/* Touch feedback: brighten tile and show pulse when touched */}
               {/* Valid move highlighting for mobile: show where player can move */}
               {/* Floor texture: Use tile.floorType if available, fallback to visual.floorClass */}
-              <div className={`absolute inset-0 hex-clip transition-all duration-150 ${tile.floorType ? getFloorTypeClass(tile.floorType) : visual.floorClass} ${visual.glowClass} ${isVisible ? depthClass : ''} overflow-hidden group ${isTouched ? 'brightness-125 scale-[1.02] touch-highlight' : ''} ${isValidMove && isVisible ? 'valid-move-tile' : ''} ${isSelectedTarget ? 'selected-move-target' : ''} ${isLongPressPreview ? 'long-press-preview' : ''}`}>
+              <div className={`absolute inset-0 hex-clip transition-all duration-150 ${tile.floorType ? getFloorTypeClass(tile.floorType) : visual.floorClass} ${visual.glowClass} ${isVisible ? depthClass : ''} overflow-hidden group ${isTouched ? 'brightness-125 scale-[1.02] touch-highlight' : ''} ${isValidMove && isVisible ? 'valid-move-tile' : ''} ${isSelectedTarget ? 'selected-move-target' : ''} ${isLongPressPreview ? 'long-press-preview' : ''} ${isVisible ? getTileContainerAnimationClass(tile.name, tile.type) : ''}`}>
                 {/* AI-generated tile image - MUST be on top with z-index */}
                 {tileImage ? (
                   <img
                     src={tileImage}
                     alt={tile.name}
-                    className="absolute inset-0 w-full h-full object-cover z-[1] pointer-events-none"
+                    className={`absolute inset-0 w-full h-full object-cover z-[1] pointer-events-none ${isVisible ? getTileImageAnimationClass(tile.name, tile.type) : ''}`}
                   />
                 ) : null}
+
+                {/* Category-based atmospheric overlay */}
+                {isVisible && getTileOverlayClass(tile.name, tile.type) && (
+                  <div className={`absolute inset-0 z-[2] pointer-events-none ${getTileOverlayClass(tile.name, tile.type)}`} />
+                )}
                 
                 {/* Chiaroscuro lighting overlay - reduced for tile visibility */}
                 <div className="absolute inset-0 z-[2] chiaroscuro-overlay pointer-events-none opacity-10" />

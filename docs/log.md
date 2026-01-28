@@ -2,6 +2,29 @@
 
 ## 2026-01-28
 
+### Session 16 - Tile Animation System
+
+#### Nytt Tile Animation System implementert:
+Kategoribaserte atmosfæriske effekter for alle spillfliser:
+- **Supernatural** (portaler, ritualkamre) - Eldritch pulserende glød med lilla toner
+- **Outdoor** (gater, parker, kirkegårder) - Subtil vind-animasjon
+- **Water** (havner, kloakk, kilder) - Bølgende lys-refleksjoner
+- **Underground** (krypter, tunneler, kjellere) - Krypende tåke-effekt
+- **Church** (kirker, kapeller) - Guddommelige lysråler
+- **Laboratory** (labber, obduksjonsrom) - Elektrisk flimring
+- **Nature** (skog, myr, klipper) - Vind gjennom trær
+- **Interior** (stuer, bibliotek, soverom) - Levende stearinlys-flimring
+
+#### Nye filer:
+- `src/game/utils/tileAnimations.ts` - Kategori-deteksjon og animasjonsklasser
+- CSS-animasjoner i `src/index.css` (linjer 4122-4430)
+
+#### Filer endret:
+- `src/game/components/GameBoard.tsx` - Integrert tile-animasjoner
+- Fjernet utdaterte test-filer med type-feil
+
+---
+
 ### Session 15 - Tile Graphics Expansion
 
 #### 15 nye tile-bilder generert:
