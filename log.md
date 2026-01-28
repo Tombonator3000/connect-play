@@ -1,5 +1,25 @@
 # Development Log
 
+## 2026-01-28: Fjernet ubrukte Flee og Item knapper fra ActionBar
+
+### Oppgave
+Undersøke om "Flee" og "Item" knappene i ActionBar har noen funksjonalitet, og fjerne dem hvis ikke.
+
+### Analyse
+Undersøkte `handleAction` i `ShadowsGame.tsx` og fant at følgende actions er implementert:
+- `'move'`, `'rest'`, `'investigate'`, `'attack'`, `'cast'`, `'cancel_cast'`, `'cast_occultist'`, `'enemy_click'`
+
+**Ingen `'flee'` eller `'item'` case!** Disse knappene var "døde" - de gjorde ingenting når de ble klikket.
+
+### Endringer
+1. Fjernet `flee` og `item` fra `standardActions` array i `ActionBar.tsx:44-48`
+2. Fjernet ubrukt `Package` import fra lucide-react
+
+### Filer endret
+- `src/game/components/ActionBar.tsx`
+
+---
+
 ## 2026-01-28: Combat Overlay for Enemy Attacks (Defense Dice Animation)
 
 ### Oppgave

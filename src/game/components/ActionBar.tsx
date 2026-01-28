@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Sword, Heart, Package, LockOpen, Hammer, Wind, Zap, X, Eye, User, BookOpen, Skull, Sparkles } from 'lucide-react';
+import { Search, Sword, Heart, LockOpen, Hammer, Wind, Zap, X, Eye, User, BookOpen, Skull, Sparkles } from 'lucide-react';
 import { ContextAction, Spell, OccultistSpell } from '../types';
 import { SpellTooltip } from './ItemTooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -44,9 +44,7 @@ const ActionBar: React.FC<ActionBarProps> = ({
   const standardActions = [
     { id: 'investigate', label: 'Investigate', icon: Search, color: 'hover:text-green-400' },
     { id: 'attack', label: 'Attack', icon: Sword, color: 'hover:text-red-400' },
-    { id: 'flee', label: 'Flee', icon: Wind, color: 'hover:text-cyan-400' },
-    { id: 'rest', label: 'Rest', icon: Heart, color: 'hover:text-pink-400' },
-    { id: 'item', label: 'Item', icon: Package, color: 'hover:text-yellow-400' }
+    { id: 'rest', label: 'Rest', icon: Heart, color: 'hover:text-pink-400' }
   ];
 
   const getContextIcon = (type: string) => {
