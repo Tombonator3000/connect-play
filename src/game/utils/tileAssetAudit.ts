@@ -9,17 +9,30 @@ import { INDOOR_LOCATIONS, OUTDOOR_LOCATIONS } from '../constants';
 
 // All existing tile images in src/assets/tiles/
 export const EXISTING_TILE_IMAGES = [
-  'alley', 'asylum', 'bedroom', 'belltower', 'billiard', 'blackpool', 'boiler', 
-  'bridge', 'campsite', 'campus', 'cannery', 'cave', 'cellar', 'church', 'closet',
-  'conservatory', 'courthouse', 'crossroads', 'crypt', 'deadend', 'dock', 'drawing',
-  'echo', 'farmhouse', 'fireescape', 'forest', 'funeral', 'gallery', 'gallows',
-  'gasworks', 'gate', 'graveyard', 'hallway', 'hangingtree', 'hospital', 'hotel',
-  'idol', 'kitchen', 'lab', 'library', 'lighthouse', 'manor', 'maproom', 'market',
-  'massgrave', 'mine', 'museum', 'music', 'newspaper', 'nursery', 'office', 'orchard',
-  'park', 'parlor', 'petrified', 'police', 'pond', 'portal', 'quarry', 'records',
-  'ritual', 'riverfront', 'ruins', 'sanctum', 'servants', 'sewer', 'shack', 'shipyard',
-  'shop', 'smoking', 'square', 'starchamber', 'station', 'stonecircle', 'street',
-  'swamp', 'tenement', 'tomb', 'trophy', 'underground-lake', 'warehouse', 'well', 'witchhouse'
+  // Updated 2026-01-28 - Full list from src/assets/tiles/
+  'alley', 'antiquarian', 'apothecary', 'artifactstorage', 'asylum',
+  'bedroom', 'bellfoundry', 'belltower', 'billiard', 'blackpool', 'boiler', 'bridge',
+  'campsite', 'campus', 'cannery', 'cave', 'cavern', 'cellar', 'church', 'clocktower', 'closet',
+  'coalchute', 'coldstorage', 'conservatory', 'courthouse', 'crossroads', 'crypt',
+  'deadend', 'dissectiontheater', 'dock', 'drawing',
+  'echo',
+  'farmhouse', 'fireescape', 'floodedbasement', 'forest', 'funeral',
+  'gallery', 'gallows', 'gasworks', 'gate', 'gibbet', 'grandfoyer', 'graveyard', 'greenhouse',
+  'hallway', 'hangingtree', 'hospital', 'hotel',
+  'idol', 'industrial', 'innsmouthwharf', 'interrogation',
+  'kitchen',
+  'lab', 'library', 'lighthouse',
+  'maintenancetunnel', 'manor', 'maproom', 'market', 'massgrave', 'mine', 'moor', 'mortuary', 'museum', 'music',
+  'newspaper', 'nursery',
+  'occultlibrary', 'office', 'opiumden', 'orchard', 'ossuary',
+  'paddedcell', 'park', 'parlor', 'petrified', 'pit', 'planetarium', 'police', 'pond', 'portal', 'portraitgallery',
+  'quarry',
+  'records', 'ritual', 'riverfront', 'rootcellar', 'ruins',
+  'sanctum', 'seance', 'servants', 'sewer', 'shack', 'shipyard', 'shop', 'smoking',
+  'smugglersden', 'speakeasy', 'square', 'starchamber', 'station', 'stonecircle', 'stormdrain', 'street', 'swamp',
+  'taxidermy', 'telegraph', 'tenement', 'tomb', 'trophy',
+  'underground-lake',
+  'vault', 'warehouse', 'well', 'winetasting', 'witchhouse'
 ];
 
 /**

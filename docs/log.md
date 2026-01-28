@@ -1,5 +1,34 @@
 # Shadows of the 1920s - Development Log
 
+## 2026-01-28
+
+### Session 15 - Tile Graphics Expansion
+
+#### 15 nye tile-bilder generert:
+AI-genererte Lovecraftian lokasjonsbilder for manglende tiles:
+- **Grand Foyer** - Marmorgulv med lysekrone-skygge
+- **Padded Cell** - Asylum-celle med revet polstring
+- **Dissection Theater** - Medisinsk amfiteater med metallbord
+- **Flooded Basement** - Oversvømt kjeller med rotter
+- **Ossuary** - Benkammer med hodeskaller i mønster
+- **Vault** - Underjordisk bankhvelv med safe-dør
+- **Maintenance Tunnel** - Industriell tunnel med rør
+- **Cavern** - Eldgammel grotte med fosforescerende sopp
+- **The Pit** - Dyp offersjakt med kjettinger
+- **Moor** - Tåkelagt hei med stående vann
+- **Innsmouth Wharf** - Råtnende trekai med fiskebåter
+- **Industrial Quarter** - Fabrikker med røykpiper
+- **Gibbet** - Galge med hengekur og kråker
+- **Portrait Gallery** - Gang med stirrende malerier
+- **Storm Drain** - Vannfylt avløpstunnel
+
+#### Filer endret:
+- `src/assets/tiles/` - 15 nye tile-bilder
+- `src/game/utils/tileAssetAudit.ts` - Oppdatert EXISTING_TILE_IMAGES
+- `src/game/utils/tileImageAssets.ts` - Nye imports og mappings
+
+---
+
 ## 2026-01-25
 
 ### Session 14 - Monster Graphics & Item Icons

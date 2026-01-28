@@ -99,6 +99,22 @@ import tileIdol from '@/assets/tiles/tile-idol.png';
 import tileBlackpool from '@/assets/tiles/tile-blackpool.png';
 import tileEcho from '@/assets/tiles/tile-echo.png';
 import tilePetrified from '@/assets/tiles/tile-petrified.png';
+// New tiles 2026-01-28
+import tileGrandfoyer from '@/assets/tiles/tile-grandfoyer.png';
+import tilePaddedcell from '@/assets/tiles/tile-paddedcell.png';
+import tileDissectiontheater from '@/assets/tiles/tile-dissectiontheater.png';
+import tileFloodedbasement from '@/assets/tiles/tile-floodedbasement.png';
+import tileOssuary from '@/assets/tiles/tile-ossuary.png';
+import tileVault from '@/assets/tiles/tile-vault.png';
+import tileMaintenancetunnel from '@/assets/tiles/tile-maintenancetunnel.png';
+import tileCavern from '@/assets/tiles/tile-cavern.png';
+import tilePit from '@/assets/tiles/tile-pit.png';
+import tileMoor from '@/assets/tiles/tile-moor.png';
+import tileInnsmouthwharf from '@/assets/tiles/tile-innsmouthwharf.png';
+import tileIndustrial from '@/assets/tiles/tile-industrial.png';
+import tileGibbet from '@/assets/tiles/tile-gibbet.png';
+import tilePortraitgallery from '@/assets/tiles/tile-portraitgallery.png';
+import tileStormdrain from '@/assets/tiles/tile-stormdrain.png';
 
 // ============================================================================
 // TILE NAME TO IMAGE MAPPING
@@ -131,9 +147,10 @@ export const TILE_IMAGES: Record<string, string> = {
   dock: tileDock,
   pier: tileDock,
   harbor: tileDock,
-  wharf: tileDock,
+  wharf: tileInnsmouthwharf,
+  innsmouthwharf: tileInnsmouthwharf,
   waterfront: tileDock,
-  innsmouth: tileDock,
+  innsmouth: tileInnsmouthwharf,
 
   // ===== TOWN SQUARES =====
   square: tileSquare,
@@ -164,9 +181,10 @@ export const TILE_IMAGES: Record<string, string> = {
 
   // ===== CRYPTS AND UNDERGROUND =====
   crypt: tileCrypt,
-  vault: tileCrypt,
-  ossuary: tileCrypt,
+  vault: tileVault,
+  ossuary: tileOssuary,
   catacomb: tileCrypt,
+  pit: tilePit,
 
   // ===== TRAIN STATION =====
   station: tileStation,
@@ -193,7 +211,8 @@ export const TILE_IMAGES: Record<string, string> = {
 
   // ===== ASYLUM =====
   asylum: tileAsylum,
-  padded: tileAsylum,
+  padded: tilePaddedcell,
+  paddedcell: tilePaddedcell,
   cell: tileAsylum,
 
   // ===== STREETS =====
@@ -205,8 +224,9 @@ export const TILE_IMAGES: Record<string, string> = {
   // ===== MANOR AND MANSION =====
   manor: tileManor,
   mansion: tileManor,
-  foyer: tileManor,
-  lobby: tileManor,
+  foyer: tileGrandfoyer,
+  grandfoyer: tileGrandfoyer,
+  lobby: tileGrandfoyer,
   vestibule: tileManor,
   atrium: tileManor,
   blackwood: tileManor,
@@ -216,10 +236,12 @@ export const TILE_IMAGES: Record<string, string> = {
   basement: tileCellar,
   storage: tileCellar,
   cold: tileCellar,
-  flooded: tileCellar,
+  flooded: tileFloodedbasement,
+  floodedbasement: tileFloodedbasement,
   coal: tileCellar,
   root: tileCellar,
-  maintenance: tileCellar,
+  maintenance: tileMaintenancetunnel,
+  maintenancetunnel: tileMaintenancetunnel,
   smuggler: tileCellar,
 
   // ===== FOREST AND NATURE =====
@@ -237,10 +259,11 @@ export const TILE_IMAGES: Record<string, string> = {
   occult: tileRitual,
   pentagram: tileRitual,
 
-  // ===== WAREHOUSE =====
+  // ===== WAREHOUSE AND INDUSTRIAL =====
   warehouse: tileWarehouse,
   factory: tileWarehouse,
-  industrial: tileWarehouse,
+  industrial: tileIndustrial,
+  industrialquarter: tileIndustrial,
   derelict: tileWarehouse,
 
   // ===== HOTEL =====
@@ -252,7 +275,8 @@ export const TILE_IMAGES: Record<string, string> = {
   // ===== LABORATORY =====
   lab: tileLab,
   laboratory: tileLab,
-  dissection: tileLab,
+  dissection: tileDissectiontheater,
+  dissectiontheater: tileDissectiontheater,
   hidden: tileLab,
 
   // ===== BEDROOM =====
@@ -265,14 +289,15 @@ export const TILE_IMAGES: Record<string, string> = {
   // ===== SEWER =====
   sewer: tileSewer,
   tunnel: tileSewer,
-  drain: tileSewer,
-  storm: tileSewer,
+  drain: tileStormdrain,
+  stormdrain: tileStormdrain,
+  storm: tileStormdrain,
 
-  // ===== SWAMP =====
+  // ===== SWAMP AND MOOR =====
   swamp: tileSwamp,
   marsh: tileSwamp,
   bog: tileSwamp,
-  moor: tileSwamp,
+  moor: tileMoor,
   treacherous: tileSwamp,
 
   // ===== LIGHTHOUSE =====
@@ -299,7 +324,7 @@ export const TILE_IMAGES: Record<string, string> = {
 
   // ===== CAVE =====
   cave: tileCave,
-  cavern: tileCave,
+  cavern: tileCavern,
   ancient: tileCave,
 
   // ===== BRIDGE =====
@@ -339,9 +364,11 @@ export const TILE_IMAGES: Record<string, string> = {
   billiard: tileBilliard,
   pool: tileBilliard,
 
-  // ===== TROPHY ROOM =====
+  // ===== TROPHY AND GALLERY ROOMS =====
   trophy: tileTrophy,
   hunting: tileTrophy,
+  portrait: tilePortraitgallery,
+  portraitgallery: tilePortraitgallery,
 
   // ===== DRAWING ROOM =====
   drawing: tileDrawing,
@@ -404,10 +431,10 @@ export const TILE_IMAGES: Record<string, string> = {
   // ===== WELL =====
   well: tileWell,
 
-  // ===== GALLOWS =====
+  // ===== GALLOWS AND GIBBET =====
   gallows: tileGallows,
-  gibbet: tileGallows,
-  execution: tileGallows,
+  gibbet: tileGibbet,
+  execution: tileGibbet,
 
   // ===== QUARRY =====
   quarry: tileQuarry,
