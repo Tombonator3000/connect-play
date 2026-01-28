@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from
 import { Skull, RotateCcw, ArrowLeft, Heart, Brain, Settings, History, ScrollText, Users, Package, X, Info, MessageSquare } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useIsMobile } from '@/hooks/use-mobile';
-import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent, OccultistSpell, SpellParticleType, LogEntry, detectLogCategory, getLogCategoryClasses, LevelUpBonus, SurvivorTrait, GameStats, createInitialGameStats } from './types';
+import { GamePhase, GameState, Player, Tile, CharacterType, Enemy, EnemyType, Scenario, FloatingText, EdgeData, CombatState, SkillCheckState, TileCategory, ZoneLevel, createEmptyInventory, equipItem, getAllItems, isInventoryFull, ContextAction, ContextActionTarget, LegacyData, LegacyHero, ScenarioResult, HeroScenarioResult, canLevelUp, createDefaultWeatherState, WeatherType, WeatherCondition, Item, InventorySlotName, hasLightSource, DarkRoomContent, OccultistSpell, SpellParticleType, LogEntry, detectLogCategory, getLogCategoryClasses, LevelUpBonus, SurvivorTrait, GameStats, createInitialGameStats } from './types';
 import ContextActionBar from './components/ContextActionBar';
 import { getContextActions, getDoorActions, getObstacleActions } from './utils/contextActions';
 import { performSkillCheck } from './utils/combatUtils';
@@ -15,6 +15,7 @@ import EnemyPanel from './components/EnemyPanel';
 import ActionBar from './components/ActionBar';
 import DiceRoller from './components/DiceRoller';
 import CombatOverlay from './components/CombatOverlay';
+import SkillCheckOverlay from './components/SkillCheckOverlay';
 import MainMenu from './components/MainMenu';
 import OptionsMenu, { GameSettings, DEFAULT_SETTINGS } from './components/OptionsMenu';
 import GameOverOverlay, { GameOverType } from './components/GameOverOverlay';
@@ -236,6 +237,9 @@ const ShadowsGame: React.FC = () => {
   // Context Action state
   const [activeContextTarget, setActiveContextTarget] = useState<ContextActionTarget | null>(null);
   const [contextActions, setContextActions] = useState<ContextAction[]>([]);
+
+  // Skill Check Overlay state (for force/lockpick with visual dice animation)
+  const [activeSkillCheck, setActiveSkillCheck] = useState<SkillCheckState | null>(null);
 
   // Legacy System State
   const [legacyData, setLegacyData] = useState<LegacyData>(() => loadLegacyData());
@@ -1846,6 +1850,72 @@ const ShadowsGame: React.FC = () => {
       return;
     }
 
+    // Special handling for force_door and lockpick - show SkillCheckOverlay with dice animation
+    if ((action.id === 'force_door' || action.id === 'lockpick') && action.skillCheck) {
+      const tile = state.board.find(t => t.id === activeContextTarget.tileId);
+      const edge = tile?.edges[activeContextTarget.edgeIndex ?? 0];
+
+      // Calculate weather penalty for agility checks (lockpick)
+      let bonusDice = action.skillCheck.bonusDice || 0;
+      if (action.skillCheck.skill === 'agility' && state.weatherState.global) {
+        const weatherPenalty = calculateWeatherAgilityPenalty(state.weatherState.global);
+        if (weatherPenalty > 0) {
+          bonusDice -= weatherPenalty;
+          const weatherEffect = getWeatherEffect(state.weatherState.global.type);
+          addToLog(`${weatherEffect.name} gjør det vanskeligere (-${weatherPenalty} terning)`);
+        }
+      }
+
+      // Pre-roll the dice
+      const result = performSkillCheck(
+        activePlayer,
+        action.skillCheck.skill,
+        action.skillCheck.dc,
+        bonusDice
+      );
+
+      // Determine check type
+      const checkType: SkillCheckState['checkType'] = action.id === 'force_door' ? 'force_door' : 'lockpick';
+
+      // Create target description
+      const lockTypeLabel = edge?.lockType === 'simple' ? 'Simple Lock' :
+                           edge?.lockType === 'quality' ? 'Quality Lock' :
+                           edge?.lockType === 'complex' ? 'Complex Lock' : 'Locked Door';
+
+      // Set up the skill check overlay state
+      setActiveSkillCheck({
+        playerId: activePlayer.id,
+        checkType,
+        skill: action.skillCheck.skill,
+        dc: action.skillCheck.dc,
+        diceCount: result.dice.length,
+        rolls: result.dice,
+        successes: result.dice.filter(d => d >= action.skillCheck!.dc).length,
+        passed: result.passed,
+        isCritical: result.passed && result.dice.every(d => d >= action.skillCheck!.dc) && result.dice.length > 0,
+        targetDescription: lockTypeLabel,
+        tileId: activeContextTarget.tileId,
+        edgeIndex: activeContextTarget.edgeIndex,
+        actionId: action.id,
+        successMessage: action.successMessage,
+        failureMessage: action.failureMessage
+      });
+
+      // Deduct AP immediately
+      setState(prev => ({
+        ...prev,
+        lastDiceRoll: result.dice,
+        players: prev.players.map((p, i) =>
+          i === prev.activePlayerIndex ? { ...p, actions: p.actions - action.apCost } : p
+        )
+      }));
+
+      // Close context menu - overlay will handle the rest
+      setActiveContextTarget(null);
+      setContextActions([]);
+      return;
+    }
+
     // Perform skill check if required
     if (action.skillCheck) {
       // Calculate weather penalty for agility checks
@@ -1922,6 +1992,96 @@ const ShadowsGame: React.FC = () => {
     setActiveContextTarget(null);
     setContextActions([]);
   }, [state.players, state.activePlayerIndex, activeContextTarget]);
+
+  // Handle skill check overlay completion (for force_door and lockpick)
+  const handleSkillCheckComplete = useCallback((passed: boolean) => {
+    if (!activeSkillCheck) return;
+
+    const activePlayer = state.players.find(p => p.id === activeSkillCheck.playerId);
+    if (!activePlayer) {
+      setActiveSkillCheck(null);
+      return;
+    }
+
+    const tile = state.board.find(t => t.id === activeSkillCheck.tileId);
+
+    if (passed) {
+      addToLog(activeSkillCheck.successMessage || `${activeSkillCheck.checkType === 'force_door' ? 'Force' : 'Lockpick'} succeeded!`);
+      addFloatingText(activePlayer.position.q, activePlayer.position.r, "SUCCESS!", "text-accent");
+
+      // Handle success effects based on action type
+      if (activeSkillCheck.actionId === 'lockpick' && activeSkillCheck.edgeIndex !== undefined) {
+        // Lockpick opens the door
+        setState(prev => {
+          const updatedBoard = prev.board.map(t => {
+            if (t.id === activeSkillCheck.tileId && t.edges) {
+              const newEdges = [...t.edges] as typeof t.edges;
+              if (newEdges[activeSkillCheck.edgeIndex!]) {
+                newEdges[activeSkillCheck.edgeIndex!] = {
+                  ...newEdges[activeSkillCheck.edgeIndex!],
+                  doorState: 'open'
+                };
+              }
+              return { ...t, edges: newEdges };
+            }
+            return t;
+          });
+          return { ...prev, board: updatedBoard };
+        });
+
+        // Trigger fog reveal for adjacent tile
+        if (tile) {
+          const adjacentPos = getAdjacentPosition(tile, activeSkillCheck.edgeIndex);
+          if (adjacentPos) {
+            triggerFogReveal(adjacentPos.q, adjacentPos.r);
+          }
+        }
+      } else if (activeSkillCheck.actionId === 'force_door' && activeSkillCheck.edgeIndex !== undefined) {
+        // Force breaks the door
+        setState(prev => {
+          const updatedBoard = prev.board.map(t => {
+            if (t.id === activeSkillCheck.tileId && t.edges) {
+              const newEdges = [...t.edges] as typeof t.edges;
+              if (newEdges[activeSkillCheck.edgeIndex!]) {
+                newEdges[activeSkillCheck.edgeIndex!] = {
+                  ...newEdges[activeSkillCheck.edgeIndex!],
+                  doorState: 'broken'
+                };
+              }
+              return { ...t, edges: newEdges };
+            }
+            return t;
+          });
+          return { ...prev, board: updatedBoard };
+        });
+
+        // Trigger fog reveal for adjacent tile
+        if (tile) {
+          const adjacentPos = getAdjacentPosition(tile, activeSkillCheck.edgeIndex);
+          if (adjacentPos) {
+            triggerFogReveal(adjacentPos.q, adjacentPos.r);
+          }
+        }
+
+        // Force door triggers alarm (consequence)
+        addToLog('The noise echoes through the building!');
+      }
+    } else {
+      addToLog(activeSkillCheck.failureMessage || `${activeSkillCheck.checkType === 'force_door' ? 'Force' : 'Lockpick'} failed.`);
+      addFloatingText(activePlayer.position.q, activePlayer.position.r, "FAILED", "text-primary");
+
+      // Handle failure consequences
+      if (activeSkillCheck.actionId === 'force_door') {
+        addToLog('The noise might attract attention...');
+      } else if (activeSkillCheck.actionId === 'lockpick') {
+        addToLog('The lock resists your attempts.');
+      }
+    }
+
+    // Clear the skill check state
+    setActiveSkillCheck(null);
+    setState(prev => ({ ...prev, lastDiceRoll: null }));
+  }, [activeSkillCheck, state.players, state.board]);
 
   // Handle context action consequences (damage, sanity loss, etc.)
   const handleContextConsequence = useCallback((
@@ -5334,7 +5494,21 @@ const ShadowsGame: React.FC = () => {
       })()}
 
       {/* DiceRoller - Used for non-combat rolls (investigation, horror checks, etc.) */}
-      {state.lastDiceRoll && !state.activeCombat && <DiceRoller values={state.lastDiceRoll} onComplete={resolveDiceResult} />}
+      {state.lastDiceRoll && !state.activeCombat && !activeSkillCheck && <DiceRoller values={state.lastDiceRoll} onComplete={resolveDiceResult} />}
+
+      {/* Skill Check Overlay - Shows for force/lockpick with visual dice animation */}
+      {activeSkillCheck && (() => {
+        const skillCheckPlayer = state.players.find(p => p.id === activeSkillCheck.playerId);
+        if (!skillCheckPlayer) return null;
+
+        return (
+          <SkillCheckOverlay
+            player={skillCheckPlayer}
+            skillCheckState={activeSkillCheck}
+            onComplete={handleSkillCheckComplete}
+          />
+        );
+      })()}
 
       {/* Context Action Bar */}
       {activeContextTarget && contextActions.length > 0 && activePlayer && (

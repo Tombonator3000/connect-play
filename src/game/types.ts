@@ -1393,6 +1393,42 @@ export interface CombatState {
   sanityDamageToPlayer?: number;     // Sanity damage to player (horror)
 }
 
+/**
+ * State for skill check overlay (force door, lockpick, etc.)
+ * Shows CombatOverlay-style dice animation for non-combat skill checks
+ */
+export interface SkillCheckState {
+  playerId: string;
+  /** Type of skill check - used for theming the overlay */
+  checkType: 'force_door' | 'lockpick' | 'break_barricade' | 'generic';
+  /** Skill being checked (strength, agility, etc.) */
+  skill: SkillType;
+  /** Difficulty class */
+  dc: number;
+  /** Number of dice to roll based on player skill */
+  diceCount: number;
+  /** Pre-generated dice rolls */
+  rolls: number[];
+  /** Number of successes */
+  successes: number;
+  /** Whether the check passed */
+  passed: boolean;
+  /** Whether this is a critical success (all dice succeeded) */
+  isCritical: boolean;
+  /** Target description for display (e.g., "Locked Door", "Barricade") */
+  targetDescription: string;
+  /** Tile ID where the action is happening */
+  tileId: string;
+  /** Edge index if applicable */
+  edgeIndex?: number;
+  /** Action ID to execute on completion */
+  actionId: string;
+  /** Success message to show */
+  successMessage?: string;
+  /** Failure message to show */
+  failureMessage?: string;
+}
+
 // Monster AI types
 export type MonsterBehavior = 'aggressive' | 'defensive' | 'ranged' | 'ambusher' | 'patrol' | 'swarm';
 export type MonsterState = 'idle' | 'patrol' | 'alert' | 'hunting' | 'fleeing';
