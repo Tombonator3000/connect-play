@@ -26231,3 +26231,84 @@ Tier 3: Components & Hooks (når nødvendig)
 - Quest editor components
 
 ---
+
+## 2026-01-28: Force/Lockpick Skill Check Overlay
+
+### Oppgave
+Implementere visuell terning-animasjon for Force og Lockpick handlinger på dører, med samme layout og design som CombatOverlay for mer engasjerende spillopplevelse.
+
+### Problem
+Når spillere brukte "Force" eller "Lockpick" på låste dører, viste spillet kun en enkel terningkast-logger og floating text. Dette var lite visuelt engasjerende sammenlignet med kampens CombatOverlay som viser flott terning-animasjon.
+
+### Løsning
+Opprettet nytt SkillCheckOverlay-komponent som bruker samme designprinsipper som CombatOverlay:
+- Spillerportrett på venstre side med skill-indikator
+- Mål (dør/lås) visuelt representert på høyre side
+- Sentral terning-animasjon med roterende terninger under "rolling" fase
+- DC-indikator og suksessteller
+- Success/Failure resultatmelding med farget feedback
+
+### Implementasjonsdetaljer
+
+#### Nye Typer (types.ts)
+```typescript
+export interface SkillCheckState {
+  playerId: string;
+  checkType: 'force_door' | 'lockpick' | 'break_barricade' | 'generic';
+  skill: SkillType;
+  dc: number;
+  diceCount: number;
+  rolls: number[];
+  successes: number;
+  passed: boolean;
+  isCritical: boolean;
+  targetDescription: string;
+  tileId: string;
+  edgeIndex?: number;
+  actionId: string;
+  successMessage?: string;
+  failureMessage?: string;
+}
+```
+
+#### Ny Komponent (SkillCheckOverlay.tsx)
+- Bruker samme parchment-stil bakgrunn som CombatOverlay
+- Terning-animasjon med 80ms intervall for rolling-effekt
+- Faser: 'rolling' → 'result' → 'final'
+- Automatisk lukking etter 2 sekunder på final-fase
+- Tematiske farger basert på checkType (rød for force, grå for lockpick)
+- Dekorative hjørner og gradients for atmosfære
+
+#### Integrasjon (ShadowsGame.tsx)
+- Ny state: `activeSkillCheck: SkillCheckState | null`
+- Spesialhåndtering i `handleContextAction` for force_door og lockpick
+- Pre-roller terninger og setter opp overlay state
+- `handleSkillCheckComplete` callback som:
+  - Logger resultat til spilloggen
+  - Oppdaterer dør-state (open for lockpick, broken for force)
+  - Triggerer fog reveal for nabotile
+  - Håndterer konsekvenser (alarm-lyd for force)
+- DiceRoller skjules når SkillCheckOverlay er aktiv
+
+### Visuell Flyt
+1. Spiller klikker på låst dør → Context menu vises
+2. Spiller velger "Force" eller "Lockpick"
+3. SkillCheckOverlay vises med spillerinfo og mål
+4. Terninger animeres i ~1 sekund
+5. Resultat vises (suksesser telt opp)
+6. Final melding vises (SUCCESS/FAILED)
+7. Overlay lukkes automatisk etter 2 sekunder
+8. Dør-state oppdateres og fog avsløres
+
+### Endrede Filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/types.ts` | Lagt til `SkillCheckState` interface |
+| `src/game/components/SkillCheckOverlay.tsx` | Ny komponent - 340 linjer |
+| `src/game/ShadowsGame.tsx` | Import, state, spesialhåndtering for force/lockpick, completion handler, JSX render |
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
