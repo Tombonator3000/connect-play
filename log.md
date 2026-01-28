@@ -1,5 +1,83 @@
 # Development Log
 
+## 2026-01-28: FIX - Black Tiles & Slice Error Bug - LOCALSTORAGE CORRUPTION FIX
+
+### Problem
+1. **Black tiles**: Hex-tiles ble fortsatt svarte i noen tilfeller etter tidligere fikser
+2. **"slice is not a function" TypeError**: Kritisk feil ved klikking som krasjet spillet
+3. **Event cards forsvunnet**: Event cards ble ikke vist i Mythos-fasen
+
+### Deep Audit - Rotårsaker Identifisert
+
+#### Problem 1: Korrupt State fra LocalStorage
+**Lokasjon:** `useState` initializer for GameState (linje ~370)
+
+Når state ble lastet fra localStorage, ble det IKKE validert at kritiske arrays var gyldige:
+```typescript
+// GAMMEL KODE - Ingen validering
+return { ...parsed, floatingTexts: [], ... };
+```
+
+Hvis `exploredTiles`, `eventDeck`, `log`, `tile.items`, eller `tile.bloodstains.positions` var korrupt (undefined, null, eller feil type), ville det forårsake:
+- Black tiles (korrupt `exploredTiles`)
+- "slice is not a function" (korrupt arrays)
+- Ingen event cards (korrupt `eventDeck`)
+
+#### Problem 2: Manglende Array Guards i GameBoard
+**Lokasjon:** `GameBoard.tsx` (linje ~778 og ~834)
+
+Koden antok at `tile.items` og `tile.bloodstains.positions` alltid var arrays, men etter localStorage korrupsjon kunne de være andre typer:
+```typescript
+// GAMMEL KODE - Antok alltid array
+{tile.items.slice(0, 3).map(...)}
+```
+
+### Løsning
+
+#### Fix 1: Validering av LocalStorage State (ShadowsGame.tsx:370-421)
+La til omfattende validering av alle kritiske felter når state lastes:
+```typescript
+// Ensure exploredTiles is always a valid array of strings
+const exploredTiles = Array.isArray(parsed.exploredTiles)
+  ? parsed.exploredTiles.filter((t: unknown) => typeof t === 'string')
+  : ['0,0'];
+
+// Ensure eventDeck is always a valid array (regenerate if corrupted)
+const eventDeck = Array.isArray(parsed.eventDeck) && parsed.eventDeck.length > 0
+  ? parsed.eventDeck
+  : createShuffledEventDeck();
+
+// Sanitize board tiles to ensure items and bloodstains are valid arrays
+const board = Array.isArray(parsed.board) ? parsed.board.map((tile: Tile) => ({
+  ...tile,
+  items: Array.isArray(tile.items) ? tile.items : undefined,
+  bloodstains: tile.bloodstains ? {
+    ...tile.bloodstains,
+    positions: Array.isArray(tile.bloodstains.positions) ? tile.bloodstains.positions : []
+  } : undefined
+})) : [START_TILE];
+```
+
+#### Fix 2: Defensive Array Checks i GameBoard (GameBoard.tsx:778, 835)
+La til `Array.isArray()` sjekker før `.slice()` kall:
+```typescript
+// bloodstains positions
+{tile.bloodstains && tile.bloodstains.count > 0 && Array.isArray(tile.bloodstains.positions) && ...}
+
+// tile items
+{isVisible && Array.isArray(tile.items) && tile.items.length > 0 && ...}
+```
+
+### Filer Endret
+- `src/game/ShadowsGame.tsx` - State validering ved localStorage lasting
+- `src/game/components/GameBoard.tsx` - Defensive Array.isArray sjekker
+
+### Testing
+- TypeScript kompilering: ✅ Ingen feil
+- Build: ✅ Vellykket
+
+---
+
 ## 2026-01-28: FIX - Black Tiles Bug (Deep Audit) - COMPREHENSIVE FIX
 
 ### Problem

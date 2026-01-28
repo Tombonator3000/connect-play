@@ -774,7 +774,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 <div className="absolute inset-0 z-[4] hex-3d-edge-light pointer-events-none opacity-30" />
 
                 {/* Blood stains - visual indicator of combat */}
-                {tile.bloodstains && tile.bloodstains.count > 0 && isVisible && (
+                {/* FIX 2026-01-28: Added Array.isArray check to prevent "slice is not a function" error from corrupted data */}
+                {tile.bloodstains && tile.bloodstains.count > 0 && Array.isArray(tile.bloodstains.positions) && isVisible && (
                   <div className="absolute inset-0 z-[5] pointer-events-none">
                     {tile.bloodstains.positions.slice(0, Math.min(tile.bloodstains.count, 5)).map((pos, i) => (
                       <div
@@ -830,7 +831,8 @@ const GameBoard: React.FC<GameBoardProps> = ({
                 )}
 
                 {/* Quest Item Indicators - Shows glowing items on tiles */}
-                {isVisible && tile.items && tile.items.length > 0 && (
+                {/* FIX 2026-01-28: Added Array.isArray check to prevent "slice is not a function" error from corrupted data */}
+                {isVisible && Array.isArray(tile.items) && tile.items.length > 0 && (
                   <div className="absolute inset-0 flex items-end justify-center z-[21] pointer-events-none pb-4">
                     <div className="flex gap-1">
                       {tile.items.slice(0, 3).map((item, idx) => {

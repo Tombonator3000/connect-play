@@ -372,8 +372,50 @@ const ShadowsGame: React.FC = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return { ...parsed, floatingTexts: [], spellParticles: [], screenShake: false, activeSpell: null, activeOccultistSpell: null };
-      } catch (e) { console.error(e); }
+
+        // FIX 2026-01-28: Validate and sanitize loaded state to prevent corrupted data issues
+        // This fixes "slice is not a function" errors and black tiles bug from corrupted localStorage
+
+        // Ensure exploredTiles is always a valid array of strings
+        const exploredTiles = Array.isArray(parsed.exploredTiles)
+          ? parsed.exploredTiles.filter((t: unknown) => typeof t === 'string')
+          : ['0,0'];
+
+        // Ensure log is always a valid array
+        const log = Array.isArray(parsed.log) ? parsed.log : [];
+
+        // Ensure eventDeck is always a valid array (regenerate if corrupted)
+        const eventDeck = Array.isArray(parsed.eventDeck) && parsed.eventDeck.length > 0
+          ? parsed.eventDeck
+          : createShuffledEventDeck();
+
+        // Ensure eventDiscardPile is always a valid array
+        const eventDiscardPile = Array.isArray(parsed.eventDiscardPile) ? parsed.eventDiscardPile : [];
+
+        // Sanitize board tiles to ensure items and bloodstains are valid arrays
+        const board = Array.isArray(parsed.board) ? parsed.board.map((tile: Tile) => ({
+          ...tile,
+          items: Array.isArray(tile.items) ? tile.items : undefined,
+          bloodstains: tile.bloodstains ? {
+            ...tile.bloodstains,
+            positions: Array.isArray(tile.bloodstains.positions) ? tile.bloodstains.positions : []
+          } : undefined
+        })) : [START_TILE];
+
+        return {
+          ...parsed,
+          exploredTiles,
+          log,
+          eventDeck,
+          eventDiscardPile,
+          board,
+          floatingTexts: [],
+          spellParticles: [],
+          screenShake: false,
+          activeSpell: null,
+          activeOccultistSpell: null
+        };
+      } catch (e) { console.error('Failed to load saved state:', e); }
     }
     return DEFAULT_STATE;
   });
