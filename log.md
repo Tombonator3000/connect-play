@@ -1,5 +1,66 @@
 # Development Log
 
+## 2026-01-28: Usable Inventory Items & Drag and Drop
+
+### Oppgave
+1. Implementere brukbare items i inventory (relics med effekter)
+2. Legge til drag & drop funksjonalitet i inventory
+
+### Implementerte Brukbare Relics
+
+Følgende relics kan nå brukes direkte fra inventory ved å klikke "Use":
+
+| Relic | ID | Effekt |
+|-------|-----|--------|
+| Powder of Ibn-Ghazi | `powder_of_ibn_ghazi` | Fjerner 'invisible' trait fra fiender innen 3 tiles (3 bruk) |
+| Dream Crystal | `dream_crystal` | Gjenoppretter 2 Sanity (1 bruk) |
+| Shrivelling Scroll | `shrivelling_scroll` | Gjør 3 skade til nærmeste fiende innen 3 tiles (1 bruk) |
+| Holy Water | `holy_water` | Gir +2 skade mot undead i neste angrep (3 bruk) |
+| Adrenaline Shot | `adrenaline` | +1 Action Point denne runden (1 bruk) |
+| Elder Sign | `elder_sign` | Banisher spirit-fiender (nightgaunt, lloigor, etc) innen 2 tiles |
+| Lucky Charm | `lucky_charm` | Setter reroll-flagg for neste mislykkede sjekk (1 bruk) |
+| Silver Key | `silver_key` | Kan åpne enhver låst dør (via context actions) |
+
+### Endringer i CharacterPanel.tsx
+
+1. **Oppdatert `isItemUsable()`**: Sjekker nå også relics som har aktive effekter, ikke bare consumables
+2. **Lagt til drag & drop state**: `draggedSlot`, `dragOverSlot`
+3. **Nye drag handlers**: `handleDragStart`, `handleDragOver`, `handleDragLeave`, `handleDrop`, `handleDragEnd`
+4. **Slot validering**: `canItemGoInSlot()` - sjekker om item-type kan plasseres i gitt slot
+5. **Visuell feedback**: Slots har nå grab-cursor, og viser grønn highlight ved gyldig drop target
+6. **Uses-indikator**: Vises nå for alle items med `uses`, ikke bare consumables
+
+### Endringer i ShadowsGame.tsx
+
+1. **Utvidet `handleUseItem()`**:
+   - Refaktorert med `updateItemAfterUse()` helper for cleaner kode
+   - Lagt til håndtering for alle brukbare relics
+   - Powder of Ibn-Ghazi fjerner 'invisible' trait fra fiender
+   - Dream Crystal healer sanity
+   - Shrivelling Scroll gjør direkte skade
+   - Holy Water setter `holyWeaponBonus` på spiller
+   - Adrenaline gir +1 AP
+   - Elder Sign banisher spirits
+   - Lucky Charm setter `hasLuckyReroll` flagg
+
+2. **Ny `handleSwapItems()`**: Håndterer drag & drop swap mellom inventory slots
+   - Støtter swap mellom alle slot-typer
+   - Validerer at items passer i target slots
+   - Logger alle swaps
+
+### Inventory Drag & Drop Regler
+
+- **Våpen/Tools**: Kan plasseres i hånd-slots eller bag
+- **Rustning**: Kan plasseres på body eller i bag
+- **Andre items**: Kan kun plasseres i bag
+- **Visuell feedback**: Grønn border ved gyldig drop, grå ved ugyldig
+
+### Filer Endret
+- `src/game/components/CharacterPanel.tsx` - Drag & drop UI, utvidet `isItemUsable()`
+- `src/game/ShadowsGame.tsx` - `handleUseItem()` utvidet, ny `handleSwapItems()`
+
+---
+
 ## 2026-01-28: FIX - Tiles blir svarte når spiller forlater rom (Race Condition)
 
 ### Problem

@@ -14,6 +14,7 @@ interface CharacterPanelProps {
   onUnequipItem?: (slotName: InventorySlotName) => void;
   onEquipFromBag?: (bagIndex: number, targetSlot: 'leftHand' | 'rightHand') => void;
   onDropItem?: (slotName: InventorySlotName) => void;
+  onSwapItems?: (fromSlot: InventorySlotName, toSlot: InventorySlotName) => void;  // Drag & drop swap
   earnedBadges?: EarnedBadge[];  // Earned badges to display
   objectives?: ScenarioObjective[];  // Current scenario objectives for linking quest items
 }
@@ -76,6 +77,7 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   onUnequipItem,
   onEquipFromBag,
   onDropItem,
+  onSwapItems,
   earnedBadges = [],
   objectives = []
 }) => {
@@ -84,6 +86,8 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
   const [questItemsExpanded, setQuestItemsExpanded] = useState(true);
   const [inspectedQuestItem, setInspectedQuestItem] = useState<Item | null>(null);
   const [portraitError, setPortraitError] = useState(false);
+  const [draggedSlot, setDraggedSlot] = useState<InventorySlotName | null>(null);
+  const [dragOverSlot, setDragOverSlot] = useState<InventorySlotName | null>(null);
 
   // Reset portrait error when player changes
   useEffect(() => {
@@ -135,9 +139,30 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     setShowSlotMenu(false);
   };
 
-  // Check if item is usable (consumable with uses remaining)
+  // Check if item is usable (consumable or relic with uses remaining)
   const isItemUsable = (item: Item): boolean => {
-    return item.type === 'consumable' && (item.uses === undefined || item.uses > 0);
+    // Consumables are always usable if they have uses
+    if (item.type === 'consumable' && (item.uses === undefined || item.uses > 0)) {
+      return true;
+    }
+
+    // Usable relics - items with specific active effects
+    const usableRelics = [
+      'powder_of_ibn_ghazi',  // Reveals invisible enemies
+      'dream_crystal',        // Restores 2 sanity
+      'shrivelling_scroll',   // Deals 3 damage to enemy
+      'lucky_charm',          // Reroll failed check
+      'holy_water',           // +2 damage vs undead
+      'elder_sign',           // Opens sealed doors, banishes spirits
+      'silver_key',           // Opens any locked door
+      'adrenaline',           // +1 AP
+    ];
+
+    if (item.type === 'relic' && usableRelics.includes(item.id)) {
+      return item.uses === undefined || item.uses > 0;
+    }
+
+    return false;
   };
 
   // Check if item can be unequipped (weapons/tools in hands, armor on body)
@@ -179,8 +204,84 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
     }
   };
 
+  // Check if an item can be placed in a specific slot type
+  const canItemGoInSlot = (item: Item | null, targetSlot: InventorySlotName): boolean => {
+    if (!item) return true; // Empty can go anywhere
+
+    const isHandSlot = targetSlot === 'leftHand' || targetSlot === 'rightHand';
+    const isBodySlot = targetSlot === 'body';
+    const isBagSlot = targetSlot.startsWith('bag');
+
+    // Weapons and tools go in hands
+    if (item.type === 'weapon' || item.type === 'tool') {
+      return isHandSlot || isBagSlot;
+    }
+    // Armor goes on body
+    if (item.type === 'armor') {
+      return isBodySlot || isBagSlot;
+    }
+    // Everything else goes in bag
+    return isBagSlot;
+  };
+
+  // Drag & drop handlers
+  const handleDragStart = (e: React.DragEvent, slotName: InventorySlotName, item: Item | null) => {
+    if (!item) {
+      e.preventDefault();
+      return;
+    }
+    setDraggedSlot(slotName);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', slotName);
+  };
+
+  const handleDragOver = (e: React.DragEvent, slotName: InventorySlotName) => {
+    e.preventDefault();
+    if (draggedSlot && draggedSlot !== slotName) {
+      const draggedItem = getItemFromSlot(draggedSlot);
+      const targetItem = getItemFromSlot(slotName);
+
+      // Check if swap is valid
+      const canSwap = canItemGoInSlot(draggedItem, slotName) &&
+                      canItemGoInSlot(targetItem, draggedSlot);
+
+      if (canSwap) {
+        e.dataTransfer.dropEffect = 'move';
+        setDragOverSlot(slotName);
+      } else {
+        e.dataTransfer.dropEffect = 'none';
+      }
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverSlot(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetSlot: InventorySlotName) => {
+    e.preventDefault();
+    if (draggedSlot && draggedSlot !== targetSlot && onSwapItems) {
+      const draggedItem = getItemFromSlot(draggedSlot);
+      const targetItem = getItemFromSlot(targetSlot);
+
+      // Validate the swap
+      if (canItemGoInSlot(draggedItem, targetSlot) && canItemGoInSlot(targetItem, draggedSlot)) {
+        onSwapItems(draggedSlot, targetSlot);
+      }
+    }
+    setDraggedSlot(null);
+    setDragOverSlot(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedSlot(null);
+    setDragOverSlot(null);
+  };
+
   const renderSlot = (item: Item | null, label: string, slotIcon: React.ReactNode, slotName: InventorySlotName) => {
     const isSelected = selectedSlot === slotName && showSlotMenu;
+    const isDragging = draggedSlot === slotName;
+    const isDragOver = dragOverSlot === slotName;
 
     // Check if weapon is restricted for this character class
     const isRestricted = item?.type === 'weapon' && player.id
@@ -189,12 +290,18 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
     const slotContent = (
       <div
+        draggable={!!item}
+        onDragStart={(e) => handleDragStart(e, slotName, item)}
+        onDragOver={(e) => handleDragOver(e, slotName)}
+        onDragLeave={handleDragLeave}
+        onDrop={(e) => handleDrop(e, slotName)}
+        onDragEnd={handleDragEnd}
         onClick={() => item && handleSlotClick(slotName, item)}
         className={`aspect-square border-2 rounded-lg flex flex-col items-center justify-center transition-all relative ${
           item
-            ? `bg-leather border-parchment text-parchment hover:border-accent hover:shadow-[var(--shadow-glow)] cursor-pointer ${isSelected ? 'border-accent ring-2 ring-accent/50' : ''} ${isRestricted ? 'opacity-60 border-red-500/50' : ''}`
+            ? `bg-leather border-parchment text-parchment hover:border-accent hover:shadow-[var(--shadow-glow)] cursor-grab active:cursor-grabbing ${isSelected ? 'border-accent ring-2 ring-accent/50' : ''} ${isRestricted ? 'opacity-60 border-red-500/50' : ''}`
             : 'bg-background/40 border-border opacity-50 cursor-default'
-        }`}
+        } ${isDragging ? 'opacity-50 scale-95 border-accent' : ''} ${isDragOver ? 'border-green-400 bg-green-900/30 ring-2 ring-green-400/50 scale-105' : ''}`}
       >
         {item ? getItemIcon(item.type, item.id, item.questItemType) : slotIcon}
         <span className="text-[8px] uppercase tracking-wider mt-1 opacity-60">{label}</span>
@@ -204,11 +311,17 @@ const CharacterPanel: React.FC<CharacterPanelProps> = ({
             <Ban size={10} className="text-white" />
           </div>
         )}
-        {/* Usage indicator for consumables */}
-        {item && item.type === 'consumable' && item.uses !== undefined && (
+        {/* Usage indicator for consumables and relics with uses */}
+        {item && item.uses !== undefined && (
           <span className="absolute top-0.5 right-0.5 text-[7px] bg-accent text-background px-1 rounded-full font-bold">
             {item.uses}
           </span>
+        )}
+        {/* Drag hint */}
+        {item && !isDragging && (
+          <div className="absolute -bottom-0.5 -right-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="w-2 h-2 rounded-full bg-accent/50"></div>
+          </div>
         )}
       </div>
     );
