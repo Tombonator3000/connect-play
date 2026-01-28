@@ -1473,29 +1473,233 @@ const ShadowsGame: React.FC = () => {
       return;
     }
 
-    // Only consumables can be used directly (for non-occult items)
-    if (item.type !== 'consumable') {
-      addToLog(`${item.name} cannot be used directly.`);
-      return;
-    }
-
     // Check if item has uses remaining
     if (item.uses !== undefined && item.uses <= 0) {
       addToLog(`${item.name} is depleted.`);
       return;
     }
 
+    // Helper function to update/remove item after use
+    const updateItemAfterUse = (prev: GameState, additionalUpdates: Partial<Player> = {}): GameState => {
+      return {
+        ...prev,
+        players: prev.players.map((p, i) => {
+          if (i !== prev.activePlayerIndex) return p;
+
+          const newInventory = { ...p.inventory, bag: [...p.inventory.bag] };
+
+          const updateItemInSlot = (currentItem: Item | null): Item | null => {
+            if (!currentItem || currentItem.id !== item.id) return currentItem;
+            if (currentItem.uses !== undefined) {
+              const newUses = currentItem.uses - 1;
+              if (newUses <= 0) return null;
+              return { ...currentItem, uses: newUses };
+            }
+            return null;
+          };
+
+          switch (slotName) {
+            case 'leftHand': newInventory.leftHand = updateItemInSlot(newInventory.leftHand); break;
+            case 'rightHand': newInventory.rightHand = updateItemInSlot(newInventory.rightHand); break;
+            case 'body': newInventory.body = updateItemInSlot(newInventory.body); break;
+            case 'bag1': newInventory.bag[0] = updateItemInSlot(newInventory.bag[0]); break;
+            case 'bag2': newInventory.bag[1] = updateItemInSlot(newInventory.bag[1]); break;
+            case 'bag3': newInventory.bag[2] = updateItemInSlot(newInventory.bag[2]); break;
+            case 'bag4': newInventory.bag[3] = updateItemInSlot(newInventory.bag[3]); break;
+          }
+
+          return { ...p, inventory: newInventory, ...additionalUpdates };
+        })
+      };
+    };
+
+    // ========== USABLE RELICS ==========
+
+    // Powder of Ibn-Ghazi: Reveals invisible enemies
+    if (item.id === 'powder_of_ibn_ghazi') {
+      const invisibleEnemies = state.enemies.filter(e =>
+        e.traits?.includes('invisible') &&
+        hexDistance(activePlayer.position.q, activePlayer.position.r, e.position.q, e.position.r) <= 3
+      );
+
+      if (invisibleEnemies.length === 0) {
+        addToLog(`${activePlayer.name} throws the Powder of Ibn-Ghazi into the air, but nothing materializes...`);
+      } else {
+        addToLog(`${activePlayer.name} throws the Powder of Ibn-Ghazi! ${invisibleEnemies.length} invisible ${invisibleEnemies.length === 1 ? 'entity is' : 'entities are'} revealed!`);
+        invisibleEnemies.forEach(e => {
+          addFloatingText(e.position.q, e.position.r, "REVEALED!", "text-purple-400");
+        });
+      }
+
+      setState(prev => {
+        const updated = updateItemAfterUse(prev);
+        // Mark invisible enemies as revealed by removing their invisible trait temporarily
+        return {
+          ...updated,
+          enemies: updated.enemies.map(e => {
+            if (e.traits?.includes('invisible') &&
+                hexDistance(activePlayer.position.q, activePlayer.position.r, e.position.q, e.position.r) <= 3) {
+              return {
+                ...e,
+                traits: e.traits.filter(t => t !== 'invisible'),
+                // Add a marker that they were revealed
+                revealedByPowder: true
+              } as Enemy & { revealedByPowder?: boolean };
+            }
+            return e;
+          })
+        };
+      });
+      return;
+    }
+
+    // Dream Crystal: Restores 2 Sanity
+    if (item.id === 'dream_crystal') {
+      const sanityGain = 2;
+      const actualGain = Math.min(sanityGain, activePlayer.maxSanity - activePlayer.sanity);
+
+      addToLog(`${activePlayer.name} gazes into the Dream Crystal. Peaceful visions wash away the madness. +${actualGain} Sanity.`);
+      addFloatingText(activePlayer.position.q, activePlayer.position.r, `+${actualGain} SAN`, "text-sanity");
+
+      setState(prev => updateItemAfterUse(prev, {
+        sanity: Math.min(activePlayer.maxSanity, activePlayer.sanity + sanityGain)
+      }));
+      return;
+    }
+
+    // Shrivelling Scroll: Deals 3 damage to nearest enemy
+    if (item.id === 'shrivelling_scroll') {
+      // Find nearest enemy within range 3
+      const nearbyEnemies = state.enemies
+        .map(e => ({ enemy: e, dist: hexDistance(activePlayer.position.q, activePlayer.position.r, e.position.q, e.position.r) }))
+        .filter(({ dist }) => dist <= 3)
+        .sort((a, b) => a.dist - b.dist);
+
+      if (nearbyEnemies.length === 0) {
+        addToLog(`${activePlayer.name} reads the Shrivelling Scroll, but there are no enemies nearby to target!`);
+        return; // Don't consume if no valid target
+      }
+
+      const target = nearbyEnemies[0].enemy;
+      const damage = 3;
+      const newHp = target.hp - damage;
+
+      addToLog(`${activePlayer.name} reads the Shrivelling Scroll! Eldritch energy tears at ${target.name}! ${damage} damage!`);
+      addFloatingText(target.position.q, target.position.r, `-${damage} HP`, "text-red-500");
+
+      setState(prev => {
+        const updated = updateItemAfterUse(prev);
+        if (newHp <= 0) {
+          addToLog(`${target.name} is destroyed by the eldritch magic!`);
+          return {
+            ...updated,
+            enemies: updated.enemies.filter(e => e.id !== target.id)
+          };
+        }
+        return {
+          ...updated,
+          enemies: updated.enemies.map(e =>
+            e.id === target.id ? { ...e, hp: newHp } : e
+          )
+        };
+      });
+      return;
+    }
+
+    // Holy Water: +2 damage vs undead (ghoul, ghast, etc) - applied in next attack
+    if (item.id === 'holy_water') {
+      addToLog(`${activePlayer.name} blesses their weapon with Holy Water. +2 damage vs undead for your next attack!`);
+      addFloatingText(activePlayer.position.q, activePlayer.position.r, "HOLY WEAPON", "text-yellow-300");
+
+      setState(prev => updateItemAfterUse(prev, {
+        holyWeaponBonus: 2 // Will be consumed in next attack
+      } as any));
+      return;
+    }
+
+    // Adrenaline Shot: +1 AP this turn
+    if (item.id === 'adrenaline') {
+      addToLog(`${activePlayer.name} injects Adrenaline! +1 Action Point!`);
+      addFloatingText(activePlayer.position.q, activePlayer.position.r, "+1 AP", "text-green-400");
+
+      setState(prev => updateItemAfterUse(prev, {
+        actions: activePlayer.actions + 1
+      }));
+      return;
+    }
+
+    // Elder Sign: Banish spirits or open sealed doors
+    if (item.id === 'elder_sign') {
+      // Check for spirit enemies nearby
+      const spiritEnemies = state.enemies.filter(e =>
+        ['nightgaunt', 'formless_spawn', 'lloigor', 'colour_out_of_space'].includes(e.type) &&
+        hexDistance(activePlayer.position.q, activePlayer.position.r, e.position.q, e.position.r) <= 2
+      );
+
+      if (spiritEnemies.length > 0) {
+        addToLog(`${activePlayer.name} raises the Elder Sign! The spirits shriek and flee!`);
+        spiritEnemies.forEach(e => {
+          addFloatingText(e.position.q, e.position.r, "BANISHED!", "text-yellow-400");
+        });
+
+        setState(prev => ({
+          ...updateItemAfterUse(prev),
+          enemies: prev.enemies.filter(e => !spiritEnemies.find(s => s.id === e.id))
+        }));
+      } else {
+        addToLog(`${activePlayer.name} holds up the Elder Sign. Its power can banish spirits or open sealed doors.`);
+        // Note: Sealed door opening handled in context actions
+      }
+      return;
+    }
+
+    // Silver Key: Opens any locked door (handled via context actions, but consume here)
+    if (item.id === 'silver_key') {
+      addToLog(`${activePlayer.name} holds the Silver Key. It can open any locked door.`);
+      // Note: Actual door opening handled in context actions
+      return;
+    }
+
+    // Lucky Charm: Set a flag for reroll (consumed when reroll happens)
+    if (item.id === 'lucky_charm') {
+      addToLog(`${activePlayer.name} rubs the Lucky Rabbit Foot. Next failed check can be rerolled!`);
+      addFloatingText(activePlayer.position.q, activePlayer.position.r, "LUCKY!", "text-green-300");
+
+      setState(prev => updateItemAfterUse(prev, {
+        hasLuckyReroll: true
+      } as any));
+      return;
+    }
+
+    // ========== CONSUMABLES ==========
+    if (item.type !== 'consumable') {
+      addToLog(`${item.name} cannot be used directly.`);
+      return;
+    }
+
     // Apply item effect
     let hpHealed = 0;
     let sanityHealed = 0;
-    let message = '';
 
     // Parse effect - look for HP or Sanity healing
-    if (item.effect.toLowerCase().includes('hp') || item.effect.toLowerCase().includes('health')) {
+    if (item.effect.toLowerCase().includes('hp') || item.effect.toLowerCase().includes('health') || item.effect.toLowerCase().includes('heal')) {
       hpHealed = item.bonus || 1;
     }
     if (item.effect.toLowerCase().includes('sanity') || item.effect.toLowerCase().includes('san')) {
       sanityHealed = item.bonus || 1;
+    }
+
+    // Special consumables
+    if (item.id === 'adrenaline') {
+      // Already handled above
+      return;
+    }
+
+    if (item.id === 'antidote') {
+      addToLog(`${activePlayer.name} uses the Antidote. Any poison effects are cured.`);
+      // Note: Poison system would need to be implemented
+      setState(prev => updateItemAfterUse(prev));
+      return;
     }
 
     // Apply healing
@@ -1506,7 +1710,7 @@ const ShadowsGame: React.FC = () => {
     const effects: string[] = [];
     if (hpHealed > 0) effects.push(`+${newHp - activePlayer.hp} HP`);
     if (sanityHealed > 0) effects.push(`+${newSanity - activePlayer.sanity} Sanity`);
-    message = `${activePlayer.name} uses ${item.name}. ${effects.join(', ')}.`;
+    const message = `${activePlayer.name} uses ${item.name}. ${effects.join(', ')}.`;
 
     addToLog(message);
     if (hpHealed > 0) {
@@ -1516,64 +1720,11 @@ const ShadowsGame: React.FC = () => {
       addFloatingText(activePlayer.position.q, activePlayer.position.r, `+${newSanity - activePlayer.sanity} SAN`, "text-sanity");
     }
 
-    // Update player state and decrement item uses
-    setState(prev => ({
-      ...prev,
-      players: prev.players.map((p, i) => {
-        if (i !== prev.activePlayerIndex) return p;
-
-        // Create updated inventory
-        const newInventory = { ...p.inventory, bag: [...p.inventory.bag] };
-
-        // Find and update/remove the item
-        const updateItemInSlot = (currentItem: Item | null): Item | null => {
-          if (!currentItem || currentItem.id !== item.id) return currentItem;
-
-          // Decrement uses
-          if (currentItem.uses !== undefined) {
-            const newUses = currentItem.uses - 1;
-            if (newUses <= 0) {
-              return null; // Remove depleted item
-            }
-            return { ...currentItem, uses: newUses };
-          }
-          return null; // Single-use item without uses count
-        };
-
-        // Update the correct slot
-        switch (slotName) {
-          case 'leftHand':
-            newInventory.leftHand = updateItemInSlot(newInventory.leftHand);
-            break;
-          case 'rightHand':
-            newInventory.rightHand = updateItemInSlot(newInventory.rightHand);
-            break;
-          case 'body':
-            newInventory.body = updateItemInSlot(newInventory.body);
-            break;
-          case 'bag1':
-            newInventory.bag[0] = updateItemInSlot(newInventory.bag[0]);
-            break;
-          case 'bag2':
-            newInventory.bag[1] = updateItemInSlot(newInventory.bag[1]);
-            break;
-          case 'bag3':
-            newInventory.bag[2] = updateItemInSlot(newInventory.bag[2]);
-            break;
-          case 'bag4':
-            newInventory.bag[3] = updateItemInSlot(newInventory.bag[3]);
-            break;
-        }
-
-        return {
-          ...p,
-          hp: newHp,
-          sanity: newSanity,
-          inventory: newInventory
-        };
-      })
+    setState(prev => updateItemAfterUse(prev, {
+      hp: newHp,
+      sanity: newSanity
     }));
-  }, [state.players, state.activePlayerIndex, state.phase]);
+  }, [state.players, state.activePlayerIndex, state.phase, state.enemies]);
 
   // Handle unequipping an item from hand/body to bag
   const handleUnequipItem = useCallback((slotName: InventorySlotName) => {
@@ -1744,6 +1895,64 @@ const ShadowsGame: React.FC = () => {
             newInventory.bag[3] = null;
             break;
         }
+
+        return { ...p, inventory: newInventory };
+      })
+    }));
+  }, [state.players, state.activePlayerIndex]);
+
+  // Handle swapping items between inventory slots (drag & drop)
+  const handleSwapItems = useCallback((fromSlot: InventorySlotName, toSlot: InventorySlotName) => {
+    const activePlayer = state.players[state.activePlayerIndex];
+    if (!activePlayer) return;
+
+    // Helper to get item from slot
+    const getItemFromSlot = (slot: InventorySlotName): Item | null => {
+      switch (slot) {
+        case 'leftHand': return activePlayer.inventory.leftHand;
+        case 'rightHand': return activePlayer.inventory.rightHand;
+        case 'body': return activePlayer.inventory.body;
+        case 'bag1': return activePlayer.inventory.bag[0];
+        case 'bag2': return activePlayer.inventory.bag[1];
+        case 'bag3': return activePlayer.inventory.bag[2];
+        case 'bag4': return activePlayer.inventory.bag[3];
+        default: return null;
+      }
+    };
+
+    const fromItem = getItemFromSlot(fromSlot);
+    const toItem = getItemFromSlot(toSlot);
+
+    // Log the swap
+    if (fromItem && toItem) {
+      addToLog(`${activePlayer.name} swaps ${fromItem.name} with ${toItem.name}.`);
+    } else if (fromItem) {
+      addToLog(`${activePlayer.name} moves ${fromItem.name}.`);
+    }
+
+    setState(prev => ({
+      ...prev,
+      players: prev.players.map((p, i) => {
+        if (i !== prev.activePlayerIndex) return p;
+
+        const newInventory = { ...p.inventory, bag: [...p.inventory.bag] };
+
+        // Helper to set item in slot
+        const setItemInSlot = (slot: InventorySlotName, item: Item | null) => {
+          switch (slot) {
+            case 'leftHand': newInventory.leftHand = item; break;
+            case 'rightHand': newInventory.rightHand = item; break;
+            case 'body': newInventory.body = item; break;
+            case 'bag1': newInventory.bag[0] = item; break;
+            case 'bag2': newInventory.bag[1] = item; break;
+            case 'bag3': newInventory.bag[2] = item; break;
+            case 'bag4': newInventory.bag[3] = item; break;
+          }
+        };
+
+        // Perform the swap
+        setItemInSlot(fromSlot, toItem);
+        setItemInSlot(toSlot, fromItem);
 
         return { ...p, inventory: newInventory };
       })
@@ -5338,6 +5547,7 @@ const ShadowsGame: React.FC = () => {
                     onUnequipItem={handleUnequipItem}
                     onEquipFromBag={handleEquipFromBag}
                     onDropItem={handleDropItem}
+                    onSwapItems={handleSwapItems}
                     objectives={state.activeScenario?.objectives}
                   />
                 </div>
@@ -5350,6 +5560,7 @@ const ShadowsGame: React.FC = () => {
                   onUnequipItem={handleUnequipItem}
                   onEquipFromBag={handleEquipFromBag}
                   onDropItem={handleDropItem}
+                  onSwapItems={handleSwapItems}
                   objectives={state.activeScenario?.objectives}
                 />
               </div>
