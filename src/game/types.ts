@@ -1445,6 +1445,10 @@ export interface MonsterAIState {
   packLeaderId?: string;           // For pack/herd behavior
   fleeingFromPlayerId?: string;    // For fleeing behavior
   ambushPosition?: { q: number; r: number };  // Where ambusher is waiting
+  // Active hunting behavior (2026-01-28)
+  searchRoundsRemaining?: number;  // Rounds to continue searching after losing sight
+  lastSeenRound?: number;          // Round when player was last seen
+  roamDirection?: { dq: number; dr: number }; // Preferred roaming direction
 }
 
 // ============================================================================

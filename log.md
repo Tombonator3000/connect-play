@@ -1,5 +1,118 @@
 # Development Log
 
+## 2026-01-28: Improved Enemy AI & Attack Patterns
+
+### Oppgave
+1. Forbedre fiende AI og angreps-mønster - monstre var for statiske
+2. Implementere aktiv jakt-oppførsel - monstre skal gå mer rundt og jakte på spiller
+3. Øke variasjon av monstre når man spiller
+
+### Hovedendringer
+
+#### 1. AI Memory System
+Monstre husker nå siste kjente spillerposisjon og søker aktivt:
+
+**Nye felt i `MonsterAIState`:**
+- `searchRoundsRemaining`: Antall runder monsteret fortsetter å søke etter å ha mistet spilleren
+- `lastSeenRound`: Hvilken runde spilleren sist ble sett
+- `roamDirection`: Foretrukket vandreretning
+
+**Søkerunder basert på aggresjon:**
+| Aggresjon | Søkerunder |
+|-----------|------------|
+| < 50 (lav) | 2 runder |
+| 50-79 (medium) | 4 runder |
+| ≥ 80 (høy) | 6 runder |
+
+#### 2. Aktiv Søkeadferd (`handleNoTargetBehavior`)
+Når monstre mister sikt på spilleren:
+1. De beveger seg mot siste kjente posisjon
+2. Ved ankomst, søker de i området i flere runder
+3. Aggressive monstre (70+) roamer aktivt mot spillerens generelle posisjon
+4. Først etter søkerundene er brukt opp, går de tilbake til vanlig patruljering
+
+**Ny funksjon `getAggressiveRoamDestination`:**
+- Beregner spillernes "senterpunkt" (selv om de ikke kan ses)
+- Prioriterer bevegelse mot spillere
+- Foretrekker tiles med dører (mer å utforske)
+- Foretrekker monsterets foretrukne terreng
+
+#### 3. Økt Aggresjon på Alle Monstre
+Alle monstre har fått økt `aggressionLevel` og redusert `cowardiceThreshold`:
+
+| Monster | Aggresjon (før → etter) | Feighet (før → etter) |
+|---------|------------------------|----------------------|
+| Cultist | 70 → 80 | 30 → 25 |
+| Deep One | 80 → 90 | 20 → 15 |
+| Ghoul | 50 → 65 | 40 → 30 |
+| Nightgaunt | 55 → 70 | 25 → 20 |
+| Mi-Go | 60 → 75 | 40 → 30 |
+| Ghast | 60 → 75 | 30 → 25 |
+| Rat Thing | 55 → 70 | 50 → 40 |
+| Gug | 80 → 90 | 15 → 10 |
+| Flying Polyp | 85 → 95 | 10 → 5 |
+
+Territorial range er også økt for alle monstre (f.eks. Cultist: 8 → 10).
+
+#### 4. Forbedret Monster-Variasjon i Spawning
+Ny `selectRandomEnemy` funksjon med:
+
+**Variety Bonus (50%):**
+- Monstre som ikke nylig er spawnet får 50% økt sjanse
+
+**Round-Based Scaling:**
+- Etter runde 5, øker sjansen for sterkere monstre
+- Skalerer opp til 2.5x for elite-monstre
+
+**Doom-Based Scaling:**
+- Ved doom ≤ 5, får alle monstre 20% økt spawn-sjanse
+
+**Ny funksjon `selectVariedEnemies`:**
+```typescript
+// Returnerer en variert liste med monstre
+const enemies = selectVariedEnemies('crypt', doom, 3, currentRound);
+```
+
+#### 5. AI State Updates i Beslutninger
+`AIDecision` interface utvidet med `aiStateUpdate`:
+```typescript
+interface AIDecision {
+  action: 'move' | 'attack' | 'wait' | 'special';
+  targetPosition?: { q: number; r: number };
+  targetPlayerId?: string;
+  message?: string;
+  aiStateUpdate?: {
+    lastKnownPlayerPos?: { q: number; r: number };
+    searchRoundsRemaining?: number;
+    lastSeenRound?: number;
+    state?: MonsterState;
+  };
+}
+```
+
+### Nye Meldinger
+Lagt til lokaliserte søkemeldinger per monster-type:
+- Ghoul: "snuser i luften og søker etter bytte..."
+- Hound: "materialiserer seg og leter gjennom vinklene..."
+- Cultist: "søker metodisk gjennom området..."
+- Etc.
+
+### Endrede Filer
+
+| Fil | Endringer |
+|-----|-----------|
+| `src/game/types.ts` | Utvidet `MonsterAIState` med søkefelt |
+| `src/game/utils/monsterAI.ts` | AI state updates, ny import |
+| `src/game/utils/monsterDecisionHelpers.ts` | Ny søkelogikk, aggressive roaming |
+| `src/game/utils/monsterConstants.ts` | Økt aggresjon, ny spawn-variasjon |
+| `src/game/utils/monsterMessages.ts` | Nye søke- og roaming-meldinger |
+
+### Build Status
+✅ TypeScript kompilerer uten feil
+✅ Bygget fullført
+
+---
+
 ## 2026-01-28: Usable Inventory Items & Drag and Drop
 
 ### Oppgave

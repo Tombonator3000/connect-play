@@ -8,10 +8,11 @@
  * - Ranged attack decisions
  * - Melee attack decisions
  * - Chase/pursuit behavior
+ * - Active searching behavior (2026-01-28)
  */
 
-import { Enemy, Player, Tile, WeatherCondition } from '../types';
-import { hexDistance, findPath } from '../hexUtils';
+import { Enemy, EnemyWithAI, Player, Tile, WeatherCondition, MonsterAIState } from '../types';
+import { hexDistance, findPath, getHexNeighbors } from '../hexUtils';
 import { AIDecision, findSmartTarget, TargetPriority } from './monsterAI';
 import { canEnemyPassTile } from './monsterObstacles';
 import { getMonsterBehavior, getMonsterPersonality, getCombatStyleModifiers, CombatStyleModifiers } from './monsterConstants';
@@ -29,8 +30,16 @@ import {
   getAttackMessageWithContext,
   getChaseMessage,
   getApproachMessage,
-  getGenericWaitMessage
+  getGenericWaitMessage,
+  getSearchMessage
 } from './monsterMessages';
+
+// Number of rounds a monster will actively search after losing sight
+const SEARCH_ROUNDS_BY_AGGRESSION = {
+  low: 2,     // aggression < 50
+  medium: 4,  // aggression 50-79
+  high: 6     // aggression >= 80
+};
 
 // ============================================================================
 // TYPES
@@ -114,12 +123,59 @@ export function tryFleeDecision(
 }
 
 // ============================================================================
-// NO-TARGET BEHAVIOR (Waiting, Patrolling, Special Movement)
+// NO-TARGET BEHAVIOR (Waiting, Patrolling, Special Movement, Searching)
 // ============================================================================
 
 /**
+ * Get search rounds based on aggression level
+ */
+export function getSearchRoundsForAggression(aggressionLevel: number): number {
+  if (aggressionLevel >= 80) return SEARCH_ROUNDS_BY_AGGRESSION.high;
+  if (aggressionLevel >= 50) return SEARCH_ROUNDS_BY_AGGRESSION.medium;
+  return SEARCH_ROUNDS_BY_AGGRESSION.low;
+}
+
+/**
+ * Find path toward a target position for searching
+ */
+function findSearchPath(
+  enemy: Enemy,
+  targetPos: { q: number; r: number },
+  tiles: Tile[],
+  enemies: Enemy[]
+): { q: number; r: number } | null {
+  const isFlying = enemy.traits?.includes('flying') ?? false;
+  const otherEnemyPositions = new Set(
+    enemies
+      .filter(e => e.id !== enemy.id)
+      .map(e => `${e.position.q},${e.position.r}`)
+  );
+
+  const path = findPath(
+    enemy.position,
+    [targetPos],
+    tiles,
+    otherEnemyPositions,
+    isFlying
+  );
+
+  if (path && path.length > 1) {
+    // Move based on speed
+    const moveIndex = Math.min(enemy.speed || 1, path.length - 1);
+    return path[moveIndex];
+  }
+  return null;
+}
+
+/**
  * Handle behavior when no target is visible
- * Includes special movement, ambush waiting, and patrolling
+ * Includes special movement, ambush waiting, searching, and patrolling
+ *
+ * IMPROVED (2026-01-28): Monsters now actively search for players:
+ * 1. If they have a last known position, they move toward it
+ * 2. After reaching that position, they search the area
+ * 3. Aggressive monsters search for longer
+ * 4. Only after search rounds expire do they resume patrolling
  */
 export function handleNoTargetBehavior(
   ctx: DecisionContext,
@@ -127,6 +183,10 @@ export function handleNoTargetBehavior(
   getPatrolDestination: (enemy: Enemy, tiles: Tile[], enemies: Enemy[]) => { q: number; r: number } | null
 ): AIDecision {
   const { enemy, players, tiles, enemies, behavior, personality } = ctx;
+
+  // Cast to EnemyWithAI to access aiState
+  const enemyWithAI = enemy as EnemyWithAI;
+  const aiState = enemyWithAI.aiState;
 
   // Check for special movement (Hound teleport to find prey)
   if (enemy.type === 'hound') {
@@ -140,8 +200,49 @@ export function handleNoTargetBehavior(
     }
   }
 
-  // Ambushers wait in place
-  if (behavior === 'ambusher' || personality.combatStyle === 'ambush') {
+  // ACTIVE SEARCHING: If we have a last known player position, search toward it
+  if (aiState?.lastKnownPlayerPos && aiState.searchRoundsRemaining && aiState.searchRoundsRemaining > 0) {
+    const distToLastKnown = hexDistance(enemy.position, aiState.lastKnownPlayerPos);
+
+    // If we reached the last known position, search the area
+    if (distToLastKnown <= 1) {
+      // Search nearby tiles randomly
+      const searchDest = getEnhancedPatrolDestination(enemy, tiles, enemies, aiState.lastKnownPlayerPos);
+      if (searchDest) {
+        return {
+          action: 'move',
+          targetPosition: searchDest,
+          message: getSearchMessage(enemy)
+        };
+      }
+    } else {
+      // Move toward last known position
+      const searchPath = findSearchPath(enemy, aiState.lastKnownPlayerPos, tiles, enemies);
+      if (searchPath) {
+        return {
+          action: 'move',
+          targetPosition: searchPath,
+          message: getSearchMessage(enemy)
+        };
+      }
+    }
+  }
+
+  // AGGRESSIVE ROAMING: High aggression monsters actively roam even without targets
+  if (personality.aggressionLevel >= 70 && behavior !== 'ambusher') {
+    const roamDest = getAggressiveRoamDestination(enemy, tiles, enemies, players);
+    if (roamDest) {
+      return {
+        action: 'move',
+        targetPosition: roamDest.pos,
+        message: roamDest.message
+      };
+    }
+  }
+
+  // Ambushers wait in place (but only if not actively searching)
+  if ((behavior === 'ambusher' || personality.combatStyle === 'ambush') &&
+      (!aiState?.searchRoundsRemaining || aiState.searchRoundsRemaining <= 0)) {
     return {
       action: 'wait',
       message: getWaitMessage(enemy)
@@ -159,6 +260,125 @@ export function handleNoTargetBehavior(
   }
 
   return { action: 'wait', message: getGenericWaitMessage(enemy) };
+}
+
+/**
+ * Enhanced patrol destination that prefers tiles near a search area
+ */
+function getEnhancedPatrolDestination(
+  enemy: Enemy,
+  tiles: Tile[],
+  enemies: Enemy[],
+  searchCenter: { q: number; r: number }
+): { q: number; r: number } | null {
+  const neighbors = getHexNeighbors(enemy.position);
+  const occupiedPositions = new Set(enemies.map(e => `${e.position.q},${e.position.r}`));
+
+  const validMoves: { pos: { q: number; r: number }; score: number }[] = [];
+
+  for (const pos of neighbors) {
+    const key = `${pos.q},${pos.r}`;
+    if (occupiedPositions.has(key)) continue;
+
+    const tile = tiles.find(t => t.q === pos.q && t.r === pos.r);
+    if (!tile) continue;
+
+    const passability = canEnemyPassTile(enemy, tile);
+    if (!passability.canPass) continue;
+
+    // Prefer tiles that keep us near the search center but explore new areas
+    const distToCenter = hexDistance(pos, searchCenter);
+    const score = 10 - distToCenter + Math.random() * 3; // Add randomness
+
+    validMoves.push({ pos, score });
+  }
+
+  if (validMoves.length === 0) return null;
+
+  // Pick weighted random based on score
+  validMoves.sort((a, b) => b.score - a.score);
+
+  // 70% chance to pick best, 30% chance for random
+  if (Math.random() < 0.7) {
+    return validMoves[0].pos;
+  }
+  return validMoves[Math.floor(Math.random() * validMoves.length)].pos;
+}
+
+/**
+ * Aggressive roaming - moves toward areas likely to have players
+ * Considers: unexplored areas, doors, and general player direction
+ */
+function getAggressiveRoamDestination(
+  enemy: Enemy,
+  tiles: Tile[],
+  enemies: Enemy[],
+  players: Player[]
+): { pos: { q: number; r: number }; message: string } | null {
+  const neighbors = getHexNeighbors(enemy.position);
+  const occupiedPositions = new Set(enemies.map(e => `${e.position.q},${e.position.r}`));
+
+  // Find average player position (even if we can't see them)
+  const alivePlayers = players.filter(p => !p.isDead);
+  let playerCentroid: { q: number; r: number } | null = null;
+
+  if (alivePlayers.length > 0) {
+    const avgQ = alivePlayers.reduce((sum, p) => sum + p.position.q, 0) / alivePlayers.length;
+    const avgR = alivePlayers.reduce((sum, p) => sum + p.position.r, 0) / alivePlayers.length;
+    playerCentroid = { q: Math.round(avgQ), r: Math.round(avgR) };
+  }
+
+  const validMoves: { pos: { q: number; r: number }; score: number }[] = [];
+
+  for (const pos of neighbors) {
+    const key = `${pos.q},${pos.r}`;
+    if (occupiedPositions.has(key)) continue;
+
+    const tile = tiles.find(t => t.q === pos.q && t.r === pos.r);
+    if (!tile) continue;
+
+    const passability = canEnemyPassTile(enemy, tile);
+    if (!passability.canPass) continue;
+
+    let score = Math.random() * 2; // Base randomness
+
+    // Prefer moving toward player centroid
+    if (playerCentroid) {
+      const currentDist = hexDistance(enemy.position, playerCentroid);
+      const newDist = hexDistance(pos, playerCentroid);
+      if (newDist < currentDist) {
+        score += 5; // Bonus for moving toward players
+      }
+    }
+
+    // Prefer tiles with doors (more areas to explore)
+    if (tile.edges?.some(e => e.type === 'door' || e.type === 'locked_door')) {
+      score += 3;
+    }
+
+    // Prefer dark/dangerous areas based on monster type
+    const personality = getMonsterPersonality(enemy.type);
+    if (personality.preferredTerrain?.includes(tile.category)) {
+      score += 2;
+    }
+
+    validMoves.push({ pos, score });
+  }
+
+  if (validMoves.length === 0) return null;
+
+  // Sort by score and pick top option
+  validMoves.sort((a, b) => b.score - a.score);
+
+  // 80% best move, 20% random for unpredictability
+  const selectedPos = Math.random() < 0.8
+    ? validMoves[0].pos
+    : validMoves[Math.floor(Math.random() * validMoves.length)].pos;
+
+  return {
+    pos: selectedPos,
+    message: `${enemy.name} jakter rastløst...`
+  };
 }
 
 // ============================================================================

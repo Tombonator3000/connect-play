@@ -204,3 +204,63 @@ export function getApproachMessage(enemy: Enemy, targetPlayer: Player): string {
 export function getGenericWaitMessage(enemy: Enemy): string {
   return `${enemy.name} venter...`;
 }
+
+/**
+ * Get search message when monster is actively looking for lost player
+ */
+export function getSearchMessage(enemy: Enemy): string {
+  const searchMessages: Partial<Record<EnemyType, string[]>> = {
+    ghoul: [
+      'snuser i luften og søker etter bytte...',
+      'graver gjennom området mens den leter...',
+      'knurrer og leter etter byttet sitt.'
+    ],
+    hound: [
+      'materialiserer seg og leter gjennom vinklene...',
+      'jakter gjennom dimensjonene!'
+    ],
+    cultist: [
+      'søker metodisk gjennom området...',
+      'leter etter inntrengeren!'
+    ],
+    deepone: [
+      'glir fremover og søker...',
+      'gurgler mens den leter.'
+    ],
+    nightgaunt: [
+      'svever lydløst og søker...',
+      'sirkler i luften og leter.'
+    ],
+    shoggoth: [
+      'flyter fremover og sluker alt i veien...',
+      'bobler ustoppelig videre...'
+    ],
+    hunting_horror: [
+      'sirkler i luften og søker...',
+      'jakter gjennom mørket!'
+    ]
+  };
+
+  const defaultMessages = [
+    'søker etter byttet...',
+    'leter i området...',
+    'jakter videre...'
+  ];
+
+  const messages = searchMessages[enemy.type] || defaultMessages;
+  const selectedMessage = messages[Math.floor(Math.random() * messages.length)];
+  return `${enemy.name} ${selectedMessage}`;
+}
+
+/**
+ * Get roaming message when monster is moving with purpose
+ */
+export function getRoamingMessage(enemy: Enemy): string {
+  const roamMessages = [
+    'vandrer rastløst...',
+    'streifer gjennom området...',
+    'beveger seg målrettet fremover.'
+  ];
+  const selectedMessage = roamMessages[Math.floor(Math.random() * roamMessages.length)];
+  return `${enemy.name} ${selectedMessage}`;
+}
