@@ -183,12 +183,14 @@ export const MONSTER_BEHAVIORS: Record<EnemyType, MonsterBehavior> = {
 // MONSTER PERSONALITY SYSTEM
 // ============================================================================
 
+// IMPROVED (2026-01-28): Increased aggression levels across the board
+// Monsters are now more active hunters and less hesitant
 export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   cultist: {
-    aggressionLevel: 70,
-    cowardiceThreshold: 30,
+    aggressionLevel: 80, // Increased from 70
+    cowardiceThreshold: 25, // Reduced from 30
     packMentality: true,
-    territorialRange: 8,
+    territorialRange: 10, // Increased from 8
     preferredTerrain: ['crypt', 'room'],
     combatStyle: 'tactical',
     specialAbilities: ['charge'],
@@ -196,10 +198,10 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   deepone: {
-    aggressionLevel: 80,
-    cowardiceThreshold: 20,
+    aggressionLevel: 90, // Increased from 80
+    cowardiceThreshold: 15, // Reduced from 20
     packMentality: true,
-    territorialRange: 6,
+    territorialRange: 8, // Increased from 6
     preferredTerrain: ['basement', 'nature'],
     combatStyle: 'berserker',
     specialAbilities: ['drag_under'],
@@ -207,10 +209,10 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   ghoul: {
-    aggressionLevel: 50,
-    cowardiceThreshold: 40,
+    aggressionLevel: 65, // Increased from 50
+    cowardiceThreshold: 30, // Reduced from 40
     packMentality: true,
-    territorialRange: 4,
+    territorialRange: 6, // Increased from 4
     preferredTerrain: ['crypt', 'basement'],
     avoidsTerrain: ['urban', 'street'],
     combatStyle: 'ambush',
@@ -239,10 +241,10 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   sniper: {
-    aggressionLevel: 40,
-    cowardiceThreshold: 50,
+    aggressionLevel: 55, // Increased from 40
+    cowardiceThreshold: 40, // Reduced from 50
     packMentality: false,
-    territorialRange: 10,
+    territorialRange: 12, // Increased from 10
     preferredTerrain: ['room', 'corridor'],
     combatStyle: 'siege',
     specialAbilities: ['snipe'],
@@ -250,10 +252,10 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   priest: {
-    aggressionLevel: 30,
-    cowardiceThreshold: 60,
+    aggressionLevel: 50, // Increased from 30
+    cowardiceThreshold: 50, // Reduced from 60
     packMentality: false,
-    territorialRange: 3,
+    territorialRange: 5, // Increased from 3
     preferredTerrain: ['crypt', 'room'],
     combatStyle: 'cautious',
     specialAbilities: ['summon', 'ritual'],
@@ -261,10 +263,10 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   'mi-go': {
-    aggressionLevel: 60,
-    cowardiceThreshold: 40,
+    aggressionLevel: 75, // Increased from 60
+    cowardiceThreshold: 30, // Reduced from 40
     packMentality: true,
-    territorialRange: 8,
+    territorialRange: 10, // Increased from 8
     preferredTerrain: ['nature', 'basement'],
     combatStyle: 'hit_and_run',
     specialAbilities: ['ranged_shot'],
@@ -272,10 +274,10 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   nightgaunt: {
-    aggressionLevel: 55,
-    cowardiceThreshold: 25,
+    aggressionLevel: 70, // Increased from 55
+    cowardiceThreshold: 20, // Reduced from 25
     packMentality: false,
-    territorialRange: 12,
+    territorialRange: 15, // Increased from 12
     combatStyle: 'ambush',
     specialAbilities: ['phasing', 'terrify'],
     callForHelpChance: 0
@@ -354,12 +356,12 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
     callForHelpChance: 70
   },
 
-  // New monsters (2026-01-22)
+  // New monsters (2026-01-22) - Updated 2026-01-28 with increased aggression
   ghast: {
-    aggressionLevel: 60,
-    cowardiceThreshold: 30,
+    aggressionLevel: 75, // Increased from 60
+    cowardiceThreshold: 25, // Reduced from 30
     packMentality: true,
-    territorialRange: 6,
+    territorialRange: 8, // Increased from 6
     preferredTerrain: ['crypt', 'basement'],
     avoidsTerrain: ['urban', 'street'],
     combatStyle: 'ambush',
@@ -368,10 +370,10 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   zoog: {
-    aggressionLevel: 40,
-    cowardiceThreshold: 60,
+    aggressionLevel: 55, // Increased from 40
+    cowardiceThreshold: 50, // Reduced from 60
     packMentality: true,
-    territorialRange: 4,
+    territorialRange: 6, // Increased from 4
     preferredTerrain: ['nature'],
     combatStyle: 'swarm',
     specialAbilities: ['pack_tactics'],
@@ -379,10 +381,10 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   rat_thing: {
-    aggressionLevel: 55,
-    cowardiceThreshold: 50,
+    aggressionLevel: 70, // Increased from 55
+    cowardiceThreshold: 40, // Reduced from 50
     packMentality: false,
-    territorialRange: 8,
+    territorialRange: 10, // Increased from 8
     preferredTerrain: ['room', 'basement'],
     combatStyle: 'ambush',
     specialAbilities: ['phasing'],
@@ -390,18 +392,18 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   fire_vampire: {
-    aggressionLevel: 75,
-    cowardiceThreshold: 20,
+    aggressionLevel: 85, // Increased from 75
+    cowardiceThreshold: 15, // Reduced from 20
     packMentality: true,
-    territorialRange: 10,
+    territorialRange: 12, // Increased from 10
     combatStyle: 'siege',
     specialAbilities: ['ranged_shot', 'burn'],
     callForHelpChance: 60
   },
 
   dimensional_shambler: {
-    aggressionLevel: 70,
-    cowardiceThreshold: 35,
+    aggressionLevel: 85, // Increased from 70
+    cowardiceThreshold: 25, // Reduced from 35
     packMentality: false,
     territorialRange: 255,
     combatStyle: 'ambush',
@@ -410,10 +412,10 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   serpent_man: {
-    aggressionLevel: 45,
-    cowardiceThreshold: 55,
+    aggressionLevel: 60, // Increased from 45
+    cowardiceThreshold: 45, // Reduced from 55
     packMentality: false,
-    territorialRange: 6,
+    territorialRange: 8, // Increased from 6
     preferredTerrain: ['crypt', 'room'],
     combatStyle: 'cautious',
     specialAbilities: ['ranged_shot', 'hypnosis'],
@@ -421,10 +423,10 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   gug: {
-    aggressionLevel: 80,
-    cowardiceThreshold: 15,
+    aggressionLevel: 90, // Increased from 80
+    cowardiceThreshold: 10, // Reduced from 15
     packMentality: false,
-    territorialRange: 8,
+    territorialRange: 10, // Increased from 8
     preferredTerrain: ['crypt', 'basement'],
     avoidsTerrain: ['urban', 'street'],
     combatStyle: 'berserker',
@@ -433,10 +435,10 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   cthonian: {
-    aggressionLevel: 65,
-    cowardiceThreshold: 25,
+    aggressionLevel: 80, // Increased from 65
+    cowardiceThreshold: 20, // Reduced from 25
     packMentality: true,
-    territorialRange: 10,
+    territorialRange: 12, // Increased from 10
     preferredTerrain: ['basement', 'crypt'],
     combatStyle: 'ambush',
     specialAbilities: ['burrow', 'terrify'],
@@ -444,10 +446,10 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   tcho_tcho: {
-    aggressionLevel: 80,
-    cowardiceThreshold: 20,
+    aggressionLevel: 90, // Increased from 80
+    cowardiceThreshold: 15, // Reduced from 20
     packMentality: true,
-    territorialRange: 6,
+    territorialRange: 8, // Increased from 6
     preferredTerrain: ['nature', 'crypt'],
     combatStyle: 'tactical',
     specialAbilities: ['ranged_shot', 'ritual'],
@@ -455,10 +457,10 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   flying_polyp: {
-    aggressionLevel: 85,
-    cowardiceThreshold: 10,
+    aggressionLevel: 95, // Increased from 85
+    cowardiceThreshold: 5, // Reduced from 10
     packMentality: false,
-    territorialRange: 15,
+    territorialRange: 18, // Increased from 15
     preferredTerrain: ['crypt', 'basement'],
     combatStyle: 'berserker',
     specialAbilities: ['wind_blast', 'phasing'],
@@ -466,20 +468,20 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   lloigor: {
-    aggressionLevel: 70,
-    cowardiceThreshold: 15,
+    aggressionLevel: 80, // Increased from 70
+    cowardiceThreshold: 10, // Reduced from 15
     packMentality: false,
-    territorialRange: 12,
+    territorialRange: 15, // Increased from 12
     combatStyle: 'siege',
     specialAbilities: ['telekinesis', 'terrify'],
     callForHelpChance: 0
   },
 
   gnoph_keh: {
-    aggressionLevel: 90,
-    cowardiceThreshold: 10,
+    aggressionLevel: 95, // Increased from 90
+    cowardiceThreshold: 5, // Reduced from 10
     packMentality: false,
-    territorialRange: 10,
+    territorialRange: 12, // Increased from 10
     preferredTerrain: ['nature'],
     combatStyle: 'berserker',
     specialAbilities: ['charge', 'cold_aura'],
@@ -487,20 +489,20 @@ export const MONSTER_PERSONALITIES: Record<EnemyType, MonsterPersonality> = {
   },
 
   colour_out_of_space: {
-    aggressionLevel: 50,
+    aggressionLevel: 65, // Increased from 50
     cowardiceThreshold: 0,
     packMentality: false,
-    territorialRange: 5,
+    territorialRange: 7, // Increased from 5
     combatStyle: 'cautious',
     specialAbilities: ['drain', 'phasing'],
     callForHelpChance: 0
   },
 
   elder_thing: {
-    aggressionLevel: 55,
-    cowardiceThreshold: 40,
+    aggressionLevel: 70, // Increased from 55
+    cowardiceThreshold: 30, // Reduced from 40
     packMentality: true,
-    territorialRange: 8,
+    territorialRange: 10, // Increased from 8
     preferredTerrain: ['basement', 'crypt'],
     combatStyle: 'tactical',
     specialAbilities: ['ranged_shot'],
@@ -643,10 +645,13 @@ export function getTargetPreferences(type: EnemyType): TargetPreferences {
 
 /**
  * Select random enemy type from spawn table
+ * IMPROVED (2026-01-28): Added variety bonus and round-based scaling
  */
 export function selectRandomEnemy(
   category: TileCategory | undefined,
-  currentDoom: number
+  currentDoom: number,
+  currentRound?: number,
+  recentlySpawnedTypes?: Set<EnemyType>
 ): EnemyType | null {
   const table = SPAWN_TABLES[category || 'default'] || SPAWN_TABLES.default;
 
@@ -657,16 +662,70 @@ export function selectRandomEnemy(
 
   if (validSpawns.length === 0) return null;
 
-  // Weighted random selection
-  const totalWeight = validSpawns.reduce((sum, config) => sum + config.weight, 0);
+  // Apply variety bonus and round scaling
+  const adjustedSpawns = validSpawns.map(config => {
+    let adjustedWeight = config.weight;
+
+    // Variety bonus: Increase weight for monsters not recently spawned
+    if (recentlySpawnedTypes && !recentlySpawnedTypes.has(config.type)) {
+      adjustedWeight *= 1.5; // 50% bonus for variety
+    }
+
+    // Round-based scaling: Stronger monsters more common in later rounds
+    if (currentRound && currentRound > 5) {
+      const isStrongerMonster = ['shoggoth', 'star_spawn', 'gug', 'flying_polyp',
+        'gnoph_keh', 'dark_young', 'hunting_horror', 'cthonian', 'lloigor',
+        'colour_out_of_space', 'elder_thing'].includes(config.type);
+
+      if (isStrongerMonster) {
+        // Scale up stronger monsters after round 5
+        const roundBonus = Math.min(2.5, 1 + (currentRound - 5) * 0.15);
+        adjustedWeight *= roundBonus;
+      }
+    }
+
+    // Doom-based scaling: Even more variety at low doom
+    if (currentDoom <= 5) {
+      adjustedWeight *= 1.2; // More elite spawns at low doom
+    }
+
+    return { ...config, adjustedWeight };
+  });
+
+  // Weighted random selection with adjusted weights
+  const totalWeight = adjustedSpawns.reduce((sum, config) => sum + config.adjustedWeight, 0);
   let random = Math.random() * totalWeight;
 
-  for (const config of validSpawns) {
-    random -= config.weight;
+  for (const config of adjustedSpawns) {
+    random -= config.adjustedWeight;
     if (random <= 0) {
       return config.type;
     }
   }
 
   return validSpawns[0].type;
+}
+
+/**
+ * Get a varied selection of enemies for a spawn event
+ * Ensures variety by tracking recently spawned types
+ */
+export function selectVariedEnemies(
+  category: TileCategory | undefined,
+  currentDoom: number,
+  count: number,
+  currentRound?: number
+): EnemyType[] {
+  const result: EnemyType[] = [];
+  const recentlySpawned = new Set<EnemyType>();
+
+  for (let i = 0; i < count; i++) {
+    const enemy = selectRandomEnemy(category, currentDoom, currentRound, recentlySpawned);
+    if (enemy) {
+      result.push(enemy);
+      recentlySpawned.add(enemy);
+    }
+  }
+
+  return result;
 }

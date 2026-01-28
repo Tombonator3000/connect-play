@@ -14,7 +14,7 @@
 import {
   Enemy, EnemyType, EnemyWithAI, Player, Tile, TileCategory,
   WeatherCondition, MonsterPersonality, MonsterSpecialAbility,
-  MonsterAIState
+  MonsterAIState, MonsterState
 } from '../types';
 import { BESTIARY, weatherHidesEnemy } from '../constants';
 import { hexDistance, findPath, getHexNeighbors, hasLineOfSight } from '../hexUtils';
@@ -30,7 +30,8 @@ import {
   trySpecialMovementDecision,
   tryDefensiveDecision,
   tryChaseDecision,
-  tryBasicChaseDecision
+  tryBasicChaseDecision,
+  getSearchRoundsForAggression
 } from './monsterDecisionHelpers';
 
 // Import from messages module
@@ -68,7 +69,8 @@ import {
   getMonsterBehavior,
   getMonsterPersonality,
   getTargetPreferences,
-  selectRandomEnemy
+  selectRandomEnemy,
+  selectVariedEnemies
 } from './monsterConstants';
 
 // Re-export types for backwards compatibility
@@ -94,7 +96,8 @@ export {
   getCombatStyleModifiers,
   getMonsterBehavior,
   getMonsterPersonality,
-  selectRandomEnemy
+  selectRandomEnemy,
+  selectVariedEnemies
 };
 
 // ============================================================================
@@ -738,6 +741,13 @@ export interface AIDecision {
   targetPosition?: { q: number; r: number };
   targetPlayerId?: string;
   message?: string;
+  // AI state updates (2026-01-28)
+  aiStateUpdate?: {
+    lastKnownPlayerPos?: { q: number; r: number };
+    searchRoundsRemaining?: number;
+    lastSeenRound?: number;
+    state?: MonsterState;
+  };
 }
 
 
@@ -1375,6 +1385,10 @@ function getPatrolDestination(
  * REFACTORED: This function now delegates to smaller helper functions
  * in monsterDecisionHelpers.ts for better maintainability and testability.
  * Each decision type (flee, ranged, melee, chase) is handled by its own function.
+ *
+ * IMPROVED (2026-01-28): Now updates AI state for active hunting behavior.
+ * - When a target is found: records last known position, resets search timer
+ * - When no target: decrements search timer for active searching
  */
 export function getMonsterDecision(
   enemy: Enemy,
@@ -1386,6 +1400,11 @@ export function getMonsterDecision(
 ): AIDecision {
   // Build decision context once (centralizes all context gathering)
   const ctx = buildDecisionContext(enemy, players, enemies, tiles, weather, currentRound);
+  const { personality } = ctx;
+
+  // Cast to EnemyWithAI for AI state access
+  const enemyWithAI = enemy as EnemyWithAI;
+  const currentSearchRounds = enemyWithAI.aiState?.searchRoundsRemaining ?? 0;
 
   // 1. FLEE CHECK - Monsters may flee when hurt
   const fleeDecision = tryFleeDecision(ctx, findRetreatPosition);
@@ -1396,10 +1415,39 @@ export function getMonsterDecision(
 
   // 3. NO TARGET - Handle waiting, patrolling, or special movement
   if (!targetPlayer) {
-    return handleNoTargetBehavior(ctx, executeSpecialMovement, getPatrolDestination);
+    // Decrement search rounds if actively searching
+    const newSearchRounds = Math.max(0, currentSearchRounds - 1);
+
+    const noTargetDecision = handleNoTargetBehavior(ctx, executeSpecialMovement, getPatrolDestination);
+
+    // Add AI state update for search countdown
+    return {
+      ...noTargetDecision,
+      aiStateUpdate: {
+        searchRoundsRemaining: newSearchRounds,
+        state: newSearchRounds > 0 ? 'hunting' : 'patrol'
+      }
+    };
   }
 
   const distanceToPlayer = hexDistance(enemy.position, targetPlayer.position);
+
+  // Calculate search rounds based on aggression
+  const searchRounds = getSearchRoundsForAggression(personality.aggressionLevel);
+
+  // Create AI state update for when we have a target
+  const targetSeenUpdate = {
+    lastKnownPlayerPos: { ...targetPlayer.position },
+    searchRoundsRemaining: searchRounds,
+    lastSeenRound: currentRound,
+    state: 'hunting' as const
+  };
+
+  // Helper to add AI state update to any decision
+  const withStateUpdate = (decision: AIDecision): AIDecision => ({
+    ...decision,
+    aiStateUpdate: targetSeenUpdate
+  });
 
   // 4. IMMEDIATE ATTACK - Monsters in range ALWAYS attack (aggressive behavior)
   // This ensures monsters don't hesitate when they can hit the player
@@ -1413,16 +1461,16 @@ export function getMonsterDecision(
       findOptimalRangedPosition,
       findRetreatPosition
     );
-    if (rangedDecision) return rangedDecision;
+    if (rangedDecision) return withStateUpdate(rangedDecision);
 
     // Then melee attack
     const meleeDecision = tryMeleeAttackDecision(ctx, targetPlayer, distanceToPlayer, priority);
-    if (meleeDecision) return meleeDecision;
+    if (meleeDecision) return withStateUpdate(meleeDecision);
   }
 
   // 5. AGGRESSION CHECK - Low aggression monsters may hesitate when NOT in range
   const hesitationDecision = tryHesitationDecision(ctx, distanceToPlayer);
-  if (hesitationDecision) return hesitationDecision;
+  if (hesitationDecision) return withStateUpdate(hesitationDecision);
 
   // 6. RANGED POSITIONING - Ranged attackers try to get into position
   const rangedDecision = tryRangedAttackDecision(
@@ -1433,26 +1481,26 @@ export function getMonsterDecision(
     findOptimalRangedPosition,
     findRetreatPosition
   );
-  if (rangedDecision) return rangedDecision;
+  if (rangedDecision) return withStateUpdate(rangedDecision);
 
   // 7. SPECIAL MOVEMENT - Hound teleportation, etc.
   const specialDecision = trySpecialMovementDecision(ctx, distanceToPlayer, executeSpecialMovement);
-  if (specialDecision) return specialDecision;
+  if (specialDecision) return withStateUpdate(specialDecision);
 
   // 8. DEFENSIVE WAIT - Some monsters hold position
   const defensiveDecision = tryDefensiveDecision(ctx, distanceToPlayer);
-  if (defensiveDecision) return defensiveDecision;
+  if (defensiveDecision) return withStateUpdate(defensiveDecision);
 
   // 9. CHASE - Use enhanced pathfinding to pursue target
   const chaseDecision = tryChaseDecision(ctx, targetPlayer, findEnhancedPath);
-  if (chaseDecision) return chaseDecision;
+  if (chaseDecision) return withStateUpdate(chaseDecision);
 
   // 10. BASIC CHASE - Fallback to simple pathfinding
   const basicChaseDecision = tryBasicChaseDecision(ctx, targetPlayer);
-  if (basicChaseDecision) return basicChaseDecision;
+  if (basicChaseDecision) return withStateUpdate(basicChaseDecision);
 
   // 11. WAIT - Default fallback
-  return { action: 'wait', message: getGenericWaitMessage(enemy) };
+  return withStateUpdate({ action: 'wait', message: getGenericWaitMessage(enemy) });
 }
 
 /**
@@ -1597,13 +1645,31 @@ export function processEnemyTurn(
 
     const decision = getMonsterDecision(enemy, players, updatedEnemies, tiles, weather);
 
+    // Apply AI state updates if present
+    const applyAIStateUpdate = (baseEnemy: Enemy): Enemy => {
+      if (!decision.aiStateUpdate) return baseEnemy;
+
+      const enemyWithAI = baseEnemy as EnemyWithAI;
+      return {
+        ...baseEnemy,
+        aiState: {
+          ...enemyWithAI.aiState,
+          state: decision.aiStateUpdate.state || enemyWithAI.aiState?.state || 'idle',
+          alertLevel: enemyWithAI.aiState?.alertLevel ?? 0,
+          lastKnownPlayerPos: decision.aiStateUpdate.lastKnownPlayerPos || enemyWithAI.aiState?.lastKnownPlayerPos,
+          searchRoundsRemaining: decision.aiStateUpdate.searchRoundsRemaining ?? enemyWithAI.aiState?.searchRoundsRemaining,
+          lastSeenRound: decision.aiStateUpdate.lastSeenRound || enemyWithAI.aiState?.lastSeenRound
+        }
+      } as EnemyWithAI;
+    };
+
     switch (decision.action) {
       case 'move':
         if (decision.targetPosition) {
-          updatedEnemies[i] = {
+          updatedEnemies[i] = applyAIStateUpdate({
             ...enemy,
             position: decision.targetPosition
-          };
+          });
 
           // CRITICAL FIX: After moving, check if monster can now attack a player
           // This allows monsters to move AND attack in the same turn (Hero Quest style)
@@ -1639,6 +1705,9 @@ export function processEnemyTurn(
       case 'attack':
         const targetPlayer = players.find(p => p.id === decision.targetPlayerId);
         if (targetPlayer) {
+          // Apply AI state update to track the target
+          updatedEnemies[i] = applyAIStateUpdate(enemy);
+
           // Check if this is a ranged attack
           const isRanged = enemy.attackRange > 1 &&
             hexDistance(enemy.position, targetPlayer.position) > 1;
@@ -1648,7 +1717,7 @@ export function processEnemyTurn(
             const rangedCheck = canMakeRangedAttack(enemy, targetPlayer, tiles);
             const rangedBonuses = getAttackBonuses(enemy, targetPlayer);
             attacks.push({
-              enemy,
+              enemy: updatedEnemies[i],
               targetPlayer,
               isRanged: true,
               coverPenalty: rangedCheck.coverPenalty,
@@ -1659,7 +1728,7 @@ export function processEnemyTurn(
           } else {
             const meleeBonuses = getAttackBonuses(enemy, targetPlayer);
             attacks.push({
-              enemy,
+              enemy: updatedEnemies[i],
               targetPlayer,
               weatherHorrorBonus: weatherMods.horrorBonus,
               flankingBonus: meleeBonuses.flankingBonus,
@@ -1673,10 +1742,10 @@ export function processEnemyTurn(
           if (combatStyle.retreatAfterAttack && !isRanged) {
             const retreatPos = findRetreatPosition(enemy, targetPlayer, tiles, updatedEnemies);
             if (retreatPos) {
-              updatedEnemies[i] = {
-                ...enemy,
+              updatedEnemies[i] = applyAIStateUpdate({
+                ...updatedEnemies[i],
                 position: retreatPos
-              };
+              });
               messages.push(`${enemy.name} trekker seg tilbake etter angrepet!`);
             }
           }
@@ -1686,10 +1755,10 @@ export function processEnemyTurn(
       case 'special':
         // Handle special movement abilities
         if (decision.targetPosition) {
-          updatedEnemies[i] = {
+          updatedEnemies[i] = applyAIStateUpdate({
             ...enemy,
             position: decision.targetPosition
-          };
+          });
 
           // Track special event for visual effects
           specialEvents.push({
@@ -1729,7 +1798,8 @@ export function processEnemyTurn(
         break;
 
       case 'wait':
-        // Enemy waits - no action needed
+        // Apply AI state update even when waiting (tracks search countdown)
+        updatedEnemies[i] = applyAIStateUpdate(enemy);
         break;
     }
 
