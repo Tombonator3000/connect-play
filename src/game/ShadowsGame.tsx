@@ -471,54 +471,12 @@ const ShadowsGame: React.FC = () => {
           }
         }
 
-        // Apply damage to players (using component's checkMadness/applyAllyDeathSanityLoss)
-        let updatedPlayers = [...state.players];
-        for (const attack of combatResult.processedAttacks) {
-          addToLog(attack.message);
-          addFloatingText(attack.targetPosition.q, attack.targetPosition.r,
-            `-${attack.hpDamage} HP${attack.sanityDamage > 0 ? ` -${attack.sanityDamage} SAN` : ''}`,
-            "text-primary");
-          triggerScreenShake();
-          // Advanced visual effects for player damage
-          triggerAdvancedEffect(attack.hpDamage >= 3 ? 'critical-hit' : 'player-hit');
-          if (attack.sanityDamage > 0) triggerAdvancedEffect('sanity-loss');
-
-          if (attack.hpDamage > 0) {
-            addBloodstains(attack.targetPosition.q, attack.targetPosition.r, attack.hpDamage);
-          }
-
-          let newlyDeadPlayerId: string | null = null;
-          updatedPlayers = updatedPlayers.map(p => {
-            if (p.id === attack.targetPlayerId) {
-              const { updatedPlayer, newlyDead } = applyDamageToPlayer(p, attack.hpDamage, attack.sanityDamage);
-              if (newlyDead) {
-                addToLog(`${p.name} har falt for morket...`);
-                newlyDeadPlayerId = p.id;
-              }
-              return checkMadness(updatedPlayer);
-            }
-            return p;
-          });
-
-          if (newlyDeadPlayerId) {
-            updatedPlayers = applyAllyDeathSanityLoss(newlyDeadPlayerId, updatedPlayers);
-          }
-        }
-
-        // CRITICAL: Save damaged players to state immediately
-        // This ensures HP/Sanity changes persist before setTimeout callback
-        if (combatResult.processedAttacks.length > 0) {
-          setState(prev => ({
-            ...prev,
-            players: updatedPlayers
-          }));
-        }
-
         // === STEP 3.5: SURVIVOR TURN PROCESSING ===
+        // (Runs regardless of whether there are attacks)
         if (state.survivors && state.survivors.length > 0) {
           const survivorResult = processSurvivorTurn(
             state.survivors,
-            updatedPlayers,
+            state.players,
             combatResult.updatedEnemies,
             state.board
           );
@@ -561,13 +519,52 @@ const ShadowsGame: React.FC = () => {
           addToLog(`📜 EVENT: ${eventResult.card.title}`);
         }
 
-        // === STEP 6: (Moved to STEP 7) ===
-        // Game over check is now in phase transition to account for event card effects
+        // === STEP 6: ENEMY ATTACK VISUALIZATION ===
+        // If there are attacks, show CombatOverlay for each one sequentially
+        if (combatResult.processedAttacks.length > 0) {
+          const pendingAttacks = combatResult.processedAttacks.map(attack => ({
+            enemyId: attack.enemy.id,
+            targetPlayerId: attack.targetPlayerId,
+            attackRolls: attack.attackRolls,
+            defenseRolls: attack.defenseRolls,
+            attackSuccesses: attack.attackSuccesses,
+            defenseSuccesses: attack.defenseSuccesses,
+            hpDamage: attack.hpDamage,
+            sanityDamage: attack.sanityDamage,
+            message: attack.message,
+            targetPosition: attack.targetPosition
+          }));
+
+          // Log attack messages
+          for (const attack of combatResult.processedAttacks) {
+            addToLog(attack.message);
+          }
+
+          // Save pending attacks to state - CombatOverlay will be shown for each
+          // Set continuation flag so phase transition happens after all attacks
+          sessionStorage.setItem('mythosPhaseContinuation', 'true');
+          setState(prev => ({
+            ...prev,
+            enemies: combatResult.updatedEnemies,
+            pendingEnemyAttacks: pendingAttacks,
+            currentEnemyAttackIndex: 0
+          }));
+
+          // The rest of Mythos phase (phase transition) will continue
+          // after all attacks are resolved via handleEnemyAttackComplete
+          return;
+        }
 
         // === STEP 7: PHASE TRANSITION ===
+        // (Only reaches here if there are no enemy attacks)
+        // Update enemies first (they may have moved during AI processing)
+        setState(prev => ({
+          ...prev,
+          enemies: combatResult.updatedEnemies.filter(e => e.hp > 0)
+        }));
+
         // CRITICAL: Use prev.players in the callback to get the CURRENT state
         // This ensures event card effects (HP/Sanity changes) are not overwritten
-        // by the closure-captured 'updatedPlayers' from earlier in this function
         setTimeout(() => {
           setState(prev => {
             // Check for game over with CURRENT player state (event cards might have healed)
@@ -577,9 +574,7 @@ const ShadowsGame: React.FC = () => {
               setGameOverType('defeat_death');
               return {
                 ...prev,
-                enemies: combatResult.updatedEnemies.filter(e => e.hp > 0),
-                phase: GamePhase.GAME_OVER,
-                players: prev.players
+                phase: GamePhase.GAME_OVER
               };
             }
 
@@ -601,7 +596,6 @@ const ShadowsGame: React.FC = () => {
             }
             return {
               ...prev,
-              enemies: combatResult.updatedEnemies.filter(e => e.hp > 0),
               phase: GamePhase.INVESTIGATOR,
               activePlayerIndex: firstAliveIndex,
               players: resetPlayers
@@ -4151,6 +4145,142 @@ const ShadowsGame: React.FC = () => {
     }
   };
 
+  // Handle completion of a single enemy attack in the CombatOverlay queue
+  // This is called when the defense dice animation finishes for one attack
+  const handleEnemyAttackComplete = () => {
+    const pendingAttacks = state.pendingEnemyAttacks;
+    const currentIndex = state.currentEnemyAttackIndex ?? 0;
+
+    if (!pendingAttacks || pendingAttacks.length === 0) return;
+
+    const currentAttack = pendingAttacks[currentIndex];
+    if (!currentAttack) return;
+
+    // Apply damage to the target player
+    setState(prev => {
+      let updatedPlayers = [...prev.players];
+      let newlyDeadPlayerId: string | null = null;
+
+      updatedPlayers = updatedPlayers.map(p => {
+        if (p.id === currentAttack.targetPlayerId) {
+          const { updatedPlayer, newlyDead } = applyDamageToPlayer(
+            p,
+            currentAttack.hpDamage,
+            currentAttack.sanityDamage
+          );
+          if (newlyDead) {
+            addToLog(`${p.name} har falt for morket...`);
+            newlyDeadPlayerId = p.id;
+          }
+          return checkMadness(updatedPlayer);
+        }
+        return p;
+      });
+
+      if (newlyDeadPlayerId) {
+        updatedPlayers = applyAllyDeathSanityLoss(newlyDeadPlayerId, updatedPlayers);
+      }
+
+      // Check if there are more attacks in the queue
+      const nextIndex = currentIndex + 1;
+      const hasMoreAttacks = nextIndex < pendingAttacks.length;
+
+      if (hasMoreAttacks) {
+        // Move to next attack
+        return {
+          ...prev,
+          players: updatedPlayers,
+          currentEnemyAttackIndex: nextIndex
+        };
+      } else {
+        // All attacks processed - clear the queue and continue Mythos phase
+        // The rest of Mythos phase (doom events, event cards, phase transition)
+        // will be triggered by a separate useEffect
+
+        return {
+          ...prev,
+          players: updatedPlayers,
+          pendingEnemyAttacks: undefined,
+          currentEnemyAttackIndex: undefined
+        };
+      }
+    });
+
+    // Visual effects for the attack
+    const targetPlayer = state.players.find(p => p.id === currentAttack.targetPlayerId);
+    if (targetPlayer) {
+      addFloatingText(
+        targetPlayer.position.q,
+        targetPlayer.position.r,
+        `-${currentAttack.hpDamage} HP${currentAttack.sanityDamage > 0 ? ` -${currentAttack.sanityDamage} SAN` : ''}`,
+        "text-primary"
+      );
+      triggerScreenShake();
+      triggerAdvancedEffect(currentAttack.hpDamage >= 3 ? 'critical-hit' : 'player-hit');
+      if (currentAttack.sanityDamage > 0) triggerAdvancedEffect('sanity-loss');
+      if (currentAttack.hpDamage > 0) {
+        addBloodstains(targetPlayer.position.q, targetPlayer.position.r, currentAttack.hpDamage);
+      }
+    }
+  };
+
+  // Continue Mythos phase after all enemy attacks are processed
+  useEffect(() => {
+    // Only run when enemy attacks queue was just cleared (attacks finished)
+    if (
+      state.phase === GamePhase.MYTHOS &&
+      state.pendingEnemyAttacks === undefined &&
+      state.currentEnemyAttackIndex === undefined
+    ) {
+      // Check if we need to continue with the rest of Mythos phase
+      // This is a continuation flag that gets set after attacks are processed
+      const mythosPhaseNeedsContinuation = sessionStorage.getItem('mythosPhaseContinuation');
+      if (mythosPhaseNeedsContinuation === 'true') {
+        sessionStorage.removeItem('mythosPhaseContinuation');
+
+        // Continue with survivor processing, doom events, event cards, and phase transition
+        // (This code would duplicate the logic from the main Mythos useEffect)
+        // For simplicity, we'll trigger the phase transition after a delay
+        setTimeout(() => {
+          setState(prev => {
+            if (areAllPlayersDead(prev.players)) {
+              playSound('defeat');
+              addToLog("All investigators have fallen. The darkness claims victory.");
+              setGameOverType('defeat_death');
+              return {
+                ...prev,
+                phase: GamePhase.GAME_OVER
+              };
+            }
+
+            const { resetPlayers } = resetPlayersForNewTurn(prev.players);
+
+            let firstAliveIndex = 0;
+            for (let i = 0; i < resetPlayers.length; i++) {
+              if (!resetPlayers[i].isDead) {
+                firstAliveIndex = i;
+                break;
+              }
+            }
+
+            const { shouldApply, playerIndex } = shouldApplyMadnessEffects(resetPlayers);
+            if (shouldApply && playerIndex === firstAliveIndex) {
+              resetPlayers[firstAliveIndex] = applyMadnessTurnStartEffects(resetPlayers[firstAliveIndex]);
+            }
+
+            return {
+              ...prev,
+              phase: GamePhase.INVESTIGATOR,
+              activePlayerIndex: firstAliveIndex,
+              players: resetPlayers
+            };
+          });
+          addToLog("En ny dag gryr...");
+        }, 500);
+      }
+    }
+  }, [state.pendingEnemyAttacks, state.currentEnemyAttackIndex, state.phase]);
+
   // Helper function to find the next alive player index
   const findNextAlivePlayerIndex = (players: Player[], startIndex: number): number => {
     // First, check if there are any alive players at all
@@ -5173,6 +5303,34 @@ const ShadowsGame: React.FC = () => {
           );
         }
         return null;
+      })()}
+
+      {/* Enemy Attack Combat Overlay - Shows during Mythos phase when monsters attack */}
+      {state.pendingEnemyAttacks && state.pendingEnemyAttacks.length > 0 && (() => {
+        const currentIndex = state.currentEnemyAttackIndex ?? 0;
+        const currentAttack = state.pendingEnemyAttacks[currentIndex];
+        if (!currentAttack) return null;
+
+        const attackingEnemy = state.enemies.find(e => e.id === currentAttack.enemyId);
+        const targetPlayer = state.players.find(p => p.id === currentAttack.targetPlayerId);
+
+        if (!attackingEnemy || !targetPlayer) return null;
+
+        return (
+          <CombatOverlay
+            player={targetPlayer}
+            enemy={attackingEnemy}
+            attackRolls={currentAttack.attackRolls}
+            defenseRolls={currentAttack.defenseRolls}
+            attackSuccesses={currentAttack.attackSuccesses}
+            defenseSuccesses={currentAttack.defenseSuccesses}
+            netDamage={currentAttack.hpDamage}
+            isCritical={false}
+            onComplete={handleEnemyAttackComplete}
+            mode="enemy_attack"
+            sanityDamage={currentAttack.sanityDamage}
+          />
+        );
       })()}
 
       {/* DiceRoller - Used for non-combat rolls (investigation, horror checks, etc.) */}
