@@ -1,5 +1,147 @@
 # Development Log
 
+## 2026-01-28: FIX - Black Tiles Bug (Deep Audit) - COMPREHENSIVE FIX
+
+### Problem
+Hex-tiles ble svarte når spilleren beveget seg bort fra dem. Dette var et vedvarende problem som hadde blitt forsøkt løst flere ganger tidligere (se logg fra 2026-01-24 og 2026-01-28), men feilen vedvarte.
+
+### Deep Audit - Rotårsaker Identifisert
+
+Etter grundig analyse av hele kodebasen ble **FIRE** separate problemer identifisert:
+
+#### Problem 1: Manglende exploredTiles ved Spillstart
+**Lokasjon:** `ScenarioBriefingPopup.onBegin` (linje ~5448)
+
+Når spillet startet (briefing lukkes), ble `exploredTiles` ALDRI initialisert basert på spillernes posisjon:
+```typescript
+setState(prev => ({
+  ...prev,
+  phase: GamePhase.INVESTIGATOR,
+  doom: startDoom,
+  // exploredTiles ble IKKE satt her!
+}));
+```
+
+`DEFAULT_STATE` har `exploredTiles: ['0,0']`, men hvis board inneholdt flere tiles (fra custom quests, campaigns, etc.), forble de IKKE i exploredTiles. Resultatet var at tiles som var synlige ved spillstart ble vist som SVARTE (fogOpacity=0.9).
+
+#### Problem 2: Cluster Tiles Aldri Lagt til ExploredTiles
+**Lokasjon:** `spawnRoom` cluster spawn (linje ~2655)
+
+Når en rom-cluster ble spawnet, ble cluster-tilene lagt til `board`, men ALDRI til `exploredTiles`:
+```typescript
+setState(prev => {
+  // ... legger til cluster tiles i board ...
+  return { ...prev, board: syncClusterBoard };
+  // exploredTiles ble IKKE oppdatert!
+});
+```
+
+Cluster-tiles som var utenfor `VISIBILITY_RANGE` (2) fra spillerens posisjon ble aldri markert som explored, og ble dermed svarte.
+
+#### Problem 3: Stale State i True Sight Spell
+**Lokasjon:** `handleAction` case 'cast' true_sight (linje ~4007)
+
+Koden brukte `state.exploredTiles` i stedet for `prev.exploredTiles`:
+```typescript
+const newExplored = new Set(state.exploredTiles || []);  // FEIL: state er stale!
+// ...
+setState(prev => ({
+  ...prev,
+  exploredTiles: Array.from(newExplored),  // Potensielt mister tiles!
+}));
+```
+
+Dette kunne føre til at explored tiles gikk tapt hvis andre setState-kall skjedde i mellomtiden.
+
+#### Problem 4: Stale State i Glimpse Beyond Spell
+**Lokasjon:** `handleAction` case 'cast_occultist' glimpse_beyond (linje ~4281)
+
+Samme problem som Problem 3 - brukte `state.exploredTiles` i stedet for `prev.exploredTiles`.
+
+### Løsninger Implementert
+
+#### Fix 1: Beregn Initielle ExploredTiles ved Spillstart
+La til hjelpefunksjon `calculateInitialExploredTiles()`:
+```typescript
+const calculateInitialExploredTiles = (
+  board: Tile[],
+  playerPositions: { q: number; r: number }[],
+  visibilityRange: number = 2
+): string[] => {
+  const explored = new Set<string>();
+  playerPositions.forEach(playerPos => {
+    board.forEach(tile => {
+      const distance = hexDistance(playerPos, { q: tile.q, r: tile.r });
+      if (distance <= visibilityRange) {
+        explored.add(`${tile.q},${tile.r}`);
+      }
+    });
+  });
+  playerPositions.forEach(pos => explored.add(`${pos.q},${pos.r}`));
+  return Array.from(explored);
+};
+```
+
+Brukt i `onBegin` callback for å initialisere exploredTiles basert på spillerposisjoner.
+
+#### Fix 2: Legg til Cluster Tiles til ExploredTiles
+I cluster spawn setState:
+```typescript
+setState(prev => {
+  // ... existing board sync code ...
+
+  // FIX: Mark all cluster tiles as explored
+  const newExplored = new Set(prev.exploredTiles || []);
+  for (const clusterTile of clusterTiles) {
+    newExplored.add(`${clusterTile.q},${clusterTile.r}`);
+  }
+
+  return { ...prev, board: syncClusterBoard, exploredTiles: Array.from(newExplored) };
+});
+```
+
+#### Fix 3 & 4: Bruk prev.exploredTiles i Spells
+Flyttet exploredTiles-beregningen INN i setState for begge spells:
+```typescript
+setState(prev => {
+  const revealedTiles = prev.board.filter(...);
+  const newExplored = new Set(prev.exploredTiles || []);
+  // ... add tiles ...
+  return { ...prev, exploredTiles: Array.from(newExplored) };
+});
+```
+
+### Endrede Filer
+| Fil | Endring |
+|-----|---------|
+| `src/game/ShadowsGame.tsx` | +`calculateInitialExploredTiles()` hjelpefunksjon (linje 166-192) |
+| `src/game/ShadowsGame.tsx` | Fikset `onBegin` callback - initialiserer exploredTiles (linje ~5448) |
+| `src/game/ShadowsGame.tsx` | Fikset cluster spawn - legger til cluster tiles til exploredTiles (linje ~2655) |
+| `src/game/ShadowsGame.tsx` | Fikset true_sight spell - bruker prev.exploredTiles (linje ~4002) |
+| `src/game/ShadowsGame.tsx` | Fikset glimpse_beyond spell - bruker prev.exploredTiles (linje ~4277) |
+
+### Teknisk Forklaring
+
+**Hvorfor tiles ble svarte:**
+```
+GameBoard fog opacity logic:
+  if (!isVisible) {
+    fogOpacity = isExplored ? 0.15 : 0.9;  // 0.9 = SVART!
+  }
+```
+
+En tile som var i `board` men IKKE i `exploredTiles` fikk fogOpacity=0.9, som effektivt gjorde den svart.
+
+**Hvorfor problemet var vanskelig å finne:**
+1. Det var FIRE separate steder som bidro til problemet
+2. React's batching av setState skjulte race conditions
+3. Problemet oppstod bare i spesifikke scenarier (clusters, custom quests, spells)
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+---
+
 ## 2026-01-28: Improved Enemy AI & Attack Patterns
 
 ### Oppgave

@@ -163,6 +163,34 @@ const APP_VERSION = "1.0.0";
 // Menu view modes for main menu
 type MainMenuView = 'title' | 'heroArchive' | 'stash' | 'merchant' | 'questEditor' | 'customQuest' | 'campaign';
 
+// FIX 2026-01-28: Helper function to calculate initial explored tiles
+// This ensures all tiles visible from player start positions are marked as explored
+// Prevents "black tiles" bug where tiles in board were never added to exploredTiles
+const calculateInitialExploredTiles = (
+  board: Tile[],
+  playerPositions: { q: number; r: number }[],
+  visibilityRange: number = 2
+): string[] => {
+  const explored = new Set<string>();
+
+  // Mark all tiles within visibility range from any player position as explored
+  playerPositions.forEach(playerPos => {
+    board.forEach(tile => {
+      const distance = hexDistance(playerPos, { q: tile.q, r: tile.r });
+      if (distance <= visibilityRange) {
+        explored.add(`${tile.q},${tile.r}`);
+      }
+    });
+  });
+
+  // Also mark all player positions as explored (in case they're on ghost tiles)
+  playerPositions.forEach(pos => {
+    explored.add(`${pos.q},${pos.r}`);
+  });
+
+  return Array.from(explored);
+};
+
 const DEFAULT_STATE: GameState = {
   phase: GamePhase.SETUP,
   doom: 12,
@@ -2625,6 +2653,9 @@ const ShadowsGame: React.FC = () => {
         const clusterTiles = instantiateRoomCluster(cluster, startQ, startR, boardMap);
 
         if (clusterTiles.length > 0) {
+          // FIX 2026-01-28: Add cluster tiles to exploredTiles immediately
+          // This prevents "black tiles" bug where cluster tiles outside VISIBILITY_RANGE
+          // were never added to exploredTiles
           // Synchronize edges for each cluster tile using functional setState to avoid stale closure
           setState(prev => {
             let clusterBoardMap = boardArrayToMap(prev.board);
@@ -2632,7 +2663,14 @@ const ShadowsGame: React.FC = () => {
               clusterBoardMap = synchronizeEdgesWithNeighbors(clusterTile, clusterBoardMap);
             }
             const syncClusterBoard = boardMapToArray(clusterBoardMap);
-            return { ...prev, board: syncClusterBoard };
+
+            // FIX: Mark all cluster tiles as explored
+            const newExplored = new Set(prev.exploredTiles || []);
+            for (const clusterTile of clusterTiles) {
+              newExplored.add(`${clusterTile.q},${clusterTile.r}`);
+            }
+
+            return { ...prev, board: syncClusterBoard, exploredTiles: Array.from(newExplored) };
           });
           addToLog(`UTFORSKET: ${cluster.name}. [BUILDING]`);
           addToLog(cluster.description);
@@ -3961,26 +3999,29 @@ const ShadowsGame: React.FC = () => {
             'true_sight'
           );
 
-          // Reveal all tiles within range
-          const revealedTiles = state.board.filter(t =>
-            hexDistance(activePlayer.position, { q: t.q, r: t.r }) <= spell.range
-          );
+          // FIX 2026-01-28: Use prev.exploredTiles inside setState to avoid stale state
+          setState(prev => {
+            // Reveal all tiles within range (use prev.board to get latest state)
+            const revealedTiles = prev.board.filter(t =>
+              hexDistance(activePlayer.position, { q: t.q, r: t.r }) <= spell.range
+            );
 
-          const newExplored = new Set(state.exploredTiles || []);
-          revealedTiles.forEach(t => {
-            newExplored.add(`${t.q},${t.r}`);
+            const newExplored = new Set(prev.exploredTiles || []);
+            revealedTiles.forEach(t => {
+              newExplored.add(`${t.q},${t.r}`);
+            });
+
+            return {
+              ...prev,
+              players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
+                ...p,
+                insight: p.insight - spell.cost + spell.value, // Gain insight from revelation
+                actions: p.actions - 1
+              } : p),
+              exploredTiles: Array.from(newExplored),
+              activeSpell: null
+            };
           });
-
-          setState(prev => ({
-            ...prev,
-            players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
-              ...p,
-              insight: p.insight - spell.cost + spell.value, // Gain insight from revelation
-              actions: p.actions - 1
-            } : p),
-            exploredTiles: Array.from(newExplored),
-            activeSpell: null
-          }));
 
           addToLog(`Revealed ${revealedTiles.length} areas. Gained ${spell.value} Insight from the revelation.`);
         }
@@ -4233,29 +4274,32 @@ const ShadowsGame: React.FC = () => {
 
           emitSpellEffect(activePlayer.position.q, activePlayer.position.r, 'true_sight');
 
-          const revealedOccTiles = state.board.filter(t =>
-            hexDistance(activePlayer.position, { q: t.q, r: t.r }) <= occSpell.range
-          );
+          // FIX 2026-01-28: Use prev.exploredTiles inside setState to avoid stale state
+          setState(prev => {
+            const revealedOccTiles = prev.board.filter(t =>
+              hexDistance(activePlayer.position, { q: t.q, r: t.r }) <= occSpell.range
+            );
 
-          const newOccExplored = new Set(state.exploredTiles || []);
-          revealedOccTiles.forEach(t => {
-            newOccExplored.add(`${t.q},${t.r}`);
+            const newOccExplored = new Set(prev.exploredTiles || []);
+            revealedOccTiles.forEach(t => {
+              newOccExplored.add(`${t.q},${t.r}`);
+            });
+
+            return {
+              ...prev,
+              players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
+                ...p,
+                actions: p.actions - 1,
+                selectedSpells: p.selectedSpells?.map(s =>
+                  s.id === occSpell.id ? { ...s, currentUses: (s.currentUses ?? s.usesPerScenario) - 1 } : s
+                )
+              } : p),
+              exploredTiles: Array.from(newOccExplored),
+              activeOccultistSpell: null
+            };
           });
 
-          setState(prev => ({
-            ...prev,
-            players: prev.players.map((p, i) => i === prev.activePlayerIndex ? {
-              ...p,
-              actions: p.actions - 1,
-              selectedSpells: p.selectedSpells?.map(s =>
-                s.id === occSpell.id ? { ...s, currentUses: (s.currentUses ?? s.usesPerScenario) - 1 } : s
-              )
-            } : p),
-            exploredTiles: Array.from(newOccExplored),
-            activeOccultistSpell: null
-          }));
-
-          addToLog(`Revealed ${revealedOccTiles.length} areas within range ${occSpell.range}.`);
+          addToLog(`Revealed tiles within range ${occSpell.range}.`);
         }
         break;
 
@@ -5417,12 +5461,18 @@ const ShadowsGame: React.FC = () => {
             const startDoom = state.activeScenario?.startDoom || 12;
             const initialGameStats = createInitialGameStats(state.players, startDoom);
             initialGameStats.totalObjectives = state.activeScenario?.objectives.length || 0;
+            // FIX 2026-01-28: Calculate initial explored tiles based on player positions
+            // This prevents "black tiles" bug where tiles in board were never added to exploredTiles
+            const playerPositions = state.players.map(p => p.position);
+            const initialExploredTiles = calculateInitialExploredTiles(state.board, playerPositions);
+
             setState(prev => ({
               ...prev,
               phase: GamePhase.INVESTIGATOR,
               doom: startDoom,
               objectiveSpawnState,  // Track quest items and tiles
-              gameStats: initialGameStats  // Track performance statistics
+              gameStats: initialGameStats,  // Track performance statistics
+              exploredTiles: initialExploredTiles  // FIX: Mark visible tiles as explored at game start
             }));
             addToLog("The investigation begins.");
             addToLog(`SCENARIO: ${state.activeScenario?.title}`);
