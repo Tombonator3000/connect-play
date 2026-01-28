@@ -1,5 +1,71 @@
 # Development Log
 
+## 2026-01-28: FIX - Tiles blir svarte når spiller forlater rom (Race Condition)
+
+### Problem
+Hex-tiles ble svarte når spilleren beveget seg bort fra dem. Dette var et vedvarende problem som hadde blitt forsøkt løst flere ganger tidligere (se logg fra 2026-01-24), men feilen vedvarte.
+
+### Rotårsak Identifisert (Deep Audit)
+Problemet var en **race condition** mellom to setState-kall:
+
+1. Når spilleren beveger seg til en ny tile, kalles `spawnRoom()` først
+2. `spawnRoom()` bruker `setState(prev => ...)` for å legge til nye tiles
+3. Umiddelbart etter brukes `state.board` for å beregne exploredTiles
+4. MEN `state.board` er fortsatt **gammel state** - React har ikke oppdatert den ennå!
+5. Derfor ble nabotilene til nyspawnede tiles IKKE lagt til exploredTiles
+6. Når spilleren senere beveger seg bort, ble disse tilene svarte (fogOpacity = 0.9)
+
+**Kodeeksempel på feilen:**
+```typescript
+// FEIL: spawnRoom oppdaterer state asynkront
+if (!targetTile) {
+  spawnRoom(q, r, tileSet);  // setState kalles her
+}
+
+// FEIL: state.board er fortsatt gammel!
+state.board.forEach(tile => {  // Nyspawnede tiles er IKKE her!
+  if (distFromNew <= VISIBILITY_RANGE) {
+    newExplored.add(`${tile.q},${tile.r}`);
+  }
+});
+```
+
+### Løsning
+Flyttet explored tiles-beregningen **INN i setState** slik at den bruker `prev.board` (som inneholder de oppdaterte tilene) i stedet for `state.board`:
+
+```typescript
+setState(prev => {
+  // FIX: Beregn explored tiles med prev.board som har nyspawnede tiles
+  const newExplored = new Set(prev.exploredTiles || []);
+  newExplored.add(`${q},${r}`);
+
+  prev.board.forEach(tile => {  // RIKTIG: prev.board har nyspawnede tiles!
+    if (distFromNew <= VISIBILITY_RANGE || distFromOld <= VISIBILITY_RANGE) {
+      newExplored.add(`${tile.q},${tile.r}`);
+    }
+  });
+
+  return { ...prev, exploredTiles: Array.from(newExplored) };
+});
+```
+
+### Endrede Filer
+- `src/game/ShadowsGame.tsx`
+  - Linje ~3234-3434: Fikset `case 'move'` - explored tiles beregnes nå inne i setState
+  - Linje ~2734-2758: Fikset door passage (handleContextAction) - samme fix
+
+### Teknisk Detalj
+React batcher state updates, så når `spawnRoom()` kaller `setState()`, blir ikke `state.board` oppdatert før neste render. Ved å bruke functional setState (`setState(prev => ...)`) og `prev.board`, får vi tilgang til den oppdaterte staten inkludert nyspawnede tiles.
+
+### Tidligere Forsøk (hvorfor de feilet)
+Tidligere fikser (2026-01-24) fokuserte på:
+- Å markere tiles fra BÅDE gammel og ny posisjon som explored ✓
+- Å redusere fog opacity for explored tiles ✓
+
+Disse var riktige optimaliseringer, men løste ikke rotårsaken: **bruken av stale state**.
+
+---
+
 ## 2026-01-28: Fjernet ubrukte Flee og Item knapper fra ActionBar
 
 ### Oppgave

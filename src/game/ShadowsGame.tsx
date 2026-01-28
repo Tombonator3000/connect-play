@@ -2732,25 +2732,30 @@ const ShadowsGame: React.FC = () => {
         }
 
         // Move player to the adjacent position
-        // FIX 2026-01-24: Mark tiles visible from BOTH old and new positions as explored
-        const VISIBILITY_RANGE = 2;
+        // FIX 2026-01-28: Calculate explored tiles INSIDE setState using prev.board
+        // This fixes the race condition where spawnRoom adds tiles via setState,
+        // but the old code used state.board (stale) to calculate explored tiles.
         const oldPos = activePlayer?.position || { q: 0, r: 0 };
-        const newExplored = new Set([...(state.exploredTiles || []), `${adjPos.q},${adjPos.r}`]);
-        state.board.forEach(t => {
-          const distFromNew = hexDistance({ q: adjPos.q, r: adjPos.r }, { q: t.q, r: t.r });
-          const distFromOld = hexDistance(oldPos, { q: t.q, r: t.r });
-          // Mark as explored if visible from either old or new position
-          if (distFromNew <= VISIBILITY_RANGE || distFromOld <= VISIBILITY_RANGE) {
-            newExplored.add(`${t.q},${t.r}`);
-          }
+        setState(prev => {
+          const VISIBILITY_RANGE = 2;
+          const newExplored = new Set([...(prev.exploredTiles || []), `${adjPos.q},${adjPos.r}`]);
+          // Using prev.board ensures we include tiles spawned by spawnRoom
+          prev.board.forEach(t => {
+            const distFromNew = hexDistance({ q: adjPos.q, r: adjPos.r }, { q: t.q, r: t.r });
+            const distFromOld = hexDistance(oldPos, { q: t.q, r: t.r });
+            // Mark as explored if visible from either old or new position
+            if (distFromNew <= VISIBILITY_RANGE || distFromOld <= VISIBILITY_RANGE) {
+              newExplored.add(`${t.q},${t.r}`);
+            }
+          });
+          return {
+            ...prev,
+            players: prev.players.map((p, i) =>
+              i === prev.activePlayerIndex ? { ...p, position: adjPos } : p
+            ),
+            exploredTiles: Array.from(newExplored)
+          };
         });
-        setState(prev => ({
-          ...prev,
-          players: prev.players.map((p, i) =>
-            i === prev.activePlayerIndex ? { ...p, position: adjPos } : p
-          ),
-          exploredTiles: Array.from(newExplored)
-        }));
 
         const targetName = existingTile?.name || 'ukjent område';
         addToLog(`${activePlayer?.name || 'Investigator'} passerer gjennom til ${targetName}.`);
@@ -3231,24 +3236,13 @@ const ShadowsGame: React.FC = () => {
           }
         }
 
-        // Mark ALL VISIBLE tiles as explored (revealed) so they don't turn black when player moves away
-        // FIX 2026-01-24: Must mark tiles visible from BOTH old and new positions to prevent
-        // tiles becoming black when player moves away. Previously only marked tiles around the
-        // destination, causing tiles visible from the origin to turn black.
-        const VISIBILITY_RANGE = 2; // Same as GameBoard.tsx
-        const newExplored = new Set(state.exploredTiles || []);
-        newExplored.add(`${q},${r}`);
+        // NOTE: Explored tiles are now calculated INSIDE setState to use prev.board
+        // This fixes the race condition where spawnRoom adds tiles but state.board
+        // is still stale, causing newly spawned neighbor tiles to not be marked explored.
+        // See FIX 2026-01-28 below in setState.
 
-        // Add all tiles within visibility range from BOTH old position and new position
+        // Store old position for use in setState
         const oldPos = activePlayer.position;
-        state.board.forEach(tile => {
-          const distFromNew = hexDistance({ q, r }, { q: tile.q, r: tile.r });
-          const distFromOld = hexDistance(oldPos, { q: tile.q, r: tile.r });
-          // Mark as explored if visible from either old or new position
-          if (distFromNew <= VISIBILITY_RANGE || distFromOld <= VISIBILITY_RANGE) {
-            newExplored.add(`${tile.q},${tile.r}`);
-          }
-        });
 
         // Apply movement and hazard damage
         if (hazardDamage > 0) {
@@ -3391,6 +3385,25 @@ const ShadowsGame: React.FC = () => {
           for (const update of boardUpdates) {
             updatedBoard = update(updatedBoard);
           }
+
+          // FIX 2026-01-28: Calculate explored tiles INSIDE setState using prev.board
+          // This fixes the race condition where spawnRoom adds tiles via setState,
+          // but the old code used state.board (stale) to calculate explored tiles.
+          // By using prev.board here, we include all newly spawned tiles from spawnRoom.
+          const VISIBILITY_RANGE = 2; // Same as GameBoard.tsx
+          const newExplored = new Set(prev.exploredTiles || []);
+          newExplored.add(`${q},${r}`);
+
+          // Add all tiles within visibility range from BOTH old position and new position
+          // Using prev.board ensures we include tiles spawned by spawnRoom
+          prev.board.forEach(tile => {
+            const distFromNew = hexDistance({ q, r }, { q: tile.q, r: tile.r });
+            const distFromOld = hexDistance(oldPos, { q: tile.q, r: tile.r });
+            // Mark as explored if visible from either old or new position
+            if (distFromNew <= VISIBILITY_RANGE || distFromOld <= VISIBILITY_RANGE) {
+              newExplored.add(`${tile.q},${tile.r}`);
+            }
+          });
 
           return {
             ...prev,
