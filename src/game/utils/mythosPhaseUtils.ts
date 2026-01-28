@@ -82,6 +82,11 @@ export interface ProcessedAttack {
   isRanged: boolean;
   coverPenalty: number;
   message: string;
+  // Dice roll data for combat overlay animation
+  attackRolls: number[];
+  defenseRolls: number[];
+  attackSuccesses: number;
+  defenseSuccesses: number;
 }
 
 /**
@@ -369,7 +374,15 @@ export function processEnemyCombatPhase(
     const { enemy, targetPlayer, isRanged, coverPenalty } = attack;
 
     // Calculate damage including global enemy attack bonus
-    const { hpDamage, sanityDamage, message } = calculateEnemyDamage(
+    const {
+      hpDamage,
+      sanityDamage,
+      message,
+      attackRolls,
+      defenseRolls,
+      attackSuccesses,
+      defenseSuccesses
+    } = calculateEnemyDamage(
       enemy,
       targetPlayer,
       globalEnemyAttackBonus
@@ -388,7 +401,7 @@ export function processEnemyCombatPhase(
       attackMessage = message;
     }
 
-    // Store processed attack data
+    // Store processed attack data including dice rolls for combat overlay
     result.processedAttacks.push({
       enemy,
       targetPlayerId: targetPlayer.id,
@@ -398,7 +411,11 @@ export function processEnemyCombatPhase(
       sanityDamage,
       isRanged: !!isRanged,
       coverPenalty: coverPenalty || 0,
-      message: attackMessage
+      message: attackMessage,
+      attackRolls,
+      defenseRolls,
+      attackSuccesses,
+      defenseSuccesses
     });
 
     // Prepare floating text

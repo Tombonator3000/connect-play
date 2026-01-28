@@ -1,5 +1,147 @@
 # Development Log
 
+## 2026-01-28: Combat Overlay for Enemy Attacks (Defense Dice Animation)
+
+### Oppgave
+Implementere at når monster angriper spiller under Mythos-fasen, brukes CombatOverlay med forsvarsterning-animasjon. Dette gjør kampene mer visuelt engasjerende ved å vise spillerens forsvarsterninger mot monsterets angrepsterninger.
+
+### Implementerte Endringer
+
+#### 1. Utvidet CombatState Interface (`src/game/types.ts`)
+La til nye felter for enemy attack-modus:
+```typescript
+interface CombatState {
+  // Eksisterende felter...
+  // Nye felter for enemy attack:
+  enemyAttackRolls?: number[];      // Monster's attack dice rolls
+  playerDefenseRolls?: number[];    // Player's defense dice rolls
+  attackSuccesses?: number;          // Monster's skulls
+  defenseSuccesses?: number;         // Player's shields
+  netDamageToPlayer?: number;        // Final HP damage to player
+  sanityDamageToPlayer?: number;     // Sanity damage (horror)
+}
+```
+
+#### 2. Utvidet ProcessedAttack Interface (`src/game/utils/mythosPhaseUtils.ts`)
+La til terningkast-data for combat overlay animasjon:
+```typescript
+interface ProcessedAttack {
+  // Eksisterende felter...
+  attackRolls: number[];
+  defenseRolls: number[];
+  attackSuccesses: number;
+  defenseSuccesses: number;
+}
+```
+
+#### 3. Oppdatert CombatOverlay Komponent (`src/game/components/CombatOverlay.tsx`)
+Utvidet komponenten til å støtte to moduser:
+- **player_attack** (default): Spiller angriper monster - eksisterende funksjonalitet
+- **enemy_attack**: Monster angriper spiller - ny forsvarsmodus
+
+Nye props:
+```typescript
+interface CombatOverlayProps {
+  // Eksisterende props...
+  mode?: 'player_attack' | 'enemy_attack';
+  sanityDamage?: number;  // For horror damage display
+}
+```
+
+Enemy attack-modus features:
+- Monster vises til venstre med rød puls-effekt og Skull-ikon
+- Spiller vises til høyre med Shield-ikon
+- "Monster Attack" label med rød farge på angrepsterninger
+- "Your Defense" label med blå farge på forsvarsterninger
+- Røde suksessterner på angrepsterninger (truende)
+- Grønne suksessterner på forsvarsterninger
+- HP og Sanity-barer som viser skade-preview
+- "Enemy Attack!" banner øverst
+- Viser både HP og Sanity-skade i resultat
+
+#### 4. Utvidet GameState (`src/game/types.ts`)
+La til kø-system for enemy attacks:
+```typescript
+interface GameState {
+  // Eksisterende felter...
+  pendingEnemyAttacks?: {
+    enemyId: string;
+    targetPlayerId: string;
+    attackRolls: number[];
+    defenseRolls: number[];
+    attackSuccesses: number;
+    defenseSuccesses: number;
+    hpDamage: number;
+    sanityDamage: number;
+  }[];
+  currentEnemyAttackIndex?: number;
+}
+```
+
+#### 5. Oppdatert Mythos Phase (`src/game/ShadowsGame.tsx`)
+- Lagrer enemy attacks i kø etter combat result prosessering
+- Kjører survivor processing, doom events og event cards FØR attack visualization
+- Viser CombatOverlay sekvensielt for hvert angrep
+- `handleEnemyAttackComplete`: Appliserer skade og går til neste attack
+- Fortsetter til phase transition etter alle attacks er vist
+
+#### 6. Render Enemy Attack CombatOverlay (`src/game/ShadowsGame.tsx`)
+Ny render-seksjon for enemy attack overlay:
+```jsx
+{state.pendingEnemyAttacks?.length > 0 && (
+  <CombatOverlay
+    player={targetPlayer}
+    enemy={attackingEnemy}
+    attackRolls={currentAttack.attackRolls}
+    defenseRolls={currentAttack.defenseRolls}
+    // ...
+    mode="enemy_attack"
+    sanityDamage={currentAttack.sanityDamage}
+  />
+)}
+```
+
+### Flyt for Enemy Attacks
+
+1. **Mythos Phase starter**
+2. **Portal spawns** prosesseres
+3. **Guaranteed spawns** prosesseres
+4. **Enemy combat** beregnes med terningkast
+5. **Survivor turn** prosesseres
+6. **Doom events** sjekkes
+7. **Event card** trekkes (50% sjanse)
+8. **Enemy attacks** vises sekvensielt med CombatOverlay:
+   - Hvert angrep viser animert terningkast
+   - Når animasjon er ferdig, appliseres skade
+   - Neste angrep vises
+9. **Phase transition** til Investigator fase
+
+### Endrede Filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/types.ts` | Utvidet CombatState og GameState med enemy attack felter |
+| `src/game/utils/mythosPhaseUtils.ts` | Utvidet ProcessedAttack interface med terningkast-data |
+| `src/game/components/CombatOverlay.tsx` | Ny enemy_attack modus med forsvarsterning-visning |
+| `src/game/ShadowsGame.tsx` | Enemy attack kø-system og handleEnemyAttackComplete |
+
+### Build Status
+✅ Build kompilerer uten feil
+✅ 295 tester passerer
+
+### Visuelt Resultat
+Når monster angriper spilleren under Mythos-fasen:
+1. Rød "Enemy Attack!" banner vises
+2. Monster portrett med pulserende rød overlay og Skull-ikon til venstre
+3. Spillerens portrett med Shield-ikon til høyre
+4. Animerte terningkast i midten
+5. Monster's angrepsterninger (røde suksesser)
+6. Spillerens forsvarsterninger (grønne suksesser)
+7. Resultat viser HP og Sanity-skade
+8. HP/Sanity-barer animeres ned
+
+---
+
 ## 2026-01-26: Fix Svart Skjerm ved Oppstart - Error Boundary & WebGL Feilhåndtering
 
 ### Problem

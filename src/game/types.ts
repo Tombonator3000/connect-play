@@ -1384,6 +1384,13 @@ export interface CombatState {
   defenseRolls?: number[];  // Pre-generated defense rolls to prevent re-render issues
   enemyDamageDealt?: number;
   playerDamageDealt?: number;
+  // Enemy attack fields (when monster attacks player)
+  enemyAttackRolls?: number[];      // Monster's attack dice rolls
+  playerDefenseRolls?: number[];    // Player's defense dice rolls
+  attackSuccesses?: number;          // Monster's skulls
+  defenseSuccesses?: number;         // Player's shields
+  netDamageToPlayer?: number;        // Final HP damage to player
+  sanityDamageToPlayer?: number;     // Sanity damage to player (horror)
 }
 
 // Monster AI types
@@ -1590,6 +1597,19 @@ export interface GameState {
   rescuedSurvivors: string[];    // IDs of successfully rescued survivors
   // Event card effect tracking
   globalEnemyAttackBonus: number;  // Bonus attack dice for all enemies (from buff_enemies events)
+  // Pending enemy attacks for combat overlay queue (populated during Mythos phase)
+  pendingEnemyAttacks?: {
+    enemyId: string;
+    targetPlayerId: string;
+    attackRolls: number[];
+    defenseRolls: number[];
+    attackSuccesses: number;
+    defenseSuccesses: number;
+    hpDamage: number;
+    sanityDamage: number;
+  }[];
+  // Index of current enemy attack being shown in CombatOverlay
+  currentEnemyAttackIndex?: number;
   // Quest item spawning state - tracks which items need to spawn and where
   objectiveSpawnState?: {
     questItems: {
