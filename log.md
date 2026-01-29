@@ -194,9 +194,108 @@ GET https://image.pollinations.ai/prompt/{URL-encoded prompt}
 
 ### Neste Steg
 - [x] Sjekk hvor imageService faktisk brukes → **IKKE BRUKT**
-- [ ] Vurder om Pollinations kan integreres i Asset Studio
-- [ ] Test Pollinations-kvalitet mot Gemini
+- [x] ~~Vurder om Pollinations kan integreres i Asset Studio~~ **IMPLEMENTERT!**
+- [ ] Test Pollinations-kvalitet i praksis
 - [ ] Vurder å fjerne død kode (imageService.ts)
+
+---
+
+## 2026-01-29: IMPL - Pollinations.ai Integrasjon i Asset Studio (Session 5, del 2)
+
+### Oppgave
+Integrere Pollinations.ai i Asset Studio for å fjerne behovet for Gemini API-nøkkel.
+
+### Implementerte Endringer
+
+#### 1. AssetGenerationService.ts - Total Omskriving
+
+**FØR (Gemini):**
+```typescript
+const GEMINI_MODEL = 'gemini-2.0-flash-exp';
+const API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+
+// Krevde API-nøkkel
+export async function generateAssetImage(asset, apiKey) { ... }
+```
+
+**ETTER (Pollinations):**
+```typescript
+const POLLINATIONS_BASE_URL = 'https://image.pollinations.ai/prompt';
+
+// Ingen API-nøkkel nødvendig!
+export async function generateAssetImage(asset, _apiKey?) { ... }
+```
+
+**Nye Funksjoner:**
+- `buildPrompt(asset)` - Bygger optimaliserte prompts for Pollinations
+- `generateSeed(assetId)` - Genererer konsistent seed fra asset ID
+- `buildPollinationsUrl(asset)` - Bygger komplett URL med parametere
+- `fetchImageAsBase64(url)` - Henter bilde og konverterer til base64
+
+**Prompt-optimalisering:**
+| Kategori | Stil-komponenter |
+|----------|-----------------|
+| Tile | Top-down birds eye view, game tile, hexagonal composition |
+| Monster | Dramatic portrait, menacing creature, otherworldly |
+| Character | 1920s investigator portrait, noir style, dramatic lighting |
+
+**Storage-versjon oppgradert:** `shadows_1920s_assets_v1` → `shadows_1920s_assets_v2`
+
+#### 2. AssetStudioPanel.tsx - Forenklet UI
+
+**Fjernet:**
+- API-nøkkel input felt
+- `apiKey` state
+- `showApiKey`, `hasStoredKey` state
+- `handleSaveApiKey()`, `handleRemoveApiKey()` handlers
+- Google AI Studio lenke
+
+**Lagt til:**
+- "Gratis!"-banner med Zap-ikon
+- Oppdatert info-tekst om Pollinations
+- Generer-knapp alltid aktiv (ikke avhengig av nøkkel)
+
+**UI-endringer:**
+```diff
+- <Key size={12} /> Google Gemini API-nøkkel
++ <Zap className="text-green-500" size={20} />
++ Gratis! Bildegenerering via Pollinations.ai krever ingen API-nøkkel
+```
+
+### Tekniske Detaljer
+
+**Pollinations URL-format:**
+```
+https://image.pollinations.ai/prompt/{encoded_prompt}
+  ?width=512
+  &height=512
+  &model=flux
+  &seed={hash_of_asset_id}
+  &nologo=true
+```
+
+**Timeout og feilhåndtering:**
+- 60 sekunder timeout per bilde
+- AbortController for avbrytelse
+- Detaljerte feilmeldinger
+
+**Rate limiting:**
+- 2.5 sekunder mellom requests (opp fra 2s)
+- Respekterer API-et uten å overbelaste
+
+### Filer Endret
+
+| Fil | Linjer | Endring |
+|-----|--------|---------|
+| `AssetGenerationService.ts` | 551 | Total omskriving |
+| `AssetStudioPanel.tsx` | 407 | Fjernet API-nøkkel UI |
+
+### Fordeler
+
+1. **Null setup** - Ingen registrering eller nøkkel
+2. **Gratis** - Ingen kostnader
+3. **Enklere UX** - Bare klikk "Generer"
+4. **Konsistent** - Seed-basert reproduserbarhet
 
 ---
 
