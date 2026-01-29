@@ -1,5 +1,82 @@
 # Development Log
 
+## 2026-01-29: DEBUG - Monster Attack System (Session 6)
+
+### Oppgave
+Analysere hvorfor monstre ikke angriper spilleren, og legge til console.log for debugging.
+
+### Analyse av Monster AI Flyt
+
+#### Hovedfunksjoner involvert:
+1. **`processEnemyTurn`** (`monsterAI.ts:1586`) - Hovedfunksjonen som prosesserer alle fiender
+2. **`getMonsterDecision`** (`monsterAI.ts:1441`) - Bestemmer hva hvert monster gjør
+3. **`findSmartTarget`** (`monsterAI.ts:1311`) - Finner beste mål for monsteret
+4. **`canSeePlayer`** (`monsterAI.ts:1190`) - Sjekker om monsteret kan se spilleren
+5. **`hasLineOfSight`** (`hexUtils.ts:122`) - Sjekker siktlinje mellom to posisjoner
+
+#### Kritiske Funn:
+
+**Problem 1: `hasLineOfSight` blokkerer hvis tile mangler i board**
+```typescript
+// hexUtils.ts:152-154
+if (!currentTile) {
+  console.log(`[hasLineOfSight] BLOCKED: Tile at (${currentPos.q},${currentPos.r}) doesn't exist in board`);
+  return false;
+}
+```
+Hvis en tile langs siktlinjen ikke eksisterer i `board`-arrayet, blokkeres siktlinjen. Dette kan skje ved:
+- Nye rom som ikke er spawnet ennå
+- Race conditions mellom room spawning og AI
+- Korrupt board state
+
+**Problem 2: Weather kan skjule spillere**
+```typescript
+// monsterAI.ts:1218-1225
+if (weather && weatherHidesEnemy(weather, distance)) {
+  if (!monsterBenefitsFromWeather(enemy.type, weather)) {
+    return false; // Monstre kan ikke se spilleren i dårlig vær!
+  }
+}
+```
+
+**Problem 3: Synlighetskontroll for alle spillere**
+`findSmartTarget` filtrerer ut alle spillere som monsteret ikke kan "se":
+```typescript
+const visiblePlayers = alivePlayers.filter(p => canSeePlayer(enemy, p, tiles, weather));
+if (visiblePlayers.length === 0) return { target: null, priority: null };
+```
+
+#### Debug Logging Lagt Til:
+
+| Funksjon | Logging |
+|----------|---------|
+| `processEnemyTurn` | START/END med enemy og player info, beslutninger, angrep |
+| `getMonsterDecision` | Start, target finding result |
+| `findSmartTarget` | Alive/visible players |
+| `canSeePlayer` | Distance, vision range, weather, LOS result |
+| `hasLineOfSight` | Hex line, blocking points |
+
+### Filer Endret
+
+| Fil | Endringer |
+|-----|-----------|
+| `src/game/utils/monsterAI.ts` | +~60 linjer console.log i processEnemyTurn, getMonsterDecision, findSmartTarget, canSeePlayer |
+| `src/game/hexUtils.ts` | +~15 linjer console.log i hasLineOfSight |
+
+### Neste Steg
+1. Test spillet og observer console output
+2. Se etter `[hasLineOfSight] BLOCKED: Tile doesn't exist` - indikerer manglende tiles
+3. Se etter `[canSeePlayer] BLOCKED` - indikerer synlighetsproblemer
+4. Se etter `[findSmartTarget] Visible players: 0` - indikerer at monstre ikke ser noen
+
+### Potensielle Rotårsaker
+- **Missing tiles i board array** (mest sannsynlig basert på lignende black-tiles-bug)
+- **Weather blocking vision** (sjekk om weather er null)
+- **AttackRange vs distance mismatch**
+- **Edge/wall blocking logic**
+
+---
+
 ## 2026-01-29: ANALYSE - Asset Studio vs imageService Arkitektur (Session 5)
 
 ### Oppgave

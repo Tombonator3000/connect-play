@@ -1200,13 +1200,27 @@ export function canSeePlayer(
     ? applyWeatherToVision(enemy.visionRange, weather, enemy.type)
     : enemy.visionRange;
 
-  if (distance > effectiveVision) return false;
+  // DEBUG: Log visibility check
+  console.log(`[canSeePlayer] ${enemy.name} checking visibility to ${player.name}:`, {
+    enemyPos: enemy.position,
+    playerPos: player.position,
+    distance,
+    visionRange: enemy.visionRange,
+    effectiveVision,
+    weather
+  });
+
+  if (distance > effectiveVision) {
+    console.log(`[canSeePlayer] BLOCKED: Distance ${distance} > effectiveVision ${effectiveVision}`);
+    return false;
+  }
 
   // In certain weather, even visible players may be "hidden"
   if (weather && weatherHidesEnemy(weather, distance)) {
     // Monsters have similar issues seeing players in bad weather
     // But darkness-dwellers can still see
     if (!monsterBenefitsFromWeather(enemy.type, weather)) {
+      console.log(`[canSeePlayer] BLOCKED: Weather hides player and monster doesn't benefit from weather`);
       return false;
     }
   }
@@ -1215,21 +1229,30 @@ export function canSeePlayer(
   // This prevents bugs where monsters can't attack players at melee range
   // due to missing tiles in the board array. Only walls/doors can block at distance 1.
   if (distance <= 1) {
+    console.log(`[canSeePlayer] Distance <= 1, checking for walls/doors`);
     // Check for walls/doors between adjacent tiles
     const enemyTile = tiles.find(t => t.q === enemy.position.q && t.r === enemy.position.r);
     const playerTile = tiles.find(t => t.q === player.position.q && t.r === player.position.r);
+
+    console.log(`[canSeePlayer] Adjacent check:`, {
+      enemyTileExists: !!enemyTile,
+      playerTileExists: !!playerTile
+    });
 
     if (enemyTile && playerTile) {
       // Get direction from enemy to player
       const direction = getEdgeDirection(enemy.position, player.position);
       if (direction !== -1) {
         const edgeOnEnemy = enemyTile.edges?.[direction];
+        console.log(`[canSeePlayer] Edge check:`, { direction, edgeOnEnemy });
         if (edgeBlocksSight(edgeOnEnemy)) {
+          console.log(`[canSeePlayer] BLOCKED: Wall/door between adjacent tiles`);
           return false; // Wall or closed door between them
         }
       }
     }
     // If tiles don't exist in board but distance is 1, they can still see each other
+    console.log(`[canSeePlayer] SUCCESS: Adjacent and no blocking edges`);
     return true;
   }
 
@@ -1242,10 +1265,14 @@ export function canSeePlayer(
   // - Open doors
   // - Windows
   // - Open edges
-  if (!hasLineOfSight(enemy.position, player.position, tiles, effectiveVision)) {
+  const losResult = hasLineOfSight(enemy.position, player.position, tiles, effectiveVision);
+  console.log(`[canSeePlayer] Line of sight check:`, { losResult });
+  if (!losResult) {
+    console.log(`[canSeePlayer] BLOCKED: No line of sight`);
     return false;
   }
 
+  console.log(`[canSeePlayer] SUCCESS: Can see player`);
   return true;
 }
 
@@ -1287,12 +1314,28 @@ export function findSmartTarget(
   tiles: Tile[],
   weather?: WeatherCondition | null
 ): { target: Player | null; priority: TargetPriority | null } {
+  // DEBUG: Log start
+  console.log(`[findSmartTarget] START for ${enemy.name}:`, {
+    enemyPos: enemy.position,
+    playerCount: players.length,
+    tileCount: tiles.length
+  });
+
   const alivePlayers = players.filter(p => !p.isDead);
-  if (alivePlayers.length === 0) return { target: null, priority: null };
+  console.log(`[findSmartTarget] Alive players: ${alivePlayers.length}`, alivePlayers.map(p => p.name));
+  if (alivePlayers.length === 0) {
+    console.log(`[findSmartTarget] No alive players, returning null`);
+    return { target: null, priority: null };
+  }
 
   // Filter to visible players (with weather consideration)
+  console.log(`[findSmartTarget] Checking visibility for each player...`);
   const visiblePlayers = alivePlayers.filter(p => canSeePlayer(enemy, p, tiles, weather));
-  if (visiblePlayers.length === 0) return { target: null, priority: null };
+  console.log(`[findSmartTarget] Visible players: ${visiblePlayers.length}`, visiblePlayers.map(p => p.name));
+  if (visiblePlayers.length === 0) {
+    console.log(`[findSmartTarget] No visible players, returning null`);
+    return { target: null, priority: null };
+  }
 
   // Calculate priority for each player
   const priorities = visiblePlayers.map(p =>
@@ -1419,6 +1462,14 @@ export function getMonsterDecision(
   weather?: WeatherCondition | null,
   currentRound?: number
 ): AIDecision {
+  // DEBUG: Log decision making start
+  console.log(`[getMonsterDecision] START for ${enemy.name}:`, {
+    enemyPos: enemy.position,
+    attackRange: enemy.attackRange,
+    playerCount: players.length,
+    alivePlayers: players.filter(p => !p.isDead).map(p => ({ name: p.name, pos: p.position }))
+  });
+
   // Build decision context once (centralizes all context gathering)
   const ctx = buildDecisionContext(enemy, players, enemies, tiles, weather, currentRound);
   const { personality } = ctx;
@@ -1429,10 +1480,21 @@ export function getMonsterDecision(
 
   // 1. FLEE CHECK - Monsters may flee when hurt
   const fleeDecision = tryFleeDecision(ctx, findRetreatPosition);
-  if (fleeDecision) return fleeDecision;
+  if (fleeDecision) {
+    console.log(`[getMonsterDecision] ${enemy.name} is FLEEING`);
+    return fleeDecision;
+  }
 
   // 2. FIND TARGET - Use smart targeting with weather consideration
   const { target: targetPlayer, priority } = findSmartTarget(enemy, players, tiles, weather);
+
+  // DEBUG: Log target finding result
+  console.log(`[getMonsterDecision] ${enemy.name} findSmartTarget result:`, {
+    foundTarget: !!targetPlayer,
+    targetName: targetPlayer?.name,
+    targetPos: targetPlayer?.position,
+    priority
+  });
 
   // 3. NO TARGET - Handle waiting, patrolling, or special movement
   if (!targetPlayer) {
@@ -1611,6 +1673,16 @@ export function processEnemyTurn(
     stealthAdvantage: boolean;
   };
 } {
+  // DEBUG: Log entry point
+  console.log('[processEnemyTurn] START', {
+    enemyCount: enemies.length,
+    playerCount: players.length,
+    tileCount: tiles.length,
+    weather,
+    enemies: enemies.map(e => ({ id: e.id, name: e.name, type: e.type, pos: e.position, hp: e.hp, attackRange: e.attackRange })),
+    players: players.map(p => ({ id: p.id, name: p.name, pos: p.position, isDead: p.isDead }))
+  });
+
   const weatherMods = getWeatherMonsterModifiers(weather || null);
   const updatedEnemies: Enemy[] = [...enemies];
   const attacks: Array<{
@@ -1646,8 +1718,24 @@ export function processEnemyTurn(
   for (let i = 0; i < updatedEnemies.length; i++) {
     const enemy = updatedEnemies[i];
 
+    // DEBUG: Log each enemy processing
+    console.log(`[processEnemyTurn] Processing enemy ${i}:`, {
+      id: enemy.id,
+      name: enemy.name,
+      type: enemy.type,
+      position: enemy.position,
+      hp: enemy.hp,
+      attackRange: enemy.attackRange,
+      visionRange: enemy.visionRange,
+      speed: enemy.speed,
+      traits: enemy.traits
+    });
+
     // Skip dead enemies
-    if (enemy.hp <= 0) continue;
+    if (enemy.hp <= 0) {
+      console.log(`[processEnemyTurn] Enemy ${enemy.name} is dead (hp=${enemy.hp}), skipping`);
+      continue;
+    }
 
     // Weather affects enemy speed
     const effectiveSpeed = Math.max(0, Math.floor(enemy.speed * weatherMods.speedModifier));
@@ -1665,6 +1753,14 @@ export function processEnemyTurn(
     }
 
     const decision = getMonsterDecision(enemy, players, updatedEnemies, tiles, weather);
+
+    // DEBUG: Log decision
+    console.log(`[processEnemyTurn] Decision for ${enemy.name}:`, {
+      action: decision.action,
+      targetPlayerId: decision.targetPlayerId,
+      targetPosition: decision.targetPosition,
+      message: decision.message
+    });
 
     // Apply AI state updates if present
     const applyAIStateUpdate = (baseEnemy: Enemy): Enemy => {
@@ -1828,6 +1924,16 @@ export function processEnemyTurn(
       messages.push(decision.message);
     }
   }
+
+  // DEBUG: Log final result
+  console.log('[processEnemyTurn] END - Results:', {
+    updatedEnemyCount: updatedEnemies.length,
+    attackCount: attacks.length,
+    attacks: attacks.map(a => ({ enemy: a.enemy.name, target: a.targetPlayer.name, isRanged: a.isRanged })),
+    messageCount: messages.length,
+    messages,
+    specialEventCount: specialEvents.length
+  });
 
   return {
     updatedEnemies,

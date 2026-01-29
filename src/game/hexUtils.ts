@@ -121,12 +121,27 @@ export const getHexLine = (start: { q: number; r: number }, end: { q: number; r:
  */
 export const hasLineOfSight = (start: { q: number; r: number }, end: { q: number; r: number }, board: Tile[], range: number) => {
   const dist = hexDistance(start, end);
-  if (dist > range) return false;
+
+  // DEBUG: Log LOS check
+  console.log(`[hasLineOfSight] Checking from (${start.q},${start.r}) to (${end.q},${end.r}):`, {
+    distance: dist,
+    range,
+    boardSize: board.length
+  });
+
+  if (dist > range) {
+    console.log(`[hasLineOfSight] BLOCKED: Distance ${dist} > range ${range}`);
+    return false;
+  }
 
   // Same tile - always has line of sight
-  if (start.q === end.q && start.r === end.r) return true;
+  if (start.q === end.q && start.r === end.r) {
+    console.log(`[hasLineOfSight] SUCCESS: Same tile`);
+    return true;
+  }
 
   const line = getHexLine(start, end);
+  console.log(`[hasLineOfSight] Hex line:`, line);
 
   // Check each step along the line
   for (let i = 0; i < line.length; i++) {
@@ -134,13 +149,22 @@ export const hasLineOfSight = (start: { q: number; r: number }, end: { q: number
     const currentTile = board.find(t => t.q === currentPos.q && t.r === currentPos.r);
 
     // If tile doesn't exist, line of sight is blocked
-    if (!currentTile) return false;
+    if (!currentTile) {
+      console.log(`[hasLineOfSight] BLOCKED: Tile at (${currentPos.q},${currentPos.r}) doesn't exist in board`);
+      return false;
+    }
 
     // Check for blocking objects on intermediate tiles (not start or end)
     if (i > 0 && i < line.length - 1) {
-      if (currentTile.object?.blocking) return false;
+      if (currentTile.object?.blocking) {
+        console.log(`[hasLineOfSight] BLOCKED: Blocking object at (${currentPos.q},${currentPos.r})`);
+        return false;
+      }
       // Also check for major obstacles that block sight
-      if (currentTile.obstacle?.blocking) return false;
+      if (currentTile.obstacle?.blocking) {
+        console.log(`[hasLineOfSight] BLOCKED: Blocking obstacle at (${currentPos.q},${currentPos.r})`);
+        return false;
+      }
     }
 
     // Check edge between this tile and the next tile
@@ -148,7 +172,10 @@ export const hasLineOfSight = (start: { q: number; r: number }, end: { q: number
       const nextPos = line[i + 1];
       const nextTile = board.find(t => t.q === nextPos.q && t.r === nextPos.r);
 
-      if (!nextTile) return false;
+      if (!nextTile) {
+        console.log(`[hasLineOfSight] BLOCKED: Next tile at (${nextPos.q},${nextPos.r}) doesn't exist`);
+        return false;
+      }
 
       // Get the direction from current to next
       const direction = getEdgeDirection(currentPos, nextPos);
@@ -157,6 +184,7 @@ export const hasLineOfSight = (start: { q: number; r: number }, end: { q: number
         // Check edge on the current tile
         const edgeOnCurrent = currentTile.edges?.[direction];
         if (edgeBlocksSight(edgeOnCurrent)) {
+          console.log(`[hasLineOfSight] BLOCKED: Edge blocks sight at (${currentPos.q},${currentPos.r}) dir=${direction}`, edgeOnCurrent);
           return false;
         }
 
@@ -164,12 +192,14 @@ export const hasLineOfSight = (start: { q: number; r: number }, end: { q: number
         const oppositeDirection = getOppositeEdgeDirection(direction);
         const edgeOnNext = nextTile.edges?.[oppositeDirection];
         if (edgeBlocksSight(edgeOnNext)) {
+          console.log(`[hasLineOfSight] BLOCKED: Opposite edge blocks sight at (${nextPos.q},${nextPos.r})`, edgeOnNext);
           return false;
         }
       }
     }
   }
 
+  console.log(`[hasLineOfSight] SUCCESS: Clear line of sight`);
   return true;
 };
 
