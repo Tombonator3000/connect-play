@@ -1,5 +1,43 @@
 # Development Log
 
+## 2026-01-29: DOC - Black Tiles Bug Dokumentasjon
+
+### Oppgave
+Samle all informasjon om black tiles-buggen og alle fikseforsøkene til én dedikert dokumentasjonsfil.
+
+### Utført
+Opprettet `black-tiles-bug.md` som dokumenterer:
+
+1. **Symptomer**: Hvordan buggen manifesterte seg (svarte tiles ved bevegelse, nye rom, cluster-tiles, lagrede spill)
+
+2. **Tidslinje over 7 fikseforsøk**:
+   - PR #186: Floor texture brightness (feilet)
+   - PR #187: Fog opacity reduksjon (delvis)
+   - PR #189: Floor + fog combo fix (delvis)
+   - PR #190: Explored tiles logic fix (delvis)
+   - PR #214: Race condition fix (vesentlig forbedring)
+   - PR #217: Comprehensive fix - 4 problemer (nesten komplett)
+   - PR #218: LocalStorage corruption fix (LØST)
+
+3. **8 identifiserte rotårsaker**:
+   - Fog opacity for høy
+   - Floor textures for mørke
+   - Race condition med stale state.board
+   - exploredTiles ikke initialisert ved spillstart
+   - Cluster tiles ikke lagt til exploredTiles
+   - Stale state i true_sight spell
+   - Stale state i glimpse_beyond spell
+   - Korrupt localStorage data
+
+4. **Teknisk forklaring**: Hvorfor tiles ble svarte (fogOpacity=0.9)
+
+5. **Lærdommer**: React state, localStorage validering, defensive programming
+
+### Ny Fil
+- `black-tiles-bug.md` - Komplett dokumentasjon av black tiles-buggen
+
+---
+
 ## 2026-01-28: FIX - Black Tiles & Slice Error Bug - LOCALSTORAGE CORRUPTION FIX
 
 ### Problem
