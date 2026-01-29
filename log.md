@@ -1,5 +1,133 @@
 # Development Log
 
+## 2026-01-29: IMPL - 4 Nye Room Clusters (Session 4)
+
+### Oppgave
+Lage 4 nye outdoor Room Clusters med totalt 36 Tile Templates:
+- **CLUSTER_FOREST** (8 tiles): Standing Stones, Witch's Cabin, Dead Man's Hollow
+- **CLUSTER_SWAMP** (8 tiles): Sunken Temple, Fisherman's Hut, Boardwalk
+- **CLUSTER_FARM** (9 tiles): Farmhouse, Barn, Silo, Root Cellar
+- **CLUSTER_CEMETERY** (11 tiles): Mausoleum, Chapel, Ossuary, Hanging Tree
+
+Alle tiles skal ha Lovecraftian atmosfæriske beskrivelser.
+
+### Implementasjon
+
+#### Nye Kategorier
+Lagt til i RoomCluster category type:
+- `forest`
+- `swamp`
+- `farm`
+- `cemetery`
+
+#### Nye Tile Templates
+
+**Forest-relaterte (8 stk):**
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `nature_standing_stones` | Standing Stones | Ancient ritual stones |
+| `nature_witch_cabin` | Witch's Cabin | Crooked cabin |
+| `nature_dead_mans_hollow` | Dead Man's Hollow | Corpse-filled ravine |
+| `nature_twisted_grove` | Twisted Grove | Trees with faces |
+| `nature_moss_circle` | Moss Circle | Glowing moss ring |
+| `nature_hunters_blind` | Hunter's Blind | Abandoned hunter post |
+| `nature_hollow_tree` | Hollow Tree | Portal-like tree |
+| `nature_forest_edge` | Forest Edge | Entry to forest |
+
+**Swamp-relaterte (8 stk):**
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `nature_sunken_temple` | Sunken Temple | Half-submerged shrine |
+| `nature_fishermans_hut` | Fisherman's Hut | Ramshackle cabin |
+| `nature_boardwalk` | Rotting Boardwalk | Dangerous walkway |
+| `nature_bog_pool` | Bog Pool | Bubbling dark water |
+| `nature_cypress_stand` | Cypress Stand | Hanging moss trees |
+| `nature_will_o_wisp` | Will-o'-Wisp Glade | Ghostly lights |
+| `nature_quicksand` | Quicksand Pit | Treacherous ground |
+| `nature_swamp_edge` | Swamp Edge | Entry to swamp |
+
+**Farm-relaterte (9 stk):**
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `nature_farmhouse` | Abandoned Farmhouse | Empty family home |
+| `nature_barn` | Derelict Barn | Dark barn |
+| `nature_silo` | Grain Silo | Spiral staircase down |
+| `nature_root_cellar` | Root Cellar | Underground storage |
+| `nature_corn_field` | Corn Field | Something in the stalks |
+| `nature_scarecrow` | Scarecrow Field | Living scarecrows |
+| `nature_animal_pen` | Animal Pen | Empty... or not |
+| `nature_windmill` | Broken Windmill | Creaking structure |
+| `nature_farm_road` | Farm Road | Entry to farm |
+
+**Cemetery-relaterte (11 stk):**
+| ID | Navn | Beskrivelse |
+|----|------|-------------|
+| `nature_mausoleum` | Family Mausoleum | Ancient stone tomb |
+| `nature_chapel` | Cemetery Chapel | Candles burn eternally |
+| `nature_ossuary` | Ossuary | Walls of bones |
+| `nature_hanging_tree` | Hanging Tree | Execution tree |
+| `nature_grave_row` | Grave Row | Fresh graves |
+| `nature_crypt_entrance` | Crypt Entrance | Stone door to depths |
+| `nature_memorial` | War Memorial | Names whisper at night |
+| `nature_cemetery_gate` | Cemetery Gate | Entry to cemetery |
+| `nature_angels_row` | Angel Statues | Weeping angels |
+| `nature_grave_keeper` | Keeper's Shed | Empty but watched |
+| `nature_potter_field` | Potter's Field | Unmarked graves |
+
+### Status
+- [x] Tile Templates opprettet (36 stk)
+- [x] Clusters definert (4 stk)
+- [x] Kategorier oppdatert ('forest', 'swamp', 'farm', 'cemetery')
+- [x] ROOM_CLUSTERS array oppdatert
+- [x] getClustersForCategory oppdatert
+- [x] Build verifisert ✅
+- [x] Commit og push
+
+### Implementasjonsdetaljer
+
+**Fil endret:** `src/game/tileConnectionSystem.ts`
+
+**Nye Tile Templates lagt til (36 stk):**
+
+```typescript
+// Forest (8 tiles)
+NATURE_STANDING_STONES, NATURE_WITCH_CABIN, NATURE_DEAD_MANS_HOLLOW,
+NATURE_TWISTED_GROVE, NATURE_MOSS_CIRCLE, NATURE_HUNTERS_BLIND,
+NATURE_HOLLOW_TREE, NATURE_FOREST_EDGE
+
+// Swamp (8 tiles)
+NATURE_SUNKEN_TEMPLE, NATURE_FISHERMANS_HUT, NATURE_BOARDWALK,
+NATURE_BOG_POOL, NATURE_CYPRESS_STAND, NATURE_WILL_O_WISP,
+NATURE_QUICKSAND, NATURE_SWAMP_EDGE
+
+// Farm (9 tiles)
+NATURE_FARMHOUSE, NATURE_BARN, NATURE_SILO, NATURE_ROOT_CELLAR,
+NATURE_CORN_FIELD, NATURE_SCARECROW, NATURE_ANIMAL_PEN,
+NATURE_WINDMILL, NATURE_FARM_ROAD
+
+// Cemetery (11 tiles)
+NATURE_MAUSOLEUM, NATURE_CHAPEL, NATURE_OSSUARY, NATURE_HANGING_TREE,
+NATURE_GRAVE_ROW, NATURE_CRYPT_ENTRANCE, NATURE_MEMORIAL,
+NATURE_CEMETERY_GATE, NATURE_ANGELS_ROW, NATURE_GRAVE_KEEPER,
+NATURE_POTTER_FIELD
+```
+
+**Nye Clusters:**
+| Cluster | ID | Tiles | Description |
+|---------|-----|-------|-------------|
+| CLUSTER_FOREST | forest | 8 | Blackwood Forest - ancient forest with darker secrets |
+| CLUSTER_SWAMP | swamp | 8 | Dunwich Marshes - fetid waters and sunken temples |
+| CLUSTER_FARM | farm | 9 | Gardner Farm - blighted farmland with scarecrows |
+| CLUSTER_CEMETERY | cemetery | 11 | Christchurch Cemetery - where dead rest uneasily |
+
+**Lovecraftian Descriptions (eksempler):**
+- Standing Stones: "Ancient megaliths arranged in a pattern that predates human civilization. The runes carved upon them glow faintly under starlight."
+- Fisherman's Hut: "A ramshackle cabin on rotting stilts. The nets hang empty, but the family is still at dinner - what remains of them."
+- Cemetery Chapel: "Candles burn though no one tends them. The prayers here go unanswered - or answered by something that should not listen."
+- Hanging Tree: "An ancient oak where justice was once served. The rope marks are worn into the branches. On certain nights, shadows still swing."
+
+---
+
 ## 2026-01-29: ANALYSE - Hva Mangler i Prosjektet (Session 3)
 
 ### Oppgave

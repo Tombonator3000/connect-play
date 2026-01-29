@@ -1874,6 +1874,612 @@ export const NATURE_FOREST_STREAM: TileTemplate = {
   description: 'A stream cuts through the forest. The water runs too dark to see the bottom.'
 };
 
+// ============================================================================
+// OUTDOOR CLUSTER TEMPLATES - Forest, Swamp, Farm, Cemetery
+// ============================================================================
+
+// ----- FOREST CLUSTER TILES (8 stk) -----
+
+export const NATURE_STANDING_STONES: TileTemplate = {
+  id: 'nature_standing_stones',
+  name: 'Standing Stones',
+  category: 'nature',
+  subType: 'forest',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 2,
+  watermarkIcon: 'Landmark',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'Ancient megaliths arranged in a pattern that predates human civilization. The runes carved upon them glow faintly under starlight.',
+  possibleObjects: ['ancient_tome', 'ritual_dagger'],
+  enemySpawnChance: 15,
+  possibleEnemies: ['cultist', 'dark_young']
+};
+
+export const NATURE_WITCH_CABIN: TileTemplate = {
+  id: 'nature_witch_cabin',
+  name: "Witch's Cabin",
+  category: 'nature',
+  subType: 'forest',
+  edges: ['DOOR', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'wood',
+  zoneLevel: 2,
+  watermarkIcon: 'House',
+  spawnWeight: 3,
+  canRotate: true,
+  description: 'A crooked cabin that should not stand, yet has for centuries. Herbs hang from the rafters and something watches from the shadows.',
+  possibleObjects: ['potion', 'spellbook', 'silver_key'],
+  enemySpawnChance: 25,
+  possibleEnemies: ['witch', 'familiar']
+};
+
+export const NATURE_DEAD_MANS_HOLLOW: TileTemplate = {
+  id: 'nature_dead_mans_hollow',
+  name: "Dead Man's Hollow",
+  category: 'nature',
+  subType: 'forest',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 3,
+  watermarkIcon: 'Skull',
+  spawnWeight: 2,
+  canRotate: true,
+  description: 'A depression in the earth where nothing grows. The bones of those who wandered too far lie half-buried in the black soil.',
+  possibleObjects: ['human_remains', 'tarnished_locket'],
+  enemySpawnChance: 40,
+  possibleEnemies: ['ghoul', 'ghast', 'zombie']
+};
+
+export const NATURE_TWISTED_GROVE: TileTemplate = {
+  id: 'nature_twisted_grove',
+  name: 'Twisted Grove',
+  category: 'nature',
+  subType: 'forest',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 2,
+  watermarkIcon: 'TreeDeciduous',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'The trees here have grown into shapes that suggest faces frozen in agony. They creak and groan though there is no wind.',
+  possibleObjects: ['strange_fungus'],
+  enemySpawnChance: 20,
+  possibleEnemies: ['dark_young', 'mi_go']
+};
+
+export const NATURE_MOSS_CIRCLE: TileTemplate = {
+  id: 'nature_moss_circle',
+  name: 'Moss Circle',
+  category: 'nature',
+  subType: 'forest',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 1,
+  watermarkIcon: 'Circle',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'A perfect ring of phosphorescent moss marks the forest floor. Those who sleep within wake... changed.',
+  possibleObjects: ['fairy_ring_mushroom'],
+  enemySpawnChance: 10,
+  possibleEnemies: ['will_o_wisp']
+};
+
+export const NATURE_HUNTERS_BLIND: TileTemplate = {
+  id: 'nature_hunters_blind',
+  name: "Hunter's Blind",
+  category: 'nature',
+  subType: 'forest',
+  edges: ['NATURE', 'NATURE', 'OPEN', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Eye',
+  spawnWeight: 7,
+  canRotate: true,
+  description: 'An abandoned hunting platform. The hunter left in a hurry - his rifle remains, but all ammunition is spent.',
+  possibleObjects: ['rifle', 'binoculars', 'hunting_journal'],
+  enemySpawnChance: 5,
+  possibleEnemies: ['hunting_horror']
+};
+
+export const NATURE_HOLLOW_TREE: TileTemplate = {
+  id: 'nature_hollow_tree',
+  name: 'Hollow Tree',
+  category: 'nature',
+  subType: 'forest',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'STAIRS_DOWN', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 1,
+  watermarkIcon: 'ArrowDown',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'An ancient oak, hollow at the base. The cavity descends deeper than any tree should grow - into darkness absolute.',
+  possibleObjects: ['rope', 'lantern'],
+  enemySpawnChance: 15,
+  possibleEnemies: ['zoog', 'rat_thing']
+};
+
+export const NATURE_FOREST_EDGE: TileTemplate = {
+  id: 'nature_forest_edge',
+  name: 'Forest Edge',
+  category: 'nature',
+  subType: 'forest',
+  edges: ['OPEN', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 0,
+  watermarkIcon: 'TreePine',
+  spawnWeight: 10,
+  canRotate: true,
+  description: 'The trees crowd close, their grasping branches forming a dark wall. No birds sing here. No animals stir.'
+};
+
+// ----- SWAMP CLUSTER TILES (8 stk) -----
+
+export const NATURE_SUNKEN_TEMPLE: TileTemplate = {
+  id: 'nature_sunken_temple',
+  name: 'Sunken Temple',
+  category: 'nature',
+  subType: 'swamp',
+  edges: ['WATER', 'WATER', 'WATER', 'WATER', 'WATER', 'OPEN'],
+  floorType: 'stone',
+  zoneLevel: 3,
+  watermarkIcon: 'Landmark',
+  spawnWeight: 2,
+  canRotate: true,
+  description: 'Half-submerged pillars rise from the murk, carved with symbols that hurt to comprehend. Something stirs in the depths below.',
+  possibleObjects: ['elder_sign', 'golden_idol', 'ancient_tablet'],
+  enemySpawnChance: 35,
+  possibleEnemies: ['deep_one', 'star_spawn', 'shoggoth']
+};
+
+export const NATURE_FISHERMANS_HUT: TileTemplate = {
+  id: 'nature_fishermans_hut',
+  name: "Fisherman's Hut",
+  category: 'nature',
+  subType: 'swamp',
+  edges: ['DOOR', 'WATER', 'WATER', 'NATURE', 'WATER', 'WATER'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'House',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'A ramshackle cabin on rotting stilts. The nets hang empty, but the family is still at dinner - what remains of them.',
+  possibleObjects: ['fishing_net', 'boat_key', 'strange_fish'],
+  enemySpawnChance: 20,
+  possibleEnemies: ['deep_one_hybrid', 'ghoul']
+};
+
+export const NATURE_BOARDWALK: TileTemplate = {
+  id: 'nature_boardwalk',
+  name: 'Rotting Boardwalk',
+  category: 'nature',
+  subType: 'swamp',
+  edges: ['OPEN', 'WATER', 'WATER', 'OPEN', 'WATER', 'WATER'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Footprints',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'Wooden planks span the black water, many broken or missing. The wood groans with each step, hungry for a misstep.',
+  enemySpawnChance: 10,
+  possibleEnemies: ['swamp_creature']
+};
+
+export const NATURE_BOG_POOL: TileTemplate = {
+  id: 'nature_bog_pool',
+  name: 'Bog Pool',
+  category: 'nature',
+  subType: 'swamp',
+  edges: ['WATER', 'WATER', 'WATER', 'WATER', 'WATER', 'WATER'],
+  floorType: 'dirt',
+  zoneLevel: 2,
+  watermarkIcon: 'Droplets',
+  spawnWeight: 6,
+  canRotate: false,
+  description: 'Bubbles rise from depths that should not exist. Something stirs below, vast and patient and ancient.',
+  possibleObjects: ['preserved_corpse', 'bog_iron'],
+  enemySpawnChance: 25,
+  possibleEnemies: ['formless_spawn', 'shoggoth']
+};
+
+export const NATURE_CYPRESS_STAND: TileTemplate = {
+  id: 'nature_cypress_stand',
+  name: 'Cypress Stand',
+  category: 'nature',
+  subType: 'swamp',
+  edges: ['NATURE', 'WATER', 'NATURE', 'WATER', 'NATURE', 'WATER'],
+  floorType: 'dirt',
+  zoneLevel: 1,
+  watermarkIcon: 'TreeDeciduous',
+  spawnWeight: 7,
+  canRotate: true,
+  description: 'Gnarled cypress trees draped in Spanish moss that hangs like funeral shrouds. The moss seems to reach for you.',
+  enemySpawnChance: 15,
+  possibleEnemies: ['dark_young', 'dimensional_shambler']
+};
+
+export const NATURE_WILL_O_WISP: TileTemplate = {
+  id: 'nature_will_o_wisp',
+  name: "Will-o'-Wisp Glade",
+  category: 'nature',
+  subType: 'swamp',
+  edges: ['NATURE', 'WATER', 'WATER', 'NATURE', 'WATER', 'WATER'],
+  floorType: 'dirt',
+  zoneLevel: 2,
+  watermarkIcon: 'Flame',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'Ghostly lights dance above the water, beckoning travelers deeper into the mire. Those who follow are never seen again.',
+  enemySpawnChance: 30,
+  possibleEnemies: ['will_o_wisp', 'ghost', 'specter']
+};
+
+export const NATURE_QUICKSAND: TileTemplate = {
+  id: 'nature_quicksand',
+  name: 'Quicksand Pit',
+  category: 'nature',
+  subType: 'swamp',
+  edges: ['NATURE', 'WATER', 'NATURE', 'NATURE', 'WATER', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 2,
+  watermarkIcon: 'AlertTriangle',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'The ground here is treacherous - solid one moment, hungry the next. Hands reach up from below, grasping.',
+  possibleObjects: ['rope', 'walking_stick'],
+  enemySpawnChance: 20,
+  possibleEnemies: ['zombie', 'wight']
+};
+
+export const NATURE_SWAMP_EDGE: TileTemplate = {
+  id: 'nature_swamp_edge',
+  name: 'Swamp Edge',
+  category: 'nature',
+  subType: 'swamp',
+  edges: ['OPEN', 'NATURE', 'WATER', 'WATER', 'WATER', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 0,
+  watermarkIcon: 'Waves',
+  spawnWeight: 10,
+  canRotate: true,
+  description: 'The solid ground gives way to murky water. The stench of decay hangs heavy in the air.'
+};
+
+// ----- FARM CLUSTER TILES (9 stk) -----
+
+export const NATURE_FARMHOUSE: TileTemplate = {
+  id: 'nature_farmhouse',
+  name: 'Abandoned Farmhouse',
+  category: 'nature',
+  subType: 'farm',
+  edges: ['DOOR', 'WALL', 'DOOR', 'NATURE', 'WALL', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'House',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'The farmhouse stands empty, yet a fire burns in the hearth and dinner cools on the table. The family portrait has no faces.',
+  possibleObjects: ['shotgun', 'family_bible', 'iron_key'],
+  enemySpawnChance: 25,
+  possibleEnemies: ['ghoul', 'zombie', 'cultist']
+};
+
+export const NATURE_BARN: TileTemplate = {
+  id: 'nature_barn',
+  name: 'Derelict Barn',
+  category: 'nature',
+  subType: 'farm',
+  edges: ['DOOR', 'WALL', 'WALL', 'OPEN', 'WALL', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Warehouse',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'The barn doors hang askew. Something large has torn through from the inside. The hay is stained dark.',
+  possibleObjects: ['pitchfork', 'lantern', 'rope'],
+  enemySpawnChance: 35,
+  possibleEnemies: ['dark_young', 'shoggoth', 'byakhee']
+};
+
+export const NATURE_SILO: TileTemplate = {
+  id: 'nature_silo',
+  name: 'Grain Silo',
+  category: 'nature',
+  subType: 'farm',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'STAIRS_DOWN'],
+  floorType: 'metal',
+  zoneLevel: 2,
+  watermarkIcon: 'Cylinder',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'The silo is empty of grain but full of whispers. A spiral staircase descends into foundations that go too deep.',
+  possibleObjects: ['grain_sample', 'strange_mold'],
+  enemySpawnChance: 20,
+  possibleEnemies: ['mi_go', 'colour_out_of_space']
+};
+
+export const NATURE_ROOT_CELLAR: TileTemplate = {
+  id: 'nature_root_cellar',
+  name: 'Root Cellar',
+  category: 'nature',
+  subType: 'farm',
+  edges: ['STAIRS_DOWN', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'dirt',
+  zoneLevel: -1,
+  watermarkIcon: 'ArrowDown',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'Stone steps descend into cold earth. The preserves have been untouched for decades, but something has been eating.',
+  possibleObjects: ['preserved_specimen', 'old_dynamite', 'tunnel_map'],
+  enemySpawnChance: 30,
+  possibleEnemies: ['ghoul', 'rat_thing', 'zoog']
+};
+
+export const NATURE_CORN_FIELD: TileTemplate = {
+  id: 'nature_corn_field',
+  name: 'Corn Field',
+  category: 'nature',
+  subType: 'farm',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 1,
+  watermarkIcon: 'Wheat',
+  spawnWeight: 8,
+  canRotate: false,
+  description: 'The corn stalks tower overhead, rustling without wind. Something moves between the rows, always just out of sight.',
+  enemySpawnChance: 20,
+  possibleEnemies: ['scarecrow', 'cultist', 'child_of_the_corn']
+};
+
+export const NATURE_SCARECROW: TileTemplate = {
+  id: 'nature_scarecrow',
+  name: 'Scarecrow Field',
+  category: 'nature',
+  subType: 'farm',
+  edges: ['NATURE', 'NATURE', 'OPEN', 'NATURE', 'NATURE', 'OPEN'],
+  floorType: 'dirt',
+  zoneLevel: 1,
+  watermarkIcon: 'PersonStanding',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'A dozen scarecrows stand vigil over fallow fields. They are in different positions each time you look away.',
+  enemySpawnChance: 40,
+  possibleEnemies: ['scarecrow', 'animated_scarecrow']
+};
+
+export const NATURE_ANIMAL_PEN: TileTemplate = {
+  id: 'nature_animal_pen',
+  name: 'Animal Pen',
+  category: 'nature',
+  subType: 'farm',
+  edges: ['OPEN', 'WALL', 'WALL', 'NATURE', 'WALL', 'WALL'],
+  floorType: 'dirt',
+  zoneLevel: 0,
+  watermarkIcon: 'Fence',
+  spawnWeight: 7,
+  canRotate: true,
+  description: 'The livestock pen lies empty. The fence is intact from the outside, but something has dug out from within.',
+  possibleObjects: ['animal_remains', 'strange_tracks'],
+  enemySpawnChance: 15,
+  possibleEnemies: ['hound_of_tindalos', 'ghoul']
+};
+
+export const NATURE_WINDMILL: TileTemplate = {
+  id: 'nature_windmill',
+  name: 'Broken Windmill',
+  category: 'nature',
+  subType: 'farm',
+  edges: ['DOOR', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'wood',
+  zoneLevel: 2,
+  watermarkIcon: 'Fan',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'The windmill blades turn slowly though there is no wind. The grinding sounds from within suggest something other than grain.',
+  possibleObjects: ['mechanical_parts', 'old_journal'],
+  enemySpawnChance: 25,
+  possibleEnemies: ['mi_go', 'flying_polyp']
+};
+
+export const NATURE_FARM_ROAD: TileTemplate = {
+  id: 'nature_farm_road',
+  name: 'Farm Road',
+  category: 'nature',
+  subType: 'farm',
+  edges: ['OPEN', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 0,
+  watermarkIcon: 'Route',
+  spawnWeight: 10,
+  canRotate: true,
+  description: 'A rutted dirt road leads to the farm. Wagon tracks suggest recent passage, but no one has been seen for months.'
+};
+
+// ----- CEMETERY CLUSTER TILES (11 stk) -----
+
+export const NATURE_MAUSOLEUM: TileTemplate = {
+  id: 'nature_mausoleum',
+  name: 'Family Mausoleum',
+  category: 'nature',
+  subType: 'cemetery',
+  edges: ['DOOR', 'WALL', 'WALL', 'STAIRS_DOWN', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: 2,
+  watermarkIcon: 'Building',
+  spawnWeight: 3,
+  canRotate: true,
+  description: 'A marble tomb bearing a family name that appears in no records. The door has been opened from the inside.',
+  possibleObjects: ['family_crest', 'golden_key', 'necromantic_tome'],
+  enemySpawnChance: 35,
+  possibleEnemies: ['wight', 'vampire', 'lich']
+};
+
+export const NATURE_CHAPEL: TileTemplate = {
+  id: 'nature_chapel',
+  name: 'Cemetery Chapel',
+  category: 'nature',
+  subType: 'cemetery',
+  edges: ['DOOR', 'WALL', 'DOOR', 'WALL', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: 1,
+  watermarkIcon: 'Church',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'Candles burn though no one tends them. The prayers here go unanswered - or answered by something that should not listen.',
+  possibleObjects: ['holy_water', 'prayer_book', 'silver_cross'],
+  enemySpawnChance: 20,
+  possibleEnemies: ['cultist', 'ghost', 'wraith']
+};
+
+export const NATURE_OSSUARY: TileTemplate = {
+  id: 'nature_ossuary',
+  name: 'Ossuary',
+  category: 'nature',
+  subType: 'cemetery',
+  edges: ['OPEN', 'WALL', 'WALL', 'OPEN', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: -1,
+  watermarkIcon: 'Skull',
+  spawnWeight: 2,
+  canRotate: true,
+  description: 'Walls of skulls and bones arranged in patterns that form words in no human language. The bones rattle in greeting.',
+  possibleObjects: ['skull', 'bone_flute', 'death_mask'],
+  enemySpawnChance: 45,
+  possibleEnemies: ['skeleton', 'bone_horror', 'lich']
+};
+
+export const NATURE_HANGING_TREE: TileTemplate = {
+  id: 'nature_hanging_tree',
+  name: 'Hanging Tree',
+  category: 'nature',
+  subType: 'cemetery',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 2,
+  watermarkIcon: 'TreeDeciduous',
+  spawnWeight: 3,
+  canRotate: true,
+  description: 'An ancient oak where justice was once served. The rope marks are worn into the branches. On certain nights, shadows still swing.',
+  possibleObjects: ['noose', 'confession_letter'],
+  enemySpawnChance: 40,
+  possibleEnemies: ['hanged_man', 'ghost', 'specter']
+};
+
+export const NATURE_GRAVE_ROW: TileTemplate = {
+  id: 'nature_grave_row',
+  name: 'Grave Row',
+  category: 'nature',
+  subType: 'cemetery',
+  edges: ['NATURE', 'NATURE', 'OPEN', 'NATURE', 'NATURE', 'OPEN'],
+  floorType: 'dirt',
+  zoneLevel: 1,
+  watermarkIcon: 'Cross',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'Rows of headstones lean at impossible angles. Some graves are fresh. Others have been disturbed from below.',
+  possibleObjects: ['grave_dirt', 'withered_flowers'],
+  enemySpawnChance: 25,
+  possibleEnemies: ['zombie', 'ghoul', 'wight']
+};
+
+export const NATURE_CRYPT_ENTRANCE: TileTemplate = {
+  id: 'nature_crypt_entrance',
+  name: 'Crypt Entrance',
+  category: 'nature',
+  subType: 'cemetery',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'STAIRS_DOWN', 'NATURE', 'NATURE'],
+  floorType: 'stone',
+  zoneLevel: 1,
+  watermarkIcon: 'ArrowDown',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'Stone stairs descend into darkness. Cold air rises from below, carrying whispers and the scent of ancient decay.',
+  possibleObjects: ['torch', 'iron_key'],
+  enemySpawnChance: 20,
+  possibleEnemies: ['ghoul', 'ghast']
+};
+
+export const NATURE_MEMORIAL: TileTemplate = {
+  id: 'nature_memorial',
+  name: 'War Memorial',
+  category: 'nature',
+  subType: 'cemetery',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'OPEN', 'NATURE', 'NATURE'],
+  floorType: 'stone',
+  zoneLevel: 1,
+  watermarkIcon: 'Flag',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'A monument to the fallen of forgotten wars. The names carved here whisper at night, still fighting battles no one remembers.',
+  possibleObjects: ['dogtags', 'faded_photograph'],
+  enemySpawnChance: 15,
+  possibleEnemies: ['soldier_ghost', 'specter']
+};
+
+export const NATURE_CEMETERY_GATE: TileTemplate = {
+  id: 'nature_cemetery_gate',
+  name: 'Cemetery Gate',
+  category: 'nature',
+  subType: 'cemetery',
+  edges: ['OPEN', 'WALL', 'WALL', 'NATURE', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: 0,
+  watermarkIcon: 'Gate',
+  spawnWeight: 10,
+  canRotate: true,
+  description: 'Iron gates that should keep things in, not out. The inscription reads: "That is not dead which can eternal lie."'
+};
+
+export const NATURE_ANGELS_ROW: TileTemplate = {
+  id: 'nature_angels_row',
+  name: 'Angel Statues',
+  category: 'nature',
+  subType: 'cemetery',
+  edges: ['NATURE', 'NATURE', 'OPEN', 'NATURE', 'OPEN', 'NATURE'],
+  floorType: 'stone',
+  zoneLevel: 1,
+  watermarkIcon: 'User',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Stone angels weep stone tears. Their faces change when unobserved - from sorrow to hunger.',
+  enemySpawnChance: 30,
+  possibleEnemies: ['weeping_angel', 'living_statue']
+};
+
+export const NATURE_GRAVE_KEEPER: TileTemplate = {
+  id: 'nature_grave_keeper',
+  name: "Keeper's Shed",
+  category: 'nature',
+  subType: 'cemetery',
+  edges: ['DOOR', 'WALL', 'WALL', 'NATURE', 'WALL', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Shovel',
+  spawnWeight: 6,
+  canRotate: true,
+  description: "The groundskeeper's tools hang neatly despite his absence. The logbook ends mid-sentence: 'They are rising from—'",
+  possibleObjects: ['shovel', 'lantern', 'cemetery_records'],
+  enemySpawnChance: 15,
+  possibleEnemies: ['ghoul', 'zombie']
+};
+
+export const NATURE_POTTER_FIELD: TileTemplate = {
+  id: 'nature_potter_field',
+  name: "Potter's Field",
+  category: 'nature',
+  subType: 'cemetery',
+  edges: ['NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE', 'NATURE'],
+  floorType: 'dirt',
+  zoneLevel: 1,
+  watermarkIcon: 'HelpCircle',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Unmarked graves of the nameless dead. No headstones, only shallow depressions in earth that refuses to settle.',
+  possibleObjects: ['unknown_remains', 'tattered_clothing'],
+  enemySpawnChance: 35,
+  possibleEnemies: ['zombie', 'ghoul', 'wight', 'revenant']
+};
+
 // ----- NEW STREET VARIANTS -----
 
 export const STREET_T_JUNCTION: TileTemplate = {
@@ -2856,6 +3462,46 @@ export const TILE_TEMPLATES: Record<string, TileTemplate> = {
   nature_trail_crossing: NATURE_TRAIL_CROSSING,
   nature_trail_t: NATURE_TRAIL_T,
   nature_forest_stream: NATURE_FOREST_STREAM,
+  // Outdoor Cluster Templates - Forest
+  nature_standing_stones: NATURE_STANDING_STONES,
+  nature_witch_cabin: NATURE_WITCH_CABIN,
+  nature_dead_mans_hollow: NATURE_DEAD_MANS_HOLLOW,
+  nature_twisted_grove: NATURE_TWISTED_GROVE,
+  nature_moss_circle: NATURE_MOSS_CIRCLE,
+  nature_hunters_blind: NATURE_HUNTERS_BLIND,
+  nature_hollow_tree: NATURE_HOLLOW_TREE,
+  nature_forest_edge: NATURE_FOREST_EDGE,
+  // Outdoor Cluster Templates - Swamp
+  nature_sunken_temple: NATURE_SUNKEN_TEMPLE,
+  nature_fishermans_hut: NATURE_FISHERMANS_HUT,
+  nature_boardwalk: NATURE_BOARDWALK,
+  nature_bog_pool: NATURE_BOG_POOL,
+  nature_cypress_stand: NATURE_CYPRESS_STAND,
+  nature_will_o_wisp: NATURE_WILL_O_WISP,
+  nature_quicksand: NATURE_QUICKSAND,
+  nature_swamp_edge: NATURE_SWAMP_EDGE,
+  // Outdoor Cluster Templates - Farm
+  nature_farmhouse: NATURE_FARMHOUSE,
+  nature_barn: NATURE_BARN,
+  nature_silo: NATURE_SILO,
+  nature_root_cellar: NATURE_ROOT_CELLAR,
+  nature_corn_field: NATURE_CORN_FIELD,
+  nature_scarecrow: NATURE_SCARECROW,
+  nature_animal_pen: NATURE_ANIMAL_PEN,
+  nature_windmill: NATURE_WINDMILL,
+  nature_farm_road: NATURE_FARM_ROAD,
+  // Outdoor Cluster Templates - Cemetery
+  nature_mausoleum: NATURE_MAUSOLEUM,
+  nature_chapel: NATURE_CHAPEL,
+  nature_ossuary: NATURE_OSSUARY,
+  nature_hanging_tree: NATURE_HANGING_TREE,
+  nature_grave_row: NATURE_GRAVE_ROW,
+  nature_crypt_entrance: NATURE_CRYPT_ENTRANCE,
+  nature_memorial: NATURE_MEMORIAL,
+  nature_cemetery_gate: NATURE_CEMETERY_GATE,
+  nature_angels_row: NATURE_ANGELS_ROW,
+  nature_grave_keeper: NATURE_GRAVE_KEEPER,
+  nature_potter_field: NATURE_POTTER_FIELD,
   // New street variants
   street_t_junction: STREET_T_JUNCTION,
   street_wide: STREET_WIDE,
@@ -3892,7 +4538,7 @@ export interface RoomCluster {
     localQ: number;
     localR: number;
   }[];
-  category: 'apartment' | 'manor' | 'church' | 'warehouse' | 'cave' | 'asylum' | 'hospital' | 'police' | 'university' | 'sewers';
+  category: 'apartment' | 'manor' | 'church' | 'warehouse' | 'cave' | 'asylum' | 'hospital' | 'police' | 'university' | 'sewers' | 'forest' | 'swamp' | 'farm' | 'cemetery';
   spawnWeight: number;
 }
 
@@ -4081,6 +4727,96 @@ export const CLUSTER_SEWERS: RoomCluster = {
   spawnWeight: 7
 };
 
+// ----- OUTDOOR CLUSTERS -----
+
+export const CLUSTER_FOREST: RoomCluster = {
+  id: 'forest',
+  name: 'Blackwood Forest',
+  description: 'An ancient forest where the trees remember older gods. The paths shift when unwatched.',
+  tiles: [
+    { template: NATURE_FOREST_EDGE, localQ: 0, localR: 0, rotation: 0 },
+    { template: NATURE_TWISTED_GROVE, localQ: 0, localR: -1, rotation: 0 },
+    { template: NATURE_MOSS_CIRCLE, localQ: 1, localR: -1, rotation: 0 },
+    { template: NATURE_HUNTERS_BLIND, localQ: -1, localR: -1, rotation: 0 },
+    { template: NATURE_STANDING_STONES, localQ: 0, localR: -2, rotation: 0 },
+    { template: NATURE_WITCH_CABIN, localQ: 1, localR: -2, rotation: 0 },
+    { template: NATURE_HOLLOW_TREE, localQ: -1, localR: -2, rotation: 0 },
+    { template: NATURE_DEAD_MANS_HOLLOW, localQ: 0, localR: -3, rotation: 0 }
+  ],
+  entryPoints: [
+    { direction: 3, localQ: 0, localR: 0 }
+  ],
+  category: 'forest',
+  spawnWeight: 6
+};
+
+export const CLUSTER_SWAMP: RoomCluster = {
+  id: 'swamp',
+  name: 'Dunwich Marshes',
+  description: 'Fetid waters hide secrets best left undiscovered. The air itself seems to rot.',
+  tiles: [
+    { template: NATURE_SWAMP_EDGE, localQ: 0, localR: 0, rotation: 0 },
+    { template: NATURE_BOARDWALK, localQ: 0, localR: -1, rotation: 0 },
+    { template: NATURE_CYPRESS_STAND, localQ: 1, localR: -1, rotation: 0 },
+    { template: NATURE_BOG_POOL, localQ: -1, localR: -1, rotation: 0 },
+    { template: NATURE_WILL_O_WISP, localQ: 0, localR: -2, rotation: 0 },
+    { template: NATURE_QUICKSAND, localQ: 1, localR: -2, rotation: 0 },
+    { template: NATURE_FISHERMANS_HUT, localQ: -1, localR: -2, rotation: 0 },
+    { template: NATURE_SUNKEN_TEMPLE, localQ: 0, localR: -3, rotation: 0 }
+  ],
+  entryPoints: [
+    { direction: 3, localQ: 0, localR: 0 }
+  ],
+  category: 'swamp',
+  spawnWeight: 5
+};
+
+export const CLUSTER_FARM: RoomCluster = {
+  id: 'farm',
+  name: 'Gardner Farm',
+  description: 'Once prosperous land now blighted by something from beyond. The crops grow wrong.',
+  tiles: [
+    { template: NATURE_FARM_ROAD, localQ: 0, localR: 0, rotation: 0 },
+    { template: NATURE_CORN_FIELD, localQ: 1, localR: 0, rotation: 0 },
+    { template: NATURE_SCARECROW, localQ: -1, localR: 0, rotation: 0 },
+    { template: NATURE_FARMHOUSE, localQ: 0, localR: -1, rotation: 0 },
+    { template: NATURE_BARN, localQ: 1, localR: -1, rotation: 0 },
+    { template: NATURE_ANIMAL_PEN, localQ: -1, localR: -1, rotation: 0 },
+    { template: NATURE_WINDMILL, localQ: 0, localR: -2, rotation: 0 },
+    { template: NATURE_SILO, localQ: 1, localR: -2, rotation: 0 },
+    { template: NATURE_ROOT_CELLAR, localQ: -1, localR: -2, rotation: 0 }
+  ],
+  entryPoints: [
+    { direction: 3, localQ: 0, localR: 0 }
+  ],
+  category: 'farm',
+  spawnWeight: 6
+};
+
+export const CLUSTER_CEMETERY: RoomCluster = {
+  id: 'cemetery',
+  name: 'Christchurch Cemetery',
+  description: 'Where the dead of Arkham rest - some more peacefully than others.',
+  tiles: [
+    { template: NATURE_CEMETERY_GATE, localQ: 0, localR: 0, rotation: 0 },
+    { template: NATURE_GRAVE_ROW, localQ: 1, localR: 0, rotation: 0 },
+    { template: NATURE_GRAVE_ROW, localQ: -1, localR: 0, rotation: 0 },
+    { template: NATURE_CHAPEL, localQ: 0, localR: -1, rotation: 0 },
+    { template: NATURE_ANGELS_ROW, localQ: 1, localR: -1, rotation: 0 },
+    { template: NATURE_GRAVE_KEEPER, localQ: -1, localR: -1, rotation: 0 },
+    { template: NATURE_MAUSOLEUM, localQ: 0, localR: -2, rotation: 0 },
+    { template: NATURE_HANGING_TREE, localQ: 1, localR: -2, rotation: 0 },
+    { template: NATURE_POTTER_FIELD, localQ: -1, localR: -2, rotation: 0 },
+    { template: NATURE_MEMORIAL, localQ: 0, localR: -3, rotation: 0 },
+    { template: NATURE_OSSUARY, localQ: 0, localR: -4, rotation: 0 }
+  ],
+  entryPoints: [
+    { direction: 3, localQ: 0, localR: 0 }
+  ],
+  category: 'cemetery',
+  spawnWeight: 5
+};
+
 /**
  * All room clusters
  */
@@ -4093,7 +4829,12 @@ export const ROOM_CLUSTERS: RoomCluster[] = [
   CLUSTER_HOSPITAL,
   CLUSTER_POLICE,
   CLUSTER_UNIVERSITY,
-  CLUSTER_SEWERS
+  CLUSTER_SEWERS,
+  // Outdoor clusters
+  CLUSTER_FOREST,
+  CLUSTER_SWAMP,
+  CLUSTER_FARM,
+  CLUSTER_CEMETERY
 ];
 
 /**
@@ -4107,10 +4848,10 @@ export function getClustersForCategory(category: TileCategory): RoomCluster[] {
     room: ['asylum', 'hospital', 'police', 'university'],
     stairs: [],
     basement: ['sewers'],
-    crypt: ['sewers'],
+    crypt: ['sewers', 'cemetery'],
     street: ['warehouse', 'sewers'],
     urban: ['asylum', 'hospital', 'police', 'university'],
-    nature: []
+    nature: ['forest', 'swamp', 'farm', 'cemetery']
   };
 
   const clusterTypes = categoryToClusters[category] || [];
