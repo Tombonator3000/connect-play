@@ -581,7 +581,9 @@ const ShadowsGame: React.FC = () => {
 
         // === STEP 5: EVENT CARD DRAWING ===
         const eventResult = tryDrawEventCard(state.eventDeck, state.eventDiscardPile, state.doom);
+        let eventCardDrawn = false;
         if (eventResult) {
+          eventCardDrawn = true;
           if (eventResult.message) addToLog(eventResult.message);
           setState(prev => ({
             ...prev,
@@ -591,6 +593,8 @@ const ShadowsGame: React.FC = () => {
           }));
           playSound('eventCard');
           addToLog(`📜 EVENT: ${eventResult.card.title}`);
+          // FIX 2026-01-29: Set flag to indicate we need to wait for event card resolution
+          sessionStorage.setItem('awaitingEventCardResolution', 'true');
         }
 
         // === STEP 6: ENEMY ATTACK VISUALIZATION ===
@@ -636,6 +640,13 @@ const ShadowsGame: React.FC = () => {
           ...prev,
           enemies: combatResult.updatedEnemies.filter(e => e.hp > 0)
         }));
+
+        // FIX 2026-01-29: If event card was drawn, DON'T do phase transition yet
+        // Wait for user to resolve the event card (handled by separate useEffect)
+        if (eventCardDrawn) {
+          // Phase transition will happen after event card is resolved
+          return;
+        }
 
         // CRITICAL: Use prev.players in the callback to get the CURRENT state
         // This ensures event card effects (HP/Sanity changes) are not overwritten
@@ -2787,14 +2798,31 @@ const ShadowsGame: React.FC = () => {
 
     // Synchronize edges with neighboring tiles (fixes window/door linking)
     // Use functional setState to avoid stale closure bug where tiles could be lost
+    // FIX 2026-01-29: Also update exploredTiles to include the newly spawned tile
+    // This fixes black tiles bug where newly spawned tiles weren't marked as explored
     setState(prev => {
       const currentBoardMap = boardArrayToMap(prev.board);
       const synchronizedBoardMap = synchronizeEdgesWithNeighbors(finalTile, currentBoardMap);
       const synchronizedBoard = boardMapToArray(synchronizedBoardMap);
+
+      // Mark the new tile and all tiles within visibility range as explored
+      const VISIBILITY_RANGE = 2;
+      const newExplored = new Set(prev.exploredTiles || []);
+      newExplored.add(`${finalTile.q},${finalTile.r}`);
+
+      // Also mark any other tiles within range of the new tile as explored
+      synchronizedBoard.forEach(tile => {
+        const dist = hexDistance({ q: finalTile.q, r: finalTile.r }, { q: tile.q, r: tile.r });
+        if (dist <= VISIBILITY_RANGE) {
+          newExplored.add(`${tile.q},${tile.r}`);
+        }
+      });
+
       return {
         ...prev,
         board: synchronizedBoard,
-        objectiveSpawnState: updatedObjectiveSpawnState
+        objectiveSpawnState: updatedObjectiveSpawnState,
+        exploredTiles: Array.from(newExplored)
       };
     });
     addToLog(`UTFORSKET: ${finalTile.name}. [${finalTile.category?.toUpperCase() || 'UNKNOWN'}]`);
@@ -4748,6 +4776,62 @@ const ShadowsGame: React.FC = () => {
       }
     }
   }, [state.pendingEnemyAttacks, state.currentEnemyAttackIndex, state.phase]);
+
+  // FIX 2026-01-29: Handle phase transition after event card resolution
+  // This ensures event card effects are applied before transitioning to INVESTIGATOR phase
+  useEffect(() => {
+    // Check if we were waiting for event card resolution and it's now done
+    const awaitingEventCard = sessionStorage.getItem('awaitingEventCardResolution');
+
+    if (
+      awaitingEventCard === 'true' &&
+      state.phase === GamePhase.MYTHOS &&
+      state.activeEvent === null  // Event card has been resolved
+    ) {
+      sessionStorage.removeItem('awaitingEventCardResolution');
+
+      // Now do the phase transition
+      setTimeout(() => {
+        setState(prev => {
+          // Check for game over with CURRENT player state (event cards might have healed or damaged)
+          if (areAllPlayersDead(prev.players)) {
+            playSound('defeat');
+            addToLog("All investigators have fallen. The darkness claims victory.");
+            setGameOverType('defeat_death');
+            return {
+              ...prev,
+              phase: GamePhase.GAME_OVER
+            };
+          }
+
+          // Use prev.players which now includes event card effects
+          const { resetPlayers } = resetPlayersForNewTurn(prev.players);
+
+          // Find the first alive player for new round
+          let firstAliveIndex = 0;
+          for (let i = 0; i < resetPlayers.length; i++) {
+            if (!resetPlayers[i].isDead) {
+              firstAliveIndex = i;
+              break;
+            }
+          }
+
+          const { shouldApply, playerIndex } = shouldApplyMadnessEffects(resetPlayers);
+          if (shouldApply && playerIndex === firstAliveIndex) {
+            resetPlayers[firstAliveIndex] = applyMadnessTurnStartEffects(resetPlayers[firstAliveIndex]);
+          }
+
+          return {
+            ...prev,
+            phase: GamePhase.INVESTIGATOR,
+            activePlayerIndex: firstAliveIndex,
+            players: resetPlayers
+          };
+        });
+        addToLog("En ny dag gryr...");
+      }, 500);
+    }
+  }, [state.activeEvent, state.phase]);
 
   // Helper function to find the next alive player index
   const findNextAlivePlayerIndex = (players: Player[], startIndex: number): number => {

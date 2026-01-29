@@ -17,7 +17,7 @@ import {
   MonsterAIState, MonsterState
 } from '../types';
 import { BESTIARY, weatherHidesEnemy } from '../constants';
-import { hexDistance, findPath, getHexNeighbors, hasLineOfSight } from '../hexUtils';
+import { hexDistance, findPath, getHexNeighbors, hasLineOfSight, getEdgeDirection, edgeBlocksSight } from '../hexUtils';
 
 // Import from decision helpers module
 import {
@@ -1212,6 +1212,28 @@ export function canSeePlayer(
     }
   }
 
+  // FIX 2026-01-29: Adjacent entities (distance <= 1) can always see each other
+  // This prevents bugs where monsters can't attack players at melee range
+  // due to missing tiles in the board array. Only walls/doors can block at distance 1.
+  if (distance <= 1) {
+    // Check for walls/doors between adjacent tiles
+    const enemyTile = tiles.find(t => t.q === enemy.position.q && t.r === enemy.position.r);
+    const playerTile = tiles.find(t => t.q === player.position.q && t.r === player.position.r);
+
+    if (enemyTile && playerTile) {
+      // Get direction from enemy to player
+      const direction = getEdgeDirection(enemy.position, player.position);
+      if (direction !== -1) {
+        const edgeOnEnemy = enemyTile.edges?.[direction];
+        if (edgeBlocksSight(edgeOnEnemy)) {
+          return false; // Wall or closed door between them
+        }
+      }
+    }
+    // If tiles don't exist in board but distance is 1, they can still see each other
+    return true;
+  }
+
   // CRITICAL FIX: Check actual line of sight through walls and doors
   // Monsters cannot see through:
   // - Walls
@@ -1677,11 +1699,11 @@ export function processEnemyTurn(
           const movedEnemy = updatedEnemies[i];
           const alivePlayers = players.filter(p => !p.isDead);
 
-          // Find all players in range
+          // Find all players in range - use canSeePlayer for proper visibility check
+          // FIX 2026-01-29: Use canSeePlayer instead of raw hasLineOfSight to handle edge cases
           const playersInRange = alivePlayers.filter(player => {
             const dist = hexDistance(movedEnemy.position, player.position);
-            return dist <= movedEnemy.attackRange &&
-              hasLineOfSight(movedEnemy.position, player.position, tiles, movedEnemy.visionRange);
+            return dist <= movedEnemy.attackRange && canSeePlayer(movedEnemy, player, tiles, weather);
           });
 
           if (playersInRange.length > 0) {
@@ -1773,10 +1795,10 @@ export function processEnemyTurn(
           const alivePlayersForSpecial = players.filter(p => !p.isDead);
 
           // Find all players in range after special movement
+          // FIX 2026-01-29: Use canSeePlayer instead of raw hasLineOfSight to handle edge cases
           const specialPlayersInRange = alivePlayersForSpecial.filter(player => {
             const dist = hexDistance(specialMovedEnemy.position, player.position);
-            return dist <= specialMovedEnemy.attackRange &&
-              hasLineOfSight(specialMovedEnemy.position, player.position, tiles, specialMovedEnemy.visionRange);
+            return dist <= specialMovedEnemy.attackRange && canSeePlayer(specialMovedEnemy, player, tiles, weather);
           });
 
           if (specialPlayersInRange.length > 0) {
