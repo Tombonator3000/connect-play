@@ -632,6 +632,265 @@ export const FACADE_WAREHOUSE: TileTemplate = {
   description: 'The chains on the door are freshly cut.'
 };
 
+// ----- ASYLUM ROOM TEMPLATES -----
+
+export const ROOM_CELL: TileTemplate = {
+  id: 'room_cell',
+  name: 'Padded Cell',
+  category: 'room',
+  subType: 'cell',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Lock',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'Scratch marks cover the padded walls. Words are carved into the padding: DO NOT SLEEP.',
+  enemySpawnChance: 30,
+  possibleEnemies: ['ghoul', 'cultist']
+};
+
+export const ROOM_WARD: TileTemplate = {
+  id: 'room_ward',
+  name: 'Patient Ward',
+  category: 'room',
+  subType: 'ward',
+  edges: ['DOOR', 'WALL', 'DOOR', 'WALL', 'DOOR', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Bed',
+  spawnWeight: 10,
+  canRotate: true,
+  description: 'Rows of empty beds with restraints. Some restraints are broken from within.',
+  possibleObjects: ['cabinet', 'chest']
+};
+
+export const ROOM_TREATMENT: TileTemplate = {
+  id: 'room_treatment',
+  name: 'Treatment Room',
+  category: 'room',
+  subType: 'treatment',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Zap',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Electroshock equipment. The chair has leather straps worn thin by desperate struggles.',
+  possibleObjects: ['cabinet']
+};
+
+// ----- HOSPITAL ROOM TEMPLATES -----
+
+export const ROOM_OPERATING: TileTemplate = {
+  id: 'room_operating',
+  name: 'Operating Theater',
+  category: 'room',
+  subType: 'operating',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Scissors',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'Surgical tools arranged with care. The drain in the floor is clogged with something dark.',
+  possibleObjects: ['cabinet'],
+  enemySpawnChance: 25,
+  possibleEnemies: ['ghoul']
+};
+
+export const ROOM_MORGUE: TileTemplate = {
+  id: 'room_morgue',
+  name: 'Hospital Morgue',
+  category: 'room',
+  subType: 'morgue',
+  edges: ['DOOR', 'WALL', 'WALL', 'DOOR', 'WALL', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Skull',
+  spawnWeight: 3,
+  canRotate: true,
+  description: 'Refrigerated drawers line the walls. One stands open—the body bag inside is empty but torn.',
+  enemySpawnChance: 50,
+  possibleEnemies: ['ghoul', 'ghast']
+};
+
+export const ROOM_PHARMACY: TileTemplate = {
+  id: 'room_pharmacy',
+  name: 'Hospital Pharmacy',
+  category: 'room',
+  subType: 'pharmacy',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Pill',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'Medicine bottles with labels in languages that predate Latin. Some glow faintly.',
+  possibleObjects: ['cabinet', 'cabinet']
+};
+
+// ----- POLICE ROOM TEMPLATES -----
+
+export const ROOM_INTERROGATION: TileTemplate = {
+  id: 'room_interrogation',
+  name: 'Interrogation Room',
+  category: 'room',
+  subType: 'interrogation',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Lamp',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'The one-way mirror is cracked. Through it, you see the room—but from a different angle.',
+  possibleObjects: ['desk']
+};
+
+export const ROOM_EVIDENCE: TileTemplate = {
+  id: 'room_evidence',
+  name: 'Evidence Room',
+  category: 'room',
+  subType: 'evidence',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Archive',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Boxes of cold cases. Some evidence bags contain things that should not exist.',
+  possibleObjects: ['cabinet', 'chest', 'crate']
+};
+
+export const ROOM_HOLDING: TileTemplate = {
+  id: 'room_holding',
+  name: 'Holding Cells',
+  category: 'room',
+  subType: 'holding',
+  edges: ['DOOR', 'WALL', 'DOOR', 'WALL', 'WALL', 'WALL'],
+  floorType: 'tile',
+  zoneLevel: 1,
+  watermarkIcon: 'Lock',
+  spawnWeight: 7,
+  canRotate: true,
+  description: 'Cell doors hang open. Claw marks on the bars. From the inside.',
+  enemySpawnChance: 35,
+  possibleEnemies: ['ghoul', 'cultist']
+};
+
+// ----- UNIVERSITY ROOM TEMPLATES -----
+
+export const ROOM_LECTURE: TileTemplate = {
+  id: 'room_lecture',
+  name: 'Lecture Hall',
+  category: 'room',
+  subType: 'lecture',
+  edges: ['DOOR', 'WALL', 'WALL', 'DOOR', 'WALL', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Presentation',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'Equations on the chalkboard describe geometries that hurt to comprehend.',
+  possibleObjects: ['desk', 'bookshelf']
+};
+
+export const ROOM_ARCHIVE: TileTemplate = {
+  id: 'room_archive',
+  name: 'Restricted Archives',
+  category: 'room',
+  subType: 'archive',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Library',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'The Necronomicon is chained here. The chains rattle though there is no wind.',
+  possibleObjects: ['bookshelf', 'bookshelf', 'cabinet'],
+  enemySpawnChance: 20,
+  possibleEnemies: ['cultist']
+};
+
+export const ROOM_SPECIMEN: TileTemplate = {
+  id: 'room_specimen',
+  name: 'Specimen Hall',
+  category: 'room',
+  subType: 'specimen',
+  edges: ['DOOR', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'wood',
+  zoneLevel: 1,
+  watermarkIcon: 'Bug',
+  spawnWeight: 5,
+  canRotate: true,
+  description: 'Preserved creatures in jars. Some specimens are from expeditions that never returned.',
+  possibleObjects: ['cabinet', 'chest']
+};
+
+// ----- SEWER ROOM TEMPLATES -----
+
+export const SEWER_JUNCTION: TileTemplate = {
+  id: 'sewer_junction',
+  name: 'Sewer Junction',
+  category: 'basement',
+  subType: 'sewer_main',
+  edges: ['OPEN', 'WATER', 'OPEN', 'OPEN', 'WATER', 'OPEN'],
+  floorType: 'water',
+  zoneLevel: -1,
+  watermarkIcon: 'Droplet',
+  spawnWeight: 10,
+  canRotate: true,
+  description: 'Four tunnels meet in fetid water. Things move beneath the surface.',
+  enemySpawnChance: 40,
+  possibleEnemies: ['ghoul', 'deep_one']
+};
+
+export const SEWER_TUNNEL: TileTemplate = {
+  id: 'sewer_tunnel',
+  name: 'Sewer Tunnel',
+  category: 'basement',
+  subType: 'sewer_passage',
+  edges: ['OPEN', 'WALL', 'WALL', 'OPEN', 'WALL', 'WALL'],
+  floorType: 'water',
+  zoneLevel: -1,
+  spawnWeight: 15,
+  canRotate: true,
+  description: 'Ankle-deep water. The echoes of your splashing return... wrong.',
+  enemySpawnChance: 30,
+  possibleEnemies: ['ghoul']
+};
+
+export const SEWER_CHAMBER: TileTemplate = {
+  id: 'sewer_chamber',
+  name: 'Flooded Chamber',
+  category: 'basement',
+  subType: 'sewer_chamber',
+  edges: ['OPEN', 'WALL', 'WALL', 'WALL', 'WALL', 'WALL'],
+  floorType: 'water',
+  zoneLevel: -1,
+  watermarkIcon: 'Waves',
+  spawnWeight: 6,
+  canRotate: true,
+  description: 'A drowned room. Offerings float on the black water—coins, bones, photographs.',
+  possibleObjects: ['crate'],
+  enemySpawnChance: 50,
+  possibleEnemies: ['deep_one', 'ghoul']
+};
+
+export const SEWER_ACCESS: TileTemplate = {
+  id: 'sewer_access',
+  name: 'Sewer Access',
+  category: 'basement',
+  subType: 'sewer_entry',
+  edges: ['STAIRS_UP', 'WALL', 'OPEN', 'WALL', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: -1,
+  watermarkIcon: 'ArrowUp',
+  spawnWeight: 8,
+  canRotate: true,
+  description: 'A ladder leads up to the streets. Down here, the city is forgotten.'
+};
+
 // ----- STREET TEMPLATES -----
 
 export const STREET_MAIN: TileTemplate = {
@@ -895,6 +1154,20 @@ export const FACADE_WITCHHOUSE: TileTemplate = {
   description: 'Keziah Mason\'s house. The angles are wrong—geometry that hurts to comprehend.',
   enemySpawnChance: 40,
   possibleEnemies: ['cultist', 'nightgaunt']
+};
+
+export const FACADE_UNIVERSITY: TileTemplate = {
+  id: 'facade_university',
+  name: 'Miskatonic University',
+  category: 'facade',
+  subType: 'university',
+  edges: ['DOOR', 'WALL', 'WALL', 'FACADE', 'WALL', 'WALL'],
+  floorType: 'stone',
+  zoneLevel: 0,
+  watermarkIcon: 'GraduationCap',
+  spawnWeight: 4,
+  canRotate: true,
+  description: 'The oldest building on campus. Students whisper of forbidden archives beneath.'
 };
 
 // ----- NEW ROOM TEMPLATES -----
@@ -3619,7 +3892,7 @@ export interface RoomCluster {
     localQ: number;
     localR: number;
   }[];
-  category: 'apartment' | 'manor' | 'church' | 'warehouse' | 'cave';
+  category: 'apartment' | 'manor' | 'church' | 'warehouse' | 'cave' | 'asylum' | 'hospital' | 'police' | 'university' | 'sewers';
   spawnWeight: number;
 }
 
@@ -3699,6 +3972,115 @@ export const CLUSTER_WAREHOUSE: RoomCluster = {
   spawnWeight: 10
 };
 
+// ----- NEW BUILDING CLUSTERS -----
+
+export const CLUSTER_ASYLUM: RoomCluster = {
+  id: 'asylum',
+  name: 'Arkham Sanitarium',
+  description: 'The infamous asylum where reality bends and sanity frays.',
+  tiles: [
+    { template: FACADE_ASYLUM, localQ: 0, localR: 0, rotation: 0 },
+    { template: CORRIDOR_STRAIGHT, localQ: 0, localR: -1, rotation: 0 },
+    { template: ROOM_WARD, localQ: 1, localR: -1, rotation: 4 },
+    { template: ROOM_CELL, localQ: -1, localR: -1, rotation: 2 },
+    { template: CORRIDOR_T, localQ: 0, localR: -2, rotation: 0 },
+    { template: ROOM_TREATMENT, localQ: 1, localR: -2, rotation: 4 },
+    { template: ROOM_CELL, localQ: -1, localR: -2, rotation: 2 },
+    { template: STAIRS_DOWN, localQ: 0, localR: -3, rotation: 0 }
+  ],
+  entryPoints: [
+    { direction: 3, localQ: 0, localR: 0 }
+  ],
+  category: 'asylum',
+  spawnWeight: 5
+};
+
+export const CLUSTER_HOSPITAL: RoomCluster = {
+  id: 'hospital',
+  name: 'St. Marys Hospital',
+  description: 'A hospital where the dead do not always stay dead.',
+  tiles: [
+    { template: FACADE_HOSPITAL, localQ: 0, localR: 0, rotation: 0 },
+    { template: CORRIDOR_WIDE, localQ: 0, localR: -1, rotation: 0 },
+    { template: ROOM_WARD, localQ: 1, localR: -1, rotation: 4 },
+    { template: ROOM_PHARMACY, localQ: -1, localR: -1, rotation: 2 },
+    { template: CORRIDOR_T, localQ: 0, localR: -2, rotation: 0 },
+    { template: ROOM_OPERATING, localQ: 1, localR: -2, rotation: 4 },
+    { template: ROOM_MORGUE, localQ: -1, localR: -2, rotation: 2 },
+    { template: STAIRS_DOWN, localQ: 0, localR: -3, rotation: 0 }
+  ],
+  entryPoints: [
+    { direction: 3, localQ: 0, localR: 0 }
+  ],
+  category: 'hospital',
+  spawnWeight: 6
+};
+
+export const CLUSTER_POLICE: RoomCluster = {
+  id: 'police',
+  name: 'Arkham Police Station',
+  description: 'Where cases go unsolved and officers disappear.',
+  tiles: [
+    { template: FACADE_POLICE, localQ: 0, localR: 0, rotation: 0 },
+    { template: CORRIDOR_STRAIGHT, localQ: 0, localR: -1, rotation: 0 },
+    { template: ROOM_STUDY, localQ: 1, localR: -1, rotation: 4 },        // Captain's office
+    { template: ROOM_EVIDENCE, localQ: -1, localR: -1, rotation: 2 },
+    { template: CORRIDOR_CORNER, localQ: 0, localR: -2, rotation: 0 },
+    { template: ROOM_INTERROGATION, localQ: 1, localR: -2, rotation: 4 },
+    { template: ROOM_HOLDING, localQ: -1, localR: -2, rotation: 2 },
+    { template: STAIRS_DOWN, localQ: -1, localR: -3, rotation: 2 }
+  ],
+  entryPoints: [
+    { direction: 3, localQ: 0, localR: 0 }
+  ],
+  category: 'police',
+  spawnWeight: 6
+};
+
+export const CLUSTER_UNIVERSITY: RoomCluster = {
+  id: 'university',
+  name: 'Miskatonic University',
+  description: 'Where forbidden knowledge awaits those who dare to seek it.',
+  tiles: [
+    { template: FACADE_UNIVERSITY, localQ: 0, localR: 0, rotation: 0 },
+    { template: CORRIDOR_WIDE, localQ: 0, localR: -1, rotation: 0 },
+    { template: ROOM_LECTURE, localQ: 1, localR: -1, rotation: 4 },
+    { template: ROOM_LIBRARY, localQ: -1, localR: -1, rotation: 2 },
+    { template: CORRIDOR_T, localQ: 0, localR: -2, rotation: 0 },
+    { template: ROOM_LAB, localQ: 1, localR: -2, rotation: 4 },
+    { template: ROOM_SPECIMEN, localQ: -1, localR: -2, rotation: 2 },
+    { template: CORRIDOR_STRAIGHT, localQ: 0, localR: -3, rotation: 0 },
+    { template: ROOM_ARCHIVE, localQ: 0, localR: -4, rotation: 0 },
+    { template: STAIRS_DOWN, localQ: 1, localR: -3, rotation: 4 }
+  ],
+  entryPoints: [
+    { direction: 3, localQ: 0, localR: 0 }
+  ],
+  category: 'university',
+  spawnWeight: 4
+};
+
+export const CLUSTER_SEWERS: RoomCluster = {
+  id: 'sewers',
+  name: 'Arkham Sewers',
+  description: 'Beneath the city, ancient tunnels hide things that shun the light.',
+  tiles: [
+    { template: SEWER_ACCESS, localQ: 0, localR: 0, rotation: 0 },
+    { template: SEWER_TUNNEL, localQ: 0, localR: -1, rotation: 0 },
+    { template: SEWER_JUNCTION, localQ: 0, localR: -2, rotation: 0 },
+    { template: SEWER_TUNNEL, localQ: 1, localR: -2, rotation: 1 },
+    { template: SEWER_TUNNEL, localQ: -1, localR: -2, rotation: 5 },
+    { template: SEWER_CHAMBER, localQ: 0, localR: -3, rotation: 0 },
+    { template: SEWER_CHAMBER, localQ: 2, localR: -2, rotation: 1 },
+    { template: CRYPT_TUNNEL, localQ: 0, localR: -4, rotation: 0 }
+  ],
+  entryPoints: [
+    { direction: 3, localQ: 0, localR: 0 }
+  ],
+  category: 'sewers',
+  spawnWeight: 7
+};
+
 /**
  * All room clusters
  */
@@ -3706,7 +4088,12 @@ export const ROOM_CLUSTERS: RoomCluster[] = [
   CLUSTER_SMALL_APARTMENT,
   CLUSTER_MANOR_GROUND,
   CLUSTER_CHURCH,
-  CLUSTER_WAREHOUSE
+  CLUSTER_WAREHOUSE,
+  CLUSTER_ASYLUM,
+  CLUSTER_HOSPITAL,
+  CLUSTER_POLICE,
+  CLUSTER_UNIVERSITY,
+  CLUSTER_SEWERS
 ];
 
 /**
@@ -3714,15 +4101,15 @@ export const ROOM_CLUSTERS: RoomCluster[] = [
  */
 export function getClustersForCategory(category: TileCategory): RoomCluster[] {
   const categoryToClusters: Record<TileCategory, string[]> = {
-    facade: ['apartment', 'manor', 'warehouse'],
+    facade: ['apartment', 'manor', 'warehouse', 'asylum', 'hospital', 'police', 'university'],
     foyer: ['apartment', 'manor', 'church'],
     corridor: [],
-    room: [],
+    room: ['asylum', 'hospital', 'police', 'university'],
     stairs: [],
-    basement: [],
-    crypt: [],
-    street: ['warehouse'],
-    urban: [],
+    basement: ['sewers'],
+    crypt: ['sewers'],
+    street: ['warehouse', 'sewers'],
+    urban: ['asylum', 'hospital', 'police', 'university'],
     nature: []
   };
 
