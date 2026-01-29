@@ -1,5 +1,205 @@
 # Development Log
 
+## 2026-01-29: ANALYSE - Asset Studio vs imageService Arkitektur (Session 5)
+
+### Oppgave
+Undersøke hvordan Asset Studio fungerer mot AI bildegenerering (imageService.ts), og vurdere Pollinations.ai som gratis API.
+
+### Funn: TO SEPARATE SYSTEMER
+
+Det eksisterer **to helt separate** bildegenererings-systemer i kodebasen:
+
+---
+
+#### 1. Asset Studio (`AssetGenerationService.ts`) - Gemini API
+
+**Fil:** `src/game/utils/AssetGenerationService.ts`
+**UI:** `src/game/components/AssetStudioPanel.tsx`
+
+| Egenskap | Verdi |
+|----------|-------|
+| **API** | Google Gemini 2.0 Flash |
+| **Endpoint** | `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent` |
+| **Nøkkel** | **KREVES** - Gratis fra Google AI Studio |
+| **Formål** | Batch-generering av alle spillets assets |
+| **Lagring** | localStorage som base64 data URLs |
+| **Asset-typer** | Tiles (169), Monstre (30), Karakterer (6) = **205 totalt** |
+
+**Prompt Templates:**
+```typescript
+// Tiles - top-down 90° bird's-eye view
+TILE_PROMPT_TEMPLATE = "Top-down 90-degree bird's-eye view perspective..."
+
+// Monstre - dramatiske portretter
+MONSTER_PROMPT_TEMPLATE = "Dramatic portrait view (front-facing or 3/4 view)..."
+
+// Karakterer - 1920s investigatorer
+CHARACTER_PROMPT_TEMPLATE = "1920s period-accurate clothing and accessories..."
+```
+
+**Bruksmønster:**
+1. Bruker legger inn Gemini API-nøkkel
+2. Klikker "Generer X Manglende"
+3. Batch-prosess med rate limiting (2s mellom requests)
+4. Assets lagres i localStorage
+5. Toggle "Bruk AI-genererte bilder" aktiverer dem i spillet
+
+---
+
+#### 2. imageService (`imageService.ts`) - Pollinations.ai
+
+**Fil:** `src/game/services/imageService.ts`
+
+| Egenskap | Verdi |
+|----------|-------|
+| **API** | Pollinations.ai |
+| **Endpoint** | `https://image.pollinations.ai/prompt/{encoded_prompt}` |
+| **Nøkkel** | **IKKE NØDVENDIG** - Helt gratis! |
+| **Formål** | On-demand generering under gameplay |
+| **Lagring** | localStorage som data URLs + direkte URL |
+| **Asset-typer** | Locations, Monstre, Events, Items |
+
+**API-format:**
+```
+https://image.pollinations.ai/prompt/{encoded_prompt}?width=512&height=384&model=flux&nologo=true
+```
+
+**Tilgjengelige modeller:**
+- `flux` (default)
+- `flux-realism`
+- `flux-anime`
+- `flux-3d`
+- `turbo`
+
+**Bruksmønster:**
+1. Spillet kaller `generateLocationImage(tile)` etc.
+2. Sjekker cache først
+3. Hvis ikke cachet: bygger URL og returnerer
+4. Monster-bilder caches som data URL for gjenbruk
+
+---
+
+### Sammenligning
+
+| Aspekt | Asset Studio (Gemini) | imageService (Pollinations) |
+|--------|----------------------|---------------------------|
+| Kostnad | Gratis med nøkkel | Helt gratis |
+| Hastighet | Batch (treg) | On-demand (rask URL) |
+| Kvalitet | Høy (Gemini 2.0) | God (Flux) |
+| Konsistens | Høy (seed + prompts) | Middels (URL-basert) |
+| Offline | Ja (etter generering) | Nei |
+| Kontroll | Full | Begrenset |
+
+---
+
+### Nåværende Status
+
+**Asset Studio (synlig i UI):**
+- ✅ Implementert og funksjonell
+- ✅ Viser 0/205 assets (ingen generert ennå)
+- ✅ Krever Gemini API-nøkkel
+
+**imageService (bakgrunn):**
+- ✅ Kode eksisterer og er komplett
+- ❌ **BRUKES IKKE** - Ingen imports funnet i kodebasen!
+- ❌ Ingen UI for å aktivere Pollinations-generering
+- ⚠️ **"Dead code"** - 867 linjer med ubrukt kode
+
+---
+
+### VIKTIG FUNN: imageService.ts er UBRUKT
+
+Grep-søk viser at **ingen filer importerer** imageService.ts:
+```bash
+$ grep -r "from.*imageService" src/
+# Ingen resultater!
+```
+
+Funksjonene `generateLocationImage`, `generateMonsterImage`, `generateEventImage` og `generateItemImage` er **aldri kalt**.
+
+---
+
+### Spørsmål å Undersøke
+
+1. ~~**Brukes imageService.ts aktivt i spillet?**~~ ✅ **NEI - ubrukt kode**
+
+2. **Kan Pollinations erstatte Gemini for Asset Studio?**
+   - Fordel: Ingen nøkkel kreves
+   - Ulempe: Mindre kontroll over bildekvalitet
+
+3. **Bør systemene slås sammen?**
+   - Asset Studio for batch pre-generering
+   - imageService for runtime fallback
+
+---
+
+### Pollinations.ai - Detaljert Analyse
+
+**Kilde:** [Pollinations GitHub](https://github.com/pollinations/pollinations), [API Docs](https://enter.pollinations.ai/api/docs)
+
+#### Nøkkelpunkter:
+- ✅ **100% gratis** - ingen betalingsplan
+- ✅ **Ingen API-nøkkel** - bare bruk URL-en direkte
+- ✅ **Ingen registrering** - anonym bruk
+- ✅ **Open source** - kan hostes selv
+
+#### Tilgjengelige Modeller (Jan 2026):
+| Modell | Beskrivelse |
+|--------|-------------|
+| `flux` | Standard, rask |
+| `flux-realism` | Fotorealistisk |
+| `flux-anime` | Anime-stil |
+| `flux-3d` | 3D-rendert |
+| `turbo` | Ekstra rask |
+| `seedream` | Høy kvalitet |
+| `klein-large` | 9B modell, beste kvalitet |
+
+#### API-format:
+```
+GET https://image.pollinations.ai/prompt/{URL-encoded prompt}
+    ?width=512
+    &height=384
+    &model=flux
+    &seed=12345
+    &nologo=true
+```
+
+#### Fordeler vs Gemini:
+| | Pollinations | Gemini |
+|-|--------------|--------|
+| Pris | Gratis | Gratis m/kvote |
+| Nøkkel | Ikke nødvendig | Kreves |
+| Hastighet | Rask (URL-basert) | Treg (POST) |
+| Kvalitet | God | Høy |
+| Batch | URL-basert | Native støtte |
+| Rate limit | Ukjent/liberal | 15 req/min |
+
+---
+
+### Anbefaling
+
+**Alternativ 1: Bruk Pollinations i stedet for Gemini**
+- Fordeler: Null setup, ingen nøkkel
+- Ulemper: Litt lavere kvalitet, ingen native image response
+
+**Alternativ 2: Hybridløsning**
+- Gemini for batch pre-generering (høy kvalitet)
+- Pollinations som fallback under gameplay (ingen nøkkel)
+
+**Alternativ 3: Fjern imageService.ts**
+- Det er 867 linjer med død kode
+- Asset Studio dekker allerede behovet
+
+---
+
+### Neste Steg
+- [x] Sjekk hvor imageService faktisk brukes → **IKKE BRUKT**
+- [ ] Vurder om Pollinations kan integreres i Asset Studio
+- [ ] Test Pollinations-kvalitet mot Gemini
+- [ ] Vurder å fjerne død kode (imageService.ts)
+
+---
+
 ## 2026-01-29: IMPL - 4 Nye Room Clusters (Session 4)
 
 ### Oppgave
