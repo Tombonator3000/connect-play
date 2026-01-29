@@ -352,7 +352,8 @@ function getAggressiveRoamDestination(
     }
 
     // Prefer tiles with doors (more areas to explore)
-    if (tile.edges?.some(e => e.type === 'door' || e.type === 'locked_door')) {
+    // Check for door type edges (EdgeType doesn't have 'locked_door', it's a TileObjectType or door state)
+    if (tile.edges?.some(e => e.type === 'door')) {
       score += 3;
     }
 

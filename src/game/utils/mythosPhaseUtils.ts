@@ -336,6 +336,7 @@ export function processGuaranteedSpawns(
  * @param board - Current game board
  * @param doom - Current doom value (affects combat modifiers)
  * @param globalEnemyAttackBonus - Bonus from buff_enemies events
+ * @param weather - Optional weather condition for monster modifiers
  * @returns Combat results with processed attacks (player updates done in component)
  */
 export function processEnemyCombatPhase(
@@ -343,7 +344,8 @@ export function processEnemyCombatPhase(
   players: Player[],
   board: Tile[],
   doom: number,
-  globalEnemyAttackBonus: number = 0
+  globalEnemyAttackBonus: number = 0,
+  weather?: import('../types').WeatherCondition | null
 ): EnemyCombatResult {
   const result: EnemyCombatResult = {
     updatedEnemies: [],
@@ -355,11 +357,12 @@ export function processEnemyCombatPhase(
     screenShakeRequired: false
   };
 
-  // Use the enhanced AI system
+  // Use the enhanced AI system - FIX 2026-01-29: Pass weather parameter
   const { updatedEnemies, attacks, messages, specialEvents } = processEnemyTurn(
     enemies,
     players,
-    board
+    board,
+    weather
   );
 
   result.updatedEnemies = updatedEnemies;

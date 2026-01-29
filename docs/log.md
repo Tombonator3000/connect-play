@@ -1,5 +1,29 @@
 # Shadows of the 1920s - Development Log
 
+## 2026-01-29
+
+### Session 17 - Bug Fixes
+
+#### Build Errors Fixed:
+- **Duplicate MonsterState** - Removed duplicate type export from monsterConstants.ts, now re-exports from types.ts
+- **hexDistance arguments** - Fixed 4-argument calls to use object format `{ q, r }` in ShadowsGame.tsx (lines 1603, 1622, 1655, 1717)
+- **revealedTiles undefined** - Fixed variable scope issue in spell reveal (line 4096)
+- **EdgeType comparison** - Fixed invalid 'locked_door' comparison in monsterDecisionHelpers.ts
+
+#### Monster Attack System:
+- Added `weather` parameter to `processEnemyCombatPhase` for proper monster vision modifiers
+- Updated ShadowsGame.tsx to pass `state.weatherState?.global` to combat phase
+
+#### Event Cards:
+- Verified implementation is correct - 50% chance per Mythos phase
+- EventModal displays when activeEvent is set
+
+#### Black Tiles:
+- Verified exploredTiles logic in move handler
+- calculateInitialExploredTiles properly called at game start
+
+---
+
 ## 2026-01-28
 
 ### Session 16 - Tile Animation System
