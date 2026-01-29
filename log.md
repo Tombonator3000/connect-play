@@ -26810,3 +26810,62 @@ export interface SkillCheckState {
 ✅ Bygget kompilerer uten feil
 
 ---
+
+## 2026-01-29: Bug Fix Session - Monsters, Event Cards, Black Tiles
+
+### Oppgave
+Fikse tre kritiske bugs:
+1. **Monstre angriper aldri** - Fiender beveger seg men angriper ikke spillere
+2. **Event cards virker ikke** - Event cards vises ikke/fungerer ikke
+3. **Black tile bug** - Fremdeles tilstede tross tidligere fikser
+
+### Status
+🔄 Undersøker...
+
+
+
+### Fikser implementert
+
+#### 1. Monster Attack Bug (FIKSET)
+**Problem:** Monstre angriper aldri spillere
+**Rotårsak:** `canSeePlayer()` brukte `hasLineOfSight()` som kunne feile for avstand 1 hvis tiles manglet i board-arrayet
+**Løsning:** 
+- Lagt til spesiell håndtering i `canSeePlayer()` for avstand <= 1 (nærkamp)
+- Monstre kan nå alltid se spillere på avstand 1, med mindre det er en vegg/dør mellom dem
+- Oppdatert alle steder som bruker `hasLineOfSight` for angreps-sjekker til å bruke `canSeePlayer` i stedet
+
+**Endrede filer:**
+- `src/game/utils/monsterAI.ts`:
+  - Linje 20: Lagt til import av `getEdgeDirection` og `edgeBlocksSight`
+  - Linje 1215-1235: Ny logikk for avstand <= 1 i `canSeePlayer()`
+  - Linje 1702-1707: Endret til å bruke `canSeePlayer` i stedet for `hasLineOfSight`
+  - Linje 1797-1802: Endret til å bruke `canSeePlayer` i stedet for `hasLineOfSight`
+
+#### 2. Event Cards Bug (FIKSET)
+**Problem:** Event cards virker ikke - effekter blir ikke applisert
+**Rotårsak:** Mythos phase gjorde fase-overgang UMIDDELBART etter å trekke event card, uten å vente på at brukeren resolved kortet
+**Løsning:**
+- Lagt til `sessionStorage` flag `awaitingEventCardResolution` når event card trekkes
+- Mythos phase venter nå på at event card skal resolves før fase-overgang
+- Ny `useEffect` (linje 4763-4817) som håndterer fase-overgang etter event card resolution
+
+**Endrede filer:**
+- `src/game/ShadowsGame.tsx`:
+  - Linje 584-598: Sett flag når event card trekkes
+  - Linje 644-649: Sjekk for event card og return tidlig
+  - Linje 4763-4817: Ny useEffect for fase-overgang etter event card resolution
+
+#### 3. Black Tiles Bug (FIKSET)
+**Problem:** Tiles blir svarte etter spiller beveger seg
+**Rotårsak:** `spawnRoom()` oppdaterte `board` men IKKE `exploredTiles`. Pga React batching fikk etterfølgende `setState` i move den gamle `prev.board` uten de nye tilene
+**Løsning:**
+- `spawnRoom()` oppdaterer nå OGSÅ `exploredTiles` med den nye tilen og alle tiles innen synlighetsrekkevidde
+
+**Endrede filer:**
+- `src/game/ShadowsGame.tsx`:
+  - Linje 2799-2827: Utvidet setState i spawnRoom til å inkludere exploredTiles-oppdatering
+
+### Status
+✅ Alle tre bugs er nå fikset!
+
+
