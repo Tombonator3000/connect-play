@@ -1,5 +1,199 @@
 # Development Log
 
+## 2026-01-29: ANALYSE - Hva Mangler i Prosjektet (Session 3)
+
+### Oppgave
+Analysere hva som mangler for å komplettere Mythos Quest.
+
+### Analyse Resultat
+
+#### 1. AI Bildegenerering (Pollinations) - ❌ IKKE IMPLEMENTERT
+**Status:** Manglende
+
+Spillet har:
+- `claudeService.ts` ✅ - for AI-tekst (rombeskrivelser, GM narration)
+- `ttsService.ts` ✅ - for tale-til-tekst
+- `imageService.ts` ❌ **MANGLER** - for dynamisk bildegenerering
+
+**Behov:**
+- Pollinations.ai API for gratis bildegenerering
+- Generere atmosfæriske bilder for:
+  - Rom/locations
+  - Monster encounters
+  - Event cards
+  - Items (valgfritt)
+
+#### 2. Room Clusters - 4 av 10+ implementert
+
+**Eksisterende (4 stk):**
+| Cluster | ID | Kategori |
+|---------|-----|----------|
+| Cramped Apartment | `apartment_small` | apartment |
+| Manor Ground Floor | `manor_ground` | manor |
+| Crumbling Church | `church` | church |
+| Waterfront Warehouse | `warehouse` | warehouse |
+
+**Mangler (6+ stk):**
+- Asylum (psykiatrisk sykehus)
+- Hospital (generelt sykehus)
+- Police Station (politistasjon)
+- University (universitet med bibliotek/lab)
+- Sewers/Tunnels (kloakk/underjordiske tunneler)
+- Cave System (grotte-system)
+
+#### 3. Puzzle UI/Logikk - ✅ KOMPLETT!
+
+Alle 7 puzzle-typer er fullstendig implementert i `PuzzleModal.tsx`:
+
+| Puzzle Type | Beskrivelse | Status |
+|-------------|-------------|--------|
+| `sequence` | Memory pattern - husk sekvens | ✅ |
+| `code_lock` | Tall-kombinasjon | ✅ |
+| `symbol_match` | Match 3 symboler | ✅ |
+| `blood_ritual` | Ofre HP/Sanity | ✅ |
+| `astronomy` | Roter stjerneskiver | ✅ |
+| `pressure_plate` | Trykk plater i rekkefølge | ✅ |
+| `mirror_light` | Roter speil for lysbane | ✅ |
+
+### Prioritering
+
+1. **Høy:** `imageService.ts` - Gir stor visuell forbedring
+2. **Medium:** Nye Room Clusters - Øker variasjon
+3. **Lav:** Puzzles er ferdige ✅
+
+### Neste Steg
+- ~~Implementere `imageService.ts` med Pollinations API~~ ✅ FERDIG
+- ~~Legge til 2-3 nye Room Clusters (Asylum, Hospital, Sewers)~~ ✅ FERDIG
+
+---
+
+## 2026-01-29: IMPL - Nye Room Clusters (Session 3)
+
+### Implementasjon
+
+La til 5 nye Room Clusters i `src/game/tileConnectionSystem.ts`:
+
+#### Nye Clusters
+
+| Cluster | ID | Tiles | Kategori | SpawnWeight |
+|---------|-----|-------|----------|-------------|
+| Arkham Sanitarium | `asylum` | 8 | asylum | 5 |
+| St. Marys Hospital | `hospital` | 8 | hospital | 6 |
+| Arkham Police Station | `police` | 8 | police | 6 |
+| Miskatonic University | `university` | 10 | university | 4 |
+| Arkham Sewers | `sewers` | 8 | sewers | 7 |
+
+#### Nye Tile Templates (17 stk)
+
+**Asylum-relaterte:**
+- `ROOM_CELL` - Padded Cell (fiender: ghoul, cultist)
+- `ROOM_WARD` - Patient Ward
+- `ROOM_TREATMENT` - Treatment Room (electroshock)
+
+**Hospital-relaterte:**
+- `ROOM_OPERATING` - Operating Theater (fiender: ghoul)
+- `ROOM_MORGUE` - Hospital Morgue (fiender: ghoul, ghast)
+- `ROOM_PHARMACY` - Hospital Pharmacy
+
+**Police-relaterte:**
+- `ROOM_INTERROGATION` - Interrogation Room
+- `ROOM_EVIDENCE` - Evidence Room
+- `ROOM_HOLDING` - Holding Cells (fiender: ghoul, cultist)
+
+**University-relaterte:**
+- `ROOM_LECTURE` - Lecture Hall
+- `ROOM_ARCHIVE` - Restricted Archives (fiender: cultist)
+- `ROOM_SPECIMEN` - Specimen Hall
+- `FACADE_UNIVERSITY` - Miskatonic University facade
+
+**Sewer-relaterte:**
+- `SEWER_JUNCTION` - Sewer Junction (fiender: ghoul, deep_one)
+- `SEWER_TUNNEL` - Sewer Tunnel (fiender: ghoul)
+- `SEWER_CHAMBER` - Flooded Chamber (fiender: deep_one, ghoul)
+- `SEWER_ACCESS` - Sewer Access (ladder up)
+
+#### Oppdateringer
+
+- Utvidet `RoomCluster.category` type med: `asylum`, `hospital`, `police`, `university`, `sewers`
+- Oppdatert `getClustersForCategory()` for nye cluster-typer
+- Alle templates har Lovecraftian beskrivelser
+
+### Fil
+`src/game/tileConnectionSystem.ts` - ~300 linjer nye templates og clusters
+
+### Build Status
+✅ Kompilerer uten feil
+
+---
+
+## 2026-01-29: IMPL - imageService.ts (Pollinations AI) (Session 3)
+
+### Implementasjon
+
+Opprettet `src/game/services/imageService.ts` med følgende funksjoner:
+
+#### API
+- **Pollinations.ai** - Gratis AI-bildegenerering uten API-nøkkel
+- URL format: `https://image.pollinations.ai/prompt/{encoded_prompt}?params`
+- Støtter modeller: flux, flux-realism, flux-anime, flux-3d, turbo
+
+#### Hovedfunksjoner
+
+| Funksjon | Beskrivelse |
+|----------|-------------|
+| `generateLocationImage(tile)` | Genererer atmosfæriske rombilder |
+| `generateMonsterImage(enemy)` | Genererer monster-portretter |
+| `generateEventImage(name, desc)` | Genererer event card illustrasjoner |
+| `generateItemImage(name, type)` | Genererer item-bilder |
+| `preloadImages(items, onProgress)` | Batch-preloader bilder |
+
+#### Prompt System
+
+Lovecraftian stil-modifikatorer:
+```typescript
+STYLE_MODIFIERS = {
+  base: 'dark atmospheric 1920s lovecraftian horror, muted colors, oil painting style',
+  location: 'interior view, wide angle, dramatic lighting, shadows',
+  monster: 'portrait, menacing, otherworldly, tentacles, nightmare creature',
+  event: 'dramatic scene, mysterious, occult symbolism, vintage illustration',
+  item: 'still life, artifact, antique, mysterious glow',
+}
+```
+
+Monster-spesifikke prompts for alle 20+ monster-typer (deep_one, ghoul, shoggoth, etc.).
+
+#### Caching
+- localStorage caching med 30 dagers expiry
+- Monster-bilder caches som data URLs (gjenbrukes ofte)
+- Location-bilder bruker direkte URL (sparer plass)
+- Max 50 cached bilder, auto-cleanup av gamle
+
+#### Rate Limiting
+- Min 2 sekunder mellom requests
+- Maks 2 samtidige requests
+- 30 sekunder timeout
+
+#### Fallback
+- Returnerer statiske bilder fra `/src/assets/monsters/` hvis AI er deaktivert
+- Placeholder-bilder for locations/events/items
+
+### Fil
+`src/game/services/imageService.ts` - 650+ linjer
+
+### Bruk
+```typescript
+import { generateMonsterImage, generateLocationImage } from './services/imageService';
+
+// Generer monster-bilde
+const result = await generateMonsterImage(enemy);
+// result.url inneholder bilde-URL
+
+// Generer rom-bilde
+const locationImg = await generateLocationImage(tile);
+```
+
+---
+
 ## 2026-01-29: FIX - Monster Attack, Event Cards, Black Tiles (Session 2)
 
 ### Oppgave
