@@ -877,6 +877,8 @@ const ShadowsGame: React.FC = () => {
   }, []);
 
   // Trigger fog reveal animation for a tile
+  // FIX 2026-01-29: Also add tile to exploredTiles to prevent black tiles bug
+  // GameBoard uses exploredTiles (not tile.explored) to calculate fog opacity
   const triggerFogReveal = useCallback((q: number, r: number) => {
     setState(prev => ({
       ...prev,
@@ -888,17 +890,34 @@ const ShadowsGame: React.FC = () => {
       })
     }));
 
-    // Clear the animation after it completes
+    // Clear the animation after it completes and add tile to exploredTiles
     setTimeout(() => {
-      setState(prev => ({
-        ...prev,
-        board: prev.board.map(tile => {
-          if (tile.q === q && tile.r === r) {
-            return { ...tile, fogRevealAnimation: 'revealed' as const, explored: true };
+      setState(prev => {
+        // Add tile to exploredTiles (this is what GameBoard uses for fog opacity)
+        const tileKey = `${q},${r}`;
+        const newExplored = new Set(prev.exploredTiles || []);
+        newExplored.add(tileKey);
+
+        // Also add any tiles within visibility range
+        const VISIBILITY_RANGE = 2;
+        prev.board.forEach(tile => {
+          const dist = hexDistance({ q, r }, { q: tile.q, r: tile.r });
+          if (dist <= VISIBILITY_RANGE) {
+            newExplored.add(`${tile.q},${tile.r}`);
           }
-          return tile;
-        })
-      }));
+        });
+
+        return {
+          ...prev,
+          board: prev.board.map(tile => {
+            if (tile.q === q && tile.r === r) {
+              return { ...tile, fogRevealAnimation: 'revealed' as const, explored: true };
+            }
+            return tile;
+          }),
+          exploredTiles: Array.from(newExplored)
+        };
+      });
     }, 1200);
   }, []);
 
@@ -2435,25 +2454,14 @@ const ShadowsGame: React.FC = () => {
 
   // Spawn enemy helper - must be defined before functions that use it
   // UPDATED: Now includes doom modification based on scenario config (pressure-based doom)
+  // FIX 2026-01-29: Use createEnemy from monsterAI.ts to get proper stats (visionRange, attackRange, speed, attackType)
   const spawnEnemy = useCallback((type: EnemyType, q: number, r: number, applyDoomPenalty: boolean = true) => {
     const bestiary = BESTIARY[type];
     if (!bestiary) return;
 
-    const newEnemy: Enemy = {
-      id: `enemy-${Date.now()}-${Math.random()}`,
-      name: bestiary.name,
-      type: type,
-      hp: bestiary.hp,
-      maxHp: bestiary.hp,
-      damage: bestiary.damage,
-      horror: bestiary.horror,
-      speed: 1,
-      position: { q, r },
-      visionRange: 3,
-      attackRange: 1,
-      attackType: 'melee',
-      traits: bestiary.traits
-    };
+    // Use createEnemy to get proper monster stats (speed, visionRange, attackRange, attackType)
+    // This fixes the bug where monsters had hardcoded stats and couldn't attack properly
+    const newEnemy: Enemy = createEnemy(type, { q, r });
 
     setState(prev => {
       // Calculate doom penalty for monster spawn (pressure-based doom system)
@@ -4739,6 +4747,15 @@ const ShadowsGame: React.FC = () => {
       const mythosPhaseNeedsContinuation = sessionStorage.getItem('mythosPhaseContinuation');
       if (mythosPhaseNeedsContinuation === 'true') {
         sessionStorage.removeItem('mythosPhaseContinuation');
+
+        // FIX 2026-01-29: Check if there's an event card waiting to be resolved
+        // If so, DON'T do phase transition here - the event card useEffect will handle it
+        const awaitingEventCard = sessionStorage.getItem('awaitingEventCardResolution');
+        if (awaitingEventCard === 'true') {
+          // Event card was drawn during Mythos phase - wait for user to resolve it
+          // The event card resolution useEffect (line ~4777) will handle phase transition
+          return;
+        }
 
         // Continue with survivor processing, doom events, event cards, and phase transition
         // (This code would duplicate the logic from the main Mythos useEffect)

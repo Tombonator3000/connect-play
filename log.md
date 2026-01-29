@@ -1,5 +1,127 @@
 # Development Log
 
+## 2026-01-29: FIX - Monster Attack, Event Cards, Black Tiles (Session 2)
+
+### Oppgave
+Fikse tre kritiske bugs som fortsatt var til stede:
+1. **Monstre angriper aldri** - Fiender beveger seg men angriper ikke spillere
+2. **Event cards virker ikke** - Event cards vises/fungerer ikke
+3. **Black tile bug** - Fremdeles tilstede tross tidligere fikser
+
+### Undersøkelse og Analyse
+
+#### Monster Attack Bug
+**Rotårsak identifisert:** `spawnEnemy`-funksjonen i ShadowsGame.tsx brukte hardkodede verdier for monster-statistikk:
+```typescript
+// FEIL - hardkodede verdier
+const newEnemy: Enemy = {
+  speed: 1,
+  visionRange: 3,    // Hardkodet!
+  attackRange: 1,    // Hardkodet!
+  attackType: 'melee', // Hardkodet!
+  ...
+};
+```
+
+I stedet for å bruke `createEnemy()` fra monsterAI.ts som har korrekte utility-funksjoner for å beregne `speed`, `visionRange`, `attackRange`, og `attackType` basert på monster-type og traits.
+
+#### Event Cards Bug
+**Rotårsak identifisert:** Når det er BÅDE fiende-angrep OG event cards i Mythos-fasen, gjorde `mythosPhaseContinuation` useEffect'en fase-overgang uten å sjekke om det var en event card som ventet på resolution.
+
+**Flow:**
+1. Event card trekkes → `awaitingEventCardResolution = 'true'`
+2. Fiende-angrep prosesseres → `mythosPhaseContinuation = 'true'`
+3. Angrep ferdig → useEffect sjekker BARE `mythosPhaseContinuation`
+4. Fase-overgang skjer UTEN å vente på event card resolution
+
+#### Black Tiles Bug
+**Rotårsak identifisert:** `triggerFogReveal`-funksjonen (brukes ved dør-åpning) markerte tiles som `explored: true` på tile-objektet, men la IKKE til tile'en til `exploredTiles` i staten.
+
+**Problem:** GameBoard bruker `exploredTiles.has(tileKey)` for fog opacity, IKKE `tile.explored`. Så tiles avslørt via `triggerFogReveal` ble ikke lagt til `exploredTiles` og forble svarte.
+
+### Implementerte Fikser
+
+#### 1. Monster Attack Bug (FIKSET)
+**Fil:** `src/game/ShadowsGame.tsx` linje 2436-2457
+
+**Endring:** `spawnEnemy`-funksjonen bruker nå `createEnemy()` fra monsterAI.ts:
+```typescript
+// FØR - hardkodede verdier
+const newEnemy: Enemy = {
+  speed: 1,
+  visionRange: 3,
+  attackRange: 1,
+  attackType: 'melee',
+  ...
+};
+
+// ETTER - bruker createEnemy for korrekte stats
+const newEnemy: Enemy = createEnemy(type, { q, r });
+```
+
+#### 2. Event Cards Bug (FIKSET)
+**Fil:** `src/game/ShadowsGame.tsx` linje 4726-4741
+
+**Endring:** `mythosPhaseContinuation` useEffect sjekker nå om det er en event card som venter:
+```typescript
+const mythosPhaseNeedsContinuation = sessionStorage.getItem('mythosPhaseContinuation');
+if (mythosPhaseNeedsContinuation === 'true') {
+  sessionStorage.removeItem('mythosPhaseContinuation');
+
+  // FIX: Sjekk om event card venter på resolution
+  const awaitingEventCard = sessionStorage.getItem('awaitingEventCardResolution');
+  if (awaitingEventCard === 'true') {
+    // Event card resolution useEffect håndterer fase-overgang
+    return;
+  }
+  // ... resten av fase-overgang
+}
+```
+
+#### 3. Black Tiles Bug (FIKSET)
+**Fil:** `src/game/ShadowsGame.tsx` linje 880-919
+
+**Endring:** `triggerFogReveal` legger nå OGSÅ tile'en til `exploredTiles`:
+```typescript
+setTimeout(() => {
+  setState(prev => {
+    // Legg til tile i exploredTiles (brukes av GameBoard for fog opacity)
+    const tileKey = `${q},${r}`;
+    const newExplored = new Set(prev.exploredTiles || []);
+    newExplored.add(tileKey);
+
+    // Legg også til tiles innen synlighetsrekkevidde
+    const VISIBILITY_RANGE = 2;
+    prev.board.forEach(tile => {
+      const dist = hexDistance({ q, r }, { q: tile.q, r: tile.r });
+      if (dist <= VISIBILITY_RANGE) {
+        newExplored.add(`${tile.q},${tile.r}`);
+      }
+    });
+
+    return {
+      ...prev,
+      board: /* ... update tile.explored ... */,
+      exploredTiles: Array.from(newExplored)
+    };
+  });
+}, 1200);
+```
+
+### Endrede Filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/ShadowsGame.tsx` | spawnEnemy bruker createEnemy, event card check i continuation useEffect, triggerFogReveal oppdaterer exploredTiles |
+
+### Build Status
+✅ Bygget kompilerer uten feil
+
+### Status
+✅ Alle tre bugs er nå fikset
+
+---
+
 ## 2026-01-29: DOC - Black Tiles Bug Dokumentasjon
 
 ### Oppgave
