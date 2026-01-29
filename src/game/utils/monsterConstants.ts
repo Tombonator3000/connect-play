@@ -19,9 +19,10 @@ import {
 // ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
-
-export type MonsterBehavior = 'aggressive' | 'defensive' | 'ranged' | 'ambusher' | 'patrol' | 'swarm';
-export type MonsterState = 'idle' | 'patrol' | 'alert' | 'hunting' | 'fleeing';
+// NOTE: MonsterBehavior and MonsterState are exported from types.ts to avoid duplication
+// Re-export them from types.ts for backwards compatibility
+import { MonsterBehavior, MonsterState } from '../types';
+export type { MonsterBehavior, MonsterState };
 export type SpecialMovement = 'teleport' | 'phase' | 'burrow' | 'swim' | 'fly';
 
 export interface SpawnConfig {

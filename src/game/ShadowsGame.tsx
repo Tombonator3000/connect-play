@@ -527,12 +527,14 @@ const ShadowsGame: React.FC = () => {
         }
 
         // === STEP 3: ENEMY COMBAT ===
+        // FIX 2026-01-29: Pass weather to processEnemyCombatPhase for monster vision/attack modifiers
         const combatResult = processEnemyCombatPhase(
           state.enemies,
           state.players,
           state.board,
           state.doom,
-          state.globalEnemyAttackBonus || 0
+          state.globalEnemyAttackBonus || 0,
+          state.weatherState?.global || null
         );
 
         // Log AI messages and special events
@@ -1600,7 +1602,7 @@ const ShadowsGame: React.FC = () => {
     if (item.id === 'powder_of_ibn_ghazi') {
       const invisibleEnemies = state.enemies.filter(e =>
         e.traits?.includes('invisible') &&
-        hexDistance(activePlayer.position.q, activePlayer.position.r, e.position.q, e.position.r) <= 3
+        hexDistance(activePlayer.position, e.position) <= 3
       );
 
       if (invisibleEnemies.length === 0) {
@@ -1619,7 +1621,7 @@ const ShadowsGame: React.FC = () => {
           ...updated,
           enemies: updated.enemies.map(e => {
             if (e.traits?.includes('invisible') &&
-                hexDistance(activePlayer.position.q, activePlayer.position.r, e.position.q, e.position.r) <= 3) {
+                hexDistance(activePlayer.position, e.position) <= 3) {
               return {
                 ...e,
                 traits: e.traits.filter(t => t !== 'invisible'),
@@ -1652,7 +1654,7 @@ const ShadowsGame: React.FC = () => {
     if (item.id === 'shrivelling_scroll') {
       // Find nearest enemy within range 3
       const nearbyEnemies = state.enemies
-        .map(e => ({ enemy: e, dist: hexDistance(activePlayer.position.q, activePlayer.position.r, e.position.q, e.position.r) }))
+        .map(e => ({ enemy: e, dist: hexDistance(activePlayer.position, e.position) }))
         .filter(({ dist }) => dist <= 3)
         .sort((a, b) => a.dist - b.dist);
 
@@ -1714,7 +1716,7 @@ const ShadowsGame: React.FC = () => {
       // Check for spirit enemies nearby
       const spiritEnemies = state.enemies.filter(e =>
         ['nightgaunt', 'formless_spawn', 'lloigor', 'colour_out_of_space'].includes(e.type) &&
-        hexDistance(activePlayer.position.q, activePlayer.position.r, e.position.q, e.position.r) <= 2
+        hexDistance(activePlayer.position, e.position) <= 2
       );
 
       if (spiritEnemies.length > 0) {
@@ -4093,7 +4095,11 @@ const ShadowsGame: React.FC = () => {
             };
           });
 
-          addToLog(`Revealed ${revealedTiles.length} areas. Gained ${spell.value} Insight from the revelation.`);
+          // Log revealed areas count (calculate outside of setState to get count)
+          const revealedCount = state.board.filter(t =>
+            hexDistance(activePlayer.position, { q: t.q, r: t.r }) <= spell.range
+          ).length;
+          addToLog(`Revealed ${revealedCount} areas. Gained ${spell.value} Insight from the revelation.`);
         }
         break;
 

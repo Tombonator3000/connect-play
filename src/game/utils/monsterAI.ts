@@ -53,8 +53,6 @@ import {
 } from './monsterObstacles';
 
 import type {
-  MonsterBehavior,
-  MonsterState,
   SpecialMovement,
   SpawnConfig,
   TargetPreferences,
@@ -76,11 +74,12 @@ import {
 // Re-export types for backwards compatibility
 export type {
   WeatherMonsterModifiers,
-  MonsterBehavior,
-  MonsterState,
   SpecialMovement,
   SpawnConfig
 };
+
+// Re-export MonsterBehavior and MonsterState from types.ts
+export type { MonsterBehavior, MonsterState } from '../types';
 
 // Re-export values for backwards compatibility
 export {
