@@ -1,5 +1,64 @@
 # Development Log
 
+## 2026-01-29: VERIFISERING - Asset Studio Pollinations-integrasjon (Session 6)
+
+### Oppgave
+Verifisere at det nye asset-systemet med Pollinations.ai faktisk er integrert og fungerer.
+
+### Funn: KODEN ER OPPDATERT - MEN BRUKER SER GAMMEL UI
+
+#### Problem
+Bruker rapporterte at de ikke kunne trykke på "Generer X Manglende"-knappen, og skjermbildet viste:
+- Google Gemini API-nøkkel input felt
+- Gammel UI-design
+
+Men koden i repo har:
+- ✅ INGEN API-nøkkel felt (fjernet i PR #224)
+- ✅ "Gratis!" banner med Pollinations.ai
+- ✅ Fungerende Pollinations.ai integrasjon
+
+#### Rotårsak
+**Bruker ser en CACHED / IKKE-DEPLOYET versjon av UI**
+
+Commit `3562ba6` (PR #224) oppdaterte:
+- `src/game/components/AssetStudioPanel.tsx` - Fjernet API-nøkkel input, la til "Gratis!"-banner
+- `src/game/utils/AssetGenerationService.ts` - Byttet fra Gemini til Pollinations.ai
+
+#### Verifikasjon utført:
+```
+✅ npm install - OK
+✅ npm run build - Ingen feil, bygget på 24s
+✅ Kildekode-sjekk:
+   - AssetStudioPanel.tsx har IKKE API-nøkkel input
+   - AssetStudioPanel.tsx HAR "Gratis!" banner (linje 210-219)
+   - AssetGenerationService.ts bruker Pollinations.ai (linje 52)
+✅ Git-status bekrefter PR #224 er merget
+```
+
+#### Løsning for bruker:
+1. **Hard refresh**: `Ctrl+Shift+R` (Windows/Linux) eller `Cmd+Shift+R` (Mac)
+2. **Tøm cache**: F12 → Network → "Disable cache" → Refresh
+3. **Hvis GitHub Pages**: Vent 1-2 minutter for deployment
+4. **Hvis Lovable.dev**: Synk fra GitHub
+
+#### Nåværende UI (korrekt versjon):
+- Ingen API-nøkkel input
+- Grønt "Gratis!" banner: "Bildegenerering via Pollinations.ai krever ingen API-nøkkel"
+- "GENERER X MANGLENDE" knapp skal være KLIKKBAR
+- Ingen konfigurasjon nødvendig - bare klikk og generer!
+
+#### Asset Studio Arkitektur (oppdatert):
+| Egenskap | Ny verdi |
+|----------|----------|
+| **API** | Pollinations.ai |
+| **Endpoint** | `https://image.pollinations.ai/prompt/{prompt}` |
+| **Nøkkel** | **IKKE NØDVENDIG** |
+| **Rate limit** | 2.5s mellom requests |
+| **Modell** | flux |
+| **Seed** | Hash av asset ID (reproduserbart) |
+
+---
+
 ## 2026-01-29: ANALYSE - Asset Studio vs imageService Arkitektur (Session 5)
 
 ### Oppgave
