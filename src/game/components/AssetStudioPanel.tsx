@@ -3,16 +3,15 @@
  *
  * Provides interface for:
  * - Viewing all game assets and their generation status
- * - Configuring API key for Gemini
- * - Batch generating missing assets
+ * - Batch generating missing assets using Pollinations.ai (FREE, no API key!)
  * - Exporting/importing asset libraries
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  RefreshCw, Download, Upload, Key, Check, X, AlertCircle,
-  Image, MapPin, Skull, User, Play, Pause, Trash2, Eye, EyeOff,
-  Sparkles
+  RefreshCw, Download, Upload, Check, AlertCircle,
+  Image, MapPin, Skull, User, Play, Pause, Trash2,
+  Sparkles, Zap
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -24,9 +23,6 @@ import {
   exportLibraryAsJson,
   importLibraryFromJson,
   clearAssetLibrary,
-  getStoredApiKey,
-  setStoredApiKey,
-  removeStoredApiKey,
   GenerationProgress,
   AssetDefinition,
   AssetCategory
@@ -52,9 +48,6 @@ const AssetStudioPanel: React.FC<AssetStudioPanelProps> = ({
   onToggleGeneratedAssets
 }) => {
   // State
-  const [apiKey, setApiKey] = useState<string>('');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [hasStoredKey, setHasStoredKey] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all');
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState<GenerationProgress | null>(null);
@@ -65,13 +58,8 @@ const AssetStudioPanel: React.FC<AssetStudioPanelProps> = ({
   const abortSignalRef = useRef({ aborted: false });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load stored API key on mount
+  // Load asset counts on mount
   useEffect(() => {
-    const storedKey = getStoredApiKey();
-    if (storedKey) {
-      setApiKey(storedKey);
-      setHasStoredKey(true);
-    }
     refreshCounts();
   }, []);
 
@@ -79,25 +67,6 @@ const AssetStudioPanel: React.FC<AssetStudioPanelProps> = ({
   const refreshCounts = useCallback(() => {
     setAssetCounts(getAssetCounts());
   }, []);
-
-  // Handle API key save
-  const handleSaveApiKey = () => {
-    if (apiKey.trim()) {
-      setStoredApiKey(apiKey.trim());
-      setHasStoredKey(true);
-      setStatusMessage('API-nøkkel lagret');
-      setTimeout(() => setStatusMessage(''), 3000);
-    }
-  };
-
-  // Handle API key remove
-  const handleRemoveApiKey = () => {
-    removeStoredApiKey();
-    setApiKey('');
-    setHasStoredKey(false);
-    setStatusMessage('API-nøkkel fjernet');
-    setTimeout(() => setStatusMessage(''), 3000);
-  };
 
   // Get filtered missing assets
   const getFilteredMissingAssets = useCallback((): AssetDefinition[] => {
@@ -112,12 +81,6 @@ const AssetStudioPanel: React.FC<AssetStudioPanelProps> = ({
 
   // Start batch generation
   const handleStartGeneration = async () => {
-    const currentKey = apiKey.trim() || getStoredApiKey();
-    if (!currentKey) {
-      setStatusMessage('Vennligst oppgi en Gemini API-nøkkel');
-      return;
-    }
-
     const missingAssets = getFilteredMissingAssets();
     if (missingAssets.length === 0) {
       setStatusMessage('Ingen manglende assets å generere');
@@ -130,10 +93,10 @@ const AssetStudioPanel: React.FC<AssetStudioPanelProps> = ({
     try {
       const results = await generateAssetBatch(
         missingAssets,
-        currentKey,
+        'pollinations-free', // No API key needed!
         (prog) => setProgress({ ...prog }),
         abortSignalRef.current,
-        2000 // 2 second delay between requests for rate limiting
+        2500 // 2.5 second delay between requests to be nice to the API
       );
 
       if (results.size > 0) {
@@ -244,6 +207,17 @@ const AssetStudioPanel: React.FC<AssetStudioPanelProps> = ({
         />
       </div>
 
+      {/* FREE API Notice */}
+      <div className="flex items-center gap-3 bg-green-500/10 p-3 rounded-lg border border-green-500/30">
+        <Zap className="text-green-500" size={20} />
+        <div className="text-sm">
+          <span className="font-bold text-green-500">Gratis!</span>
+          <span className="text-muted-foreground ml-2">
+            Bildegenerering via Pollinations.ai krever ingen API-nøkkel
+          </span>
+        </div>
+      </div>
+
       {/* Category Stats */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-card/50 p-3 rounded-lg border border-border">
@@ -270,57 +244,6 @@ const AssetStudioPanel: React.FC<AssetStudioPanelProps> = ({
             {assetCounts.characters.generated} / {assetCounts.characters.total}
           </div>
         </div>
-      </div>
-
-      {/* API Key Section */}
-      <div className="bg-card/50 p-4 rounded-xl border border-border space-y-3">
-        <div className="flex items-center gap-2 text-muted-foreground text-xs uppercase tracking-wider">
-          <Key size={12} /> Google Gemini API-nøkkel
-        </div>
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <input
-              type={showApiKey ? 'text' : 'password'}
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder={hasStoredKey ? '••••••••••••••••' : 'Lim inn din API-nøkkel'}
-              className="w-full px-4 py-2 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary pr-10"
-            />
-            <button
-              onClick={() => setShowApiKey(!showApiKey)}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-            >
-              {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
-            </button>
-          </div>
-          {apiKey && (
-            <button
-              onClick={handleSaveApiKey}
-              className="px-4 py-2 bg-primary hover:bg-primary/80 text-primary-foreground rounded-lg flex items-center gap-2"
-            >
-              <Check size={16} />
-            </button>
-          )}
-          {hasStoredKey && (
-            <button
-              onClick={handleRemoveApiKey}
-              className="px-4 py-2 bg-destructive/20 hover:bg-destructive/30 text-destructive rounded-lg flex items-center gap-2 border border-destructive/50"
-            >
-              <X size={16} />
-            </button>
-          )}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Hent din gratis API-nøkkel fra{' '}
-          <a
-            href="https://aistudio.google.com/apikey"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-primary hover:underline"
-          >
-            Google AI Studio
-          </a>
-        </p>
       </div>
 
       {/* Category Filter */}
@@ -388,7 +311,7 @@ const AssetStudioPanel: React.FC<AssetStudioPanelProps> = ({
           {!isGenerating ? (
             <button
               onClick={handleStartGeneration}
-              disabled={!hasStoredKey && !apiKey}
+              disabled={getFilteredMissingAssets().length === 0}
               className="px-6 py-3 bg-accent hover:bg-accent/80 disabled:bg-muted disabled:text-muted-foreground text-accent-foreground font-bold uppercase tracking-wider rounded-lg flex items-center gap-2 transition-colors"
             >
               <Play size={18} />
@@ -461,7 +384,7 @@ const AssetStudioPanel: React.FC<AssetStudioPanelProps> = ({
         </p>
         <p className="text-sm text-muted-foreground">
           <strong className="text-foreground">AI-generert (valgfritt):</strong> Du kan generere egne bilder med
-          Google Gemini 2.0 Flash. Slå på "Bruk AI-genererte bilder" for å aktivere dem i spillet.
+          Pollinations.ai (gratis, ingen nøkkel). Slå på "Bruk AI-genererte bilder" for å aktivere dem i spillet.
           Bildene lagres i nettleserens cache (localStorage).
         </p>
       </div>

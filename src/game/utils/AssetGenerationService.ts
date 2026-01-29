@@ -1,13 +1,17 @@
 /**
- * Asset Generation Service using Google Gemini API
+ * Asset Generation Service using Pollinations.ai
+ *
+ * FREE image generation - no API key required!
  *
  * Handles AI-powered image generation for game assets including:
  * - Tiles/Locations (top-down perspective)
  * - Monsters (dramatic portraits)
  * - Characters (dramatic portraits)
+ *
+ * API: https://image.pollinations.ai/prompt/{encoded_prompt}
  */
 
-import { EnemyType, CharacterType } from '../types';
+import { CharacterType } from '../types';
 import { INDOOR_LOCATIONS, OUTDOOR_LOCATIONS, BESTIARY } from '../constants';
 
 // ============================================================================
@@ -45,93 +49,123 @@ export interface GenerationResult {
 // CONSTANTS
 // ============================================================================
 
-const GEMINI_MODEL = 'gemini-2.0-flash-exp';
-const API_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
+const POLLINATIONS_BASE_URL = 'https://image.pollinations.ai/prompt';
+
+// Image dimensions per category
+const IMAGE_DIMENSIONS = {
+  tile: { width: 512, height: 512 },
+  monster: { width: 512, height: 512 },
+  character: { width: 512, height: 640 },
+};
+
+// Model options: 'flux', 'flux-realism', 'flux-anime', 'flux-3d', 'turbo'
+const DEFAULT_MODEL = 'flux';
 
 // Storage keys
-export const ASSET_STORAGE_KEY = 'shadows_1920s_assets_v1';
-export const API_KEY_STORAGE_KEY = 'shadows_1920s_gemini_api_key';
+export const ASSET_STORAGE_KEY = 'shadows_1920s_assets_v2'; // v2 for Pollinations migration
 
 // ============================================================================
-// PROMPT TEMPLATES
+// STYLE CONSTANTS (Lovecraftian 1920s aesthetic)
 // ============================================================================
 
-const TILE_PROMPT_TEMPLATE = `Generate a game tile illustration with the following requirements:
+const STYLE_BASE = 'dark atmospheric 1920s lovecraftian horror, muted colors, oil painting, eldritch cosmic horror';
 
-SUBJECT: "{name}" - A location in a 1920s Lovecraftian horror board game
-DESCRIPTION: {description}
+const STYLE_TILE = 'top-down birds eye view, game tile, hexagonal composition, dark shadows, vintage board game art';
 
-STYLE REQUIREMENTS:
-- Top-down 90-degree bird's-eye view perspective (looking straight down)
-- Dark, atmospheric, Lovecraftian horror aesthetic
-- 1920s era setting (Art Deco, Victorian decay)
-- Muted color palette with deep shadows (dark browns, grays, greens, occasional eldritch purple/green glow)
-- Hand-painted illustration style, similar to board game tiles
-- Hexagonal tile format composition
+const STYLE_MONSTER = 'dramatic portrait, menacing creature, otherworldly, tentacles, nightmare horror, dark fantasy art';
 
-TECHNICAL REQUIREMENTS:
-- No UI elements
-- No text or labels
-- No grid lines
-- Single cohesive scene
-- Clear hexagonal boundary consideration
-
-ATMOSPHERE: Eerie, unsettling, mysterious, decaying grandeur`;
-
-const MONSTER_PROMPT_TEMPLATE = `Generate a monster portrait illustration with the following requirements:
-
-SUBJECT: "{name}" - A creature from a 1920s Lovecraftian horror board game
-DESCRIPTION: {description}
-LORE: {lore}
-
-STYLE REQUIREMENTS:
-- Dramatic portrait view (front-facing or 3/4 view)
-- Dark, atmospheric, cosmic horror aesthetic
-- Eldritch, otherworldly appearance
-- Muted color palette with deep shadows and occasional unnatural color highlights
-- Hand-painted illustration style, similar to trading card game art
-- Focus on the creature with minimal background
-
-TECHNICAL REQUIREMENTS:
-- No UI elements
-- No text or labels
-- No borders or frames
-- Single creature focus
-- Portrait composition
-
-ATMOSPHERE: Terrifying, alien, ancient evil, wrong geometry`;
-
-const CHARACTER_PROMPT_TEMPLATE = `Generate a character portrait illustration with the following requirements:
-
-SUBJECT: "{name}" - A 1920s investigator in a Lovecraftian horror board game
-DESCRIPTION: {description}
-
-STYLE REQUIREMENTS:
-- Dramatic portrait view (front-facing or 3/4 view)
-- 1920s period-accurate clothing and accessories
-- Determined, weary, or haunted expression
-- Dark, atmospheric lighting with single dramatic light source
-- Hand-painted illustration style, similar to Call of Cthulhu RPG art
-- Focus on character with minimal background
-
-TECHNICAL REQUIREMENTS:
-- No UI elements
-- No text or labels
-- No borders or frames
-- Single character focus
-- Portrait composition (head and shoulders, possibly upper torso)
-
-ATMOSPHERE: Noir, mysterious, brave against cosmic horror`;
+const STYLE_CHARACTER = '1920s investigator portrait, noir style, dramatic lighting, call of cthulhu rpg art style';
 
 // Character descriptions for generation
 const CHARACTER_DESCRIPTIONS: Record<CharacterType, string> = {
-  veteran: 'The Veteran - A hardened World War I soldier, scarred by the trenches. Strong and fearless, wearing a worn military jacket. Battle-hardened eyes that have seen horrors both human and inhuman.',
-  detective: 'The Private Eye - A sharp-eyed detective in a fedora and trench coat. Carries a notepad and revolver. Analytical gaze, cigarette smoke curling around weathered features.',
-  professor: 'The Professor - An elderly academic from Miskatonic University. Wire-rimmed spectacles, tweed jacket, surrounded by ancient tomes. Eyes gleaming with dangerous knowledge.',
-  occultist: 'The Occultist - A mysterious practitioner of forbidden arts. Dark robes with arcane symbols, pale complexion. One eye seems to glow with otherworldly light.',
-  journalist: 'The Journalist - An intrepid reporter seeking the truth. Press badge, camera, notepad. Young and determined, but shadows under the eyes hint at disturbing discoveries.',
-  doctor: 'The Doctor - A compassionate physician burdened by impossible cases. White coat stained, medical bag in hand. Kind eyes haunted by patients lost to things medicine cannot cure.'
+  veteran: 'WWI soldier, scarred face, worn military jacket, battle-hardened eyes, grizzled',
+  detective: 'private eye detective, fedora, trench coat, cigarette, analytical gaze, noir',
+  professor: 'elderly professor, wire-rimmed spectacles, tweed jacket, ancient tomes, scholarly',
+  occultist: 'mysterious occultist, dark robes, arcane symbols, pale complexion, glowing eye',
+  journalist: 'young journalist, press badge, camera, notepad, determined expression',
+  doctor: 'compassionate doctor, white coat, medical bag, kind but haunted eyes'
 };
+
+// ============================================================================
+// PROMPT BUILDERS
+// ============================================================================
+
+/**
+ * Build a concise prompt optimized for Pollinations
+ */
+function buildPrompt(asset: AssetDefinition): string {
+  const parts: string[] = [];
+
+  switch (asset.category) {
+    case 'tile':
+      parts.push(asset.name);
+      parts.push('1920s Arkham location');
+      if (asset.description) {
+        parts.push(asset.description.substring(0, 50));
+      }
+      parts.push(STYLE_TILE);
+      parts.push(STYLE_BASE);
+      break;
+
+    case 'monster':
+      parts.push(asset.name);
+      if (asset.description) {
+        parts.push(asset.description.substring(0, 80));
+      }
+      if (asset.lore) {
+        parts.push(asset.lore.substring(0, 50));
+      }
+      parts.push(STYLE_MONSTER);
+      parts.push(STYLE_BASE);
+      break;
+
+    case 'character':
+      const charDesc = CHARACTER_DESCRIPTIONS[asset.id as CharacterType];
+      if (charDesc) {
+        parts.push(charDesc);
+      } else {
+        parts.push(asset.name);
+        parts.push(asset.description || '1920s investigator');
+      }
+      parts.push(STYLE_CHARACTER);
+      parts.push(STYLE_BASE);
+      break;
+
+    default:
+      parts.push(asset.name);
+      parts.push(STYLE_BASE);
+  }
+
+  // Add quality modifiers
+  parts.push('masterpiece, best quality, highly detailed');
+
+  return parts.join(', ');
+}
+
+/**
+ * Generate a consistent seed from asset ID for reproducible images
+ */
+function generateSeed(assetId: string): number {
+  let hash = 0;
+  for (let i = 0; i < assetId.length; i++) {
+    const char = assetId.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return Math.abs(hash);
+}
+
+/**
+ * Build the Pollinations URL for an asset
+ */
+function buildPollinationsUrl(asset: AssetDefinition): string {
+  const prompt = buildPrompt(asset);
+  const encodedPrompt = encodeURIComponent(prompt);
+  const dimensions = IMAGE_DIMENSIONS[asset.category];
+  const seed = generateSeed(asset.id);
+
+  return `${POLLINATIONS_BASE_URL}/${encodedPrompt}?width=${dimensions.width}&height=${dimensions.height}&model=${DEFAULT_MODEL}&seed=${seed}&nologo=true`;
+}
 
 // ============================================================================
 // ASSET REGISTRY
@@ -169,7 +203,7 @@ export function getAllAssetDefinitions(): AssetDefinition[] {
   characterTypes.forEach(type => {
     assets.push({
       id: type,
-      name: CHARACTER_DESCRIPTIONS[type].split(' - ')[0],
+      name: `The ${type.charAt(0).toUpperCase() + type.slice(1)}`,
       category: 'character',
       description: CHARACTER_DESCRIPTIONS[type]
     });
@@ -185,128 +219,84 @@ export function nameToId(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
 }
 
-/**
- * Build the prompt for a specific asset
- */
-function buildPrompt(asset: AssetDefinition): string {
-  let template: string;
-  let description = asset.description || asset.name;
-
-  switch (asset.category) {
-    case 'tile':
-      template = TILE_PROMPT_TEMPLATE;
-      break;
-    case 'monster':
-      template = MONSTER_PROMPT_TEMPLATE
-        .replace('{lore}', asset.lore || 'An eldritch horror from beyond the stars.');
-      break;
-    case 'character':
-      template = CHARACTER_PROMPT_TEMPLATE;
-      description = CHARACTER_DESCRIPTIONS[asset.id as CharacterType] || description;
-      break;
-    default:
-      template = TILE_PROMPT_TEMPLATE;
-  }
-
-  return template
-    .replace('{name}', asset.name)
-    .replace('{description}', description);
-}
-
 // ============================================================================
-// API FUNCTIONS
+// API FUNCTIONS (No API key needed!)
 // ============================================================================
 
 /**
- * Get stored API key
+ * These functions are kept for backwards compatibility but do nothing
+ * since Pollinations doesn't require an API key
  */
 export function getStoredApiKey(): string | null {
-  try {
-    return localStorage.getItem(API_KEY_STORAGE_KEY);
-  } catch {
-    return null;
-  }
+  return 'pollinations-free'; // Return a dummy value for UI compatibility
 }
 
-/**
- * Store API key
- */
-export function setStoredApiKey(key: string): void {
-  try {
-    localStorage.setItem(API_KEY_STORAGE_KEY, key);
-  } catch (e) {
-    console.warn('Failed to store API key:', e);
-  }
+export function setStoredApiKey(_key: string): void {
+  // No-op: Pollinations doesn't need an API key
 }
 
-/**
- * Remove stored API key
- */
 export function removeStoredApiKey(): void {
+  // No-op: Pollinations doesn't need an API key
+}
+
+/**
+ * Fetch image from URL and convert to base64 data URL
+ */
+async function fetchImageAsBase64(url: string, timeout: number = 60000): Promise<string> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
   try {
-    localStorage.removeItem(API_KEY_STORAGE_KEY);
-  } catch (e) {
-    console.warn('Failed to remove API key:', e);
+    const response = await fetch(url, {
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const blob = await response.blob();
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result);
+        } else {
+          reject(new Error('Failed to convert image to base64'));
+        }
+      };
+      reader.onerror = () => reject(new Error('FileReader error'));
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    clearTimeout(timeoutId);
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error('Request timeout - image generation took too long');
+    }
+    throw error;
   }
 }
 
 /**
- * Generate a single asset using Gemini API
+ * Generate a single asset using Pollinations API
+ * No API key required!
  */
 export async function generateAssetImage(
   asset: AssetDefinition,
-  apiKey: string
+  _apiKey?: string // Kept for backwards compatibility, but ignored
 ): Promise<GenerationResult> {
-  const prompt = buildPrompt(asset);
+  const imageUrl = buildPollinationsUrl(asset);
+
+  console.log(`[AssetGen] Generating ${asset.category}: ${asset.name}`);
+  console.log(`[AssetGen] URL: ${imageUrl.substring(0, 100)}...`);
 
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{
-            parts: [{
-              text: prompt
-            }]
-          }],
-          generationConfig: {
-            responseModalities: ['image', 'text'],
-            responseMimeType: 'image/png'
-          }
-        })
-      }
-    );
+    const base64Image = await fetchImageAsBase64(imageUrl);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      const errorMessage = errorData.error?.message || `HTTP ${response.status}`;
-      throw new Error(errorMessage);
-    }
-
-    const data = await response.json();
-
-    // Extract image data from response
-    const candidates = data.candidates;
-    if (!candidates || candidates.length === 0) {
-      throw new Error('No image generated');
-    }
-
-    const content = candidates[0].content;
-    if (!content || !content.parts) {
-      throw new Error('Invalid response structure');
-    }
-
-    // Find the image part
-    const imagePart = content.parts.find((part: { inlineData?: { data: string; mimeType: string } }) => part.inlineData);
-    if (!imagePart || !imagePart.inlineData) {
-      throw new Error('No image data in response');
-    }
-
-    const base64Image = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
+    console.log(`[AssetGen] Success: ${asset.name} (${Math.round(base64Image.length / 1024)}KB)`);
 
     return {
       success: true,
@@ -315,7 +305,7 @@ export async function generateAssetImage(
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`Failed to generate ${asset.name}:`, errorMessage);
+    console.error(`[AssetGen] Failed: ${asset.name} - ${errorMessage}`);
     return {
       success: false,
       assetId: asset.id,
@@ -333,13 +323,14 @@ export type AbortSignal = { aborted: boolean };
 
 /**
  * Generate multiple assets in batch with progress tracking
+ * No API key required!
  */
 export async function generateAssetBatch(
   assets: AssetDefinition[],
-  apiKey: string,
+  _apiKey: string, // Kept for backwards compatibility, but ignored
   onProgress: ProgressCallback,
   abortSignal?: AbortSignal,
-  delayMs: number = 1500 // Rate limiting delay between requests
+  delayMs: number = 2000 // Delay between requests to be nice to the API
 ): Promise<Map<string, string>> {
   const results = new Map<string, string>();
   const progress: GenerationProgress = {
@@ -364,7 +355,7 @@ export async function generateAssetBatch(
     progress.current = asset.name;
     onProgress({ ...progress });
 
-    const result = await generateAssetImage(asset, apiKey);
+    const result = await generateAssetImage(asset);
 
     if (result.success && result.base64Image) {
       results.set(asset.id, result.base64Image);
@@ -398,7 +389,7 @@ export async function generateAssetBatch(
 
 export interface StoredAssetLibrary {
   version: number;
-  assets: Record<string, string>; // assetId -> base64 or URL
+  assets: Record<string, string>; // assetId -> base64 data URL
   lastUpdated: string;
 }
 
@@ -416,7 +407,7 @@ export function loadAssetLibrary(): StoredAssetLibrary {
   }
 
   return {
-    version: 1,
+    version: 2,
     assets: {},
     lastUpdated: new Date().toISOString()
   };
@@ -552,7 +543,7 @@ export async function importLibraryFromJson(file: File): Promise<{ success: bool
  */
 export function clearAssetLibrary(): void {
   const library: StoredAssetLibrary = {
-    version: 1,
+    version: 2,
     assets: {},
     lastUpdated: new Date().toISOString()
   };
