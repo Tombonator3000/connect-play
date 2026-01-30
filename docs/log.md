@@ -2,7 +2,27 @@
 
 ## 2026-01-30
 
-### Session 18 - Missing Tile Graphics Generation
+### Session 18 - Missing Tile Graphics & Bug Fixes
+
+#### Infinite Loop Fix:
+- **Root cause**: `aiGameMaster` var inkludert i useEffect dependency array (linje 367)
+- `updateSettings` kalte setState som re-rendret hooken, som returnerte nytt objekt, som triggret useEffect igjen
+- **Fix**: Fjernet `aiGameMaster` fra dependency array og lagt til eslint-disable kommentar
+
+#### Monster Attack Debugging:
+Debugging er allerede implementert i monsterAI.ts:
+- `[processEnemyTurn] START` - Logger antall fiender og spillere
+- `[processEnemyTurn] Processing enemy X` - Logger hver fiende som prosesseres
+- `[getMonsterDecision] START` - Logger beslutningsstart
+- `[findSmartTarget] START` - Logger målfinning
+- `[canSeePlayer]` - Logger sikt-sjekker med alle detaljer
+- `[processEnemyTurn] END` - Logger endelig resultat inkl. angrep
+
+Hvis monstre ikke angriper, sjekk console-loggen for:
+1. "Alive players: 0" = spillere er markert som døde
+2. "Visible players: 0" = sikt blokkert av vegger/vær
+3. "Distance > effectiveVision" = for langt unna
+4. "No line of sight" = vegger/dører blokkerer
 
 #### New Tile Graphics Generated (15 stk):
 | Tile | Description |
@@ -24,6 +44,7 @@
 | tile-foundersplaza | Town center with bronze statue on pedestal |
 
 #### Files Updated:
+- `src/game/ShadowsGame.tsx` - Fixed infinite loop in useEffect for AI GM settings
 - `src/game/utils/tileImageAssets.ts` - Added 15 new imports and mappings
 - `src/game/utils/tileAssetAudit.ts` - Updated EXISTING_TILE_IMAGES list
 - Fixed build errors in `tileConnectionSystem.ts` (ZoneLevel, FloorType)

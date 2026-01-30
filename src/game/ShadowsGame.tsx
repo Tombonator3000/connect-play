@@ -340,6 +340,7 @@ const ShadowsGame: React.FC = () => {
   }, [settings.masterVolume, settings.musicVolume, settings.sfxVolume]);
 
   // Sync Voice GM settings with AI Game Master when they change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     aiGameMaster.updateSettings({
       enabled: settings.aiGMEnabled,
@@ -353,6 +354,8 @@ const ShadowsGame: React.FC = () => {
       narrateDiscovery: settings.narrateDiscovery,
       narrateAmbient: settings.narrateAmbient,
     });
+    // NOTE: aiGameMaster.updateSettings is intentionally excluded from deps to prevent infinite loop
+    // updateSettings is stable (wrapped in useCallback) but the hook returns a new object each render
   }, [
     settings.aiGMEnabled,
     settings.voiceGMEnabled,
@@ -364,7 +367,6 @@ const ShadowsGame: React.FC = () => {
     settings.narrateDoom,
     settings.narrateDiscovery,
     settings.narrateAmbient,
-    aiGameMaster,
   ]);
 
   const [state, setState] = useState<GameState>(() => {
