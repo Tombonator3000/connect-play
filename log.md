@@ -27688,4 +27688,99 @@ Fikse tre kritiske bugs:
 ### Status
 ✅ Alle tre bugs er nå fikset!
 
+---
+
+## 2026-01-30: Bug Fix - Monstre Angriper Aldri (THE REAL FIX)
+
+### Oppgave
+Analysere og fikse hvorfor monstre ikke angriper spillere, til tross for tidligere fiksforsøk.
+
+### Analyse
+
+Gjennomgikk hele monster attack flyten:
+1. `processEnemyCombatPhase` kalles i Mythos phase
+2. Denne kaller `processEnemyTurn` som tar beslutninger for hver fiende
+3. `getMonsterDecision` bruker `findSmartTarget` for å finne spillere
+4. Hvis spiller er i rekkevidde, returneres en `'attack'` decision
+5. Angrepet legges i `attacks` array og behandles etterpå
+
+### Rotårsak Funnet!
+
+**Problemet:** `state.phase` ble ALDRI satt til `GamePhase.MYTHOS`!
+
+**Flyten som feilet:**
+1. Alle spillere fullfører sin tur → `isEndOfRound = true`
+2. `setShowMythosOverlay(true)` ble kalt (linje 4891)
+3. MythosPhaseOverlay vises til brukeren
+4. Bruker klikker continue → `handleMythosOverlayComplete`
+5. Doom, weather osv. oppdateres
+6. Phase settes til INVESTIGATOR
+
+**Men:** Enemy AI useEffect (linje 484-485) venter på `state.phase === GamePhase.MYTHOS`:
+```typescript
+useEffect(() => {
+  if (state.phase === GamePhase.MYTHOS) {
+    // Enemy AI kjøres her...
+  }
+}, [state.phase, ...]);
+```
+
+Siden phase ALDRI ble satt til MYTHOS, kjørte ALDRI enemy AI!
+
+**Tidligere "fix" fra 2026-01-29** fokuserte på `canSeePlayer()` og `hasLineOfSight()`,
+men dette var ikke rotårsaken. Problemet var at enemy AI-koden aldri ble nådd.
+
+### Løsning
+
+Lagt til setState for å sette phase til MYTHOS FØR overlay vises:
+
+```typescript
+if (isEndOfRound) {
+  // ... doom check ...
+
+  // FIX 2026-01-30: Set phase to MYTHOS BEFORE showing overlay
+  // This triggers the useEffect that runs enemy AI
+  setState(prev => ({ ...prev, phase: GamePhase.MYTHOS }));
+
+  // Show Mythos phase overlay
+  setShowMythosOverlay(true);
+}
+```
+
+**Timing-logikk:**
+1. setState({ phase: MYTHOS }) → trigger useEffect
+2. React re-rendrer → useEffect kjører enemy AI (tar ~millisekunder)
+3. setShowMythosOverlay(true) → overlay vises (2.5 sekunder animasjon)
+4. onComplete kalles → handleMythosOverlayComplete
+5. Phase settes tilbake til INVESTIGATOR (allerede på linje 5046)
+
+### Endrede Filer
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/ShadowsGame.tsx` | +3 linjer: setState for phase=MYTHOS ved end of round |
+| `src/game/utils/monsterAI.ts` | +Debug logging for post-move attack check |
+| `src/game/utils/mythosPhaseUtils.ts` | +Debug logging for processEnemyCombatPhase |
+
+### Debug Logging Lagt Til
+
+For fremtidig feilsøking, lagt til console.log for:
+- `[processEnemyCombatPhase] START` - logger alle enemies og players
+- `[processEnemyCombatPhase] processEnemyTurn result` - logger attacks array
+- `[processEnemyTurn] POST-MOVE attack check` - logger hver spiller-sjekk etter move
+- `[getMonsterDecision] ATTACK CHECK` - logger distanse vs attackRange
+
+### Lærdom
+
+1. **Følg flyten helt til starten**: Tidligere fiksforsøk fokuserte på `canSeePlayer` og `hasLineOfSight`, men problemet var at denne koden aldri ble nådd.
+
+2. **Sjekk om kode faktisk kjører**: useEffect som avhenger av state.phase=MYTHOS kjørte aldri fordi fasen aldri ble satt.
+
+3. **Phase state management er kritisk**: I et turn-based spill må fase-overganger være eksplisitte og riktig sekvensert.
+
+### Status
+✅ Rotårsak funnet og fikset
+✅ Alle tester passerer
+✅ Build kompilerer uten feil
+
 

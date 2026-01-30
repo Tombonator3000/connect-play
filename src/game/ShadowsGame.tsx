@@ -4887,6 +4887,11 @@ const ShadowsGame: React.FC = () => {
         return;
       }
 
+      // FIX 2026-01-30: Set phase to MYTHOS BEFORE showing overlay
+      // This triggers the useEffect that runs enemy AI
+      // Previously, phase was never set to MYTHOS, so enemies never attacked!
+      setState(prev => ({ ...prev, phase: GamePhase.MYTHOS }));
+
       // Show Mythos phase overlay
       setShowMythosOverlay(true);
     } else {
