@@ -115,6 +115,22 @@ import tileIndustrial from '@/assets/tiles/tile-industrial.png';
 import tileGibbet from '@/assets/tiles/tile-gibbet.png';
 import tilePortraitgallery from '@/assets/tiles/tile-portraitgallery.png';
 import tileStormdrain from '@/assets/tiles/tile-stormdrain.png';
+// New tiles 2026-01-30
+import tileGuestquarters from '@/assets/tiles/tile-guestquarters.png';
+import tileSunroom from '@/assets/tiles/tile-sunroom.png';
+import tileHiddenstairwell from '@/assets/tiles/tile-hiddenstairwell.png';
+import tileCrumblingsteps from '@/assets/tiles/tile-crumblingsteps.png';
+import tileCatacombs from '@/assets/tiles/tile-catacombs.png';
+import tileRatsnest from '@/assets/tiles/tile-ratsnest.png';
+import tileAltar from '@/assets/tiles/tile-altar.png';
+import tileMoonlitclearing from '@/assets/tiles/tile-moonlitclearing.png';
+import tileSuicidecliff from '@/assets/tiles/tile-suicidecliff.png';
+import tileExecutionground from '@/assets/tiles/tile-executionground.png';
+import tileTramtracks from '@/assets/tiles/tile-tramtracks.png';
+import tileLamplitavenue from '@/assets/tiles/tile-lamplitavenue.png';
+import tileStoneoverpass from '@/assets/tiles/tile-stoneoverpass.png';
+import tileNarrows from '@/assets/tiles/tile-narrows.png';
+import tileFoundersplaza from '@/assets/tiles/tile-foundersplaza.png';
 
 // ============================================================================
 // TILE NAME TO IMAGE MAPPING
@@ -254,7 +270,6 @@ export const TILE_IMAGES: Record<string, string> = {
 
   // ===== RITUAL =====
   ritual: tileRitual,
-  altar: tileRitual,
   sacrific: tileRitual,
   occult: tileRitual,
   pentagram: tileRitual,
@@ -277,7 +292,6 @@ export const TILE_IMAGES: Record<string, string> = {
   laboratory: tileLab,
   dissection: tileDissectiontheater,
   dissectiontheater: tileDissectiontheater,
-  hidden: tileLab,
 
   // ===== BEDROOM =====
   bedroom: tileBedroom,
@@ -547,7 +561,8 @@ export const TILE_IMAGES: Record<string, string> = {
   service: tileHallway,
   floor: tileHallway,
   tasting: tileCellar,
-  rats: tileSewer,
+  rats: tileRatsnest,
+  ratsnest: tileRatsnest,
   // pit already mapped in CRYPTS section
   standing: tileStonecircle,
   devils: tileGraveyard,
@@ -579,7 +594,27 @@ export const TILE_IMAGES: Record<string, string> = {
   fetid: tileSwamp,
   curious: tileShop,
   ice: tileCellar,
-  midnight: tileShop
+  midnight: tileShop,
+
+  // ===== NEW MAPPINGS (2026-01-30) =====
+  guestquarters: tileGuestquarters,
+  sunroom: tileSunroom,
+  hiddenstairwell: tileHiddenstairwell,
+  hidden: tileHiddenstairwell,
+  crumblingsteps: tileCrumblingsteps,
+  catacombs: tileCatacombs,
+  altar: tileAltar,
+  sacrificial: tileAltar,
+  moonlitclearing: tileMoonlitclearing,
+  moonlit: tileMoonlitclearing,
+  suicidecliff: tileSuicidecliff,
+  executionground: tileExecutionground,
+  tramtracks: tileTramtracks,
+  lamplitavenue: tileLamplitavenue,
+  lamplit: tileLamplitavenue,
+  stoneoverpass: tileStoneoverpass,
+  thenarrows: tileNarrows,
+  foundersplaza: tileFoundersplaza
 };
 
 // ============================================================================
