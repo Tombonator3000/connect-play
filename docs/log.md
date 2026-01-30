@@ -1,5 +1,35 @@
 # Shadows of the 1920s - Development Log
 
+## 2026-01-30
+
+### Session 18 - Missing Tile Graphics Generation
+
+#### New Tile Graphics Generated (15 stk):
+| Tile | Description |
+|------|-------------|
+| tile-guestquarters | Victorian guest bedroom with ornate bed and lamp |
+| tile-sunroom | Overgrown conservatory with broken glass ceiling |
+| tile-hiddenstairwell | Secret passage with spiral stone steps |
+| tile-crumblingsteps | Ancient weathered stairs with green phosphorescence |
+| tile-catacombs | Skull-lined archway entrance to underground passages |
+| tile-ratsnest | Underground lair with pipes and glowing eyes |
+| tile-altar | Sacrificial stone altar with occult symbols |
+| tile-moonlitclearing | Forest clearing with fairy ring under moonlight |
+| tile-suicidecliff | Rocky cliff edge over churning sea |
+| tile-executionground | Wooden gallows platform with bloodstained cobblestones |
+| tile-tramtracks | 1920s urban street with steel tram rails |
+| tile-lamplitavenue | Tree-lined boulevard with gas lamps in fog |
+| tile-stoneoverpass | Moss-covered stone bridge over industrial canal |
+| tile-narrows | Cramped alley between tall buildings with fire escapes |
+| tile-foundersplaza | Town center with bronze statue on pedestal |
+
+#### Files Updated:
+- `src/game/utils/tileImageAssets.ts` - Added 15 new imports and mappings
+- `src/game/utils/tileAssetAudit.ts` - Updated EXISTING_TILE_IMAGES list
+- Fixed build errors in `tileConnectionSystem.ts` (ZoneLevel, FloorType)
+
+---
+
 ## 2026-01-29
 
 ### Session 17 - Bug Fixes

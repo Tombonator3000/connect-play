@@ -9,28 +9,28 @@ import { INDOOR_LOCATIONS, OUTDOOR_LOCATIONS } from '../constants';
 
 // All existing tile images in src/assets/tiles/
 export const EXISTING_TILE_IMAGES = [
-  // Updated 2026-01-28 - Full list from src/assets/tiles/
-  'alley', 'antiquarian', 'apothecary', 'artifactstorage', 'asylum',
+  // Updated 2026-01-30 - Full list from src/assets/tiles/
+  'alley', 'altar', 'antiquarian', 'apothecary', 'artifactstorage', 'asylum',
   'bedroom', 'bellfoundry', 'belltower', 'billiard', 'blackpool', 'boiler', 'bridge',
-  'campsite', 'campus', 'cannery', 'cave', 'cavern', 'cellar', 'church', 'clocktower', 'closet',
-  'coalchute', 'coldstorage', 'conservatory', 'courthouse', 'crossroads', 'crypt',
+  'campsite', 'campus', 'cannery', 'catacombs', 'cave', 'cavern', 'cellar', 'church', 'clocktower', 'closet',
+  'coalchute', 'coldstorage', 'conservatory', 'courthouse', 'crossroads', 'crumblingsteps', 'crypt',
   'deadend', 'dissectiontheater', 'dock', 'drawing',
-  'echo',
-  'farmhouse', 'fireescape', 'floodedbasement', 'forest', 'funeral',
-  'gallery', 'gallows', 'gasworks', 'gate', 'gibbet', 'grandfoyer', 'graveyard', 'greenhouse',
-  'hallway', 'hangingtree', 'hospital', 'hotel',
+  'echo', 'executionground',
+  'farmhouse', 'fireescape', 'floodedbasement', 'forest', 'foundersplaza', 'funeral',
+  'gallery', 'gallows', 'gasworks', 'gate', 'gibbet', 'grandfoyer', 'graveyard', 'greenhouse', 'guestquarters',
+  'hallway', 'hangingtree', 'hiddenstairwell', 'hospital', 'hotel',
   'idol', 'industrial', 'innsmouthwharf', 'interrogation',
   'kitchen',
-  'lab', 'library', 'lighthouse',
-  'maintenancetunnel', 'manor', 'maproom', 'market', 'massgrave', 'mine', 'moor', 'mortuary', 'museum', 'music',
-  'newspaper', 'nursery',
+  'lab', 'lamplitavenue', 'library', 'lighthouse',
+  'maintenancetunnel', 'manor', 'maproom', 'market', 'massgrave', 'mine', 'moonlitclearing', 'moor', 'mortuary', 'museum', 'music',
+  'narrows', 'newspaper', 'nursery',
   'occultlibrary', 'office', 'opiumden', 'orchard', 'ossuary',
   'paddedcell', 'park', 'parlor', 'petrified', 'pit', 'planetarium', 'police', 'pond', 'portal', 'portraitgallery',
   'quarry',
-  'records', 'ritual', 'riverfront', 'rootcellar', 'ruins',
+  'ratsnest', 'records', 'ritual', 'riverfront', 'rootcellar', 'ruins',
   'sanctum', 'seance', 'servants', 'sewer', 'shack', 'shipyard', 'shop', 'smoking',
-  'smugglersden', 'speakeasy', 'square', 'starchamber', 'station', 'stonecircle', 'stormdrain', 'street', 'swamp',
-  'taxidermy', 'telegraph', 'tenement', 'tomb', 'trophy',
+  'smugglersden', 'speakeasy', 'square', 'starchamber', 'station', 'stonecircle', 'stoneoverpass', 'stormdrain', 'street', 'suicidecliff', 'sunroom', 'swamp',
+  'taxidermy', 'telegraph', 'tenement', 'tomb', 'tramtracks', 'trophy',
   'underground-lake',
   'vault', 'warehouse', 'well', 'winetasting', 'witchhouse'
 ];
