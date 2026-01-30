@@ -1534,7 +1534,15 @@ export function getMonsterDecision(
 
   // 4. IMMEDIATE ATTACK - Monsters in range ALWAYS attack (aggressive behavior)
   // This ensures monsters don't hesitate when they can hit the player
+  console.log(`[getMonsterDecision] ATTACK CHECK for ${enemy.name}:`, {
+    distanceToPlayer,
+    attackRange: enemy.attackRange,
+    inRange: distanceToPlayer <= enemy.attackRange,
+    targetPlayerId: targetPlayer.id,
+    targetPlayerName: targetPlayer.name
+  });
   if (distanceToPlayer <= enemy.attackRange) {
+    console.log(`[getMonsterDecision] ${enemy.name} IS IN RANGE - should attack!`);
     // Check for ranged attack first (if enemy has ranged capability)
     const rangedDecision = tryRangedAttackDecision(
       ctx,
@@ -1544,11 +1552,18 @@ export function getMonsterDecision(
       findOptimalRangedPosition,
       findRetreatPosition
     );
-    if (rangedDecision) return withStateUpdate(rangedDecision);
+    if (rangedDecision) {
+      console.log(`[getMonsterDecision] ${enemy.name} returning RANGED ATTACK decision`);
+      return withStateUpdate(rangedDecision);
+    }
 
     // Then melee attack
     const meleeDecision = tryMeleeAttackDecision(ctx, targetPlayer, distanceToPlayer, priority);
-    if (meleeDecision) return withStateUpdate(meleeDecision);
+    if (meleeDecision) {
+      console.log(`[getMonsterDecision] ${enemy.name} returning MELEE ATTACK decision:`, meleeDecision);
+      return withStateUpdate(meleeDecision);
+    }
+    console.log(`[getMonsterDecision] ${enemy.name} NO ATTACK DECISION from ranged/melee helpers - this should NOT happen!`);
   }
 
   // 5. AGGRESSION CHECK - Low aggression monsters may hesitate when NOT in range
@@ -1796,9 +1811,25 @@ export function processEnemyTurn(
 
           // Find all players in range - use canSeePlayer for proper visibility check
           // FIX 2026-01-29: Use canSeePlayer instead of raw hasLineOfSight to handle edge cases
+          // DEBUG: Log post-move attack check
+          console.log(`[processEnemyTurn] POST-MOVE attack check for ${movedEnemy.name}:`, {
+            movedPosition: movedEnemy.position,
+            attackRange: movedEnemy.attackRange,
+            alivePlayersCount: alivePlayers.length
+          });
+
           const playersInRange = alivePlayers.filter(player => {
             const dist = hexDistance(movedEnemy.position, player.position);
-            return dist <= movedEnemy.attackRange && canSeePlayer(movedEnemy, player, tiles, weather);
+            const canSee = canSeePlayer(movedEnemy, player, tiles, weather);
+            console.log(`[processEnemyTurn] Checking player ${player.name}:`, {
+              playerPos: player.position,
+              distance: dist,
+              attackRange: movedEnemy.attackRange,
+              inRange: dist <= movedEnemy.attackRange,
+              canSee,
+              willAttack: dist <= movedEnemy.attackRange && canSee
+            });
+            return dist <= movedEnemy.attackRange && canSee;
           });
 
           if (playersInRange.length > 0) {

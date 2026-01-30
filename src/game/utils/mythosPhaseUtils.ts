@@ -347,6 +347,17 @@ export function processEnemyCombatPhase(
   globalEnemyAttackBonus: number = 0,
   weather?: import('../types').WeatherCondition | null
 ): EnemyCombatResult {
+  // DEBUG: Log input
+  console.log('[processEnemyCombatPhase] START:', {
+    enemyCount: enemies.length,
+    enemies: enemies.map(e => ({ id: e.id, name: e.name, pos: e.position, hp: e.hp, attackRange: e.attackRange, speed: e.speed })),
+    playerCount: players.length,
+    players: players.map(p => ({ id: p.id, name: p.name, pos: p.position, isDead: p.isDead })),
+    boardSize: board.length,
+    doom,
+    weather: weather?.type || 'none'
+  });
+
   const result: EnemyCombatResult = {
     updatedEnemies: [],
     processedAttacks: [],
@@ -364,6 +375,14 @@ export function processEnemyCombatPhase(
     board,
     weather
   );
+
+  // DEBUG: Log output from processEnemyTurn
+  console.log('[processEnemyCombatPhase] processEnemyTurn result:', {
+    attackCount: attacks.length,
+    attacks: attacks.map(a => ({ enemy: a.enemy.name, target: a.targetPlayer.name, isRanged: a.isRanged })),
+    messageCount: messages.length,
+    messages
+  });
 
   result.updatedEnemies = updatedEnemies;
   result.aiMessages = [...messages];
