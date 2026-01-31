@@ -1718,8 +1718,12 @@ export const EXTRA_BAG_SLOT_PRICES: Record<number, number> = {
 /**
  * Calculate the price for the next extra bag slot
  */
-export function getNextBagSlotPrice(currentExtraSlots: number): number {
-  const nextSlot = currentExtraSlots + 1;
+export function getNextBagSlotPrice(currentExtraSlots: number | undefined): number {
+  // Handle undefined/NaN - treat as 0 extra slots
+  const safeCurrentSlots = (typeof currentExtraSlots === 'number' && !isNaN(currentExtraSlots))
+    ? currentExtraSlots
+    : 0;
+  const nextSlot = safeCurrentSlots + 1;
   return EXTRA_BAG_SLOT_PRICES[nextSlot] || 0;
 }
 

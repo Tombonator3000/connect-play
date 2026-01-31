@@ -1,5 +1,67 @@
 # Development Log
 
+## 2026-01-31: Fix Inventory Slots Bug - Infinite Free Purchases
+
+### Problem
+Spillere kunne kjøpe uendelige inventory slots til pris 0 gold i "The Fence" shop services.
+
+### Rotårsak
+To problemer med håndtering av `undefined` verdi for `extraBagSlots`:
+
+1. **`getNextBagSlotPrice(undefined)`** i `types.ts`:
+   - `undefined + 1 = NaN`
+   - `EXTRA_BAG_SLOT_PRICES[NaN] = undefined`
+   - Fallback `|| 0` returnerte pris = **0 gold**
+
+2. **`handleBuyBagSlot`** i `MerchantShop.tsx`:
+   - Satte `extraBagSlots: activeHero.extraBagSlots + 1`
+   - Med `undefined + 1 = NaN`
+   - `NaN || 0 = 0` (NaN er falsy), så systemet trodde alltid det var 0 ekstra slots
+
+### Løsning
+
+**types.ts - `getNextBagSlotPrice`:**
+```typescript
+// FØR
+export function getNextBagSlotPrice(currentExtraSlots: number): number {
+  const nextSlot = currentExtraSlots + 1;
+  return EXTRA_BAG_SLOT_PRICES[nextSlot] || 0;
+}
+
+// ETTER
+export function getNextBagSlotPrice(currentExtraSlots: number | undefined): number {
+  const safeCurrentSlots = (typeof currentExtraSlots === 'number' && !isNaN(currentExtraSlots))
+    ? currentExtraSlots
+    : 0;
+  const nextSlot = safeCurrentSlots + 1;
+  return EXTRA_BAG_SLOT_PRICES[nextSlot] || 0;
+}
+```
+
+**MerchantShop.tsx - `handleBuyBagSlot`:**
+```typescript
+// FØR
+extraBagSlots: activeHero.extraBagSlots + 1,
+
+// ETTER
+const currentSlots = activeHero.extraBagSlots || 0;
+extraBagSlots: currentSlots + 1,
+```
+
+### Filer Endret
+
+| Fil | Endring |
+|-----|---------|
+| `src/game/types.ts` | Fikset `getNextBagSlotPrice` til å håndtere undefined/NaN |
+| `src/game/components/MerchantShop.tsx` | Fikset `handleBuyBagSlot` til å bruke `|| 0` fallback |
+
+### Lærdom
+- JavaScript `undefined + number = NaN`
+- `NaN || 0 = 0` (NaN er falsy)
+- Alltid valider numeriske verdier fra optional properties før matematiske operasjoner
+
+---
+
 ## 2026-01-31: PWA/Offline Mode Implementation
 
 ### Oppgave
