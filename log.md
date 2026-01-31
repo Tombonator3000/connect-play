@@ -1,5 +1,108 @@
 # Development Log
 
+## 2026-01-31: PWA/Offline Mode Implementation
+
+### Oppgave
+Implementere Progressive Web App (PWA) støtte slik at spillet kan installeres og spilles offline.
+
+### Implementert
+
+#### 1. vite-plugin-pwa
+Installerte og konfigurerte `vite-plugin-pwa` for automatisk Service Worker og manifest-generering.
+
+```typescript
+// vite.config.ts
+VitePWA({
+  registerType: 'autoUpdate',
+  includeAssets: ['favicon.ico', 'robots.txt', 'audio/**/*'],
+  manifest: {
+    name: 'Mythos Quest',
+    short_name: 'Mythos Quest',
+    description: 'A Lovecraftian horror game - Hero Quest meets Mansions of Madness',
+    theme_color: '#1a1a2e',
+    background_color: '#0f0f1a',
+    display: 'standalone',
+    orientation: 'landscape',
+    icons: [...]
+  },
+  workbox: {
+    globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2,ogg,mp3,webp,jpg,jpeg}'],
+    maximumFileSizeToCacheInBytes: 10 * 1024 * 1024, // 10MB for audio files
+    runtimeCaching: [...] // Fonts caching
+  }
+})
+```
+
+#### 2. App-ikoner
+Laget Elder Sign-inspirerte ikoner med Lovecraft-tema:
+- `icon-192x192.png` - Standard PWA ikon
+- `icon-512x512.png` - Høyoppløselig ikon
+- `apple-touch-icon.png` - iOS ikon
+- `screenshot-wide.png` - PWA installasjonsbilde
+
+Ikoner genereres med Node.js script: `scripts/generate-icons.mjs`
+
+#### 3. PWA Meta Tags (index.html)
+```html
+<meta name="theme-color" content="#1a1a2e" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Mythos Quest" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+```
+
+#### 4. Service Worker
+Workbox genererer automatisk Service Worker med:
+- Precaching av 493 assets (~20MB)
+- Runtime caching for Google Fonts
+- Auto-update strategi
+
+### Filer Endret/Lagt til
+
+| Fil | Type | Beskrivelse |
+|-----|------|-------------|
+| `vite.config.ts` | Modified | PWA plugin konfigurasjon |
+| `index.html` | Modified | PWA meta tags og ikoner |
+| `package.json` | Modified | vite-plugin-pwa, sharp |
+| `public/icons/icon-192x192.png` | New | PWA ikon |
+| `public/icons/icon-512x512.png` | New | PWA ikon (stor) |
+| `public/icons/apple-touch-icon.png` | New | iOS ikon |
+| `public/icons/screenshot-wide.png` | New | PWA screenshot |
+| `scripts/generate-icons.mjs` | New | Ikon-generator script |
+
+### Brukerinstruksjoner
+
+#### Installere som app:
+
+**Desktop (Chrome/Edge):**
+1. Gå til https://tombonator3000.github.io/connect-play/
+2. Klikk på installasjonsikonet i adresselinjen
+3. Klikk "Install"
+
+**iOS (Safari):**
+1. Åpne spillet i Safari
+2. Trykk på Del-knappen
+3. Velg "Add to Home Screen"
+
+**Android (Chrome):**
+1. Åpne spillet i Chrome
+2. Trykk på menyen (⋮)
+3. Velg "Install app" eller "Add to Home screen"
+
+### Offline-funksjonalitet
+- Alle spillets assets caches lokalt
+- Spillet fungerer uten internettforbindelse
+- Lagrede spill i localStorage fungerer offline
+- AI-funksjoner (Claude API) krever fortsatt nettverkstilgang
+
+### Commit
+```
+859d798 feat: Add PWA support for offline gameplay
+```
+
+---
+
 ## 2026-01-29: DEBUG - Monster Attack System (Session 6)
 
 ### Oppgave
