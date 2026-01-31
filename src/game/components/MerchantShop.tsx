@@ -698,10 +698,11 @@ const MerchantShop: React.FC<MerchantShopProps> = ({
     }
 
     // Purchase the slot
+    const currentSlots = activeHero.extraBagSlots || 0;
     const updatedHero: LegacyHero = {
       ...activeHero,
       gold: activeHero.gold - price,
-      extraBagSlots: activeHero.extraBagSlots + 1,
+      extraBagSlots: currentSlots + 1,
       // Extend bag array with one more null slot
       equipment: {
         ...activeHero.equipment,
